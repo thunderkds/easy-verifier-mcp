@@ -1,3 +1,44 @@
-.claude
-docs
-memory
+# Harness configuration — local to each machine, not part of the product.
+# Anchored with a leading slash so it matches only the repo-root .claude,
+# never a nested one under src/.
+/.claude/
+
+# Memory system and design records ARE tracked — they are the project's audit
+# trail (CLAUDE.md treats memory/ as mandatory, and DDRs must outlive a clone).
+# Only the noisy machine-generated trace is excluded.
+/memory/event-trace/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Reports generated INTO a target repo are that repo's concern, not ours —
+# but ignore any that land here during local testing against ourselves.
+/reports/
