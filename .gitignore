@@ -3,9 +3,14 @@
 # never a nested one under src/.
 /.claude/
 
-# Memory system and design records ARE tracked — they are the project's audit
-# trail (CLAUDE.md treats memory/ as mandatory, and DDRs must outlive a clone).
-# Only the noisy machine-generated trace is excluded.
+# Docs are local-only by user decision — includes docs/ddr/ (design records)
+# and docs/claude-md/ (the files CLAUDE.md links to). Anchored so a future
+# src/**/docs/ is unaffected.
+/docs/
+
+# The memory system IS tracked — CLAUDE.md treats it as mandatory and every
+# sub-agent is told to read it. Only the noisy machine-generated trace is
+# excluded.
 /memory/event-trace/
 
 # Python
