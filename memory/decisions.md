@@ -123,6 +123,44 @@ dimensions are simpler than they are.
 
 ---
 
+## 2026-08-14 — Local-only, stdio-first transport (user correction)
+
+**Decision**: The harness connects to this MCP **locally, through a Docker container — never over
+the internet**. stdio is the default and required transport, spoken across the container boundary
+via `docker run -i`. HTTP/SSE is optional, opt-in, and must bind `127.0.0.1` only.
+
+**Why**: The spec had inherited "HTTP/SSE" from `easy-ui-mcp`'s operational style without anyone
+asking whether this project needs it. It does not. The engine is stateless — every call re-reads the
+target repo from disk — so there is no warm cache or session that a long-running server would
+protect, and a fresh process per call costs nothing. Against that, a network transport buys a port
+to collide, a lifecycle to manage, and an unauthenticated local socket that reads arbitrary source
+trees and returns file contents. `docker run -i` handles the container boundary fine, so Docker was
+never a reason to need HTTP either.
+
+**Consequences**: NFR-012 (local-only, no outbound requests, no externally reachable socket),
+NFR-013 (non-root container, target repo mounted read-only except `reports/`), FR-021c (container
+paths must not leak into reports). Authentication is out of scope *because* of locality — an
+exclusion that must be revisited first if remote operation is ever added.
+
+**Corrects**: the original `REQUIREMENT.md` line 33 reading, which the PRD had carried forward
+unexamined.
+
+---
+
+## 2026-08-14 — Synthesis is aggregation in the engine, interpretation in the caller
+
+**Decision**: The engine provides a combined-pack operation (run several dimensions in one call,
+return an aggregate coverage summary) and renders multi-dimension reports with optional suggested
+improvements per finding. Deciding what findings *mean together* remains the caller's work.
+
+**Why**: `REQUIREMENT.md` §4 lists a "synthesis + suggestion layer" among the five internal layers,
+and §1 asks for "improved suggestions" — but the PRD and the layer map had dropped it entirely.
+Recovering it must not smuggle reasoning into an engine defined as reasoning-free, so the split is:
+aggregation and presentation are mechanical and belong to the engine; interpretation is judgment and
+belongs to the caller.
+
+---
+
 ## 2026-08-14 — Evidence packs bounded by relevance-ordered byte budget
 
 **Decision**: 120 KB default per dimension pack, overridable per call. Content ordered changed-files

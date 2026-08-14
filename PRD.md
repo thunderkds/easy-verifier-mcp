@@ -48,6 +48,8 @@ so, loudly, as a measurable coverage score. The result is an evaluation a develo
 | US-007 | As a Kit Supervisor, I want security evaluation always present and expected on non-trivial changes, so security is never quietly skipped. | P1, P2 |
 | US-008 | As either caller, I want a self-contained HTML report written into the evaluated repo under `reports/`, so the result is browsable and lives with the code it judges. | P1, P2 |
 | US-009 | As a Standalone Developer, I want the same tool to work whether or not the repo was kit-built, so I learn one workflow. | P2 |
+| US-010 | As either caller, I want one report that spans several dimensions and carries suggested improvements, so I get a synthesized evaluation rather than seven disconnected documents I have to reconcile myself. | P1, P2 |
+| US-011 | As a Reviewing Agent, I want to discover which dimensions exist and what context each one seeks, so I can choose the right ones without reading the verifier's source. | P3 |
 
 ---
 
@@ -84,26 +86,42 @@ Each FR must trace to at least one User Story.
 | FR-011b | A truncated pack must report truncation explicitly as a structured field stating that truncation occurred and how many items were omitted. Silent truncation is prohibited, and omitted items must appear in the coverage list defined by FR-016a. | US-003, US-004 |
 | FR-012 | The security dimension must be callable in both modes and in every scope, and must never be gated behind kit-aware mode. | US-007 |
 | FR-013 | No dimension may return a verdict, score, or judgment produced by the engine. Dimensions return evidence only; reasoning is performed by the calling agent. | US-004 |
+| FR-013a | The system must expose a **discovery** operation listing every available dimension with its human-readable purpose and its declared `sources_sought` list, available in both adapters. | US-011 |
 
 ### Findings, confidence & reporting
 
 | ID | Requirement | Traces to |
 |----|-------------|-----------|
 | FR-014 | The system must expose a `write_report` operation accepting the calling agent's findings as structured JSON, and must render them into a self-contained HTML report. | US-008 |
-| FR-015 | `write_report` must reject any finding that lacks **both** an evidence reference and a confidence value, returning a validation error naming the offending finding. | US-005 |
+| FR-015 | Every finding must carry **both** an evidence reference and a confidence value. `write_report` must reject the submission if **either** is missing from **any** finding, returning a validation error naming the offending finding and the missing field. A finding with evidence but no confidence is rejected; so is a finding with confidence but no evidence. | US-005 |
+| FR-015a | `write_report` must reject a finding whose evidence reference does not resolve to an item present in the evidence pack it cites — a dangling citation is an unfounded claim wearing a citation's clothes. | US-005 |
 | FR-016 | Each dimension must declare, as static data, the list of context sources it seeks. The engine must compute a **context-coverage score** as the unweighted ratio `found / sought` over that declared list. All sources are equally weighted; the engine must apply no importance judgment. | US-003 |
 | FR-016a | The coverage score must never be rendered alone. Every presentation of it — in a tool response and in a report — must be accompanied by the named list of sources sought but not found, so a reader can audit the number. | US-003 |
 | FR-017 | Reports must be written into the **evaluated** repository under `reports/`, never into the verifier's own repository. | US-008 |
 | FR-018 | Rendered HTML reports must be self-contained: no external CSS, JS, font, or image requests. | US-008 |
+| FR-018a | A report must be able to span **multiple dimensions** in a single document. `write_report` accepts findings tagged by dimension and renders them grouped, alongside a combined summary and the per-dimension coverage scores. Seven separate single-dimension reports is not a conforming implementation. | US-008, US-010 |
+| FR-018b | Report filenames must be unique and self-describing, incorporating scope and a UTC timestamp with sufficient resolution that two reports written in the same second cannot collide. Writing a report must never overwrite an existing one. | US-008 |
+
+### Synthesis & suggestions
+
+| ID | Requirement | Traces to |
+|----|-------------|-----------|
+| FR-023 | Every finding must support an optional **suggested improvement** field. Where a finding carries one, the report must render it alongside the finding. | US-010 |
+| FR-024 | Suggestions are advisory text only. The system must never apply, patch, or auto-fix anything in the target repository (reinforces NFR-007). | US-010 |
+| FR-025 | The engine must provide a **combined pack** operation that runs several named dimensions in one call and returns their packs together with an aggregate coverage summary, so a caller can synthesize across dimensions without issuing seven separate calls and reassembling them by hand. | US-004, US-010 |
+| FR-026 | Cross-dimension synthesis — deciding what the findings *mean together* — is performed by the calling agent, not the engine. The engine's contribution to synthesis is aggregation and presentation only, never interpretation (reinforces FR-013, NFR-001). | US-010 |
 
 ### Entry points
 
 | ID | Requirement | Traces to |
 |----|-------------|-----------|
-| FR-019 | The system must expose an **MCP adapter** serving all dimensions and `write_report` as MCP tools over HTTP/SSE, registrable in Claude Code and the personal-agentic harness. | US-001 |
+| FR-019 | The system must expose an **MCP adapter** serving all dimensions, discovery, and `write_report` as MCP tools, registrable in Claude Code and the personal-agentic harness. The harness connects to it **locally, via a Docker container** — never over the internet. | US-001 |
+| FR-019a | The default and required transport is **stdio**, spoken across the container boundary (`docker run -i`). This needs no port, no bind address, and no server lifecycle to manage. | US-001 |
+| FR-019b | An HTTP/SSE transport may be offered as an opt-in flag for harness convenience. When enabled it must bind to the loopback interface (`127.0.0.1`) only, and must never bind `0.0.0.0` or any routable address, including inside a container. | US-001 |
 | FR-020 | The system must expose a **CLI adapter** that runs the same dimensions against a repository given by filesystem path, with no server process required. | US-002 |
 | FR-021 | Both adapters must delegate to one shared core; neither may contain evaluation, context-loading, or rendering logic of its own. | US-009 |
-| FR-021a | The MCP adapter must ship a Dockerfile and compose configuration in v1, with all configuration supplied via environment variables and no host-absolute paths. The target repository must be mountable as a volume. | US-001, US-002 |
+| FR-021a | The MCP adapter must ship a Dockerfile and compose configuration in v1, with all configuration supplied via environment variables and no host-absolute paths. The target repository must be mountable as a volume, and the container must speak stdio by default so no port need be published. | US-001, US-002 |
+| FR-021c | Paths inside the container must never leak into written reports. A report generated for a repo mounted at `/workspace` must reference the paths the operator recognises on the host, not container-internal ones. | US-008, US-009 |
 | FR-021b | The CLI adapter must remain runnable with no container and no server process, so Case B works from a plain checkout. | US-002 |
 | FR-022 | Both adapters must produce identical evidence packs and identical report output for the same repository, scope, and dimension. | US-009 |
 
@@ -118,7 +136,9 @@ Each FR must trace to at least one User Story.
 | NFR-003 | Security evaluation must be available in every mode and scope, and expected on any non-trivial change set. | Security |
 | NFR-004 | Low-confidence and unevidenced claims must be structurally impossible to publish: enforcement lives in `write_report` validation, not in caller convention. | Integrity |
 | NFR-005 | The system must operate on arbitrary repositories with no prior setup, configuration file, or kit installation in the target. | Usability |
-| NFR-006 | The system must follow `easy-ui-mcp` operational style: local MCP server, HTTP/SSE transport, Docker-friendly packaging. | Consistency |
+| NFR-006 | The system must follow `easy-ui-mcp` operational style: a local MCP server with Docker packaging. Transport is stdio by default (FR-019a); HTTP/SSE is optional and loopback-bound (FR-019b). | Consistency |
+| NFR-012 | The system is **local-only**. It must operate fully with no internet access, must make no outbound network request of its own, and must expose no listening socket reachable from outside the host. The harness reaches it through a local Docker container. | Security |
+| NFR-013 | The container must run as a non-root user, mount the target repository read-only except for its `reports/` directory, and require no elevated capabilities. A tool that reads arbitrary source trees and scans them for credentials must hold the least privilege that still does the job. | Security |
 | NFR-007 | The system must never write to the target repository outside `reports/`, and must never execute code from the target repository. | Safety |
 | NFR-008 | Python + `mcp` SDK (FastMCP) is the mandated runtime. | Platform |
 | NFR-009 | Evidence packs must be bounded in size so a whole-project evaluation does not exhaust the calling agent's context; truncation must be explicit and reported, never silent. | Performance |
@@ -151,6 +171,12 @@ Explicitly excluded from v1:
 - Fetching or reading the `personal-agentic-claude` and `easy-ui-mcp` repositories over the network for v1 design.
 - Non-HTML report formats (JSON export of findings is an internal contract, not a deliverable format).
 - Multi-repository or organization-wide evaluation. One target repo per invocation.
+- Remote, hosted, or multi-tenant operation. The server is local-only, reached through a local
+  Docker container, and is never exposed to the internet (NFR-012).
+- Authentication, authorization, or multi-user access control — out of scope precisely *because*
+  the server is local and single-user. If remote operation is ever added, this exclusion must be
+  revisited first: an unauthenticated endpoint that reads arbitrary repositories would be a
+  serious exposure.
 
 ---
 
@@ -168,3 +194,15 @@ Resolved during Stage 0.5 requirement grilling (2026-08-14).
 | 6 | Authenticated CLIs. | **Confirmed**: Claude Code only; all sub-agents spawn via the in-session `Agent` tool. | thunderkds |
 | 7 | Secret values reaching evidence packs and reports. | **Resolved** (G1): redact at the evidence layer to a non-reversible fingerprint. See NFR-010/NFR-011. | thunderkds |
 | 8 | Context-coverage score definition. | **Resolved** (G2): unweighted `found / sought` over a declared per-dimension checklist, never rendered without the miss list. See FR-016/FR-016a. | thunderkds |
+
+Added during the Stage 2 pre-flight gap audit (2026-08-14).
+
+| # | Gap found | Status | Owner |
+|---|---|--------|-------|
+| 9 | **FR-015 was ambiguous** — "lacks both an evidence reference and a confidence value" parses as reject-if-both-missing *or* reject-if-either-missing. The loose reading silently defeats NFR-004. | **Resolved** (G6): both fields are mandatory; rejection triggers if *either* is missing. Dangling citations rejected too (FR-015a). | Supervisor |
+| 10 | **Synthesis + suggestion layer was missing entirely** — named in `REQUIREMENT.md` §4's five internal layers and implied by §1 ("improved suggestions") and the "suggestions only" exclusion, but absent from the PRD and the layer map. | **Resolved** (G7): FR-023…FR-026 added, plus US-010. Engine aggregates and presents; the caller interprets. | Supervisor |
+| 11 | **Report scope undefined** — FR-014 never said whether a report covers one dimension or several, so seven disconnected reports was a conforming implementation. | **Resolved** (G8): FR-018a requires multi-dimension reports; FR-018b requires collision-proof filenames. | Supervisor |
+| 12 | **No dimension discovery** — a caller had no way to learn what dimensions exist or what context each seeks without reading the source. | **Resolved** (G9): FR-013a, US-011. | Supervisor |
+| 13 | **Transport mismatch** — HTTP/SSE was mandated by inheritance from `easy-ui-mcp`, but the engine is stateless and the harness connects locally via Docker. An unauthenticated local port that reads arbitrary repos is exposure bought for no benefit. | **Resolved** (G11) by user correction: harness connects **locally via Docker container, never the internet**. stdio is the default and required transport (FR-019a); HTTP/SSE is opt-in and loopback-bound (FR-019b). Added NFR-012 (local-only), NFR-013 (least-privilege container), FR-021c (no container-path leakage). | thunderkds |
+| 14 | **Open**: whether the redaction fingerprint hash is salted. Unsalted allows correlating the same secret across scans; salted resists dictionary attacks on low-entropy values. | Open — must be closed when the redaction task is planned. DDR-0001 follow-up. | thunderkds |
+| 15 | **Open**: FR-022 says adapters produce "identical" output, and the KPI table says "byte-equal". Timestamps and absolute paths differ between host and container runs, so byte-equality needs a defined normalization or a weaker, precise word. | Open — resolve when the parity test is specified. | Supervisor |

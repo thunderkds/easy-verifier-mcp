@@ -316,3 +316,52 @@ For the Supervisor to incorporate into Stage 2 (`/plan` → `to-issues` → TASK
 
 > **Approved direction**: Option D — The Hybrid Path (pipeline function + dimension descriptors)
 > Approved by user on 2026-08-14.
+
+---
+
+## Amendment — Stage 2 pre-flight gap audit (2026-08-14)
+
+Appended after the session, not rewritten: the analysis above stands, but a gap audit against
+`REQUIREMENT.md` found three things this log omitted. Option D is unaffected.
+
+**1. A missing module.** `REQUIREMENT.md` §4 names a *synthesis + suggestion layer* among its five
+internal layers. The Surgical Scope list above has no such module. Recovered as
+`src/easy_verifier/core/synthesis.py` — the combined-pack operation (FR-025) and aggregate coverage
+summary. It performs no interpretation: aggregation and presentation are mechanical and belong to
+the engine, while deciding what findings mean together stays with the caller (FR-026).
+
+**2. Transport corrected.** The log assumed HTTP/SSE throughout, inherited from `easy-ui-mcp`. The
+harness in fact connects **locally through a Docker container, never the internet**. stdio is now the
+default and required transport (FR-019a); HTTP/SSE is opt-in and loopback-bound (FR-019b). This
+*reduces* adapter complexity — no port, no lifecycle, no bind-address decision by default.
+
+**3. Report scope was undefined.** Reports must span multiple dimensions in one document (FR-018a),
+which makes `report.py` a consumer of `synthesis.py` rather than of a single pack.
+
+### Added to Surgical Scope
+
+- `src/easy_verifier/core/synthesis.py` — combined pack, aggregate coverage (FR-025, FR-026)
+
+### Additional Edge Cases for TASK_GUIDE
+
+**Synthesis & multi-dimension reporting**
+- [ ] Combined pack requesting a dimension name that does not exist — must name the bad one, not fail silently
+- [ ] Combined pack where one dimension throws and the others succeed — partial result must be explicit, never silently dropped
+- [ ] Aggregate coverage across dimensions with different `sources_sought` lists — must not double-count a shared source
+- [ ] Per-dimension byte budgets in a combined call — does the budget apply per dimension or in total? Must be defined and tested
+- [ ] Finding tagged with a dimension absent from the report's packs — dangling dimension reference
+- [ ] Report rendering when every dimension returned zero findings
+
+**Transport & container**
+- [ ] stdio transport must not write anything to stdout except protocol frames — a stray `print()` corrupts the stream
+- [ ] HTTP/SSE flag must refuse to bind a non-loopback address, including `0.0.0.0` inside a container
+- [ ] Container path leakage: a repo mounted at `/workspace` must produce host paths in the report (FR-021c)
+- [ ] Target repo mounted read-only with a writable `reports/` — the intended NFR-013 posture
+- [ ] Container runs as non-root and cannot write outside `reports/`
+- [ ] No outbound network request is made by any dimension (NFR-012) — assertable in test
+
+**Findings validation (strengthened)**
+- [ ] Finding missing confidence but carrying evidence — **rejected** (FR-015, corrected reading)
+- [ ] Finding missing evidence but carrying confidence — **rejected**
+- [ ] Evidence reference pointing at an item not in the cited pack — **rejected** (FR-015a)
+- [ ] Suggested-improvement field absent — allowed; it is optional (FR-023)
