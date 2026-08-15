@@ -16,7 +16,7 @@
 - [ ] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | common-infrastructure | C2 | Risk: Med | P0
 - [ ] **T002** — `context.py`: kit detection, kit-aware/standalone modes, limited-context warning | backend-developer | C2 | Risk: Med | P0
 - [ ] **T003** — `scope.py`: task/changes/worktree/project scope resolution | backend-developer | C1 | Risk: Low | P0
-- [ ] **T004** — `redact.py`: evidence-layer secret fingerprinting (**HITL gate: salting decision**) | backend-developer | C2 | Risk: High | P0
+- [ ] **T004** — `redact.py`: evidence-layer secret fingerprinting | backend-developer | C2 | Risk: High | P0
 - [ ] **T005** — `budget.py`: relevance ordering, lazy consumption, explicit truncation | backend-developer | C2 | Risk: Med | P0
 - [ ] **T006** — `findings.py`: finding schema + `write_report` validation | backend-developer | C1 | Risk: Med | P0
 
@@ -57,7 +57,7 @@ _None._
 
 | Task | Reason | Waiting on |
 |------|--------|-----------|
-| T004 | **HITL gate (open item #14)**: is the redaction fingerprint hash salted? Unsalted enables cross-scan correlation of the same secret; salted resists dictionary attacks on low-entropy values. Mask width, hash algorithm and prefix length also undecided. Must be answered before implementation; DDR-0001 follow-up. | thunderkds |
+| ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | T017 | **HITL gate (open item #15)**: FR-022 says adapters produce "identical" output; the KPI table says "byte-equal". Timestamps and host-vs-container absolute paths differ by construction, so byte-equality is unachievable as written. Needs a defined normalization or a weaker, precise word. | thunderkds |
 
 > Both are gates at pickup time, not blockers on planning — the guides are written and the tasks are

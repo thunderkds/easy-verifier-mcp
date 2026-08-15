@@ -169,3 +169,37 @@ as an explicit structured field and feeds the coverage miss-list.
 
 **Why**: Byte-measured rather than token-measured keeps output deterministic and model-independent,
 preserving the two-adapter parity guarantee; a tokenizer would make packs model-specific.
+
+---
+
+## 2026-08-15 — Redaction fingerprint is unsalted (DDR-0001 follow-up)
+
+**Decision**: The secret fingerprint is an **unsalted** SHA-256, rendered as a 4-character masked
+prefix of the raw value plus a 12-hex-character hash prefix (e.g. `AKIA…****:a3f9c2e18b04`).
+Closes gap-audit open item #14, which had been carried as a HITL gate on T004.
+
+**Why**: The choice is a trade between correlation and dictionary resistance. Unsalted, the same
+secret fingerprints identically everywhere, so a report can state "this one credential appears in
+three files" — which is what makes the finding actionable rather than three unrelated alarms.
+Salted, that correlation is destroyed, and the salt itself becomes new surface needing a lifetime
+and a storage location, which is precisely the kind of stored secret this tool exists to complain
+about.
+
+The dictionary-attack risk that salting defends against only matters if a report reaches somewhere
+the repository does not. **The user confirmed (2026-08-15) that reports are not used outside the
+evaluated repo.** A report therefore lands beside the credential it describes: anyone able to read
+the fingerprint can already read the raw value with `grep`, so reversing a weak fingerprint
+discloses nothing new.
+
+**Trade-off accepted**: a low-entropy secret (`changeme`, `admin123`) is recoverable from its
+fingerprint by anyone holding the report. Accepted because the report's audience is, by the user's
+constraint, already inside the repo's trust boundary.
+
+**Revisit if**: reports ever start travelling — committed to a shared branch, attached to a ticket,
+pasted into a PR, or sent anywhere outside the evaluated repo. That change invalidates the reasoning
+above, and salting should be reconsidered before it happens. NFR-011's first-write advisory is the
+existing mitigation and stays.
+
+**Settings fixed alongside**: SHA-256; 12-hex-char hash prefix (collision-safe within a report,
+useless in isolation); 4-char mask retained so `AKIA…` remains recognisable as an AWS key without
+disclosing meaningful material.

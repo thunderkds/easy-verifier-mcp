@@ -8,23 +8,26 @@
 
 ---
 
-## ⛔ HITL Gate — do not start until this is answered
+## ✅ HITL Gate — CLOSED 2026-08-15
 
-**Open item #14 (DDR-0001 follow-up).** The Supervisor must record the user's decision here before
-this task is spawned:
+**Open item #14 (DDR-0001 follow-up)** — answered by the user; rationale recorded in
+`memory/decisions.md` § "Redaction fingerprint is unsalted". This task is unblocked.
 
-| Question | Options | Decision |
-|---|---|---|
-| Is the fingerprint hash **salted**? | **Unsalted** — the same secret fingerprints identically across scans, so a reviewer can correlate "this key appears in three places" — but low-entropy secrets (short passwords, common tokens) become dictionary-attackable from the fingerprint alone. **Salted** — resists that attack, but destroys cross-scan and cross-file correlation, and the salt then needs a lifetime and a storage location, which is new surface. | _unanswered_ |
-| Hash algorithm | SHA-256 is the safe default | _unanswered_ |
-| Hash prefix length | e.g. first 8 or 12 hex chars — long enough to avoid collisions in one report, short enough to stay unusable | _unanswered_ |
-| Mask width | e.g. first 4 chars of the raw value retained, remainder masked — retaining *any* prefix is itself a small disclosure | _unanswered_ |
+| Question | Decision |
+|---|---|
+| Is the fingerprint hash **salted**? | **Unsalted.** The user confirmed reports are not used outside the evaluated repo, so a report always lands beside the credential it describes — anyone who can read the fingerprint can already `grep` the raw value, and reversing a weak fingerprint discloses nothing new. Keeping it unsalted preserves cross-file correlation ("this one key appears in three places"), which is what makes a hit actionable, and avoids introducing a stored salt this tool would then have to protect. |
+| Hash algorithm | **SHA-256** |
+| Hash prefix length | **12 hex characters** — collision-safe within a report, useless in isolation |
+| Mask width | **4 characters** of the raw value retained — enough that `AKIA…` reads as an AWS key, not enough to disclose meaningful material |
 
-> Recommendation if the user has no preference: **unsalted SHA-256, 12-char hash prefix, 4-char
-> masked prefix** — correlation across a report is the property that makes a fingerprint actionable,
-> and the dictionary-attack risk is mitigated by never emitting the fingerprint anywhere the raw
-> secret was not already present. Record the choice in `memory/decisions.md` as a DDR-0001 follow-up
-> either way.
+Fingerprint format: `<first 4 chars>…****:<12 hex chars>` — e.g. `AKIA…****:a3f9c2e18b04`.
+
+> **Accepted trade-off, carry it into the code**: a low-entropy secret (`changeme`, `admin123`) is
+> recoverable from its fingerprint by anyone holding the report. This is accepted *only* because the
+> report's audience is inside the repo's trust boundary. Note it in the module docstring alongside
+> the revisit condition: **if reports ever start travelling** — committed to a shared branch,
+> attached to a ticket, pasted into a PR — the reasoning above no longer holds and salting must be
+> reconsidered. NFR-011's first-write advisory remains the standing mitigation.
 
 ---
 
@@ -63,7 +66,7 @@ Make it structurally impossible for a raw secret value to leave the engine.
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] HITL gate above answered and recorded in `memory/decisions.md`
+- [x] HITL gate above answered and recorded in `memory/decisions.md` (2026-08-15)
 - [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
 - [ ] Domain terms align with `PROJECT_SPEC.md` glossary
 - [ ] Every Acceptance Criterion below traces to a line in the Requirement
@@ -84,7 +87,7 @@ Make it structurally impossible for a raw secret value to leave the engine.
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
 | 1 | `redact(text) -> RedactionResult` returns the redacted text plus a list of `RedactionHit` (detector name, offset, fingerprint) — the raw value appears on **no** returned field | NFR-010 |
-| 2 | The fingerprint is non-reversible and matches the format decided at the HITL gate | NFR-010 |
+| 2 | The fingerprint matches the decided format exactly: `<4 chars>…****:<12 hex>`, unsalted SHA-256 — a test asserts the shape and asserts no salt is read from config, env or disk | NFR-010 |
 | 3 | Redaction happens inside `run_dimension()` before an excerpt is placed on a pack — a test proves no code path constructs a pack from unredacted text | NFR-010, Critical Constraint 4 |
 | 4 | Detector name, file path and line number are preserved on every hit | NFR-010 |
 | 5 | **No raw value in any log record**: a test captures logging at DEBUG across a full run over a repo seeded with fake secrets and asserts none appears | NFR-010 |
@@ -203,7 +206,7 @@ implementing agent must not be the sole author of its own acceptance test.
 
 ## Completion Checklist
 
-- [ ] HITL gate answered and recorded
+- [x] HITL gate answered and recorded (2026-08-15)
 - [ ] Implementation done
 - [ ] Self-review: `Skill({ skill: "code-review" })` run
 - [ ] Security review: `Skill({ skill: "security-review" })` run (**High risk — mandatory**)
