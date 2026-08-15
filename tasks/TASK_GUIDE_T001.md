@@ -81,7 +81,8 @@ slice: a real repository goes in, a real evidence pack comes out, through the sa
 | 2 | `run_dimension(descriptor, repo_path)` returns an `EvidencePack` with fields: `dimension`, `mode`, `scope`, `files_read`, `excerpts`, `sources_sought`, `sources_found`, `sources_missing`, `coverage_score`, `truncated`, `omitted_count` | FR-011, FR-016 |
 | 3 | Each excerpt carries `path`, `start_line`, `end_line`, `text` — no excerpt may exist without a resolvable path and line range | FR-011 |
 | 4 | The `architecture` dimension is expressed as static descriptor data (`name`, `purpose`, `sources_sought`) plus a `collect` callable — **no base class, no registry, no subclassing** | Option D, FR-009 |
-| 5 | `collect` returns an `Iterable[Excerpt]` and is consumed lazily — a test proves a generator that raises on its Nth item still yields the first N-1 excerpts through the budget cap | Critical Constraint 3 |
+| 5 | `collect` returns an `Iterable[Excerpt]` and is consumed lazily — a test proves a generator that raises on item N+2 still yields N excerpts through a cap admitting N (the pipeline pulls item N+1, rejects it, and stops; it never reaches N+2) | Critical Constraint 3 |
+| 5a | `omitted_count` counts **only items actually pulled and rejected** and is documented in the field itself as a lower bound. The pipeline must never drain the remainder to produce an exact total — for a file-reading `collect`, "just counting" means reading every file, which is the exact monorepo cost budgeting exists to avoid | Critical Constraint 3, FR-011b |
 | 6 | `coverage_score == len(sources_found) / len(sources_sought)`, unweighted, and the pack always carries the named `sources_missing` list alongside it | FR-016, FR-016a |
 | 7 | The `EvidencePack` contains **no** verdict, rating, grade, pass/fail, or severity field | FR-013 |
 | 8 | `run_dimension()` calls the redaction seam on every excerpt before it enters the pack; a test asserts a dimension cannot construct a pack without passing through the seam | NFR-010 (seam only) |
@@ -99,7 +100,7 @@ slice: a real repository goes in, a real evidence pack comes out, through the sa
 |---|---------------------|--------------------------|------------------|
 | 1 | This repo (`easy-verifier-mcp`) as target, `architecture` dimension | Pack lists `PROJECT_SPEC.md` in `files_read`, excerpts cite it with real line numbers, `coverage_score` is between 0 and 1 | automated test |
 | 2 | A temp dir containing no docs at all | Pack returns successfully with empty `excerpts`, `coverage_score == 0.0`, and every declared source in `sources_missing` — no crash, no invented content | automated test |
-| 3 | A `collect` generator yielding 10 excerpts with a byte cap that admits 3 | `truncated is True`, `omitted_count == 7`, and the generator was never advanced past what the cap needed | automated test |
+| 3 | A `collect` generator yielding 10 excerpts with a byte cap that admits 3 | `truncated is True`; `omitted_count == 1` — the one item pulled and rejected — documented as a **lower bound**, not a total; the generator is advanced exactly one item past the admitted set and no further | automated test |
 | 4 | A dimension descriptor whose `collect` yields an excerpt containing a fake secret | The seam was invoked on it (assert via spy/monkeypatch) | automated test |
 
 ### Verification Command (exact, runnable)
@@ -155,7 +156,8 @@ bullet: the contract is what this task delivers, not the quality of the architec
 - [ ] A file is binary or has invalid UTF-8 → skipped, not decoded with replacement characters into an excerpt
 - [ ] A symlink points outside the repo → not followed
 - [ ] `sources_sought` is empty → coverage score is `None`, not a ZeroDivisionError, and is not rendered as `0.0` (which would falsely read as total failure)
-- [ ] Byte cap smaller than the first excerpt → `truncated is True`, `excerpts` empty, `omitted_count` correct — not an infinite loop or a negative remainder
+- [ ] Byte cap smaller than the first excerpt → `truncated is True`, `excerpts` empty, `omitted_count == 1` — not an infinite loop or a negative remainder
+- [ ] Stream ends exactly at the budget boundary → `truncated is False`, `omitted_count == 0`. The rejected-item rule gives this for free (nothing was pulled and rejected), which is why it is preferred over "stop when used >= budget", whose `truncated` would be a false positive here
 - [ ] Extremely long single line (minified file) → excerpt is bounded, not a 5 MB string
 - [ ] Line numbers are 1-indexed and match what an editor shows (off-by-one here poisons every citation downstream)
 
@@ -191,7 +193,7 @@ bullet: the contract is what this task delivers, not the quality of the architec
 Unit + integration in one file, `tests/test_t001_pipeline.py`:
 
 1. **Pack shape** — every field in AC #2 present with the right type; assert no verdict-shaped field exists (AC #7) by name-checking the dataclass fields against a forbidden list.
-2. **Laziness** — a generator that raises `AssertionError` on item N proves items 1..N-1 were consumed and the exception was never reached under a cap of N-1. This is the test that stops constraint 3 from silently regressing.
+2. **Laziness** — a generator that raises `AssertionError` on item **N+2**, under a cap admitting **N**, proves the pipeline pulled N+1 (rejected it, set `truncated`) and stopped without reaching N+2. This is the test that stops constraint 3 from silently regressing. The one-item overshoot is deliberate and bounded: it is what makes `truncated` honest without draining the stream.
 3. **Coverage arithmetic** — parameterised over found/sought combinations including empty-sought.
 4. **No-invention** — run against an empty temp dir; assert every excerpt's `path` exists on disk.
 5. **Redaction seam** — monkeypatch `redact` to a spy; assert it saw every excerpt's text.

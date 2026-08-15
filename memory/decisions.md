@@ -203,3 +203,39 @@ existing mitigation and stays.
 **Settings fixed alongside**: SHA-256; 12-hex-char hash prefix (collision-safe within a report,
 useless in isolation); 4-char mask retained so `AKIA…` remains recognisable as an AWS key without
 disclosing meaningful material.
+
+---
+
+## 2026-08-15 — Truncation is rejection-triggered; omitted_count is a lower bound
+
+**Decision**: `run_dimension()` pulls from `collect` until one excerpt does not fit, drops that
+excerpt, and stops. `truncated` is set by that rejection — never by `used >= budget`.
+`omitted_count` counts only items actually pulled and rejected, and the field documents itself as a
+**lower bound**, not a total.
+
+**Why**: T001's guide contained a contradiction the implementing agent caught before writing code.
+Its Success Criterion 3 demanded `omitted_count == 7` for a 10-item stream under a 3-item cap, while
+the same sentence demanded the generator never be advanced past what the cap needed. Knowing seven
+remain requires draining the stream; not draining it means you cannot know. Both cannot hold.
+
+Draining to count is the tempting fix and is the wrong one: for a file-reading `collect`, "just
+counting" means opening every remaining file, which is exactly the monorepo cost that budgeting
+exists to avoid. The lazy-consumption constraint would survive in letter and die in effect.
+
+Rejection-triggering also removes a false positive that the alternative (`stop when used >= budget`)
+carries: a stream ending exactly at the boundary would report `truncated=True` having omitted
+nothing.
+
+**Trade-off accepted**: the pipeline advances exactly one item past the admitted set, and callers
+learn "at least one item was dropped" rather than how many. Bounded overshoot, honest field.
+
+**Consistency note**: T005's guide had already specified the correct semantics independently
+(its edge-case checklist required `omitted_count` be "honest about being a lower bound if the
+remainder was not counted"). T001's criterion was the outlier; this decision aligns the two rather
+than introducing a new rule. Both guides updated.
+
+**Supervisor error worth naming**: this was a planning defect, not an implementation one — an
+acceptance criterion that no correct implementation could satisfy. It survived because the two
+halves of the contradiction sat in different sections of the guide (Success Criteria vs. Test Plan)
+and were individually reasonable. Cross-check numeric criteria against the constraints they
+interact with when writing future guides.

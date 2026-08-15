@@ -64,7 +64,7 @@ useful material, and say out loud what was dropped.
 | 1 | Default limit is 120 KB, **measured in bytes** (not characters), and is overridable per call | FR-011a |
 | 2 | Relevance order is exactly: (1) excerpts from files changed in the active scope, (2) excerpts from files referenced by the loaded spec/kit artifacts, (3) everything else — stable and deterministic within each tier | FR-011a |
 | 3 | The input is consumed **lazily**: a test proves that with a limit admitting N excerpts, a generator yielding N+K items is advanced no further than it must be, and a generator that raises after N items still returns a valid pack | Critical Constraint 3, NFR-009 |
-| 4 | On truncation, the result carries `truncated=True` and `omitted_count` equal to the number of excerpts not admitted | FR-011b |
+| 4 | On truncation, the result carries `truncated=True` and `omitted_count` equal to the number of excerpts **pulled and rejected** — a documented lower bound, never a drained total. Truncation is triggered by an item that does not fit, not by `used >= budget`, so a stream ending exactly at the boundary is not a false positive | FR-011b |
 | 5 | Omitted items are reflected in the coverage/miss list so a reader can audit what is absent | FR-011b, FR-016a |
 | 6 | With no truncation, `truncated=False` and `omitted_count=0` — never `None`, never absent | FR-011b |
 | 7 | A single excerpt larger than the whole limit is handled explicitly (admitted-and-clipped with a stated clip, or omitted with a stated reason) — never an infinite loop, never silently zero excerpts with `truncated=False` | FR-011b |
@@ -79,7 +79,7 @@ useful material, and say out loud what was dropped.
 
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
-| 1 | 100 excerpts of 2 KB each, limit 10 KB, 3 of them from changed files | The 3 changed-file excerpts are admitted first; `truncated=True`; `omitted_count` correct | automated test |
+| 1 | 100 excerpts of 2 KB each, limit 10 KB, 3 of them from changed files | The 3 changed-file excerpts are admitted first; `truncated=True`; `omitted_count == 1` (lower bound); the generator is advanced exactly one item past the admitted set | automated test |
 | 2 | Generator raising `RuntimeError` on item 50, limit admitting 10 | Valid pack of 10; exception never raised | automated test |
 | 3 | Total candidate size under the limit | All admitted, `truncated=False`, `omitted_count=0` | automated test |
 | 4 | One 500 KB excerpt, limit 120 KB | Documented behaviour from AC #7, stated in the truncation field | automated test |
