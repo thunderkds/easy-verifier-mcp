@@ -14,8 +14,9 @@ not the quality of the target repository.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, Protocol
+from typing import Protocol
 
 
 @dataclass(frozen=True)

@@ -34,7 +34,9 @@ MODE_STANDALONE = "standalone"
 def detect_mode(repo_path: Path) -> str:
     """Probe for kit artifacts. T001 checks ``PROJECT_SPEC.md`` only (T002 owns
     the real detection over the full artifact list)."""
-    return MODE_KIT_AWARE if (repo_path / "PROJECT_SPEC.md").is_file() else MODE_STANDALONE
+    return (
+        MODE_KIT_AWARE if (repo_path / "PROJECT_SPEC.md").is_file() else MODE_STANDALONE
+    )
 
 
 class RepoContext:
@@ -64,11 +66,15 @@ class RepoContext:
         try:
             resolved = candidate.resolve()
         except OSError as exc:
-            return self._miss(relative_path, f"path could not be resolved: {exc.strerror}")
+            return self._miss(
+                relative_path, f"path could not be resolved: {exc.strerror}"
+            )
 
         # Symlinks pointing outside the repository are not followed.
         if not resolved.is_relative_to(self.repo_path):
-            return self._miss(relative_path, "resolves outside the repository; not followed")
+            return self._miss(
+                relative_path, "resolves outside the repository; not followed"
+            )
 
         if not resolved.exists():
             return self._miss(relative_path, "not found in the target repository")
@@ -94,7 +100,6 @@ class RepoContext:
 
     def _miss(self, relative_path: str, reason: str) -> None:
         self.sources_missing.append(SourceMiss(source=relative_path, reason=reason))
-        return None
 
 
 def whole_file_excerpt(relative_path: str, text: str) -> Excerpt | None:
@@ -109,7 +114,9 @@ def whole_file_excerpt(relative_path: str, text: str) -> Excerpt | None:
 
     kept = lines[:MAX_EXCERPT_LINES]
     bounded = [
-        line if len(line) <= MAX_LINE_CHARS else line[:MAX_LINE_CHARS] + _TRUNCATION_MARK
+        line
+        if len(line) <= MAX_LINE_CHARS
+        else line[:MAX_LINE_CHARS] + _TRUNCATION_MARK
         for line in kept
     ]
     return Excerpt(

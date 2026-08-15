@@ -17,10 +17,14 @@ import pytest
 
 from easy_verifier.core import redact as redact_module
 from easy_verifier.core.context import MAX_LINE_CHARS, RepoContext, whole_file_excerpt
-from easy_verifier.core.models import DimensionDescriptor, EvidencePack, Excerpt, SourceMiss
+from easy_verifier.core.models import (
+    DimensionDescriptor,
+    EvidencePack,
+    Excerpt,
+    SourceMiss,
+)
 from easy_verifier.core.pipeline import RepoPathError, run_dimension
-from easy_verifier.dimensions import DIMENSIONS
-from easy_verifier.dimensions import architecture
+from easy_verifier.dimensions import DIMENSIONS, architecture
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = REPO_ROOT / "src" / "easy_verifier"
@@ -31,7 +35,9 @@ PACKAGE_ROOT = REPO_ROOT / "src" / "easy_verifier"
 # --------------------------------------------------------------------------
 
 
-def make_descriptor(collect, *, sources_sought=("a.md",), name="test-dim") -> DimensionDescriptor:
+def make_descriptor(
+    collect, *, sources_sought=("a.md",), name="test-dim"
+) -> DimensionDescriptor:
     return DimensionDescriptor(
         name=name, purpose="test", sources_sought=tuple(sources_sought), collect=collect
     )
@@ -129,10 +135,7 @@ def test_pack_carries_no_verdict_shaped_field():
     names = {f.name.lower() for f in dataclasses.fields(EvidencePack)}
     names |= {f.name.lower() for f in dataclasses.fields(Excerpt)}
     offenders = {
-        name
-        for name in names
-        for bad in FORBIDDEN_FIELD_SUBSTRINGS
-        if bad in name
+        name for name in names for bad in FORBIDDEN_FIELD_SUBSTRINGS if bad in name
     }
     assert offenders == set()
 
@@ -277,7 +280,9 @@ def test_empty_repo_produces_empty_pack_and_no_invented_content(tmp_path):
     assert pack.excerpts == ()
     assert pack.files_read == ()
     assert pack.coverage_score == 0.0
-    assert {miss.source for miss in pack.sources_missing} == set(architecture.SOURCES_SOUGHT)
+    assert {miss.source for miss in pack.sources_missing} == set(
+        architecture.SOURCES_SOUGHT
+    )
     assert pack.mode == "standalone"
 
 
@@ -313,7 +318,9 @@ def test_seam_sees_every_excerpt_text(tmp_path, monkeypatch):
 
     monkeypatch.setattr(redact_module, "redact", spy)
 
-    (tmp_path / "a.md").write_text("token = FAKE_SECRET_abcdef123456\n", encoding="utf-8")
+    (tmp_path / "a.md").write_text(
+        "token = FAKE_SECRET_abcdef123456\n", encoding="utf-8"
+    )
     pack = run_dimension(make_descriptor(_read_a_md), tmp_path)
 
     assert seen  # the seam ran
@@ -392,7 +399,14 @@ def test_package_never_reads_the_environment():
 
 def test_cli_does_no_file_reading_or_excerpt_building():
     source = (PACKAGE_ROOT / "adapters" / "cli.py").read_text(encoding="utf-8")
-    for marker in ("open(", "read_text", "read_bytes", "rglob", "Excerpt(", "EvidencePack("):
+    for marker in (
+        "open(",
+        "read_text",
+        "read_bytes",
+        "rglob",
+        "Excerpt(",
+        "EvidencePack(",
+    ):
         assert marker not in source, f"cli.py must not contain {marker!r}"
 
 
@@ -404,7 +418,14 @@ def test_cli_does_no_coverage_arithmetic():
 
 def test_cli_runs_against_this_repo_and_emits_json():
     result = subprocess.run(
-        [sys.executable, "-m", "easy_verifier.adapters.cli", "architecture", "--repo", str(REPO_ROOT)],
+        [
+            sys.executable,
+            "-m",
+            "easy_verifier.adapters.cli",
+            "architecture",
+            "--repo",
+            str(REPO_ROOT),
+        ],
         capture_output=True,
         text=True,
         check=True,
@@ -427,6 +448,7 @@ def test_cli_reports_a_bad_repo_path_without_a_traceback(tmp_path):
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 2
     assert "Traceback" not in result.stderr
@@ -573,7 +595,9 @@ def test_pack_serializes_to_json(tmp_path):
     payload = json.loads(json.dumps(dataclasses.asdict(pack)))
     assert REQUIRED_PACK_FIELDS <= set(payload)
     # The miss list still reads as a named list to a human consumer (T013).
-    assert all("source" in miss and "reason" in miss for miss in payload["sources_missing"])
+    assert all(
+        "source" in miss and "reason" in miss for miss in payload["sources_missing"]
+    )
 
 
 def test_excerpt_paths_are_repo_relative_never_absolute(tmp_path):

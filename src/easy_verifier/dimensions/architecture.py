@@ -7,7 +7,7 @@ arithmetic, because the pipeline owns all of those.
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 from ..core.context import whole_file_excerpt
 from ..core.models import DimensionContext, DimensionDescriptor, Excerpt

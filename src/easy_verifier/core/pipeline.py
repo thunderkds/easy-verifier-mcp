@@ -71,9 +71,7 @@ def run_dimension(
     )
 
 
-def _budget(
-    raw_excerpts, budget_bytes: int
-) -> tuple[list[Excerpt], bool, int]:
+def _budget(raw_excerpts, budget_bytes: int) -> tuple[list[Excerpt], bool, int]:
     """Consume ``raw_excerpts`` lazily, redacting and byte-capping as it goes.
 
     Stops at the **first excerpt that does not fit**: that excerpt is pulled,

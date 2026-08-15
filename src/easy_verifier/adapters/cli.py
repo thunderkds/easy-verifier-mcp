@@ -14,7 +14,7 @@ import argparse
 import dataclasses
 import json
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from ..core.pipeline import DEFAULT_BUDGET_BYTES, RepoPathError, run_dimension
 from ..dimensions import DIMENSIONS
@@ -25,7 +25,9 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="easy-verifier",
         description="Print an evidence pack for one dimension of a repository.",
     )
-    parser.add_argument("dimension", choices=sorted(DIMENSIONS), help="dimension to run")
+    parser.add_argument(
+        "dimension", choices=sorted(DIMENSIONS), help="dimension to run"
+    )
     parser.add_argument("--repo", default=".", help="path to the target repository")
     parser.add_argument(
         "--budget-bytes",
