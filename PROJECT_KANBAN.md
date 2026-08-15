@@ -40,11 +40,11 @@
 
 ### In Progress
 
-- [ ] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | common-infrastructure | C2 | Risk: Med | P0 | Started: 2026-08-15 | worktree-isolated, model: opus
+_None._
 
 ### Ready for Review
 
-_None._
+- [ ] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | common-infrastructure | C2 | PR/branch: `worktree-agent-a540643ad26d87392` | Stage 4 complete (code-review P1×1 fixed, security-review 0 findings), 49 tests pass
 
 ### Done
 
