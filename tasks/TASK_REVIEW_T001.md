@@ -33,8 +33,19 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-08-15T03:12:26Z in worktree `agent-a540643ad26d87392`, before any T001
+implementation commit existed (`git log --oneline -1` → `f861a0a chore: move T001 to In Progress`):
+
+```console
+$ date -u +%Y-%m-%dT%H:%M:%SZ && python3 -V && python3 -m easy_verifier.adapters.cli architecture --repo . ; echo "exit=$?" ; ls tests ; ls pyproject.toml src
+2026-08-15T03:12:26Z
+Python 3.12.3
+/usr/bin/python3: Error while finding module specification for 'easy_verifier.adapters.cli' (ModuleNotFoundError: No module named 'easy_verifier')
+exit=1
+ls: cannot access 'tests': No such file or directory
+ls: cannot access 'pyproject.toml': No such file or directory
+ls: cannot access 'src': No such file or directory
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
