@@ -239,3 +239,29 @@ acceptance criterion that no correct implementation could satisfy. It survived b
 halves of the contradiction sat in different sections of the guide (Success Criteria vs. Test Plan)
 and were individually reasonable. Cross-check numeric criteria against the constraints they
 interact with when writing future guides.
+
+---
+
+## 2026-08-15 — Integration strategy: local merges, one PR at the end
+
+**Decision** (user, 2026-08-15): Stage 3 task branches merge **locally** into
+`plan/stage2-task-breakdown`. Nothing is pushed per-task. The accumulated branch goes up once, as a
+single PR into `develop`, at a point of the user's choosing.
+
+**Why**: the user is the sole operator and reviewer. Per-task review already happens at Stage 4
+(`code-review`, plus `security-review` on Medium/High risk) and at Stage 5 (`verify`) before each
+local merge, so the PR is a record of what landed rather than the mechanism by which it is reviewed.
+Pushing seventeen branches to get seventeen PRs nobody else reads would add ceremony without adding
+scrutiny.
+
+**Consequences accepted**:
+- Nothing is reviewable off-machine until the single push. A machine loss before then loses all of
+  it — the branch is the only copy.
+- The final PR is large by construction. It is a changelog, not a review surface.
+- Every Stage 3 branch stacks on an unpushed base, so a later guide revision means a rebase for
+  each stacked branch still open.
+
+**What this changes operationally**: the merge gate
+(`pre_bash_block_unsafe_merge.py`) now fires on the **first local merge**, imminently, rather than
+at some distant push. That made the trace-attribution defect load-bearing immediately — see
+`learnings.md` for the resolved Stage 5 procedure that satisfies it honestly.

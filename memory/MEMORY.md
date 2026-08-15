@@ -23,6 +23,7 @@
 
 ### Decisions
 
+- ▶ **[Integration strategy](decisions.md): local merges, ONE PR at the end** (user, 2026-08-15). Task branches merge locally into `plan/stage2-task-breakdown`; nothing is pushed per-task; one PR into `develop` when the user chooses. Per-task scrutiny is Stage 4 + Stage 5, not the PR.
 - ⚠️ **UNPUSHED: `plan/stage2-task-breakdown` has no upstream** — as of 2026-08-15 it carries 7 local-only commits (all of Phase 0 / Stage 0.5 / Stage 1 / Stage 2; `docs/phase0-stage1-foundation` is an ancestor). Based on `origin/develop`, should PR into `develop`. The guardrail hook blocks push from the Supervisor by design — **the user must run** `git push -u origin plan/stage2-task-breakdown`. Stage 3 branches stack on this unpushed base until then.
 - ▶ **Stage 2 complete (2026-08-15).** `PROJECT_SPEC.md` + `PROJECT_KANBAN.md` + 17 TASK_GUIDEs exist; `PROJECT_KANBAN.md` is now the single source of in-flight state. `memory/NEXT-SESSION.md` deleted as designed. Stage 3 not started; no product code yet.
 - [Codebase Map](codebase-map.md) — structural snapshot: directory tree, entry points, blast-radius hotspots. Refresh via /map-codebase.
@@ -48,7 +49,7 @@
 ### Gotchas (see [learnings.md](learnings.md))
 
 - ⚠️ **Stage 3 worktrees are created off the root commit** — an agent's worktree may contain only `LICENSE`+`README.md`. Every spawn prompt must order the agent to verify `PROJECT_SPEC.md` + its own guide are present and rebase onto the planning branch if not.
-- ⚠️ **Trace state file unwritable from an isolated worktree** — `craft-spawn-prompt` element 6 cannot be followed under worktree isolation; Stage 3 Bash calls go untagged. Merge gate fails closed on this. Unresolved, harness-side, must be settled before the first merge.
+- ✅ **Trace state file unwritable from an isolated worktree — RESOLVED, no hook change.** It *is* writable from the main checkout. Standing Stage 5 procedure: Supervisor writes `.claude/hooks/.state/active_task` then runs the guide's Verification Command itself before merging. Not a bypass — it is the independent re-run Stage 5 already requires. Details in [learnings.md](learnings.md).
 - **Guardrail hook matches command *mentions*** — a commit message or memory file containing `git push` blocks the whole Bash call. Use Write/Edit or `git commit -F`.
 
 ### Learning Records
