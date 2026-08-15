@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 1 — Foundation (blocking; nothing in Wave 2+ starts until the pipeline contract is fixed)**
-- [ ] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | common-infrastructure | C2 | Risk: Med | P0
 - [ ] **T002** — `context.py`: kit detection, kit-aware/standalone modes, limited-context warning | backend-developer | C2 | Risk: Med | P0
 - [ ] **T003** — `scope.py`: task/changes/worktree/project scope resolution | backend-developer | C1 | Risk: Low | P0
 - [ ] **T004** — `redact.py`: evidence-layer secret fingerprinting | backend-developer | C2 | Risk: High | P0
@@ -41,7 +40,7 @@
 
 ### In Progress
 
-_None._
+- [ ] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | common-infrastructure | C2 | Risk: Med | P0 | Started: 2026-08-15 | worktree-isolated, model: opus
 
 ### Ready for Review
 
