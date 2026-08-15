@@ -57,6 +57,7 @@ _None._
 
 | Task | Reason | Waiting on |
 |------|--------|-----------|
+| _(all Stage 3)_ | **Base branch unpushed.** `plan/stage2-task-breakdown` has no upstream; 7 local-only commits. Feature branches stack on an unpushed base, so nothing is reviewable off-machine and a later guide revision means a rebase for every stacked branch. Not blocking local work. Supervisor cannot push (guardrail hook by design) — user runs `git push -u origin plan/stage2-task-breakdown`. | thunderkds |
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | T017 | **HITL gate (open item #15)**: FR-022 says adapters produce "identical" output; the KPI table says "byte-equal". Timestamps and host-vs-container absolute paths differ by construction, so byte-equality is unachievable as written. Needs a defined normalization or a weaker, precise word. | thunderkds |
 
