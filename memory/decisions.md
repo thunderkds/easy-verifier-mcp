@@ -265,3 +265,46 @@ scrutiny.
 (`pre_bash_block_unsafe_merge.py`) now fires on the **first local merge**, imminently, rather than
 at some distant push. That made the trace-attribution defect load-bearing immediately — see
 `learnings.md` for the resolved Stage 5 procedure that satisfies it honestly.
+
+---
+
+## 2026-08-15 — T001 shipped: the run_dimension() contract is now fixed
+
+**Decision**: the pipeline contract landed and is no longer open for casual revision. Sixteen tasks
+are written against it. Signatures, as merged:
+
+- `Excerpt(path, start_line, end_line, text)` — 1-indexed, inclusive line numbers
+- `SourceMiss(source, reason)` — a miss always carries *why*
+- `DimensionDescriptor(name, purpose, sources_sought, collect)` — plain data, no base class
+- `run_dimension(descriptor, repo_path, scope="project", budget_bytes=120_000)` — sole choke point
+- `redact(text: str) -> str` — identity passthrough until T004 fills it
+- `coverage_score is None` when `sources_sought` is empty (never `0.0`, which would read as failure)
+
+**Two design points that emerged during the task and are now binding**:
+
+1. **File reading lives in the context, not the dimension** (`ctx.read_source()`). A dimension that
+   calls `open()` would own symlink escape, invalid UTF-8, permissions and empty-file semantics —
+   and Option D's thesis is that a dimension cannot bypass a cross-cutting rule because it never
+   owns one. `files_read` / `sources_found` / `sources_missing` are recorded as a side effect of
+   actually reading, so a dimension cannot claim it read something it did not.
+
+2. **`sources_found` is clamped to `sources_sought`.** Found by Stage 4 review: coverage_score
+   reached **3.0** because every read was counted. `sources_found` and `sources_missing` now
+   partition `sources_sought` exactly, which is what makes the miss list auditable under FR-016a.
+   Undeclared reads stay visible in `files_read` — they happened, and hiding them would be its own
+   dishonesty.
+
+**Consequence the clamp exposed, now part of the contract**: a declared source the dimension never
+*attempted* belongs to neither list, and under lazy consumption that is ordinary rather than
+exceptional — when the budget stops the pull, later sources go unprobed. Those are reported as
+`not examined`, distinct from `not found`. Reporting an unprobed source as absent would be exactly
+the unfounded claim this project exists to catch.
+
+**Operational caveat until T004**: `redact()` is a passthrough, so evidence packs can contain live
+secrets. Harmless while output reaches only the terminal of whoever ran the CLI on their own repo.
+It becomes material at T013, when reports start being written into a target repository. Recorded on
+the Kanban.
+
+**Tooling now pinned**: `ruff` in the `[dev]` extra with a minimal `[tool.ruff]` section, so "Lint
+passes" on every task checklist is verifiable rather than nominal. `PLR` is deliberately excluded —
+its magic-value rule fires on nearly every test assertion; `PLE`/`PLW` are in.

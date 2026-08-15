@@ -44,11 +44,11 @@ _None._
 
 ### Ready for Review
 
-- [ ] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | common-infrastructure | C2 | PR/branch: `worktree-agent-a540643ad26d87392` | Stage 4 complete (code-review P1×1 fixed, security-review 0 findings), 49 tests pass
+_None._
 
 ### Done
 
-_None._
+- [x] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | C2 | Completed: 2026-08-15 | 49 tests · code-review P0 0/P1 1 (fixed)/P2 2 (both taken) · security-review 0 HIGH 0 MEDIUM · merged to `plan/stage2-task-breakdown`
 
 ---
 
@@ -56,6 +56,7 @@ _None._
 
 | Task | Reason | Waiting on |
 |------|--------|-----------|
+| _(all tasks until T004)_ | **`redact()` is an identity passthrough** — evidence packs can contain live secrets, so the CLI must not be pointed at a repo holding real credentials by anyone who will share the output. Harmless while output reaches only the invoking user's terminal; **becomes material at T013**, when reports are written into a target repo. T013 must not merge before T004. | T004 |
 | _(all Stage 3)_ | **Base branch unpushed.** `plan/stage2-task-breakdown` has no upstream; 7 local-only commits. Feature branches stack on an unpushed base, so nothing is reviewable off-machine and a later guide revision means a rebase for every stacked branch. Not blocking local work. Supervisor cannot push (guardrail hook by design) — user runs `git push -u origin plan/stage2-task-breakdown`. | thunderkds |
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | T017 | **HITL gate (open item #15)**: FR-022 says adapters produce "identical" output; the KPI table says "byte-equal". Timestamps and host-vs-container absolute paths differ by construction, so byte-equality is unachievable as written. Needs a defined normalization or a weaker, precise word. | thunderkds |
@@ -73,6 +74,6 @@ _None._
 | 1 Environment Setup | ✅ Done |
 | 1.5 Sub-Agent Architecture | ✅ Done |
 | 2 Planning (/plan) | ✅ Done |
-| 3 Execution | ⬜ Not Started |
-| 4 Review | ⬜ Not Started |
-| 5 Integration & Verify | ⬜ Not Started |
+| 3 Execution | 🔄 In Progress (1/17 done) |
+| 4 Review | 🔄 In Progress |
+| 5 Integration & Verify | 🔄 In Progress |
