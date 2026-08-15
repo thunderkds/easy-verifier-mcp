@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easy-verifier-mcp"
+version = "0.1.0"
+description = "Context packer that gathers citable evidence from a repository. Performs no inference."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+
+# No runtime dependencies yet. The `mcp` SDK (NFR-008) is required by the MCP
+# adapter (T014, `adapters/mcp_server.py`) and is added by that task; declaring
+# it here now would make `pip install -e .` fail for a package that does not
+# import it.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# Pins what "Lint passes" means, so the checklist item is verifiable:
+#   ruff check src tests && ruff format --check src tests
+# Deliberately minimal — the rule set below is exactly the one T001 was written
+# and cleaned against, not an opinionated sweep.
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+# PLE/PLW (errors and warnings) are in; PLR (refactor opinions) is out — its
+# magic-value rule fires on essentially every assertion in a test suite, which
+# is noise rather than signal.
+select = ["E", "F", "I", "UP", "B", "RET", "PLE", "PLW"]
