@@ -14,15 +14,18 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t001_pipeline.py` — 49 tests, written as part of T001. Coverage by AC: #2/#3/#7 pack shape + forbidden-field name check; #5/#5a laziness via `InstrumentedCollect`; #6 coverage arithmetic (5 parameterised cases + empty-sought + the Stage 4 P1 regression); #8 seam spy; #9 no-invention; #10 CLI thinness; #11 no-LLM source scan. |
+| Verification command run | ☑ pass | `pip install -e ".[dev]" && pytest tests/test_t001_pipeline.py -q && python -m easy_verifier.adapters.cli architecture --repo .` → `49 passed in 0.12s`, then the JSON pack shown in Demonstration AFTER (`coverage_score: 0.6`, `truncated: false`). |
+| **Stage 4 P1 fix verified by mutation** | ☑ pass | Reverting the clamp to `found = tuple(context.sources_found)` fails `test_reading_beyond_the_declared_list_cannot_inflate_coverage` with `coverage_score=3.0`, and also fails `test_sources_cut_off_by_the_budget_are_reported_as_not_examined`. Reverting `_budget` to `list(raw_excerpts)` additionally fails all four laziness guards — 6 failures total from the two mutations combined, 43 passed. |
+| Negative cases hold | ☑ pass | Nonexistent repo path and file-as-repo-path both raise `RepoPathError`; CLI exits 2 with no traceback. Empty repo → empty excerpts, `coverage_score 0.0`, all sources in `sources_missing`, nothing invented. Binary file, unreadable file, symlink escaping the repo, empty file, 200 KB single line, empty `sources_sought` (→ `None`, not `0.0`), byte cap below the first excerpt — each has a dedicated test. |
+| verify | ☑ pass | `Skill({ skill: "verify" })` unavailable — Skill tool disabled for this session. Verified manually instead: CLI run against this repo returns a real pack citing `PROJECT_SPEC.md` at lines 1–138, and cited line numbers were re-read off disk and compared 1-indexed against the file (`test_cited_line_numbers_are_1_indexed_and_match_the_file`) — pass. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed: the 11 new files under `src/easy_verifier/` plus `tests/` and `pyproject.toml` — the entire change, which is also the entire product code in the repo. Skipped: Markdown planning artifacts and `.claude/` (untouched, and hooks are must-not-touch). `Skill` was unavailable in the agent's session, so a manual pass stood in. **Both reviews have since been run independently by the Supervisor from the main checkout** — see the two rows below. |
+| **Stage 4 `code-review` (Supervisor-run)** | ☑ pass | Run 2026-08-15. **P0: 0 · P1: 1 · P2: 2 · P3: 0.** P1 — `coverage_score` could exceed 1.0; reproduced at **3.0** with a dimension reading beyond its declared list. Both P2s (silent 200-line clip; implicit `_miss` return) also taken. Fixes landed in `bee3e68` and re-verified by the Supervisor: coverage now `1.0` on the same probe, `sources_found`/`sources_missing` partition `sources_sought` exactly, undeclared reads still visible in `files_read`. No fixes were applied by the Supervisor — Hard-Stop Gate 1 bars the Supervisor from writing implementation code, so all findings were returned to the agent. |
+| **Stage 4 `security-review` (Supervisor-run, mandatory at Medium risk)** | ☑ pass | Run 2026-08-15. **0 HIGH, 0 MEDIUM findings.** Verified: path traversal in `read_source` is guarded (`resolve()` then `is_relative_to` against an already-resolved root — both `../` traversal and escaping symlinks are caught, with a dedicated test); no `subprocess`/`eval`/`exec`/`pickle`/`yaml.load`/`shell=True` anywhere in `src/`; no network imports; no disk writes at all, so NFR-007 holds structurally rather than by convention; CLI is argparse → core → `json.dumps` with no injection sink. Analysis performed directly rather than by sub-agent fan-out — the shipped surface is ~400 lines of pure-stdlib Python with none of the sinks that fan-out exists to cover. **Operational caveat, not a finding:** `redact()` is an identity passthrough until T004, so packs can contain live secrets. Harmless while output goes only to the invoking user's terminal; becomes material at T013, when reports are written into a target repo. Recorded in `PROJECT_KANBAN.md`. |
+| Full smoke suite still green (no regression) | ☑ pass | No prior suite existed — this is the first product code in the repo. `pytest -q` over the whole `tests/` tree: 49 passed. `ruff check src tests` → All checks passed; `ruff format --check src tests` → 11 files already formatted. Ruff is now pinned in the `[dev]` extra with a `[tool.ruff]` section, so "Lint passes" is verifiable rather than nominal. |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | There is no UI in v1 (`PROJECT_SPEC.md` Critical Constraint 11). T001 ships a library plus a JSON-emitting CLI. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Same — no rendered surface exists. The HTML report (T014) is the first task with anything visual. |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Same — no viewport. |
 
 ---
 
@@ -33,12 +36,56 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-08-15T03:12:26Z in worktree `agent-a540643ad26d87392`, before any T001
+implementation commit existed (`git log --oneline -1` → `f861a0a chore: move T001 to In Progress`):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```console
+$ date -u +%Y-%m-%dT%H:%M:%SZ && python3 -V && python3 -m easy_verifier.adapters.cli architecture --repo . ; echo "exit=$?" ; ls tests ; ls pyproject.toml src
+2026-08-15T03:12:26Z
+Python 3.12.3
+/usr/bin/python3: Error while finding module specification for 'easy_verifier.adapters.cli' (ModuleNotFoundError: No module named 'easy_verifier')
+exit=1
+ls: cannot access 'tests': No such file or directory
+ls: cannot access 'pyproject.toml': No such file or directory
+ls: cannot access 'src': No such file or directory
+```
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**AFTER**: captured 2026-08-15T05:43:05Z at commit `cec8f91`. Excerpt text trimmed for display only
+(the real output carries full file text; nothing else is altered):
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+```console
+$ python -m easy_verifier.adapters.cli architecture --repo .
+{
+  "dimension": "architecture",
+  "mode": "kit-aware",
+  "scope": "project",
+  "files_read": ["PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "README.md"],
+  "excerpts": [
+    {"path": "PROJECT_SPEC.md",      "start_line": 1, "end_line": 138, "text": "# PROJECT_SPEC.md\n… [trimmed]"},
+    {"path": "BRAINSTORMING_LOG.md", "start_line": 1, "end_line": 200,
+     "text": "# BRAINSTORMING_LOG.md\n… [trimmed] …\n…[excerpt clipped: showing lines 1–200 of 367]"},
+    {"path": "README.md",            "start_line": 1, "end_line": 1,   "text": "# easy-verifier-mcp"}
+  ],
+  "sources_sought": ["PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "ARCHITECTURE.md",
+                     "docs/architecture.md", "README.md"],
+  "sources_found":  ["PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "README.md"],
+  "sources_missing": [
+    {"source": "ARCHITECTURE.md",      "reason": "not found in the target repository"},
+    {"source": "docs/architecture.md", "reason": "not found in the target repository"}
+  ],
+  "coverage_score": 0.6,
+  "truncated": false,
+  "omitted_count": 0
+}
+```
+
+**DELTA**: A real repository now goes in and a real evidence pack comes out — files actually read,
+citable 1-indexed excerpts, named misses with reasons, and a `found / sought` coverage ratio — all
+through the single `run_dimension()` choke point that the remaining six dimensions will reuse, and
+with no verdict anywhere in the output.
+
+**WITNESS**: Common-Infrastructure-Agent in worktree `agent-a540643ad26d87392`, 2026-08-15. The
+`memory/event-trace/T001.jsonl` record is **absent by harness defect, not by omission**: the trace
+hook reads `.claude/hooks/.state/active_task` in the shared checkout, and worktree isolation blocks
+every write to that path. Confirmed by the Supervisor as harness-side; the Evidence table below is
+the substitute proof. Independent re-run by the reviewer still required.
