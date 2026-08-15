@@ -15,7 +15,7 @@ from pathlib import Path
 
 from . import redact as redact_module
 from .context import RepoContext, detect_mode
-from .models import DimensionDescriptor, EvidencePack, Excerpt
+from .models import DimensionDescriptor, EvidencePack, Excerpt, SourceMiss
 
 DEFAULT_BUDGET_BYTES = 120_000
 
@@ -53,7 +53,13 @@ def run_dimension(
     )
 
     sought = tuple(descriptor.sources_sought)
-    found = tuple(context.sources_found)
+    # Clamped to the declared checklist. `context.sources_found` is the raw read
+    # record and may include files the dimension read without declaring; counting
+    # those would let a dimension inflate its own coverage above 1.0, which FR-016
+    # does not admit. The undeclared reads stay visible in `files_read`, because
+    # they genuinely were read.
+    found = tuple(source for source in sought if source in context.sources_found)
+    missing = _missing_sources(sought, found, context.sources_missing, truncated)
     coverage_score = (len(found) / len(sought)) if sought else None
 
     return EvidencePack(
@@ -64,10 +70,45 @@ def run_dimension(
         excerpts=tuple(kept),
         sources_sought=sought,
         sources_found=found,
-        sources_missing=tuple(context.sources_missing),
+        sources_missing=missing,
         coverage_score=coverage_score,
         truncated=truncated,
         omitted_count=omitted_count,
+    )
+
+
+def _missing_sources(
+    sought: tuple[str, ...],
+    found: tuple[str, ...],
+    attempted_misses: list[SourceMiss],
+    truncated: bool,
+) -> tuple[SourceMiss, ...]:
+    """Every declared source that produced no evidence, with a stated reason.
+
+    Together with ``found`` this partitions ``sources_sought`` exactly, which is
+    what makes the miss list auditable (FR-016a). Two things have to be handled
+    for that to hold:
+
+    * a miss recorded for an *undeclared* path is dropped — it is not part of
+      this dimension's checklist;
+    * a declared source the dimension never even attempted still has to be
+      accounted for. Lazy consumption makes this ordinary rather than
+      exceptional: when the byte budget stops the pull, later sources are never
+      probed. Reporting them as absent would be a claim the engine did not
+      check, so they are reported as *not examined*.
+    """
+    reasons = {
+        miss.source: miss.reason for miss in attempted_misses if miss.source in sought
+    }
+    unexamined = (
+        "not examined: the byte budget was reached before this source was read"
+        if truncated
+        else "not examined by this dimension"
+    )
+    return tuple(
+        SourceMiss(source=source, reason=reasons.get(source, unexamined))
+        for source in sought
+        if source not in found
     )
 
 

@@ -25,7 +25,12 @@ MAX_LINE_CHARS = 500
 """Upper bound on a single line, so a minified file yields a bounded excerpt
 rather than a multi-megabyte string."""
 
-_TRUNCATION_MARK = " …[line truncated]"
+_LINE_TRUNCATION_MARK = " …[line truncated]"
+
+_CLIP_MARK = "…[excerpt clipped: showing lines 1–{shown} of {total}]"
+"""Appended after the quoted lines when a file was longer than
+``MAX_EXCERPT_LINES``. It is a marker, not a quoted line: ``end_line`` still
+reports the last *file* line quoted."""
 
 MODE_KIT_AWARE = "kit-aware"
 MODE_STANDALONE = "standalone"
@@ -66,39 +71,43 @@ class RepoContext:
         try:
             resolved = candidate.resolve()
         except OSError as exc:
-            return self._miss(
-                relative_path, f"path could not be resolved: {exc.strerror}"
-            )
+            self._miss(relative_path, f"path could not be resolved: {exc.strerror}")
+            return None
 
         # Symlinks pointing outside the repository are not followed.
         if not resolved.is_relative_to(self.repo_path):
-            return self._miss(
-                relative_path, "resolves outside the repository; not followed"
-            )
+            self._miss(relative_path, "resolves outside the repository; not followed")
+            return None
 
         if not resolved.exists():
-            return self._miss(relative_path, "not found in the target repository")
+            self._miss(relative_path, "not found in the target repository")
+            return None
 
         if not resolved.is_file():
-            return self._miss(relative_path, "not a regular file")
+            self._miss(relative_path, "not a regular file")
+            return None
 
         try:
             raw = resolved.read_bytes()
         except OSError as exc:
-            return self._miss(relative_path, f"unreadable: {exc.strerror}")
+            self._miss(relative_path, f"unreadable: {exc.strerror}")
+            return None
 
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             # Skipped rather than decoded with replacement characters, which
             # would put mojibake into a citation.
-            return self._miss(relative_path, "not valid UTF-8 text; skipped")
+            self._miss(relative_path, "not valid UTF-8 text; skipped")
+            return None
 
         self.sources_found.append(relative_path)
         self.files_read.append(relative_path)
         return text
 
     def _miss(self, relative_path: str, reason: str) -> None:
+        """Record a source that produced no text. Returns nothing — call sites
+        report the absence to their own caller with an explicit ``return None``."""
         self.sources_missing.append(SourceMiss(source=relative_path, reason=reason))
 
 
@@ -116,9 +125,16 @@ def whole_file_excerpt(relative_path: str, text: str) -> Excerpt | None:
     bounded = [
         line
         if len(line) <= MAX_LINE_CHARS
-        else line[:MAX_LINE_CHARS] + _TRUNCATION_MARK
+        else line[:MAX_LINE_CHARS] + _LINE_TRUNCATION_MARK
         for line in kept
     ]
+    # Truncation is never silent (FR-011b). The pack-level `truncated` flag means
+    # "the byte budget rejected an excerpt", so it does not cover a clip the
+    # caller cannot otherwise see — this marker does, in the same visible way the
+    # per-line clip above announces itself.
+    if len(lines) > len(kept):
+        bounded.append(_CLIP_MARK.format(shown=len(kept), total=len(lines)))
+
     return Excerpt(
         path=relative_path,
         start_line=1,

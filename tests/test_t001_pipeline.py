@@ -16,7 +16,12 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.core import redact as redact_module
-from easy_verifier.core.context import MAX_LINE_CHARS, RepoContext, whole_file_excerpt
+from easy_verifier.core.context import (
+    MAX_EXCERPT_LINES,
+    MAX_LINE_CHARS,
+    RepoContext,
+    whole_file_excerpt,
+)
 from easy_verifier.core.models import (
     DimensionDescriptor,
     EvidencePack,
@@ -68,7 +73,8 @@ class InstrumentedCollect:
         for i in range(1, self.count + 1):
             if self.raise_at is not None and i == self.raise_at:
                 raise AssertionError(
-                    f"pipeline advanced collect to item {i}; it should have stopped earlier"
+                    f"pipeline advanced collect to item {i}; "
+                    "it should have stopped earlier"
                 )
             self.advanced = i
             yield fixed_size_excerpt(i, self.size)
@@ -259,6 +265,72 @@ def test_coverage_is_unweighted_found_over_sought(tmp_path, present, sought, exp
     # FR-016a — the score never travels without the named miss list.
     assert {miss.source for miss in pack.sources_missing} == set(sought) - set(present)
     assert all(miss.reason for miss in pack.sources_missing)
+
+
+def test_reading_beyond_the_declared_list_cannot_inflate_coverage(tmp_path):
+    """Regression: `sources_found` was the raw read record, so a dimension that
+    read undeclared files scored above 1.0 (Stage 4 P1)."""
+    for name in ("A.md", "B.md", "C.md"):
+        (tmp_path / name).write_text("content\n", encoding="utf-8")
+
+    def greedy_collect(context):
+        for source in ("A.md", "B.md", "C.md"):
+            text = context.read_source(source)
+            if text is None:
+                continue
+            excerpt = whole_file_excerpt(source, text)
+            if excerpt is not None:
+                yield excerpt
+
+    pack = run_dimension(
+        make_descriptor(greedy_collect, sources_sought=("A.md",)), tmp_path
+    )
+
+    assert pack.coverage_score == 1.0
+    assert 0.0 <= pack.coverage_score <= 1.0
+    assert pack.sources_found == ("A.md",)
+    # The undeclared reads really happened, so they stay visible here.
+    assert set(pack.files_read) == {"A.md", "B.md", "C.md"}
+    assert pack.sources_missing == ()
+
+
+def test_found_and_missing_partition_sources_sought_exactly(tmp_path):
+    """FR-016a — the score is only auditable if the miss list accounts for every
+    declared source that produced no evidence."""
+    (tmp_path / "README.md").write_text("# hi\n", encoding="utf-8")
+    pack = run_dimension(architecture.DESCRIPTOR, tmp_path)
+
+    found = set(pack.sources_found)
+    missing = {miss.source for miss in pack.sources_missing}
+
+    assert found | missing == set(pack.sources_sought)
+    assert found & missing == set()
+    assert all(miss.reason for miss in pack.sources_missing)
+
+
+def test_sources_cut_off_by_the_budget_are_reported_as_not_examined(tmp_path):
+    """Laziness means later declared sources are never probed. Reporting them as
+    absent would be a claim the engine did not check."""
+    for name in ("PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "README.md"):
+        (tmp_path / name).write_text("x" * 50 + "\n", encoding="utf-8")
+
+    pack = run_dimension(architecture.DESCRIPTOR, tmp_path, budget_bytes=50)
+
+    assert pack.truncated is True
+    reasons = {miss.source: miss.reason for miss in pack.sources_missing}
+    assert "README.md" in reasons
+    assert "byte budget" in reasons["README.md"]
+    assert set(pack.sources_found) | set(reasons) == set(pack.sources_sought)
+
+
+def test_undeclared_miss_is_not_added_to_the_checklist(tmp_path):
+    def collect(context):
+        context.read_source("undeclared-and-absent.md")
+        return iter(())
+
+    pack = run_dimension(make_descriptor(collect, sources_sought=("A.md",)), tmp_path)
+
+    assert {miss.source for miss in pack.sources_missing} == {"A.md"}
 
 
 def test_empty_sources_sought_yields_none_not_zero(tmp_path):
@@ -479,10 +551,9 @@ def test_cited_line_numbers_are_1_indexed_and_match_the_file():
     excerpt = next(e for e in pack.excerpts if e.path == "PROJECT_SPEC.md")
 
     on_disk = (REPO_ROOT / "PROJECT_SPEC.md").read_text(encoding="utf-8").splitlines()
-    quoted = excerpt.text.splitlines()
+    quoted = excerpt.text.splitlines()[: excerpt.end_line]
 
     assert excerpt.start_line == 1
-    assert excerpt.end_line == len(quoted)
     # Line L of the excerpt is line (start_line + L - 1) of the file.
     for offset, line in enumerate(quoted):
         assert line == on_disk[excerpt.start_line - 1 + offset]
@@ -580,6 +651,33 @@ def test_extremely_long_line_is_bounded(tmp_path):
 
     excerpt = next(e for e in pack.excerpts if e.path == "README.md")
     assert len(excerpt.text) < MAX_LINE_CHARS + 100
+
+
+def test_clipped_excerpt_announces_the_clip(tmp_path):
+    """Truncation is never silent (FR-011b). The pack-level `truncated` flag is
+    about the byte budget, so it does not cover a per-excerpt clip."""
+    total = MAX_EXCERPT_LINES + 40
+    (tmp_path / "README.md").write_text(
+        "".join(f"line {i}\n" for i in range(1, total + 1)), encoding="utf-8"
+    )
+    pack = run_dimension(architecture.DESCRIPTOR, tmp_path)
+    excerpt = next(e for e in pack.excerpts if e.path == "README.md")
+
+    assert excerpt.end_line == MAX_EXCERPT_LINES  # last *file* line quoted
+    assert f"lines 1–{MAX_EXCERPT_LINES} of {total}" in excerpt.text
+    # The marker is a marker, not a quoted line.
+    quoted = excerpt.text.splitlines()
+    assert quoted[MAX_EXCERPT_LINES - 1] == f"line {MAX_EXCERPT_LINES}"
+    assert quoted[MAX_EXCERPT_LINES].startswith("…[excerpt clipped")
+
+
+def test_unclipped_excerpt_carries_no_clip_marker(tmp_path):
+    (tmp_path / "README.md").write_text("one\ntwo\n", encoding="utf-8")
+    pack = run_dimension(architecture.DESCRIPTOR, tmp_path)
+    excerpt = next(e for e in pack.excerpts if e.path == "README.md")
+
+    assert "excerpt clipped" not in excerpt.text
+    assert excerpt.end_line == 2
 
 
 def test_source_miss_carries_both_source_and_reason():

@@ -14,12 +14,13 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t001_pipeline.py` — 43 tests, written as part of T001. Coverage by AC: #2/#3/#7 pack shape + forbidden-field name check; #5/#5a laziness via `InstrumentedCollect`; #6 coverage arithmetic (5 parameterised cases + empty-sought); #8 seam spy; #9 no-invention; #10 CLI thinness; #11 no-LLM source scan. |
-| Verification command run | ☑ pass | `pip install -e ".[dev]" && pytest tests/test_t001_pipeline.py -q && python -m easy_verifier.adapters.cli architecture --repo .` → `43 passed in 0.11s`, then the JSON pack shown in Demonstration AFTER (`coverage_score: 0.6`, `truncated: false`). |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t001_pipeline.py` — 49 tests, written as part of T001. Coverage by AC: #2/#3/#7 pack shape + forbidden-field name check; #5/#5a laziness via `InstrumentedCollect`; #6 coverage arithmetic (5 parameterised cases + empty-sought + the Stage 4 P1 regression); #8 seam spy; #9 no-invention; #10 CLI thinness; #11 no-LLM source scan. |
+| Verification command run | ☑ pass | `pip install -e ".[dev]" && pytest tests/test_t001_pipeline.py -q && python -m easy_verifier.adapters.cli architecture --repo .` → `49 passed in 0.12s`, then the JSON pack shown in Demonstration AFTER (`coverage_score: 0.6`, `truncated: false`). |
+| **Stage 4 P1 fix verified by mutation** | ☑ pass | Reverting the clamp to `found = tuple(context.sources_found)` fails `test_reading_beyond_the_declared_list_cannot_inflate_coverage` with `coverage_score=3.0`, and also fails `test_sources_cut_off_by_the_budget_are_reported_as_not_examined`. Reverting `_budget` to `list(raw_excerpts)` additionally fails all four laziness guards — 6 failures total from the two mutations combined, 43 passed. |
 | Negative cases hold | ☑ pass | Nonexistent repo path and file-as-repo-path both raise `RepoPathError`; CLI exits 2 with no traceback. Empty repo → empty excerpts, `coverage_score 0.0`, all sources in `sources_missing`, nothing invented. Binary file, unreadable file, symlink escaping the repo, empty file, 200 KB single line, empty `sources_sought` (→ `None`, not `0.0`), byte cap below the first excerpt — each has a dedicated test. |
 | verify | ☑ pass | `Skill({ skill: "verify" })` unavailable — Skill tool disabled for this session. Verified manually instead: CLI run against this repo returns a real pack citing `PROJECT_SPEC.md` at lines 1–138, and cited line numbers were re-read off disk and compared 1-indexed against the file (`test_cited_line_numbers_are_1_indexed_and_match_the_file`) — pass. |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed: the 11 new files under `src/easy_verifier/` plus `tests/` and `pyproject.toml` — the entire change, which is also the entire product code in the repo. Skipped: Markdown planning artifacts and `.claude/` (untouched, and hooks are must-not-touch). `Skill({ skill: "code-review" })` and `Skill({ skill: "security-review" })` were **unavailable (Skill tool disabled)** — a manual pass stood in; an independent Stage 4 review is still owed, and Medium risk means `security-review` in particular has not actually been run. |
-| Full smoke suite still green (no regression) | ☑ pass | No prior suite existed — this is the first product code in the repo. `pytest -q` over the whole `tests/` tree: 43 passed. `ruff check src tests` → All checks passed; `ruff format --check` clean. |
+| Full smoke suite still green (no regression) | ☑ pass | No prior suite existed — this is the first product code in the repo. `pytest -q` over the whole `tests/` tree: 49 passed. `ruff check src tests` → All checks passed; `ruff format --check src tests` → 11 files already formatted. Ruff is now pinned in the `[dev]` extra with a `[tool.ruff]` section, so "Lint passes" is verifiable rather than nominal. |
 | **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | There is no UI in v1 (`PROJECT_SPEC.md` Critical Constraint 11). T001 ships a library plus a JSON-emitting CLI. |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Same — no rendered surface exists. The HTML report (T014) is the first task with anything visual. |
 | **UI: Responsiveness at target viewports** | ☑ N/A | Same — no viewport. |
@@ -59,7 +60,8 @@ $ python -m easy_verifier.adapters.cli architecture --repo .
   "files_read": ["PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "README.md"],
   "excerpts": [
     {"path": "PROJECT_SPEC.md",      "start_line": 1, "end_line": 138, "text": "# PROJECT_SPEC.md\n… [trimmed]"},
-    {"path": "BRAINSTORMING_LOG.md", "start_line": 1, "end_line": 200, "text": "# BRAINSTORMING_LOG.md\n… [trimmed]"},
+    {"path": "BRAINSTORMING_LOG.md", "start_line": 1, "end_line": 200,
+     "text": "# BRAINSTORMING_LOG.md\n… [trimmed] …\n…[excerpt clipped: showing lines 1–200 of 367]"},
     {"path": "README.md",            "start_line": 1, "end_line": 1,   "text": "# easy-verifier-mcp"}
   ],
   "sources_sought": ["PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "ARCHITECTURE.md",
