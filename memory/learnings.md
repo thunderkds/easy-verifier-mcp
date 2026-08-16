@@ -166,3 +166,45 @@ Two traps on top of the existing Stage 5 trace procedure above, both cost real t
    subshell. Following the hint produces a passing test run that files no trace record. Use the
    state file (slot 2) — the hint text is wrong and should be read as a pointer to the right
    concept, not the right mechanism.
+
+### 2026-08-16 — A new module that re-implements a traversal re-inherits its old bugs
+
+T003's `scope.py:_walk_files` followed symlinked directories out of the repository — verified by
+reproduction: a repo containing `docs -> /outside` enumerated `('docs/stolen.txt', 'real.txt')`.
+
+**This is the identical defect T002 already found and fixed** in `context.py:_walk` at its own Stage
+4, where the fix was `resolve().is_relative_to(repo)` applied *on entry* to the walk (T002's review
+notes the reviewer's first suggestion — a check in the recursive branch — was insufficient, because
+`docs/` itself being the symlink escapes it). `scope.py` needed a file walk, wrote a fresh one, and
+reproduced the original bug exactly.
+
+**Rule**: when a task writes a new filesystem walk, path resolver, or any traversal, check whether
+one already exists in this codebase and port its hardening. Fixes live in the module that was
+patched, not in the concept — a second implementation starts from zero. For this repo the canonical
+containment test is `path.resolve().is_relative_to(repo.resolve())`, applied on entry and to
+symlinked files, and it now exists in **two** places (`context.py`, `scope.py`) which must not drift.
+
+Watch for the same pattern in T007 (reads source files) and T008 (walks config).
+
+### 2026-08-16 — Sub-agents may report "ready for review" without committing
+
+T003's agent finished, reported `ready-for-review` with a full summary and accurate test counts, and
+had made **zero commits** — `scope.py` and its tests sat untracked in the worktree, and the review
+file was modified but uncommitted. Nothing was lost, but the branch diff against `develop` showed
+only an unrelated file, which is how it surfaced.
+
+**Always check `git log develop..HEAD` and `git status` in the worktree before trusting a
+ready-for-review report.** An untracked tree is one `git clean` away from gone. Add an explicit
+"commit your work before reporting" line to every spawn prompt.
+
+### 2026-08-16 — Agent worktrees have no `.venv`; use the main checkout's interpreter
+
+Running `PATH=.venv/bin:$PATH python -m pytest` inside an agent worktree silently falls back to
+`/usr/bin/python`, which cannot import `easy_verifier` — producing failures in the two T001 CLI
+tests that shell out via `sys.executable`. This looked like a real regression and was raised as a
+discrepancy against the agent's (correct) test count before the cause was found.
+
+**Verify from a worktree with the main checkout's interpreter explicitly**:
+`PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/ -q`
+and always check pytest's exit code directly — piping through `tail` masks it, which let a commit
+land on a failing suite earlier in the same session.
