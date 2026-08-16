@@ -74,6 +74,7 @@ passages in the project's documents and cite them" — behind one shared extract
 | 7 | Coverage scores differ across the four for the same repo (proving the `sources_sought` lists are genuinely distinct, not copy-pasted) | FR-016 |
 | 8 | Refactoring `architecture` onto the helper changes its pack output in no observable way beyond what the task documents | Surgical Changes |
 | 9 | The helper contains no dimension-specific branching (`if name == "code-quality"`) — divergence goes in the dimension, not in the helper | Simplicity First |
+| 10 | **`code-quality` reads source files, so it is the first dimension that can encounter a hardcoded credential.** A test seeds a fake secret in a source file and asserts it is fingerprinted in the pack, and asserts a `.env` in the same repo is reported as `excluded: secret-bearing` with its contents never read | DDR-0002, Constraint 4a, NFR-010 |
 
 ---
 

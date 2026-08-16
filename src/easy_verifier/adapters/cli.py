@@ -51,6 +51,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    # `mode` and `warnings` are fields of the pack, so they are already in the
+    # JSON. They are echoed on stderr as well because a standalone run's caveat
+    # has to be visible to a human reading a terminal, not only to a parser
+    # (FR-004) — stderr keeps stdout a clean JSON document.
+    for warning in pack.warnings:
+        print(f"warning [{pack.mode}]: {warning}", file=sys.stderr)
+
     print(json.dumps(dataclasses.asdict(pack), indent=2))
     return 0
 

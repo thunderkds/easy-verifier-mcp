@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-08-15
+**Last updated**: 2026-08-16
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -13,11 +13,8 @@
 ### Todo
 
 **Wave 1 — Foundation (blocking; nothing in Wave 2+ starts until the pipeline contract is fixed)**
-- [ ] **T002** — `context.py`: kit detection, kit-aware/standalone modes, limited-context warning | backend-developer | C2 | Risk: Med | P0
 - [ ] **T003** — `scope.py`: task/changes/worktree/project scope resolution | backend-developer | C1 | Risk: Low | P0
-- [ ] **T004** — `redact.py`: evidence-layer secret fingerprinting | backend-developer | C2 | Risk: High | P0
 - [ ] **T005** — `budget.py`: relevance ordering, lazy consumption, explicit truncation | backend-developer | C2 | Risk: Med | P0
-- [ ] **T006** — `findings.py`: finding schema + `write_report` validation | backend-developer | C1 | Risk: Med | P0
 
 **Wave 2 — Dimensions (parallelizable once Wave 1 is stable)**
 - [ ] **T007** — Shared doc-extraction helper + solution-fit, requirement-fidelity, code-quality | backend-developer | C2 | Risk: Low | P0
@@ -40,15 +37,20 @@
 
 ### In Progress
 
-_None._
+_(none)_
 
 ### Ready for Review
 
-_None._
+_(none)_
 
 ### Done
 
 - [x] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | C2 | Completed: 2026-08-15 | 49 tests · code-review P0 0/P1 1 (fixed)/P2 2 (both taken) · security-review 0 HIGH 0 MEDIUM · merged to `plan/stage2-task-breakdown`
+- [x] **T004** — `redact.py`: evidence-layer secret fingerprinting | C2 | Risk: High | Completed: 2026-08-16 | 53 tests · code-review P0 0/P1 0/**P2 2 (accepted residue, not fixed — see below)**/P3 2 · security-review 0 HIGH 0 MEDIUM · blast-radius run · merged to `develop` (`1acfa5c`). **Accepted residue**: a credential assignment whose value is followed by trailing prose with no comment marker, and single-character-class tokens of 12–31 chars, both pass through unredacted — they sit below the detector floors on purpose, so the tool stays usable when it evaluates its own repo (this repo is its own fixture).
+- [x] **T006** — `findings.py`: finding schema + `validate_findings` | C1 | Completed: 2026-08-16 | 29 tests · code-review **no findings** · security-review 0 HIGH 0 MEDIUM · `verify` run by Supervisor against a real `run_dimension()` pack · merged to `develop` (`4b466d6`)
+- [x] **T002** — `context.py`: kit detection, kit-aware/standalone modes | C2 | Completed: 2026-08-16 | 35 tests · code-review P2×1 fixed · security-review 0 findings · `verify` run by Supervisor on the real CLI in both modes · merged to `develop` (`89046c8`). **Integration defect caught and fixed at Stage 5**: T002 moved path validation into `detect_context`, silently dropping T004's redaction of the `RepoPathError` message. Neither branch's tests caught it — each passed alone; the defect existed only in the combination. Restored in `context.py:_resolve_repo_path`.
+
+> Post-merge state on `develop`: **166 tests pass**, `ruff` clean. 4 of 17 tasks done.
 
 ---
 
@@ -56,8 +58,8 @@ _None._
 
 | Task | Reason | Waiting on |
 |------|--------|-----------|
-| _(all tasks until T004)_ | **`redact()` is an identity passthrough** — evidence packs can contain live secrets, so the CLI must not be pointed at a repo holding real credentials by anyone who will share the output. Harmless while output reaches only the invoking user's terminal; **becomes material at T013**, when reports are written into a target repo. T013 must not merge before T004. | T004 |
-| _(all Stage 3)_ | **Base branch unpushed.** `plan/stage2-task-breakdown` has no upstream; 7 local-only commits. Feature branches stack on an unpushed base, so nothing is reviewable off-machine and a later guide revision means a rebase for every stacked branch. Not blocking local work. Supervisor cannot push (guardrail hook by design) — user runs `git push -u origin plan/stage2-task-breakdown`. | thunderkds |
+| ~~_(all tasks until T004)_~~ | ~~**`redact()` is an identity passthrough**~~ — **CLOSED 2026-08-16.** T004 landed the real detector; the seam now fingerprints at the evidence layer. Verified BEFORE/AFTER in `tasks/TASK_REVIEW_T004.md`. Residue, recorded rather than hidden: two confirmed detector misses (a credential assignment whose value is followed by trailing prose with no comment marker; single-char-class tokens of 12–31 chars) — both P2, both accepted trade-offs that keep the tool usable when it evaluates its own repo. T013 is unblocked. | — |
+| ~~_(all Stage 3)_~~ | ~~**Base branch unpushed.**~~ **CLOSED 2026-08-16.** `plan/stage2-task-breakdown` was pushed and merged into `develop` via PR #2 (`e185baa`). `develop` is now the integration branch for Stage 3 task merges. | — |
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | T017 | **HITL gate (open item #15)**: FR-022 says adapters produce "identical" output; the KPI table says "byte-equal". Timestamps and host-vs-container absolute paths differ by construction, so byte-equality is unachievable as written. Needs a defined normalization or a weaker, precise word. | thunderkds |
 
@@ -74,6 +76,6 @@ _None._
 | 1 Environment Setup | ✅ Done |
 | 1.5 Sub-Agent Architecture | ✅ Done |
 | 2 Planning (/plan) | ✅ Done |
-| 3 Execution | 🔄 In Progress (1/17 done) |
+| 3 Execution | 🔄 In Progress (4/17 done) |
 | 4 Review | 🔄 In Progress |
 | 5 Integration & Verify | 🔄 In Progress |

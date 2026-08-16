@@ -36,6 +36,15 @@ class Excerpt:
     end_line: int
     text: str
 
+    @property
+    def ref(self) -> str:
+        """The one canonical, stable evidence-reference string a finding can
+        cite (T006): ``path:start_line-end_line``, 1-indexed and inclusive,
+        matching this excerpt's own fields. Other shapes — a lone line number,
+        a bespoke pack item ID — are not this identifier and must be rejected
+        by a citation-resolving caller."""
+        return f"{self.path}:{self.start_line}-{self.end_line}"
+
 
 @dataclass(frozen=True)
 class SourceMiss:
@@ -114,3 +123,56 @@ class EvidencePack:
     for a file-reading ``collect``, "just counting" means reading every file,
     which is the exact cost budgeting exists to avoid (AC #5a).
     """
+
+    warnings: tuple[str, ...] = field(default=())
+    """Context-level caveats every response and report must surface (FR-004).
+
+    Copied verbatim from the ``RepoContext`` by ``run_dimension``, so a pack
+    built in standalone mode always carries the limited-context warning: the
+    pack is the only way evidence leaves the engine, and no adapter has to
+    remember to add it.
+    """
+
+    redactions: tuple[RedactionHit, ...] = field(default=())
+    """Every secret replaced while building this pack (T004, NFR-010).
+
+    Location and detector only — never the raw value.
+    """
+
+    had_redactions: bool = field(default=False)
+    """True if anything was redacted, so T013 can render the NFR-011 advisory.
+
+    Not derived from ``redactions`` being non-empty at render time: redaction
+    also happens on excerpts the byte budget *rejected*, which never appear on
+    the pack, and the advisory must still fire for those.
+    """
+
+
+@dataclass(frozen=True)
+class RedactionHit:
+    """One secret replaced by a fingerprint. Carries no raw value, ever.
+
+    There is deliberately no ``value`` field: keeping the raw material "just in
+    case" is how it reaches a serializer later. ``detector``, ``path`` and
+    ``line`` are what keep the finding actionable (NFR-010) — a reader can go
+    look. Nothing here is a severity, score or verdict (FR-013).
+    """
+
+    detector: str
+    fingerprint: str
+    offset: int
+    """Character offset into the *original* text the redaction was found in."""
+
+    line: int
+    """1-indexed line within that text, matching :class:`Excerpt`'s convention."""
+
+    path: str | None = field(default=None)
+    """Repository-relative path, when the text came from a file."""
+
+
+@dataclass(frozen=True)
+class RedactionResult:
+    """What :func:`easy_verifier.core.redact.scan` returns: safe text + hits."""
+
+    text: str
+    hits: tuple[RedactionHit, ...]

@@ -420,9 +420,18 @@ def test_seam_runs_on_the_rejected_excerpt_too(tmp_path, monkeypatch):
     assert len(seen) == 4  # three kept plus the one pulled and rejected
 
 
-def test_redact_seam_is_a_documented_passthrough():
-    assert redact_module.redact("anything") == "anything"
-    assert "SEAM ONLY" in (redact_module.redact.__doc__ or "")
+def test_redact_seam_now_fingerprints_instead_of_passing_through():
+    """Updated by T004, which filled the seam this test used to pin as empty.
+
+    The T001 assertion (`redact("anything") == "anything"` and a "SEAM ONLY"
+    docstring) described the placeholder deliberately, and became false the
+    moment the placeholder was replaced. What T001 actually cared about — that
+    the seam is the one place pack text passes through — is still pinned by the
+    three `test_seam_*` tests above. Detector behaviour lives in
+    `tests/test_t004_redact.py`.
+    """
+    assert redact_module.redact("ordinary prose") == "ordinary prose"
+    assert redact_module.redact("AKIAIOSFODNN7EXAMPLE") != "AKIAIOSFODNN7EXAMPLE"
 
 
 # --------------------------------------------------------------------------

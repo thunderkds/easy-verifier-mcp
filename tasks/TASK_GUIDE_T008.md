@@ -78,6 +78,16 @@ raw credential out while doing it.
 | 8 | No severity, CVSS, risk rating or verdict field anywhere in the output | FR-013 |
 | 9 | Makes no network request and executes nothing from the target repo — asserted structurally | NFR-012, NFR-007 |
 | 10 | `collect` returns a lazily-consumed `Iterable[Excerpt]` | Critical Constraint 3 |
+| 11 | **Secret-bearing files are never read by default.** `security` may report that a `.env`/`*.pem`/`id_rsa` *exists* — itself a legitimate finding — but its contents are withheld and the source is recorded `excluded: secret-bearing`, distinct from `not found` and `not examined`. A test asserts the bytes never reach a pack | DDR-0002, Constraint 4a |
+| 12 | **HITL gate**: when this dimension needs an excluded file's contents, it surfaces a per-file approval request to the operator and **defaults to refuse** — it neither silently refuses nor silently complies. A test asserts the default path withholds contents when no approval is given | DDR-0002 |
+| 13 | Coverage accounting stays honest with exclusions present — an excluded file is not counted as `found` for a dimension that never saw its contents | FR-016, DDR-0002 |
+
+> **Note (DDR-0002).** `security` is the **only** planned dimension with a genuine
+> reason to request excluded contents, which is why the HITL gate lives here and
+> nowhere else. The friction is deliberate: a security tool that silently reads
+> every credential it finds is precisely the outcome being avoided. Beware the
+> rubber-stamp failure mode — if operators approve without reading, the gate is
+> worse than useless because it manufactures a false record of consent.
 
 ---
 

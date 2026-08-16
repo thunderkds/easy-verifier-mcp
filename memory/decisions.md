@@ -308,3 +308,67 @@ the Kanban.
 **Tooling now pinned**: `ruff` in the `[dev]` extra with a minimal `[tool.ruff]` section, so "Lint
 passes" on every task checklist is verifiable rather than nominal. `PLR` is deliberately excluded —
 its magic-value rule fires on nearly every test assertion; `PLE`/`PLW` are in.
+
+### 2026-08-16 — T004 shipped: redaction residue accepted rather than closed
+
+The detector stack is layered — named patterns (AWS key IDs and secret keys, PEM private-key blocks,
+JWTs, `key=value` credential assignments) over a catch-all entropy rule over a per-segment
+key-material rule. The per-segment rule is what makes paths and URIs safe: it scans the runs
+*between* `/ : @ .`, so a token in a URL path and the password inside `postgres://user:pw@host` are
+each caught on their own, while `db.internal/prod` stays readable.
+
+**Two confirmed misses are accepted, not fixed** (verified by execution at Stage 4, recorded in
+`tasks/TASK_REVIEW_T004.md`):
+
+1. A credential assignment whose value is followed by trailing prose on the same line with no
+   comment marker — `password=hunter2 and then some prose`.
+2. Single-character-class tokens of 12–31 chars — `Bearer abcdefghijklmnopqrst`. Below the
+   mixed-class bar of the segment rule and below the 32-char bar of the entropy rule.
+
+**Why accepted**: both anchors exist to stop false positives when the tool evaluates *its own
+repository*, which is its own test fixture. The module is deliberately tuned toward over-redaction
+elsewhere ("a false positive costs a reader one confusing fingerprint, a false negative costs a
+credential") — these two are the places where that trade was taken the other way, on purpose, and
+the cost of removing them is that the tool fingerprints its own prose and paths into unreadability.
+
+**Revisit condition**: same as the salting decision — if reports ever leave the evaluated repo, both
+the residue and the unsalted fingerprint need re-examination together.
+
+### 2026-08-16 — `develop` is the Stage 3 integration branch
+
+Superseding the earlier "merge into `plan/stage2-task-breakdown`, one PR at the end" plan: that
+branch was pushed and merged via PR #2 (`e185baa`). Task branches now merge locally into `develop`,
+still one-at-a-time and still with the full Stage 4 + Stage 5 gate per task. T004 → T006 → T002
+merged in that order on 2026-08-16 (166 tests green, ruff clean).
+
+The serialization is not ceremony: the merge gate blocks while *any* task sits In Progress, and the
+T002/T004 collision (see `learnings.md`) is a live demonstration that concurrent branches touching
+the same core files need resolving one at a time, with a semantic re-probe after each.
+
+### 2026-08-16 — DDR-0002: never read secret-bearing files; HITL gate for T008
+
+User's proposal during T004's review, and a better control than what we had:
+don't ingest the secret at all, rather than ingest-and-redact. Full record in
+`docs/ddr/0002-never-read-secret-bearing-files.md`.
+
+Hard exclusion list (`.env*`, `*.pem`, `*.key`, `id_rsa`, `.netrc`, `.pgpass`,
+`credentials`, `.npmrc`, `.pypirc`, `secrets.*`, …) enforced in
+`RepoContext.read_source()` — the choke point every dimension already uses, same
+reasoning as Critical Constraint 4. Existence is still reported
+(`excluded: secret-bearing`, distinct from `not found` / `not examined`); only
+the bytes are withheld. T008 gets a per-file operator approval gate defaulting to
+refuse; no other planned dimension has a reason to ask.
+
+**Timing is the point**: the engine reads only doc extensions today, so this
+costs nothing now and would mean retrofitting three dimensions if decided after
+T007/T008/T013 are written. Landed as `PROJECT_SPEC.md` Constraint 4a plus AC
+rows on all three guides before any of them is picked up.
+
+**This does not replace redaction.** Demonstrated during the same session: a
+live-key-shaped Stripe token sat in a `README.md` setup section — a file type the
+engine reads and always will. Exclusion shrinks the intake; redaction covers the
+residue. Describing either as sufficient alone would be false.
+
+**Watch for**: the rubber-stamped HITL gate. Operators who approve without
+reading make the gate worse than useless, because it manufactures a record of
+consent that was never really given.

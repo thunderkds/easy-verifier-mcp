@@ -87,6 +87,15 @@ into the evaluated repo, that a developer can trust because every claim in it ca
 | 11 | No container-internal path (e.g. `/workspace/...`) appears in output; paths are repo-relative or host-recognisable | FR-021c |
 | 12 | All caller-supplied text is HTML-escaped — a finding titled `<script>alert(1)</script>` renders as text | Security |
 | 13 | Truncation records and redaction presence are visible in the report, not silently dropped | FR-011b, NFR-010 |
+| 14 | **Excluded sources render as `excluded: secret-bearing`**, visibly distinct from `not found` and `not examined` — a reader must be able to tell "we chose not to read this" from "this wasn't there" | DDR-0002, FR-016a |
+| 15 | **The NFR-011 advisory names the real exposure**, not merely that redaction occurred: a report written into a target repo may be committed, attached to a ticket, or pasted into a PR, and in MCP mode pack content reaches the calling agent — which may be a hosted model. A test asserts the advisory text names both destinations | NFR-011, DDR-0002 |
+
+> **Note (T004 blast-radius, 2026-08-16).** This task is where redaction stops
+> being precautionary. Until now output reached only the invoking user's own
+> terminal; T013 makes it durable inside someone else's repository. The unsalted
+> fingerprint decision (DDR-0001) rests explicitly on the premise that *reports
+> stay inside the evaluated repo* — if this task's output is ever designed to
+> travel, that premise breaks and salting must be reconsidered before merge.
 
 ---
 

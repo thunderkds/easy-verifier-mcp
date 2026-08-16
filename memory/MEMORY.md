@@ -23,8 +23,7 @@
 
 ### Decisions
 
-- ▶ **[Integration strategy](decisions.md): local merges, ONE PR at the end** (user, 2026-08-15). Task branches merge locally into `plan/stage2-task-breakdown`; nothing is pushed per-task; one PR into `develop` when the user chooses. Per-task scrutiny is Stage 4 + Stage 5, not the PR.
-- ⚠️ **UNPUSHED: `plan/stage2-task-breakdown` has no upstream** — as of 2026-08-15 it carries 7 local-only commits (all of Phase 0 / Stage 0.5 / Stage 1 / Stage 2; `docs/phase0-stage1-foundation` is an ancestor). Based on `origin/develop`, should PR into `develop`. The guardrail hook blocks push from the Supervisor by design — **the user must run** `git push -u origin plan/stage2-task-breakdown`. Stage 3 branches stack on this unpushed base until then.
+- ▶ **[Integration strategy](decisions.md): local merges, one task at a time** (user, 2026-08-15; base updated 2026-08-16). **`develop` is now the Stage 3 integration branch** — `plan/stage2-task-breakdown` was pushed and merged via PR #2 (`e185baa`), closing the old "unpushed base" blocker. Per-task scrutiny is Stage 4 + Stage 5, not the PR.
 - ▶ **Stage 2 complete (2026-08-15).** `PROJECT_SPEC.md` + `PROJECT_KANBAN.md` + 17 TASK_GUIDEs exist; `PROJECT_KANBAN.md` is now the single source of in-flight state. `memory/NEXT-SESSION.md` deleted as designed. Stage 3 not started; no product code yet.
 - [Codebase Map](codebase-map.md) — structural snapshot: directory tree, entry points, blast-radius hotspots. Refresh via /map-codebase.
 
@@ -32,6 +31,8 @@
 - [Two adapters, one core](decisions.md) — `mcp_server.py` (FastMCP HTTP/SSE) + `cli.py` (repo path); thin adapters, identical output required.
 - [Two-step report flow](decisions.md) — pack → caller reasons → `write_report` validates + renders HTML into target repo `reports/`.
 - [Redact secrets at evidence layer](decisions.md) — secret values fingerprinted before leaving the engine; never reach agent, report, or log. → see DDR-0001
+- ▶ **[DDR-0002: never read secret-bearing files](decisions.md)** (user, 2026-08-16). `.env*`/`*.pem`/`*.key`/`id_rsa`/… excluded at `read_source()`; existence reported as `excluded: secret-bearing`, contents withheld. T008 gets a per-file HITL gate defaulting to refuse. **Complements, does not replace, DDR-0001** — a live-key-shaped token in a `README.md` proved exclusion alone is insufficient. Landed as Spec Constraint 4a + AC rows on T007/T008/T013 before pickup.
+- ⚠️ **Never put a real vendor prefix in a test fixture** (`sk_live_`, `ghp_`, `xoxb-`). Scanners match on shape and cannot tell a fake from a real key — GitHub push protection rejected a push over T004's fixtures. Detectors match on `key=value` shape and character mix, never the prefix, so synthetic values test the same path. Convention: spell the fakeness in, as `FAKEfake…`.
 - [Coverage score = auditable checklist ratio](decisions.md) — unweighted found/sought, never rendered without the miss list.
 - [Docker in v1](decisions.md) — user override of supervisor's defer-to-v1.1 recommendation.
 - [Evidence packs: 120 KB relevance-ordered budget](decisions.md) — byte-measured for determinism; explicit truncation field.
@@ -44,7 +45,9 @@
 - [Redaction fingerprint is unsalted](decisions.md) — SHA-256, 12-hex prefix, 4-char mask. Closes gap #14. Correlation beats dictionary resistance **because reports stay inside the evaluated repo**; revisit if that ever changes.
 - [One HITL gate still open into Stage 3](decisions.md) — T017 FR-022 parity definition (gap #15): "identical" vs. "byte-equal". Recorded in PROJECT_KANBAN.md's Blocked table.
 - ▶ **[T001 shipped — the `run_dimension()` contract is fixed](decisions.md)** (merged 2026-08-15). Signatures locked; 16 tasks written against it. File reading lives in `ctx.read_source()`, not the dimension. `sources_found` is clamped to `sources_sought` so the two partition it exactly; unprobed sources report `not examined`, never `not found`.
-- ⚠️ **Until T004, `redact()` is a passthrough** — evidence packs can contain live secrets. Fine while output goes to the invoking user's own terminal; **material at T013**, when reports get written into a target repo.
+- ▶ **[T004 shipped — redaction is real](decisions.md)** (merged 2026-08-16, `1acfa5c`). Layered detectors: named patterns → entropy → per-segment key material, the last being what makes paths and URI passwords safe while keeping paths readable. **Two misses accepted, not fixed**: a credential assignment whose value is followed by trailing prose with no comment marker, and single-char-class tokens of 12–31 chars. Both anchors exist so the tool stays usable evaluating its own repo. T013 unblocked.
+- ▶ **[T002 and T006 merged](decisions.md)** (2026-08-16, `89046c8`/`4b466d6`). `develop`: 166 tests, ruff clean, 4/17 tasks done.
+- ⚠️ **[A merge of two green branches can be a regression](learnings.md)** — T002 moved the path check that T004 had hardened with redaction; both suites passed alone, the leak existed only in the combination. **After every conflict resolution, re-probe any cross-cutting property (redaction/validation/auth/logging) that attached to a line the other branch relocated.**
 - [Truncation is rejection-triggered; `omitted_count` is a lower bound](decisions.md) — pull until one item doesn't fit, drop it, stop. Never drain to count: for a file-reading `collect` that means reading every file. Fixes a T001 guide contradiction; aligns T001 with T005.
 - [T012 budget recommendation: per-dimension, not pooled](decisions.md) — a total budget split across dimensions makes each pack's contents depend on what else was requested, breaking reproducibility. Decision to be recorded when T012 is picked up.
 
@@ -55,6 +58,8 @@
 - **Guardrail hook matches command *mentions*** — a commit message or memory file containing `git push` blocks the whole Bash call. Use Write/Edit or `git commit -F`.
 - ⚠️ **Merge gate: two traps, both hit on T001.** (a) Stage 5 evidence must be `git checkout <task-branch> -- tasks/TASK_REVIEW_Txxx.md` into the main checkout *before* merging — the gate reads the pre-merge copy. (b) The verification command must put the runner at a command boundary within 300 chars: `cd <worktree> && PATH=.venv/bin:$PATH python -m pytest tests/... -q`. An interpreter path prefix (`.venv/bin/python -m pytest`) never matches.
 - **The `active_task` state file also feeds the step-limit hook** — Supervisor Bash calls count toward the named task's 90-call budget and will be killed once (auto-resets). Not an agent loop.
+- ⚠️ **[`active_task` rejects a FUTURE timestamp as hard as a stale one](learnings.md)** — `age_s < 0` fails too. Always write it with `$(date -u '+%Y-%m-%dT%H:%M:%SZ')`, never a hand-guessed clock time, or the trace silently goes nowhere.
+- ⚠️ **[The merge gate's own error hint is dead advice](learnings.md)** — it tells you to prefix `CLAUDE_ACTIVE_TASK=Txxx`, but that channel cannot work from inside a Bash call (hooks are siblings, not children). Use the state file.
 
 ### Learning Records
 

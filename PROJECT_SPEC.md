@@ -79,6 +79,9 @@ src/easy_verifier/
 2. **No invention.** Absent context is reported as absent (FR-005). A dimension may never substitute a plausible value.
 3. **`collect` returns `Iterable[Excerpt]`, consumed lazily by `budget()`.** Non-negotiable — returning a `list` forces full materialisation on exactly the monorepo size that most needs budgeting.
 4. **Redaction happens inside `run_dimension()`, at the evidence layer** (NFR-010, DDR-0001). A raw detected secret must never reach a pack, a report, a log, or an error message. Bypassing `run_dimension()` to build a pack is prohibited.
+4a. **Never read the contents of a secret-bearing file** (DDR-0002) — `.env*`, `*.pem`, `*.key`, `id_rsa`, `.netrc`, `.pgpass`, `credentials`, `.npmrc`, `secrets.*` and the rest of the DDR's list. Enforced in `RepoContext.read_source()` so no dimension can bypass it.
+   Existence is still reported as `excluded: secret-bearing` — distinct from `not found` and `not examined`; only the bytes are withheld. T008 alone may request such contents, via an operator HITL approval defaulting to refuse.
+   **Complements constraint 4, does not replace it**: secrets also appear in files we cannot refuse to read, so exclusion shrinks the intake and redaction covers the residue.
 5. **Write nothing outside the target repo's `reports/`.** Never execute code from the target repo (NFR-007).
 6. **stdio is the default and required transport** (FR-019a). HTTP/SSE is opt-in and must bind `127.0.0.1` only — never `0.0.0.0`, including inside a container (FR-019b, NFR-012).
 7. **Adapters stay thin.** No evaluation, context-loading, or rendering logic in `adapters/` (FR-021).

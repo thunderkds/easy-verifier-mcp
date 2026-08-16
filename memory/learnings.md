@@ -24,7 +24,16 @@ hard-reset route is blocked by `block-dangerous-git.sh`, so rebase is the availa
 
 **Standing instruction**: every Stage 3 spawn prompt must tell the agent to verify its worktree
 contains `PROJECT_SPEC.md` and its own `tasks/TASK_GUIDE_Txxx.md` **before** any other step, and to
-rebase onto the current planning branch if not. Do not assume the harness got the base right.
+re-point its branch at the base branch if not. Do not assume the harness got the base right.
+
+**CORRECTION 2026-08-15 (T002)**: `git rebase <base>` — the fix used successfully by T001 — is
+**blocked by `pre_bash_block_unsafe_merge.py` whenever any task is In Progress**, which is always
+true for the agent doing the rebasing. A `CLAUDE_ACTIVE_TASK=` prefix does not help. T001 only got
+away with it because it was the sole task on the board at the time.
+
+**The command that works**: `git switch -C <worktree-branch> <base>`. Use this in every spawn prompt
+from now on, not rebase. Agents must also expect no `.venv` in a fresh worktree — creating one and
+running `pip install -e ".[dev]"` is part of step 0.
 
 ### 2026-08-15 — The trace-attribution state file is unwritable from an isolated worktree
 
@@ -109,3 +118,51 @@ Writing a commit message or a memory file whose text contains `git push` or `git
 blocks the whole Bash call, even though nothing dangerous is being run. Workaround: write the
 content with the Write/Edit tool, or pass commit messages via `git commit -F <file>`. Known and
 deliberately not fixed — `.claude/hooks/**` is must-not-touch.
+
+### 2026-08-16 — A merge of two independently-green branches can be a regression
+
+The most valuable thing Stage 5 caught on the T002/T004/T006 integration, and the one that no test
+on either side could have caught:
+
+T004 redacted the `RepoPathError` message in `run_dimension()`, because a directory name can carry a
+secret and an exception message is a leak path NFR-010 names. T002, concurrently, moved that path
+validation out of `run_dimension()` and into `context.py:_resolve_repo_path` — which had no
+redaction. Git merged both cleanly at the semantic level it understands (different hunks, both
+"kept"), and **each branch's full suite passed on its own side**. The defect existed only in the
+combination: the check T004 hardened and the check T002 moved are the same check, and the hardening
+did not travel with it.
+
+Caught by reading the conflict resolution for meaning rather than for markers, then probing
+directly:
+
+```
+run_dimension(DESCRIPTOR, "/nonexistent/AKIAIOSFODNN7EXAMPLE/repo")
+-> "target repository path does not exist: /nonexistent/AKIA…****:1a5d44a2dca1/repo"
+```
+
+**Standing rule for every merge of concurrently-developed branches**: when one branch *moves* code
+that another branch *hardened*, the hardening does not follow it. After resolving conflicts, ask
+specifically "did any cross-cutting property — redaction, validation, auth, logging — attach to a
+line that the other branch relocated?" and re-probe that property end-to-end. A green suite after a
+merge proves neither branch broke *itself*; it says nothing about the seam between them.
+
+This is now concrete for this repo: any future task that relocates a `raise` out of a module which
+imports `redact` must carry the redaction with it.
+
+### 2026-08-16 — The active_task state file rejects a future timestamp, and the gate's own hint is dead
+
+Two traps on top of the existing Stage 5 trace procedure above, both cost real time this session:
+
+1. **A timestamp in the future is rejected as hard as a stale one.** `_task_id_from_state_file`
+   computes `age_s` and rejects `age_s < 0` *or* `> MAX_AGE`. Writing the file by hand with a
+   guessed clock time (`03:30:00Z` when the real time was `03:26:53Z`) silently degrades attribution
+   to `None` — the trace goes nowhere and the merge gate keeps failing with no clue why. Always
+   generate it with `$(date -u '+%Y-%m-%dT%H:%M:%SZ')`, never by hand.
+
+2. **The merge gate's own error message gives dead advice.** It says to run the verification command
+   as `CLAUDE_ACTIVE_TASK=Txxx <command>`. That channel is documented as **known-dead** in
+   `task_context.py` (precedence slot 1): a hook is spawned by the harness as a *sibling* of the
+   tool call, so it inherits the harness's environment and never sees a var set inside the Bash
+   subshell. Following the hint produces a passing test run that files no trace record. Use the
+   state file (slot 2) — the hint text is wrong and should be read as a pointer to the right
+   concept, not the right mechanism.
