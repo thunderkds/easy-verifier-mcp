@@ -13,8 +13,7 @@
 ### Todo
 
 **Wave 1 — Foundation (blocking; nothing in Wave 2+ starts until the pipeline contract is fixed)**
-- [ ] **T003** — `scope.py`: task/changes/worktree/project scope resolution | backend-developer | C1 | Risk: Low | P0
-- [ ] **T005** — `budget.py`: relevance ordering, lazy consumption, explicit truncation | backend-developer | C2 | Risk: Med | P0
+- [ ] **T005** — `budget.py`: relevance ordering, lazy consumption, explicit truncation | backend-developer | C2 | Risk: Med | P0 | **Blocked on T003** — its guide's `Depends on` states `Scope` supplies the changed-file set that drives relevance tier 1, so it cannot start until T003 lands. Spawn next.
 
 **Wave 2 — Dimensions (parallelizable once Wave 1 is stable)**
 - [ ] **T007** — Shared doc-extraction helper + solution-fit, requirement-fidelity, code-quality | backend-developer | C2 | Risk: Low | P0
@@ -37,7 +36,7 @@
 
 ### In Progress
 
-_(none)_
+- [ ] **T003** — `scope.py`: task/changes/worktree/project scope resolution | backend-developer | C1 | Risk: Low | P0 | Started: 2026-08-16 | spawned worktree-isolated on sonnet
 
 ### Ready for Review
 
