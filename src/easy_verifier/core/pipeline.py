@@ -23,6 +23,7 @@ from .models import (
     RedactionHit,
     SourceMiss,
 )
+from .scope import ScopeError, resolve_scope
 
 __all__ = [
     "DEFAULT_BUDGET_BYTES",
@@ -53,16 +54,26 @@ def run_dimension(
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
 
+    # `resolve_scope` (T003) needs no extra arguments for `project` (the
+    # default) or `worktree`; `changes`/`task` need a `ref`/`task_id` that
+    # this function's signature has no way to accept, so those two kinds
+    # still fall back to `None` here — the same tier-3-only behaviour this
+    # pipeline had before `budget.py` existed, not a regression. A caller
+    # that wants real `changes`/`task` tiering resolves its own `Scope` and
+    # calls `budget()` directly.
+    try:
+        resolved_scope = resolve_scope(scope, context.repo_path, context)
+    except ScopeError:
+        resolved_scope = None
+
     # The *call* is handed over, not its result: a conforming dimension can
     # still read and parse eagerly before returning its lazy iterator, and an
-    # exception raised in that window must be redacted like any other.
+    # exception raised in that window must be redacted like any other. Passed
+    # as a callable, not a single iterable, because `budget()` may invoke it
+    # up to once per relevance tier.
     result = _run_budget(
-        _redacting_exceptions(lambda: descriptor.collect(context)),
-        # No `Scope` is resolved at this call site yet (T003's `resolve_scope`
-        # is not wired into the pipeline) — tier 1/2 fall back to just the
-        # fixed kit-artifact set `budget.py` always recognizes, and everything
-        # else stays tier 3, ordered by arrival, same as before this task.
-        scope=None,
+        lambda: _redacting_exceptions(lambda: descriptor.collect(context)),
+        scope=resolved_scope,
         limit_bytes=budget_bytes,
     )
     kept = result.excerpts

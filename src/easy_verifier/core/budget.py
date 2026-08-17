@@ -4,51 +4,47 @@ FR-011a, FR-011b).
 :func:`budget` replaces the naive "stop at the first excerpt that does not
 fit" cap ``pipeline.py`` shipped with T001. The cap itself — stop at the first
 rejection, never drain the remainder, report a lower-bound ``omitted_count`` —
-is the contract this module must preserve; what changes is *which* excerpt is
-offered the last slot when the budget is nearly full.
+is the contract this module must preserve; what changes is *which* excerpts
+are offered a slot when the budget is tight.
 
-The design tension is real: perfect relevance ordering wants the whole
-candidate set in hand to sort it, while laziness forbids exactly that. This is
-resolved by tiering rather than sorting: each excerpt's tier (changed file /
-spec-referenced file / everything else) is knowable from its ``path`` alone,
-cheaply, the moment it is pulled — no need to see the rest of the stream. The
-working set kept in memory is bounded by ``limit_bytes`` (how much material
-can ever be admitted), never by the length of the candidate stream.
+Perfect relevance ordering wants the whole candidate set in hand to sort it,
+while laziness forbids exactly that. This is resolved by **tiering rather
+than sorting**: each excerpt's tier (changed file / spec-referenced file /
+everything else) is knowable from its ``path`` alone, before any excerpt is
+produced, because tier 1 and tier 2 membership come entirely from ``scope``
+(``scope.changed_files`` and ``scope.task_ref.guide_path``), never from the
+stream itself. ``collect`` is therefore invoked **once per non-empty tier**
+(never more than three times), each pass admitting only that tier's excerpts
+and stopping the instant one does not fit — which stops every later pass too,
+since nothing lower-priority is worth pulling once the budget is spent. A
+tier whose membership set is empty (no ``scope``, or a scope naming neither
+changed files nor a task guide) is skipped without ever calling ``collect``
+for it — this is what keeps a caller with no scope information down to the
+single pass this pipeline always ran before T005.
 
-Ordering only has to be *decided* once real contention shows up: when an
-excerpt arrives that does not fit as pulled. At that single point, one
-already-admitted excerpt from a strictly lower-priority tier may be evicted to
-make room — never more than one, and never a general sort. Either way, that
-excerpt is the last one pulled: the stream is never drained further, matching
-the laziness contract exactly.
+A pass whose tier is non-empty but never hits a misfit has no way to know a
+later item of its tier will not show up except by reaching the end of the
+stream, so such a pass does drain fully — this is the accepted cost of true
+tier priority under lazy, single-direction consumption (a documented
+trade-off, not a bug): the generator is still never advanced past the point
+that decides that pass's outcome.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 
 from . import redact as redact_module
-from .context import KIT_ARTIFACTS
 from .models import Excerpt, RedactionHit, TruncationRecord
 
 DEFAULT_BUDGET_BYTES = 120_000
 """Default per-dimension byte ceiling (FR-011a), overridable per call."""
 
-_KIT_FILES = frozenset(
-    artifact
-    for artifact in KIT_ARTIFACTS
-    if not artifact.endswith("/") and "*" not in artifact
-)
-_KIT_DIR_PREFIXES = tuple(
-    artifact for artifact in KIT_ARTIFACTS if artifact.endswith("/")
-)
-"""Reuses ``context.KIT_ARTIFACTS`` rather than a second list, so "spec/kit
-artifact" means the same thing here as it does during kit detection."""
-
 _TIER_CHANGED = 1
 _TIER_REFERENCED = 2
 _TIER_OTHER = 3
+_TIERS_IN_PRIORITY_ORDER = (_TIER_CHANGED, _TIER_REFERENCED, _TIER_OTHER)
 
 __all__ = ["DEFAULT_BUDGET_BYTES", "BudgetError", "BudgetResult", "budget"]
 
@@ -64,24 +60,29 @@ class BudgetResult:
     excerpts: tuple[Excerpt, ...]
     truncation: TruncationRecord
     redactions: tuple[RedactionHit, ...]
-    """Every secret replaced while preparing an excerpt — including one that
-    was pulled and then rejected or evicted (T004, NFR-011): a secret that
-    only ever appeared in material that did not make the final pack still
-    happened."""
+    """Every secret replaced while inspecting an excerpt — including one that
+    was pulled and then rejected (T004, NFR-011): a secret that only ever
+    appeared in material that did not make the final pack still happened."""
 
 
 def budget(
-    excerpts: Iterable[Excerpt],
+    collect: Callable[[], Iterable[Excerpt]],
     scope,
     limit_bytes: int = DEFAULT_BUDGET_BYTES,
 ) -> BudgetResult:
-    """Consume ``excerpts`` lazily and admit them in relevance order.
+    """Admit excerpts from ``collect`` in relevance order, lazily.
+
+    ``collect`` is a zero-argument callable returning a fresh
+    ``Iterable[Excerpt]`` each time it is called — a dimension's ``collect``
+    bound to its context, typically. It may be invoked up to three times, once
+    per tier; each invocation gets its own independent stream.
 
     ``scope`` supplies the tiering data — ``scope.changed_files`` for tier 1,
     ``scope.task_ref.guide_path`` (when present) for tier 2 — and may be
     ``None`` when no scope has been resolved for this call, in which case
-    every excerpt not matching a known kit artifact falls into tier 3 and the
-    result is ordered by arrival, same as before this task.
+    both tiers are empty, only the tier-3 pass runs, and the result is
+    ordered by arrival within that single pass — the same behaviour this
+    pipeline had before T005.
 
     Byte accounting is ``len(text.encode("utf-8"))`` on the *redacted* text,
     with no additional per-excerpt overhead constant: T001 fixed the naive cap
@@ -98,64 +99,76 @@ def budget(
     changed = frozenset(getattr(scope, "changed_files", None) or ())
     referenced = _referenced_files(scope)
 
-    # (tier, arrival index, excerpt) — arrival index breaks ties within a tier
-    # so the final sort is stable, matching AC #2 ("deterministic within each
-    # tier"). The list is bounded by how many excerpts fit in `limit_bytes`,
-    # not by how many were offered.
-    kept: list[tuple[int, int, Excerpt]] = []
+    kept: list[Excerpt] = []
     seen_refs: set[str] = set()
     hits: list[RedactionHit] = []
     used = 0
-    arrival = 0
     truncated = False
     omitted_count = 0
 
-    for raw in excerpts:
-        safe, item_hits, size = _prepare(raw)
-        hits.extend(item_hits)
+    # A tier whose membership set is provably empty can never match anything
+    # `_tier` returns, so its pass is skipped without a `collect()` call at
+    # all — not merely an optimisation: it is what keeps a `scope=None` (or
+    # scope-with-nothing-declared) caller down to the single tier-3 pass this
+    # pipeline always ran before T005, rather than two wasted full drains.
+    reachable_tiers = [
+        tier
+        for tier in _TIERS_IN_PRIORITY_ORDER
+        if (tier != _TIER_CHANGED or changed)
+        and (tier != _TIER_REFERENCED or referenced)
+    ]
 
-        if safe.ref in seen_refs:
-            # Same file, same line range: admitted once. Checked before sizing
-            # so a duplicate never counts against the budget or as an omission
-            # (Edge Case Checklist).
-            continue
-        seen_refs.add(safe.ref)
+    for pass_tier in reachable_tiers:
+        if truncated:
+            # A rejection in an earlier, higher-priority pass ends the whole
+            # run: nothing in a lower-priority tier is worth pulling once the
+            # budget is spent (AC #4 — triggered by a rejection, never by
+            # `used >= limit_bytes` alone; that property already held before
+            # this pass started).
+            break
 
-        tier = _tier(safe.path, changed, referenced)
+        for raw in collect():
+            # Classified on the *raw* path — cheap, and avoids redacting text
+            # this pass has no use for. `changed_files`/kit-artifact names are
+            # ordinary repo-relative paths, never secret-shaped, so comparing
+            # against the raw path is safe.
+            if _tier(raw.path, changed, referenced) != pass_tier:
+                continue
 
-        if used + size <= limit_bytes:
-            kept.append((tier, arrival, safe))
-            used += size
-            arrival += 1
-            continue
+            safe, item_hits, size = _prepare(raw)
 
-        # The first excerpt that does not fit as pulled ends the run — the
-        # stream is never drained further, whether or not eviction below
-        # succeeds. Truncation is triggered by this rejection, never by
-        # ``used >= limit_bytes`` on its own, so a stream that ends exactly at
-        # the boundary never reaches this branch (AC #4).
-        evicted = _evict_for(kept, tier, size, used, limit_bytes)
-        if evicted is not None:
-            kept, used = evicted
-            kept.append((tier, arrival, safe))
-            arrival += 1
-        omitted_count = 1
-        truncated = True
-        break
+            if safe.ref in seen_refs:
+                # Same file, same line range, possibly re-encountered by a
+                # later pass: admitted once, and not counted as an omission
+                # (Edge Case Checklist).
+                continue
+            seen_refs.add(safe.ref)
+            hits.extend(item_hits)
 
-    kept.sort(key=lambda item: (item[0], item[1]))
-    ordered = tuple(item[2] for item in kept)
+            if used + size <= limit_bytes:
+                kept.append(safe)
+                used += size
+                continue
+
+            # The first excerpt in this pass that does not fit as pulled ends
+            # this pass — and, via the `truncated` check above, every pass
+            # after it. The stream is never drained further.
+            omitted_count = 1
+            truncated = True
+            break
 
     record = TruncationRecord(truncated=truncated, omitted_count=omitted_count)
-    return BudgetResult(excerpts=ordered, truncation=record, redactions=tuple(hits))
+    return BudgetResult(excerpts=tuple(kept), truncation=record, redactions=tuple(hits))
 
 
 def _referenced_files(scope) -> frozenset[str]:
-    """Tier-2 paths: files referenced by the loaded spec/kit artifacts.
-
-    ``scope.task_ref.guide_path`` is the one per-call addition — the guide a
-    ``task`` scope resolved to. The fixed kit-artifact filenames
-    (``PROJECT_SPEC.md`` etc.) are tier 2 unconditionally, via ``_tier``.
+    """Tier-2 paths: files referenced by the loaded spec/kit artifacts that
+    this specific call's ``scope`` actually resolved — ``scope.task_ref``'s
+    guide, for a ``task`` scope. Deliberately not every file that merely has a
+    kit-shaped name (``PROJECT_SPEC.md`` and the like): that would make tier 2
+    reachable even when ``scope`` carries no data at all, forcing a pass — and
+    a full drain, in the common case where no such name shows up — for every
+    caller, not only ones that actually resolved a scope.
     """
     task_ref = getattr(scope, "task_ref", None)
     if task_ref is None:
@@ -165,10 +178,10 @@ def _referenced_files(scope) -> frozenset[str]:
 
 def _tier(path: str, changed: frozenset[str], referenced: frozenset[str]) -> int:
     """A path's relevance tier (FR-011a). A path in both tier 1 and tier 2 is
-    tier 1 — checked first, so it is admitted once, at the higher tier."""
+    tier 1 — checked first, so it is admitted once, in the tier-1 pass."""
     if path in changed:
         return _TIER_CHANGED
-    if path in referenced or path in _KIT_FILES or path.startswith(_KIT_DIR_PREFIXES):
+    if path in referenced:
         return _TIER_REFERENCED
     return _TIER_OTHER
 
@@ -197,32 +210,3 @@ def _prepare(raw: Excerpt) -> tuple[Excerpt, list[RedactionHit], int]:
     )
     size = len(safe.text.encode("utf-8"))
     return safe, hits, size
-
-
-def _evict_for(
-    kept: list[tuple[int, int, Excerpt]],
-    tier: int,
-    size: int,
-    used: int,
-    limit_bytes: int,
-) -> tuple[list[tuple[int, int, Excerpt]], int] | None:
-    """Try to make room for a tier-``tier`` excerpt of ``size`` bytes by
-    evicting the single worst already-admitted excerpt strictly outranked by
-    it. Returns ``None`` when no eviction can help — no candidate, or freeing
-    one victim still is not enough (evicting more than one victim is not
-    attempted; that would turn a bounded, single decision into a search).
-    """
-    candidates = [
-        index for index, (kept_tier, _, _) in enumerate(kept) if kept_tier > tier
-    ]
-    if not candidates:
-        return None
-
-    victim_index = max(candidates, key=lambda index: (kept[index][0], kept[index][1]))
-    victim_size = len(kept[victim_index][2].text.encode("utf-8"))
-    freed_used = used - victim_size
-    if freed_used + size > limit_bytes:
-        return None
-
-    remaining = kept[:victim_index] + kept[victim_index + 1 :]
-    return remaining, freed_used
