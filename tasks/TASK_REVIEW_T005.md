@@ -1,6 +1,6 @@
-# TASK_REVIEW — T[NNN]: [Short Title]
+# TASK_REVIEW — T005: `budget.py` — relevance ordering, lazy consumption, explicit truncation
 
-> Sibling of `tasks/TASK_GUIDE_T[NNN].md`. Everything here is **filled by the reviewer at Stage
+> Sibling of `tasks/TASK_GUIDE_T005.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
 > every turn and never fills these two sections.
 >
@@ -64,8 +64,8 @@ EXIT:0
 ```
 
 `src/easy_verifier/core/budget.py` now exists: `budget(excerpts, scope, limit_bytes)` admits lazily
-in relevance order — tier 1 (`scope.changed_files`), then tier 2 (spec/kit artifacts, including
-`scope.task_ref.guide_path`), then everything else — and `pipeline.run_dimension` calls it in place
+in relevance order — tier 1 (`scope.changed_files`), then tier 2, then everything else — and
+`pipeline.run_dimension` calls it in place
 of the old naive cap. `EvidencePack.truncation` (a new `TruncationRecord`) carries the same
 `truncated`/`omitted_count` information as a structured field, additive to the existing flat fields.
 
@@ -122,6 +122,31 @@ True 1 TruncationRecord(truncated=True, omitted_count=1)
 ```
 `changed.md` (the real, git-detected change) is admitted; `irrelevant.md` is the one truncated —
 confirming tier 1 fires end to end in production, not only inside `budget.py`'s own unit tests.
+
+**Tier-2 narrowing — accepted by the Supervisor, recorded not hidden.** The P1 fix also narrowed
+tier 2 from "any file with a kit-artifact name (`PROJECT_SPEC.md` etc.) plus the resolved guide" to
+"`scope.task_ref.guide_path` only". The reason is structural, not cosmetic: the kit-artifact set is
+fixed and non-empty, so tier 2 would be *reachable on every call*, forcing a `collect()` pass — and,
+whenever no kit-named file actually appears in the stream, a full drain — even for callers that
+resolved no scope at all. That broke 5 pre-existing T001 tests pinning the single-pass contract.
+Accepted because FR-011a's tier 2 ("spec-referenced files") is still satisfied for the scope kind
+that can name one, and the alternative costs a full extra traversal on every call. **Cost, to revisit
+when a dimension needs it**: for `project`/`worktree` scopes, `PROJECT_SPEC.md` and friends now rank
+tier 3 alongside ordinary source files, so a tight budget can drop the spec ahead of unrelated code.
+T007 (shared doc-extraction helper, four doc-shaped dimensions) is the task most likely to want this
+back — it should re-open the question rather than inherit the narrowing silently.
+
+**Stage 4 security review** (Supervisor, 2026-08-17): the built-in `security-review` skill could not
+run — it resolves the diff via `origin/HEAD` and this repo's remote is named `github`, not `origin`.
+Reviewed the diff's surface directly instead. `budget.py` performs no I/O, no subprocess, no network,
+no `eval`/`exec`. The one real surface is that this task **relocated redaction** out of
+`pipeline._budget` into `budget._prepare` — the exact defect class that produced the T002/T004
+integration leak — so it was probed live rather than assumed, with a runtime-assembled fake
+credential: (a) a secret in a *rejected* excerpt → not in the pack, hit still recorded (NFR-011 holds);
+(b) a secret in an *admitted* excerpt → fingerprinted (`aws_…****:c3c32de81dfc`); (c) a secret-shaped
+*path* → fingerprinted in the path too. No leak on any path. `_tier()` compares the raw pre-redaction
+path against `changed_files`, which is safe: the raw path is used only for an equality test and never
+retained or emitted.
 
 **Full suite after both fixes**:
 ```
