@@ -393,6 +393,14 @@ def test_secret_bearing_patterns_cover_the_ddr_list(tmp_path: Path) -> None:
 
     for name in (
         ".env",
+        # Stage 4 regression: Constraint 4a's globs are `.env*` and
+        # `credentials*`. The first implementation used `.env`/`.env.*` and
+        # `credentials`/`credentials.*`, which read `.envrc` — a direnv file,
+        # routinely full of exported credentials — and `credentialsfile`
+        # straight into a pack. Both names stay pinned here.
+        ".envrc",
+        ".env.local",
+        "credentialsfile",
         "id_rsa",
         "server.pem",
         "client.key",

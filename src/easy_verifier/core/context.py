@@ -103,8 +103,7 @@ _EXCLUDED_DIRS = frozenset(
 _ADR_DIR_NAMES = frozenset({"adr", "adrs", "decisions"})
 
 SECRET_BEARING_PATTERNS: tuple[str, ...] = (
-    ".env",
-    ".env.*",
+    ".env*",
     "*.pem",
     "*.key",
     "id_rsa",
@@ -113,16 +112,21 @@ SECRET_BEARING_PATTERNS: tuple[str, ...] = (
     "id_ed25519",
     ".netrc",
     ".pgpass",
-    "credentials",
-    "credentials.*",
+    "credentials*",
     ".npmrc",
     ".pypirc",
     "secrets.*",
 )
-"""Filenames DDR-0002 refuses to read at all, checked against the basename
-only. Matched with :mod:`fnmatch`, case-sensitive — deliberately narrow rather
-than pattern-matching full paths, so a source named e.g. ``docs/.env.md`` is
-not caught by an over-broad rule."""
+"""Filenames DDR-0002 refuses to read at all, checked against the **basename**
+only (never the full path), with :mod:`fnmatch`, case-sensitive.
+
+``.env*`` and ``credentials*`` are transcribed verbatim from Spec Constraint
+4a. They are deliberately *broad*: the narrower ``.env``/``.env.*`` pair this
+first shipped with missed ``.envrc`` — a direnv file, which routinely holds
+exported credentials — and ``credentialsfile``. When the rule is "never read
+these bytes", over-matching costs a withheld document that is still reported as
+present, while under-matching costs a leaked secret; those are not symmetric,
+so this errs wide on purpose."""
 
 
 def _is_secret_bearing(relative_path: str) -> bool:
