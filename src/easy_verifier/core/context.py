@@ -16,6 +16,7 @@ itself, so no caller can emit a response without it (FR-004).
 
 from __future__ import annotations
 
+import fnmatch
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -101,6 +102,33 @@ _EXCLUDED_DIRS = frozenset(
 
 _ADR_DIR_NAMES = frozenset({"adr", "adrs", "decisions"})
 
+SECRET_BEARING_PATTERNS: tuple[str, ...] = (
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    "id_rsa",
+    "id_dsa",
+    "id_ecdsa",
+    "id_ed25519",
+    ".netrc",
+    ".pgpass",
+    "credentials",
+    "credentials.*",
+    ".npmrc",
+    ".pypirc",
+    "secrets.*",
+)
+"""Filenames DDR-0002 refuses to read at all, checked against the basename
+only. Matched with :mod:`fnmatch`, case-sensitive — deliberately narrow rather
+than pattern-matching full paths, so a source named e.g. ``docs/.env.md`` is
+not caught by an over-broad rule."""
+
+
+def _is_secret_bearing(relative_path: str) -> bool:
+    name = Path(relative_path).name
+    return any(fnmatch.fnmatch(name, pattern) for pattern in SECRET_BEARING_PATTERNS)
+
 
 class RepoPathError(ValueError):
     """The target repository path is unusable. Reported as a clear message, not
@@ -152,7 +180,15 @@ class RepoContext:
         reported as missing — never substituted with plausible content.
         Returning ``""`` (an existing but empty file) counts as **found** and
         simply contributes no excerpt.
+
+        A secret-bearing file (DDR-0002, Constraint 4a) is refused before its
+        bytes are ever touched: reported as ``excluded: secret-bearing``,
+        distinct from ``not found`` and ``not examined``, and never opened.
         """
+        if _is_secret_bearing(relative_path):
+            self._miss(relative_path, "excluded: secret-bearing")
+            return None
+
         candidate = self.repo_path / relative_path
 
         try:

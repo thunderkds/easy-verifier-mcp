@@ -1,0 +1,62 @@
+{
+  "coverage_score": 0.6,
+  "dimension": "architecture",
+  "excerpts": [
+    {
+      "end_line": 5,
+      "path": "PROJECT_SPEC.md",
+      "start_line": 1,
+      "text": "# PROJECT_SPEC.md\n\n## Architecture Summary\n\nThe system is a context packer."
+    },
+    {
+      "end_line": 5,
+      "path": "BRAINSTORMING_LOG.md",
+      "start_line": 1,
+      "text": "# BRAINSTORMING_LOG.md\n\n## Recommended Path\n\nOption D chosen."
+    },
+    {
+      "end_line": 3,
+      "path": "README.md",
+      "start_line": 1,
+      "text": "# demo repo\n\nA small demo."
+    }
+  ],
+  "files_read": [
+    "PROJECT_SPEC.md",
+    "BRAINSTORMING_LOG.md",
+    "README.md"
+  ],
+  "had_redactions": false,
+  "mode": "kit-aware",
+  "omitted_count": 0,
+  "redactions": [],
+  "scope": "project",
+  "sources_found": [
+    "PROJECT_SPEC.md",
+    "BRAINSTORMING_LOG.md",
+    "README.md"
+  ],
+  "sources_missing": [
+    {
+      "reason": "not found in the target repository",
+      "source": "ARCHITECTURE.md"
+    },
+    {
+      "reason": "not found in the target repository",
+      "source": "docs/architecture.md"
+    }
+  ],
+  "sources_sought": [
+    "PROJECT_SPEC.md",
+    "BRAINSTORMING_LOG.md",
+    "ARCHITECTURE.md",
+    "docs/architecture.md",
+    "README.md"
+  ],
+  "truncated": false,
+  "truncation": {
+    "omitted_count": 0,
+    "truncated": false
+  },
+  "warnings": []
+}

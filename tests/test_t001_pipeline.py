@@ -569,9 +569,20 @@ def test_cited_line_numbers_are_1_indexed_and_match_the_file():
 
 
 def test_registry_is_a_plain_dict_of_descriptors():
-    """Option D — explicit wiring, no decorator registry, no base class."""
+    """Option D — explicit wiring, no decorator registry, no base class.
+
+    T001 shipped with only `architecture` registered; T007 adds the other
+    three document-shaped dimensions (`solution-fit`, `requirement-fidelity`,
+    `code-quality`), so the fixed set below grows with it. The registry stays
+    a plain dict either way — that is what this test actually pins.
+    """
     assert isinstance(DIMENSIONS, dict)
-    assert set(DIMENSIONS) == {"architecture"}
+    assert set(DIMENSIONS) == {
+        "architecture",
+        "solution-fit",
+        "requirement-fidelity",
+        "code-quality",
+    }
     descriptor = DIMENSIONS["architecture"]
     assert type(descriptor) is DimensionDescriptor
     assert type(descriptor).__mro__ == (DimensionDescriptor, object)
