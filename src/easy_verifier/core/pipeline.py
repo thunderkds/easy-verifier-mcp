@@ -14,16 +14,16 @@ from dataclasses import replace
 from pathlib import Path
 
 from . import redact as redact_module
+from .budget import DEFAULT_BUDGET_BYTES
+from .budget import budget as _run_budget
 from .context import DEFAULT_SCOPE, RepoPathError, detect_context
 from .models import (
     DimensionDescriptor,
     EvidencePack,
-    Excerpt,
     RedactionHit,
     SourceMiss,
 )
-
-DEFAULT_BUDGET_BYTES = 120_000
+from .scope import ScopeError, resolve_scope
 
 __all__ = [
     "DEFAULT_BUDGET_BYTES",
@@ -54,12 +54,32 @@ def run_dimension(
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
 
+    # `resolve_scope` (T003) needs no extra arguments for `project` (the
+    # default) or `worktree`; `changes`/`task` need a `ref`/`task_id` that
+    # this function's signature has no way to accept, so those two kinds
+    # still fall back to `None` here — the same tier-3-only behaviour this
+    # pipeline had before `budget.py` existed, not a regression. A caller
+    # that wants real `changes`/`task` tiering resolves its own `Scope` and
+    # calls `budget()` directly.
+    try:
+        resolved_scope = resolve_scope(scope, context.repo_path, context)
+    except ScopeError:
+        resolved_scope = None
+
     # The *call* is handed over, not its result: a conforming dimension can
     # still read and parse eagerly before returning its lazy iterator, and an
-    # exception raised in that window must be redacted like any other.
-    kept, truncated, omitted_count, hits = _budget(
-        lambda: descriptor.collect(context), budget_bytes=budget_bytes
+    # exception raised in that window must be redacted like any other. Passed
+    # as a callable, not a single iterable, because `budget()` may invoke it
+    # up to once per relevance tier.
+    result = _run_budget(
+        lambda: _redacting_exceptions(lambda: descriptor.collect(context)),
+        scope=resolved_scope,
+        limit_bytes=budget_bytes,
     )
+    kept = result.excerpts
+    truncated = result.truncation.truncated
+    omitted_count = result.truncation.omitted_count
+    hits = result.redactions
 
     sought = tuple(descriptor.sources_sought)
     # Clamped to the declared checklist. `context.sources_found` is the raw read
@@ -99,6 +119,7 @@ def run_dimension(
         omitted_count=omitted_count,
         redactions=hits,
         had_redactions=bool(hits),
+        truncation=result.truncation,
         # Unconditional: the pack is the only way evidence leaves the engine, so
         # copying the context's warnings here is what makes FR-004 hold for
         # every response and every report without any adapter opting in.
@@ -227,61 +248,3 @@ def _redacted_exception(exc: BaseException) -> BaseException:
     except Exception:  # noqa: BLE001 - any failure falls back, never propagates
         detail = redact_module.scan(str(exc)).text
         return DimensionFailure(f"{type(exc).__name__}: {detail}")
-
-
-def _budget(
-    raw_excerpts, budget_bytes: int
-) -> tuple[list[Excerpt], bool, int, tuple[RedactionHit, ...]]:
-    """Consume ``raw_excerpts`` lazily, redacting and byte-capping as it goes.
-
-    ``raw_excerpts`` may be an iterable or a zero-argument callable returning
-    one; see :func:`_redacting_exceptions`, which protects both the call and the
-    iteration.
-
-    Stops at the **first excerpt that does not fit**: that excerpt is pulled,
-    redacted, rejected, counted, and iteration ends. The remainder is never
-    drained (AC #5a) — ``omitted_count`` is therefore a lower bound.
-
-    Setting ``truncated`` from an actual rejection, rather than from
-    ``used >= budget_bytes``, is what makes it honest: a stream that ends exactly
-    at the budget boundary reports ``truncated=False``, because nothing was ever
-    rejected.
-
-    T005 replaces this naive cap with real relevance ordering; the contract it
-    must preserve is the laziness and the lower-bound semantics.
-    """
-    kept: list[Excerpt] = []
-    hits: list[RedactionHit] = []
-    used = 0
-
-    for raw in _redacting_exceptions(raw_excerpts):
-        # Redaction happens here, at the evidence layer, before an excerpt can
-        # reach a pack, a report, a log or an error message (NFR-010). It runs
-        # on the rejected excerpt too — a rejected excerpt is still an excerpt
-        # this process has held in memory.
-        safe_path, path_hits = _redact_paths((raw.path,))
-        # The text that lands on the pack comes from `redact` — the seam T001
-        # fixed and that every dimension is written against — while `scan`
-        # supplies the hit metadata. They are the same computation (`redact` is
-        # defined as `scan(text).text`), so the second pass costs a little CPU
-        # inside an already byte-bounded excerpt and buys the property that the
-        # seam function stays the single thing governing pack content.
-        result = redact_module.scan(raw.text)
-        safe = replace(raw, path=safe_path[0], text=redact_module.redact(raw.text))
-        hits.extend(path_hits)
-        hits.extend(
-            replace(hit, path=safe.path, line=raw.start_line + hit.line - 1)
-            for hit in result.hits
-        )
-        size = len(safe.text.encode("utf-8"))
-
-        if used + size > budget_bytes:
-            # The rejected excerpt is dropped, but its hits are kept: a secret
-            # that only ever appeared in truncated material still happened, and
-            # `had_redactions` must fire for it (NFR-011).
-            return kept, True, 1, tuple(hits)
-
-        kept.append(safe)
-        used += size
-
-    return kept, False, 0, tuple(hits)

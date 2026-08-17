@@ -59,6 +59,23 @@ class SourceMiss:
     reason: str
 
 
+@dataclass(frozen=True)
+class TruncationRecord:
+    """The structured truncation report FR-011b requires: whether the byte
+    budget rejected anything, and how many excerpts it rejected.
+
+    Mirrors :class:`EvidencePack`'s own ``truncated``/``omitted_count`` fields
+    — kept separately here, rather than replacing them, because sixteen other
+    tasks are already tested against those two flat fields (T001's contract).
+    ``EvidencePack.truncation`` is the structured form the same computation
+    also produces, for a caller that wants one field to check.
+    """
+
+    truncated: bool
+    omitted_count: int = field(default=0)
+    """A lower bound, never a total (:mod:`easy_verifier.core.budget`)."""
+
+
 class DimensionContext(Protocol):
     """What ``collect`` is handed. Structural, so it needs no import cycle.
 
@@ -146,6 +163,12 @@ class EvidencePack:
     also happens on excerpts the byte budget *rejected*, which never appear on
     the pack, and the advisory must still fire for those.
     """
+
+    truncation: TruncationRecord | None = field(default=None)
+    """The structured form of ``truncated``/``omitted_count`` (T005,
+    FR-011b). ``None`` only when a pack was built by a caller that predates
+    T005 and never went through :func:`easy_verifier.core.budget.budget`;
+    every pack ``run_dimension`` builds sets this."""
 
 
 @dataclass(frozen=True)
