@@ -13,8 +13,7 @@
 ### Todo
 
 **Wave 1 — Foundation (blocking; nothing in Wave 2+ starts until the pipeline contract is fixed)**
-- [ ] **T003** — `scope.py`: task/changes/worktree/project scope resolution | backend-developer | C1 | Risk: Low | P0
-- [ ] **T005** — `budget.py`: relevance ordering, lazy consumption, explicit truncation | backend-developer | C2 | Risk: Med | P0
+- [ ] **T005** — `budget.py`: relevance ordering, lazy consumption, explicit truncation | backend-developer | C2 | Risk: Med | P0 | **Unblocked** — T003 merged 2026-08-16, so `Scope` now supplies the changed-file set driving relevance tier 1. Next to spawn.
 
 **Wave 2 — Dimensions (parallelizable once Wave 1 is stable)**
 - [ ] **T007** — Shared doc-extraction helper + solution-fit, requirement-fidelity, code-quality | backend-developer | C2 | Risk: Low | P0
@@ -48,9 +47,10 @@ _(none)_
 - [x] **T001** — Tracer bullet: scaffold + `run_dimension()` contract + `architecture` dimension + minimal CLI | C2 | Completed: 2026-08-15 | 49 tests · code-review P0 0/P1 1 (fixed)/P2 2 (both taken) · security-review 0 HIGH 0 MEDIUM · merged to `plan/stage2-task-breakdown`
 - [x] **T004** — `redact.py`: evidence-layer secret fingerprinting | C2 | Risk: High | Completed: 2026-08-16 | 53 tests · code-review P0 0/P1 0/**P2 2 (accepted residue, not fixed — see below)**/P3 2 · security-review 0 HIGH 0 MEDIUM · blast-radius run · merged to `develop` (`1acfa5c`). **Accepted residue**: a credential assignment whose value is followed by trailing prose with no comment marker, and single-character-class tokens of 12–31 chars, both pass through unredacted — they sit below the detector floors on purpose, so the tool stays usable when it evaluates its own repo (this repo is its own fixture).
 - [x] **T006** — `findings.py`: finding schema + `validate_findings` | C1 | Completed: 2026-08-16 | 29 tests · code-review **no findings** · security-review 0 HIGH 0 MEDIUM · `verify` run by Supervisor against a real `run_dimension()` pack · merged to `develop` (`4b466d6`)
+- [x] **T003** — `scope.py`: task/changes/worktree/project scope resolution | C1 | Risk: Low | Completed: 2026-08-16 | 32 tests · code-review P0 0/**P1 1 (fixed)**/P2 2 (1 fixed, 1 waived)/P3 1 (not taken) · security-review ☐ N/A (Low risk; subprocess surface covered by code-review's security reviewer) · `verify` run by Supervisor end-to-end across all four scopes · merged to `develop`. **P1 was a REPEAT defect**: `_walk_files` followed symlinked directories out of the repo — the same escape T002 already fixed in `context.py:_walk`. `scope.py` reimplemented the walk from scratch and reintroduced it; fixed with a containment check on entry, pinned by 2 regression tests. **Waived**: the guide's predicted edits to `models.py`/`pipeline.py`/`cli.py` were skipped — all 9 ACs pass without them and `run_dimension()`'s contract stays fixed. Cost: `resolve_scope` is unreachable until T005 lands.
 - [x] **T002** — `context.py`: kit detection, kit-aware/standalone modes | C2 | Completed: 2026-08-16 | 35 tests · code-review P2×1 fixed · security-review 0 findings · `verify` run by Supervisor on the real CLI in both modes · merged to `develop` (`89046c8`). **Integration defect caught and fixed at Stage 5**: T002 moved path validation into `detect_context`, silently dropping T004's redaction of the `RepoPathError` message. Neither branch's tests caught it — each passed alone; the defect existed only in the combination. Restored in `context.py:_resolve_repo_path`.
 
-> Post-merge state on `develop`: **166 tests pass**, `ruff` clean. 4 of 17 tasks done.
+> Post-merge state on `develop`: **198 tests pass**, `ruff` clean. 5 of 17 tasks done.
 
 ---
 
@@ -76,6 +76,6 @@ _(none)_
 | 1 Environment Setup | ✅ Done |
 | 1.5 Sub-Agent Architecture | ✅ Done |
 | 2 Planning (/plan) | ✅ Done |
-| 3 Execution | 🔄 In Progress (4/17 done) |
+| 3 Execution | 🔄 In Progress (5/17 done) |
 | 4 Review | 🔄 In Progress |
 | 5 Integration & Verify | 🔄 In Progress |

@@ -372,3 +372,24 @@ residue. Describing either as sufficient alone would be false.
 **Watch for**: the rubber-stamped HITL gate. Operators who approve without
 reading make the gate worse than useless, because it manufactures a record of
 consent that was never really given.
+
+### 2026-08-16 — T003 merged; the "Files to Change" table is a prediction, not a contract
+
+`resolve_scope(kind, repo_path, context, **args)` → `Scope(kind, files, changed_files, diff,
+task_ref, notes)`. Four kinds: `project` (filesystem walk, works without git), `worktree`
+(uncommitted), `changes` (range/commit/branch via local git, parent-normalised, empty-tree base for
+a root commit), `task` (guide + parsed acceptance criteria). `Scope`/`TaskRef` live in `scope.py`,
+not `models.py`, while nothing else imports them.
+
+**Waiver recorded**: the agent skipped the guide's predicted edits to `models.py`, `pipeline.py` and
+`cli.py`, flagged it, and the Supervisor waived it. The guide's Files to Change table is a Stage 2
+*prediction*; the Acceptance Criteria are the contract, and all nine pass without the wiring.
+Wiring `Scope` into `run_dimension()` here would be the same unrequested cross-cutting change that
+produced the T002/T004 collision. T005 is the declared consumer; T015 owns the CLI surface.
+
+**Accepted cost**: `resolve_scope` is unreachable as merged — dead code until T005 lands. Revisit
+the waiver if T005 slips.
+
+**Precedent worth reusing**: an agent flagging a deviation for sign-off rather than silently
+following a stale prediction is the behaviour we want. Judge deviations against the ACs, not the
+file table.
