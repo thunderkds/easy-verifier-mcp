@@ -14,12 +14,12 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t007_doc_dimensions.py` (40 tests, all 10 ACs + full Edge Case Checklist) + 1 pre-existing test updated for the growing registry, `tests/test_t001_pipeline.py::test_registry_is_a_plain_dict_of_descriptors` |
-| Verification command run | ☑ pass | `PYTHONPATH=src python -m pytest tests/test_t007_doc_dimensions.py -q` → `40 passed in 0.20s`; `for d in architecture solution-fit requirement-fidelity code-quality; do PYTHONPATH=src python -m easy_verifier.adapters.cli "$d" --repo . \| head -5; done` → all 4 print a well-formed pack header (`dimension`, `mode: kit-aware`, `scope: project`, `files_read`), exit 0 |
-| Negative cases hold | ☑ pass | Empty repo → `coverage_score == 0.0`, no invented content (`test_code_quality_with_no_lint_config_has_zero_coverage_no_invention`, `test_requirement_fidelity_standalone_with_no_frs_states_the_miss_plainly`); symlink escape not followed (`test_symlink_to_outside_the_repo_is_not_followed`); `.env`/`id_rsa`/`.pem`/etc. never read (`test_secret_bearing_patterns_cover_the_ddr_list`, `test_secret_in_pyproject_is_fingerprinted_and_dotenv_is_never_read`) |
-| verify | ☑ pass | Full repo test suite run post-implementation: `PYTHONPATH=src python -m pytest -q` → `264 passed in 0.81s` (0 regressions across T001–T006's suites) — skill run, feature confirmed working — pass |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t007_doc_dimensions.py` — `55 passed in 0.38s`, covering all 10 ACs plus standalone docs-first/code fallback, real source-file redaction, task-guide glob safety, nested requirement sections, truthful secret-file miss reasons, resolved-target secret aliases, and non-Markdown config extraction. `tests/test_t001_pipeline.py::test_registry_is_a_plain_dict_of_descriptors` covers the expanded registry. |
+| Verification command run | ☑ pass | Supervisor rerun in the assigned worktree: `PATH=.venv/bin:$PATH PYTHONPATH=src pytest tests/test_t007_doc_dimensions.py -q` → `55 passed in 0.38s`. All four CLI dimensions were run independently with `PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli <dimension> --repo . --budget-bytes 256`; each returned a well-formed kit-aware pack and exit 0. |
+| Negative cases hold | ☑ pass | Empty repo yields no invented evidence; escaping symlinks are not followed; absent/escaping/directory secret-shaped paths retain truthful reasons; `.env*`/key files are never read; safe-name symlinks resolving to secret-bearing targets are excluded in direct, discovered-doc, and task-glob paths; standalone code fallback fingerprints a runtime-assembled fake credential in a real `.py` source while `.env` remains unread. |
+| verify | ☑ pass | Supervisor Stage 5 equivalent (Codex cannot invoke Claude's built-in `verify`): focused `55 passed in 0.38s`; full `279 passed in 1.01s`; `ruff check src tests` → `All checks passed!`; changed-file `ruff format --check` → `4 files already formatted`; `git diff --check develop...HEAD` → exit 0. |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed: `dimensions/_doc_extract.py` (new), `dimensions/{solution_fit,requirement_fidelity,code_quality,architecture}.py`, `dimensions/__init__.py`, `core/context.py` (DDR-0002 exclusion added to `read_source`, the only shared-code change), `tests/test_t007_doc_dimensions.py`, one assertion update in `tests/test_t001_pipeline.py`. Skipped: `core/pipeline.py`, `core/budget.py`, `core/redact.py`, `core/scope.py` — untouched, contract unchanged, exercised only through their existing public seams. |
-| Full smoke suite still green (no regression) | ☑ pass | `264 passed in 0.81s` (was 224 pre-T007 per develop baseline; +40 new tests) |
+| Full smoke suite still green (no regression) | ☑ pass | `279 passed in 1.01s` (224-test develop baseline; +55 T007 tests) |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | No UI in this project (PROJECT_SPEC.md Constraint 11) |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | No UI in this project |
 | **UI: Responsiveness at target viewports** | ☐ N/A | No UI in this project |
@@ -45,9 +45,9 @@ not exist as CLI choices at all.
 
 **AFTER** (captured 2026-08-17T03:26:54Z):
 ```
-$ PYTHONPATH=src python -m pytest tests/test_t007_doc_dimensions.py -q
-........................................                                 [100%]
-40 passed in 0.20s
+$ PATH=.venv/bin:$PATH PYTHONPATH=src pytest tests/test_t007_doc_dimensions.py -q
+.......................................................                  [100%]
+55 passed in 0.38s
 
 $ for d in architecture solution-fit requirement-fidelity code-quality; do \
     PYTHONPATH=src python -m easy_verifier.adapters.cli "$d" --repo . | head -5; done
@@ -81,3 +81,13 @@ content nor bypassed secret exclusion (DDR-0002) or redaction (NFR-010) to produ
 
 **WITNESS**: Backend-Implementer (`backend-developer`), 2026-08-17, ran both captures directly in
 `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-t007` as part of this task.
+
+---
+
+## Stage 4 Review Summary
+
+- **P0: 0.**
+- **P1: 7 fixed.** The original review fixed under-matched `.env*` / `credentials*` patterns. The resumed review fixed six additional contract defects: secret exclusion ordering, missing standalone docs/code fallback, omitted task acceptance criteria, hierarchy-blind section boundaries, safe-name symlink aliases to secret files, and non-Markdown comments suppressing configuration evidence.
+- **P2: 2 accepted.** (1) The architecture snapshot was committed with the refactor rather than carrying independently verifiable pre-refactor provenance; it remains a useful regression lock but is weaker evidence for AC #8. (2) A clipped subsection's marker mixes absolute file line positions with a section-relative total; citations remain accurate, but the explanatory wording can be clearer. Neither changes pack safety or acceptance behavior.
+- **P3: 0.**
+- Final independent re-review after commit `39edbd3` / cherry-pick `3c953b7`: **P0 0, P1 0**. No blocking findings remain.
