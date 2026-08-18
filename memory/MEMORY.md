@@ -15,6 +15,54 @@
 
 ---
 
+## ▶ START HERE — handoff from the 2026-08-17 session
+
+**State**: **T007 is Stage 4/5 complete and ready to merge** — 7 of 17 tasks done after integration.
+The assigned branch is `feat/t007-doc-dimensions` at `6b5b127`: **55 focused tests, 279 full
+suite, ruff clean**, final independent re-review P0 0/P1 0.
+
+**Unpushed**: local `develop` is ahead of the remote. The remote is named **`github`**, not `origin` —
+this is not cosmetic, it breaks tooling (see below).
+
+**Next action**: merge T007, then continue **Wave 2** with T008 (`security`), T009, T010, or T011.
+T007 re-opened T005's tier-2 narrowing without changing `budget.py`: declared kit sources and
+task-guide globs are read directly; standalone mode uses discovered docs then bounded code fallback.
+
+**Spawn-prompt additions earned so far — keep all three in every spawn:**
+1. *"Commit your work before reporting ready-for-review."* (T003 reported done with zero commits.)
+2. *"Before writing any file walk or path resolver, find the existing one and port its hardening."*
+   (T003 rewrote a walk and reproduced T002's exact symlink escape.)
+3. *"Implement the guide's prescribed Approach; if you intend to substitute a different design, say so
+   before you build it, not in the completion report."* (T005 substituted single-eviction admission
+   for the guide's tier passes; it did not satisfy AC #2.)
+
+**Review procedure this session proved out — keep doing it**: re-run an ordering/selection AC with
+*adversarial numbers*, not the author's fixture. That is what caught T005's P1. Reading the diff did
+not, because the module docstring defended the wrong design coherently and the agent's own
+self-report was honest and detailed.
+
+**Tooling gotcha**: the built-in `security-review` skill **cannot run in this repo** — it resolves the
+diff via `origin/HEAD` and the remote is named `github`. Either add an `origin` remote / `HEAD` ref,
+or review the diff surface directly and record that substitution in the evidence (what T005 did).
+
+**Waiting on the user (do not proceed without a decision)**:
+- **T017 HITL gate** — FR-022 says adapters produce "identical" output, the KPI table says
+  "byte-equal". Timestamps and host-vs-container paths differ by construction, so byte-equality is
+  unachievable as written. Blocks the whole verification suite.
+
+**Standing traps — read `learnings.md` before verifying or merging**:
+- Agent worktrees have **no `.venv`**; verify with the main checkout's interpreter and read pytest's
+  **exit code directly** (piping through `tail` masks it, and did let a commit land on a red suite).
+  Symlinking `.venv` into the worktree also satisfies the merge gate's `PATH=.venv/bin:$PATH` pattern.
+- The merge gate blocks while the board still shows the task **In Progress** — move it to Done and
+  copy `TASK_REVIEW_Txxx.md` into the main checkout *before* merging.
+- The gate's own error message recommends `CLAUDE_ACTIVE_TASK=`, which **cannot work** from inside a
+  Bash call. Use the state file, written with `date -u`; a **future** timestamp is rejected as hard as
+  a stale one. Clear it when the task finishes.
+- **Never commit realistic credential shapes**, even in tests — assemble them at runtime.
+
+---
+
 ## Index
 
 <!-- Format: - [Title](cold-file.md#section) — one-line summary.
@@ -47,6 +95,11 @@
 - ▶ **[T001 shipped — the `run_dimension()` contract is fixed](decisions.md)** (merged 2026-08-15). Signatures locked; 16 tasks written against it. File reading lives in `ctx.read_source()`, not the dimension. `sources_found` is clamped to `sources_sought` so the two partition it exactly; unprobed sources report `not examined`, never `not found`.
 - ▶ **[T004 shipped — redaction is real](decisions.md)** (merged 2026-08-16, `1acfa5c`). Layered detectors: named patterns → entropy → per-segment key material, the last being what makes paths and URI passwords safe while keeping paths readable. **Two misses accepted, not fixed**: a credential assignment whose value is followed by trailing prose with no comment marker, and single-char-class tokens of 12–31 chars. Both anchors exist so the tool stays usable evaluating its own repo. T013 unblocked.
 - ▶ **[T002, T006 and T003 merged](decisions.md)** (2026-08-16). `develop`: **198 tests**, ruff clean, **5/17 tasks done**. T003 = `resolve_scope()`, four scope kinds, read-only git only.
+- ▶ **[T005 merged — Wave 1 complete](decisions.md)** (2026-08-17, `cd7bb57`). `develop`: **224 tests**, ruff clean, **6/17 done**. `budget(collect, scope, limit_bytes)` — `collect` is a **zero-arg callable**, invoked once per non-empty tier (≤3 passes). `resolve_scope` finally wired into `run_dimension`, closing T003's waived debt; `changes`/`task` still tier as `None` there.
+- ▶ **[T007 doc dimensions complete](decisions.md)** — shared extraction serves exactly four dimensions; kit declarations and task-guide globs are direct candidates, while standalone uses discovered docs then bounded code fallback. Secret exclusion checks resolved targets.
+- ✅ **[Tier-2 narrowing revisited](decisions.md)** — no `budget.py` change: source selection makes kit artifacts candidates without forcing a permanent second relevance pass on every call.
+- ⚠️ **[A test can pass *because of* the defect's exact shape](learnings.md)** — T005's AC test used a tier-3 prefix exactly short enough for its one-eviction bug to look like tiering; one more excerpt and the pack held zero changed files. Re-run ordering/selection ACs with adversarial numbers, never the author's fixture. An honestly flagged deviation is a pointer to test harder, not sign-off.
+- ⚠️ **[A mode test must require mode-specific positive evidence](learnings.md)** — T007's standalone test passed with four empty packs. Pin both branches: docs prevent fallback, and docs-silent input requires a real source excerpt. Resolve paths before secret classification so safe-name aliases cannot expose `.env`.
 - ▶ **[A guide's "Files to Change" table is a prediction, not a contract](decisions.md)** — T003 skipped its predicted `models.py`/`pipeline.py`/`cli.py` edits, flagged it, and was waived: the **Acceptance Criteria** are the contract. Judge deviations against ACs, not the file table. Cost: `resolve_scope` unreachable until T005.
 - ⚠️ **[A new module re-implementing a traversal re-inherits old bugs](learnings.md)** — T003's `scope.py` rewrote a file walk and reproduced the exact symlink-escape T002 had already fixed in `context.py:_walk`. Canonical containment test is `path.resolve().is_relative_to(repo.resolve())`, on entry **and** for symlinked files; it now lives in two places that must not drift. Check T007/T008 for the same.
 - ⚠️ **[Agents may report "ready for review" with zero commits](learnings.md)** — T003 did. Always check `git log develop..HEAD` and `git status` in the worktree before trusting the report.

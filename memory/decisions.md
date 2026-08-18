@@ -393,3 +393,48 @@ the waiver if T005 slips.
 **Precedent worth reusing**: an agent flagging a deviation for sign-off rather than silently
 following a stale prediction is the behaviour we want. Judge deviations against the ACs, not the
 file table.
+
+### 2026-08-17 — T005 merged; relevance tiering costs a pass per tier, and `resolve_scope` is finally reachable
+
+`budget(collect, scope, limit_bytes)` — note `collect` is a **zero-arg callable**, not an iterable.
+It is invoked once per *non-empty* tier (never more than three times), each pass admitting only that
+tier's excerpts and stopping every remaining pass the instant one excerpt does not fit. Tier
+membership is knowable from `scope` alone before any excerpt exists, which is what makes tiering
+possible without sorting the stream. A scope carrying nothing keeps the caller to the single tier-3
+pass the pipeline always ran.
+
+**The design tension, resolved the expensive way on purpose**: perfect relevance ordering wants the
+whole candidate set in hand; laziness forbids it. Single-pass admission cannot resolve this — see the
+learnings entry on T005's P1. The accepted cost is that a pass which never hits a misfit drains its
+stream fully, so a file-reading `collect` can be traversed up to three times. Chosen by the user over
+waiving AC #2 or a bounded lookahead buffer.
+
+**`resolve_scope` is now wired into `run_dimension`** (T003's waived debt, closed as predicted).
+`project`/`worktree` resolve for real; `changes`/`task` still fall back to `scope=None` for tiering
+because `run_dimension`'s signature has no way to accept a `ref`/`task_id` — a caller wanting those
+resolves its own `Scope` and calls `budget()` directly.
+
+**Tier 2 narrowed to `scope.task_ref.guide_path` only** — kit-artifact names (`PROJECT_SPEC.md` etc.)
+were dropped from it. A fixed, non-empty tier-2 set makes that tier reachable on *every* call, forcing
+a `collect()` pass and usually a full drain even for callers with no scope; it broke 5 T001 tests
+pinning the single-pass contract. **Cost to revisit**: under `project`/`worktree` scope the spec now
+ranks tier 3 alongside ordinary source, so a tight budget can drop it ahead of unrelated code. **T007
+(four doc-shaped dimensions) is the task that should re-open this rather than inherit it silently.**
+
+**No per-excerpt byte-overhead constant**, against the guide's Approach text: adding one would move
+every existing T001 byte threshold. AC #8's "documented tolerance" is satisfied by a zero tolerance.
+
+---
+
+## 2026-08-18 — T007 doc dimensions: direct kit declarations, docs-first standalone fallback
+
+**Decision**: the four document-shaped dimensions share one narrow extractor. Kit-aware mode reads
+each descriptor's declared sources, including the generic `tasks/TASK_GUIDE_*.md` source for
+acceptance criteria. Standalone mode reads `RepoContext.doc_sources` first and consults a bounded,
+containment-safe code inventory only when the documents yield no relevant evidence.
+
+**Tier-2 outcome**: T005's narrowing was re-opened but `budget.py` remains unchanged. Relevance
+tiering and source selection are separate concerns; T007 makes the important kit sources candidates
+inside collection rather than forcing a permanent second budget pass on every dimension call.
+**Security boundary**: secret-file exclusion checks both the requested path and the resolved target,
+so a safe-name symlink cannot alias `.env` bytes into an evidence pack.

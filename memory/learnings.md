@@ -208,3 +208,41 @@ discrepancy against the agent's (correct) test count before the cause was found.
 `PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/ -q`
 and always check pytest's exit code directly — piping through `tail` masks it, which let a commit
 land on a failing suite earlier in the same session.
+
+## 2026-08-17 — A test can pass *because of* the defect's exact shape (T005 P1)
+
+T005's first implementation admitted excerpts in arrival order and, when one didn't fit, evicted at
+most **one** already-admitted lower-tier excerpt to make room. It called this tiering. Its own AC test
+(`test_changed_files_are_admitted_first_and_survive_a_late_arrival`) passed — because that test put
+exactly 3 tier-3 excerpts ahead of the tier-1 ones, short enough that all tier-1 items arrived before
+the budget filled and a single eviction covered the last. Add **one** more tier-3 excerpt and the pack
+contains zero changed files: the stream stops at the first misfit and the tier-1 items are never
+pulled at all.
+
+**How it was caught**: not by reading the diff — the module docstring argued the design confidently
+and coherently. It was caught by *running the requirement's own success criterion with different
+numbers* than the test chose. The guide said "100 excerpts, 3 from changed files"; the test used 3
+tier-3 + 3 tier-1. Re-running with 6 tier-3 + 3 tier-1 falsified it in one shot.
+
+**Standing procedure**: when an AC test passes for a feature whose whole value is *ordering* or
+*selection under pressure*, re-run it with the adversarial arrangement rather than trusting the
+author's chosen fixture. A green test proves the implementation handles *that* input, and an author
+who misunderstood the requirement will pick an input consistent with their misunderstanding.
+
+**Second-order lesson**: the agent's blocker note was honest and detailed — it *volunteered* that it
+had substituted a "bounded single-eviction step" for the guide's prescribed tier passes, and called it
+a considered deviation. Honest self-reporting is not the same as a correct deviation. Read a flagged
+deviation as a **pointer to where to test hardest**, not as sign-off.
+
+## 2026-08-18 — A mode test is vacuous unless it requires mode-specific evidence (T007)
+
+T007's first standalone test asserted only `mode == standalone`, the warning, and no `.py`
+citations. Every dimension returned an empty pack and the test still passed, while FR-003's docs-first
+then code fallback did not exist.
+
+**Review pattern**: for a fallback contract, build two fixtures: one where primary evidence exists
+and proves fallback is not touched, and one where primary evidence is silent and proves fallback is
+the only path to the expected excerpt. Assert positive evidence, not merely the absence of the
+fallback type.
+
+**Security pattern**: classify a file after resolving it, but before reading bytes. Checking only the
