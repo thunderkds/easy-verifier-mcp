@@ -24,6 +24,7 @@ SOURCES_SOUGHT: tuple[str, ...] = (
     "PRD.md",
     "REQUIREMENT.md",
     "PROJECT_SPEC.md",
+    "tasks/TASK_GUIDE_*.md",
 )
 
 MARKERS: tuple[str, ...] = (
@@ -32,6 +33,7 @@ MARKERS: tuple[str, ...] = (
     "fr-0",
     "nfr-0",
     "acceptance criteri",
+    "success criteri",
     "requirement",
     "out of scope",
 )

@@ -57,9 +57,34 @@ def test_standalone_repo_produces_a_valid_pack_docs_over_code(module) -> None:
 
     assert pack.mode == MODE_STANDALONE
     assert any("Limited context" in warning for warning in pack.warnings)
-    # FR-003: docs preferred over code — none of these dimensions ever declare
-    # a `.py` source, so a standalone pack can never cite one.
-    assert all(not excerpt.path.endswith(".py") for excerpt in pack.excerpts)
+    assert pack.files_read
+    assert pack.excerpts
+
+
+@pytest.mark.parametrize("module", DOC_SHAPED, ids=DOC_SHAPED_NAMES)
+def test_standalone_docs_prevent_code_fallback(tmp_path: Path, module) -> None:
+    (tmp_path / "README.md").write_text(
+        "A useful standalone document with no headings.\n", encoding="utf-8"
+    )
+    (tmp_path / "implementation.py").write_text(
+        "def implementation():\n    return 'code fallback'\n", encoding="utf-8"
+    )
+
+    pack = run_dimension(module.DESCRIPTOR, tmp_path)
+
+    assert pack.files_read == ("README.md",)
+    assert {excerpt.path for excerpt in pack.excerpts} == {"README.md"}
+
+
+def test_standalone_code_discovery_is_bounded(tmp_path: Path) -> None:
+    from easy_verifier.core.context import detect_context
+
+    for name in ("a.py", "b.py", "c.py"):
+        (tmp_path / name).write_text("value = 1\n", encoding="utf-8")
+
+    context = detect_context(tmp_path)
+
+    assert tuple(context.iter_code_sources(limit=2)) == ("a.py", "b.py")
 
 
 # --------------------------------------------------------------------------
@@ -273,6 +298,72 @@ def test_document_with_no_headings_yields_whole_file_excerpt(tmp_path: Path) -> 
     assert "Just a paragraph" in matching[0].text
 
 
+def test_matching_parent_section_retains_nested_subsections(tmp_path: Path) -> None:
+    (tmp_path / "PRD.md").write_text(
+        "## Functional Requirements\n\n"
+        "Intro.\n\n"
+        "### Context loading\n\n"
+        "| ID | Requirement |\n"
+        "|---|---|\n"
+        "| FR-001 | Load declared context. |\n\n"
+        "## Out of Scope\n\n"
+        "Unrelated boundary.\n",
+        encoding="utf-8",
+    )
+
+    pack = run_dimension(requirement_fidelity.DESCRIPTOR, tmp_path)
+    functional = next(
+        excerpt
+        for excerpt in pack.excerpts
+        if "## Functional Requirements" in excerpt.text
+    )
+
+    assert "FR-001" in functional.text
+    assert "Out of Scope" not in functional.text
+
+
+def test_requirement_fidelity_collects_task_acceptance_criteria(
+    tmp_path: Path,
+) -> None:
+    tasks = tmp_path / "tasks"
+    tasks.mkdir()
+    (tasks / "TASK_GUIDE_T123.md").write_text(
+        "# Task T123\n\n"
+        "## Acceptance Criteria\n\n"
+        "- The feature returns citable evidence.\n",
+        encoding="utf-8",
+    )
+
+    pack = run_dimension(requirement_fidelity.DESCRIPTOR, tmp_path)
+
+    assert "tasks/TASK_GUIDE_*.md" in pack.sources_sought
+    assert "tasks/TASK_GUIDE_*.md" in pack.sources_found
+    assert "tasks/TASK_GUIDE_T123.md" in pack.files_read
+    assert any(
+        excerpt.path == "tasks/TASK_GUIDE_T123.md"
+        and "returns citable evidence" in excerpt.text
+        for excerpt in pack.excerpts
+    )
+
+
+def test_task_guide_glob_does_not_follow_outside_symlink(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "TASK_GUIDE_T999.md").write_text(
+        "## Acceptance Criteria\n\nOutside content must not be read.\n",
+        encoding="utf-8",
+    )
+    repo = tmp_path / "repo"
+    tasks = repo / "tasks"
+    tasks.mkdir(parents=True)
+    (tasks / "TASK_GUIDE_T999.md").symlink_to(outside / "TASK_GUIDE_T999.md")
+
+    pack = run_dimension(requirement_fidelity.DESCRIPTOR, repo)
+
+    assert "tasks/TASK_GUIDE_T999.md" not in pack.files_read
+    assert not any("Outside content" in excerpt.text for excerpt in pack.excerpts)
+
+
 def test_code_quality_with_no_lint_config_has_zero_coverage_no_invention(
     tmp_path: Path,
 ) -> None:
@@ -283,6 +374,20 @@ def test_code_quality_with_no_lint_config_has_zero_coverage_no_invention(
     assert set(m.source for m in pack.sources_missing) == set(
         code_quality.SOURCES_SOUGHT
     )
+
+
+def test_non_markdown_config_is_bounded_whole_file_evidence(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "# unrelated comment\n\n[tool.ruff]\nline-length = 88\n",
+        encoding="utf-8",
+    )
+
+    pack = run_dimension(code_quality.DESCRIPTOR, tmp_path)
+
+    config = next(
+        excerpt for excerpt in pack.excerpts if excerpt.path == "pyproject.toml"
+    )
+    assert "[tool.ruff]" in config.text
 
 
 def test_requirement_fidelity_standalone_with_no_frs_states_the_miss_plainly(
@@ -358,12 +463,12 @@ def _fake_secret() -> str:
     return "FAKE" + "fake" + "9f2Ba7Qz1XcV8mNp4LrT6Ke0"
 
 
-def test_secret_in_pyproject_is_fingerprinted_and_dotenv_is_never_read(
+def test_secret_in_standalone_source_fallback_is_fingerprinted_and_env_excluded(
     tmp_path: Path,
 ) -> None:
     secret = _fake_secret()
-    (tmp_path / "pyproject.toml").write_text(
-        f'[tool.demo]\napi_key = "{secret}"\n', encoding="utf-8"
+    (tmp_path / "implementation.py").write_text(
+        f'API_KEY = "{secret}"\n', encoding="utf-8"
     )
     (tmp_path / ".env").write_text(
         f"AWS_SECRET_ACCESS_KEY={secret}\n", encoding="utf-8"
@@ -374,10 +479,15 @@ def test_secret_in_pyproject_is_fingerprinted_and_dotenv_is_never_read(
 
     assert secret not in pack_json
     assert pack.had_redactions
-    assert any(e.path == "pyproject.toml" for e in pack.excerpts)
+    source_excerpt = next(
+        excerpt for excerpt in pack.excerpts if excerpt.path == "implementation.py"
+    )
+    assert pack.redactions
+    assert pack.redactions[0].fingerprint in source_excerpt.text
+    assert ".env" not in pack.files_read
 
-    # Independently confirm the .env exclusion mechanism: reported as
-    # excluded, distinct from "not found", and its bytes never touched.
+    # The same pack-level fixture independently confirms that the co-located
+    # .env is reported as excluded and its bytes never become readable.
     from easy_verifier.core.context import RepoContext
 
     ctx = RepoContext(repo_path=tmp_path, mode="standalone", scope="project")
@@ -415,3 +525,86 @@ def test_secret_bearing_patterns_cover_the_ddr_list(tmp_path: Path) -> None:
         ctx = RepoContext(repo_path=tmp_path, mode="standalone", scope="project")
         assert ctx.read_source(name) is None
         assert ctx.sources_missing[-1].reason == "excluded: secret-bearing"
+
+
+def test_absent_secret_bearing_path_is_reported_not_found(tmp_path: Path) -> None:
+    from easy_verifier.core.context import RepoContext
+
+    ctx = RepoContext(repo_path=tmp_path, mode="standalone", scope="project")
+
+    assert ctx.read_source(".env") is None
+    assert ctx.sources_missing[-1].reason == "not found in the target repository"
+
+
+def test_secret_bearing_path_outside_repo_preserves_containment_reason(
+    tmp_path: Path,
+) -> None:
+    from easy_verifier.core.context import RepoContext
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    outside = tmp_path / ".env"
+    outside.write_text("must not be read\n", encoding="utf-8")
+    ctx = RepoContext(repo_path=repo, mode="standalone", scope="project")
+
+    assert ctx.read_source("../.env") is None
+    assert ctx.sources_missing[-1].reason == (
+        "resolves outside the repository; not followed"
+    )
+
+
+def test_secret_bearing_directory_preserves_regular_file_reason(tmp_path: Path) -> None:
+    from easy_verifier.core.context import RepoContext
+
+    (tmp_path / ".env").mkdir()
+    ctx = RepoContext(repo_path=tmp_path, mode="standalone", scope="project")
+
+    assert ctx.read_source(".env") is None
+    assert ctx.sources_missing[-1].reason == "not a regular file"
+
+
+def test_direct_safe_alias_to_secret_bearing_file_is_excluded(tmp_path: Path) -> None:
+    from easy_verifier.core.context import RepoContext
+
+    (tmp_path / ".env").write_text("raw secret bytes\n", encoding="utf-8")
+    (tmp_path / "safe.txt").symlink_to(tmp_path / ".env")
+    ctx = RepoContext(repo_path=tmp_path, mode="standalone", scope="project")
+
+    assert ctx.read_source("safe.txt") is None
+    assert ctx.sources_missing[-1].reason == "excluded: secret-bearing"
+    assert "safe.txt" not in ctx.files_read
+
+
+def test_discovered_doc_alias_to_secret_bearing_file_is_excluded(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".env").write_text("raw secret bytes\n", encoding="utf-8")
+    (tmp_path / "README.md").symlink_to(tmp_path / ".env")
+
+    pack = run_dimension(architecture.DESCRIPTOR, tmp_path)
+
+    assert "README.md" not in pack.files_read
+    assert not any("raw secret bytes" in excerpt.text for excerpt in pack.excerpts)
+    assert any(
+        miss.source == "README.md" and miss.reason == "excluded: secret-bearing"
+        for miss in pack.sources_missing
+    )
+
+
+def test_task_guide_glob_alias_to_secret_bearing_file_is_excluded(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".env").write_text("raw secret bytes\n", encoding="utf-8")
+    tasks = tmp_path / "tasks"
+    tasks.mkdir()
+    (tasks / "TASK_GUIDE_T123.md").symlink_to(tmp_path / ".env")
+
+    pack = run_dimension(requirement_fidelity.DESCRIPTOR, tmp_path)
+
+    assert "tasks/TASK_GUIDE_T123.md" not in pack.files_read
+    assert not any("raw secret bytes" in excerpt.text for excerpt in pack.excerpts)
+    assert any(
+        miss.source == "tasks/TASK_GUIDE_*.md"
+        and miss.reason == "matching files existed but none were readable"
+        for miss in pack.sources_missing
+    )

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator, Sequence
+from pathlib import Path
 
 from ..core.context import MAX_EXCERPT_LINES, MAX_LINE_CHARS
 from ..core.models import DimensionContext, Excerpt
@@ -29,12 +30,13 @@ _SETEXT_UNDERLINE = re.compile(r"^(=+|-+)\s*$")
 
 _LINE_TRUNCATION_MARK = " …[line truncated]"
 _CLIP_MARK = "…[excerpt clipped: showing lines {start}–{end} of {total}]"
+_MARKDOWN_EXTENSIONS = frozenset({".md", ".markdown"})
 
 
 def iter_excerpts(
     context: DimensionContext, sources: Sequence[str], markers: Sequence[str]
 ) -> Iterator[Excerpt]:
-    """Yield bounded excerpts from each declared, readable source in ``sources``.
+    """Yield bounded excerpts from relevant kit or standalone sources.
 
     A source that is missing yields nothing (``read_source`` already records
     the miss). A source with no heading matching ``markers`` is still *found*
@@ -45,11 +47,44 @@ def iter_excerpts(
     the dimension wants the whole (bounded) document, unfiltered, which is
     what a checklist-style dimension like ``architecture`` declares.
     """
+    if context.mode == "standalone":
+        found_doc_evidence = False
+        examined: set[str] = set()
+        for source in context.doc_sources:
+            examined.add(source)
+            text = context.read_source(source)
+            if text is None:
+                continue
+            for excerpt in _excerpts_from_document(source, text, markers):
+                found_doc_evidence = True
+                yield excerpt
+
+        # A dimension's declared document names remain legitimate standalone
+        # candidates even when they are outside generic README/docs discovery.
+        for declared in sources:
+            if declared in examined:
+                continue
+            for concrete, text in context.read_sources(declared):
+                if concrete in examined:
+                    continue
+                examined.add(concrete)
+                for excerpt in _excerpts_from_document(concrete, text, markers):
+                    found_doc_evidence = True
+                    yield excerpt
+
+        # Code is consulted only after every discovered document proved silent
+        # for this dimension. Discovery and reading both remain lazy/bounded.
+        if not found_doc_evidence:
+            for source in context.iter_code_sources():
+                text = context.read_source(source)
+                if text is None:
+                    continue
+                yield from _excerpts_from_document(source, text, markers)
+        return
+
     for source in sources:
-        text = context.read_source(source)
-        if text is None:
-            continue
-        yield from _excerpts_from_document(source, text, markers)
+        for concrete, text in context.read_sources(source):
+            yield from _excerpts_from_document(concrete, text, markers)
 
 
 def _excerpts_from_document(
@@ -57,6 +92,12 @@ def _excerpts_from_document(
 ) -> Iterator[Excerpt]:
     lines = text.splitlines()
     if not lines:
+        return
+
+    if Path(path).suffix.lower() not in _MARKDOWN_EXTENSIONS:
+        excerpt = _bounded_excerpt(path, lines, 0, len(lines) - 1)
+        if excerpt is not None:
+            yield excerpt
         return
 
     sections = _sections(lines) if markers else []
@@ -69,11 +110,15 @@ def _excerpts_from_document(
             yield excerpt
         return
 
+    covered_until = -1
     for start, end, heading in sections:
         if not _matches(heading, markers):
             continue
+        if start <= covered_until:
+            continue
         excerpt = _bounded_excerpt(path, lines, start, end)
         if excerpt is not None:
+            covered_until = end
             yield excerpt
 
 
@@ -90,27 +135,36 @@ def _sections(lines: list[str]) -> list[tuple[int, int, str]]:
     headings. A document with no headings returns an empty list, handled by
     the caller as the whole-file case.
     """
-    headings: list[tuple[int, str]] = []
+    headings: list[tuple[int, int, str]] = []
     for index, line in enumerate(lines):
         atx = _ATX_HEADING.match(line)
         if atx is not None:
-            headings.append((index, atx.group(2).strip()))
+            headings.append((index, len(atx.group(1)), atx.group(2).strip()))
             continue
         if index > 0 and _SETEXT_UNDERLINE.match(line) and lines[index - 1].strip():
-            # The previous line is the heading text; guard against also
-            # having matched it as an ATX heading (it would have `continue`d
-            # already, so no duplicate is possible here).
-            headings.append((index - 1, lines[index - 1].strip()))
+            start = index - 1
+            if headings and headings[-1][0] == start:
+                continue
+            level = 1 if line.lstrip().startswith("=") else 2
+            headings.append((start, level, lines[start].strip()))
 
     if not headings:
         return []
 
-    spans: list[tuple[int, int, str]] = []
-    for position, (start, heading) in enumerate(headings):
-        has_next = position + 1 < len(headings)
-        end = headings[position + 1][0] - 1 if has_next else len(lines) - 1
-        spans.append((start, end, heading))
-    return spans
+    # Track the nearest later heading at each Markdown level while walking
+    # backwards. This preserves nested content in O(number-of-headings) time.
+    next_at_level: list[int | None] = [None] * 7
+    reversed_spans: list[tuple[int, int, str]] = []
+    for start, level, heading in reversed(headings):
+        boundaries = [
+            candidate
+            for candidate in next_at_level[1 : level + 1]
+            if candidate is not None
+        ]
+        end = min(boundaries) - 1 if boundaries else len(lines) - 1
+        reversed_spans.append((start, end, heading))
+        next_at_level[level] = start
+    return list(reversed(reversed_spans))
 
 
 def _bounded_excerpt(
