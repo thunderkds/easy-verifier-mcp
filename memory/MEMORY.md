@@ -17,14 +17,14 @@
 
 ## ▶ START HERE — handoff from the 2026-08-17 session
 
-**State**: **T007 is Stage 4/5 complete and ready to merge** — 7 of 17 tasks done after integration.
-The assigned branch is `feat/t007-doc-dimensions` at `6b5b127`: **55 focused tests, 279 full
-suite, ruff clean**, final independent re-review P0 0/P1 0.
+**State**: **T007 is merged to `develop` at `a948f11`** — 7 of 17 tasks done. Post-merge:
+**55 focused tests, 279 full suite, ruff clean**, final independent re-review P0 0/P1 0. Nothing is
+In Progress or Ready for Review.
 
 **Unpushed**: local `develop` is ahead of the remote. The remote is named **`github`**, not `origin` —
 this is not cosmetic, it breaks tooling (see below).
 
-**Next action**: merge T007, then continue **Wave 2** with T008 (`security`), T009, T010, or T011.
+**Next action**: continue **Wave 2** with T008 (`security`), T009, T010, or T011.
 T007 re-opened T005's tier-2 narrowing without changing `budget.py`: declared kit sources and
 task-guide globs are read directly; standalone mode uses discovered docs then bounded code fallback.
 
