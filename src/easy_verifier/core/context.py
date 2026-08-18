@@ -16,6 +16,7 @@ itself, so no caller can emit a response without it (FR-004).
 
 from __future__ import annotations
 
+import fnmatch
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -80,6 +81,40 @@ _DOC_BOUND_WARNING = (
 
 _DOC_EXTENSIONS = frozenset({".md", ".markdown", ".rst", ".txt", ".adoc", ".org"})
 
+MAX_CODE_SOURCES = 200
+"""Ceiling on lazily discovered standalone code/configuration sources."""
+
+_CODE_EXTENSIONS = frozenset(
+    {
+        ".c",
+        ".cc",
+        ".cpp",
+        ".cs",
+        ".go",
+        ".h",
+        ".hpp",
+        ".java",
+        ".js",
+        ".json",
+        ".jsx",
+        ".kt",
+        ".kts",
+        ".php",
+        ".py",
+        ".rb",
+        ".rs",
+        ".scala",
+        ".sh",
+        ".sql",
+        ".swift",
+        ".toml",
+        ".ts",
+        ".tsx",
+        ".yaml",
+        ".yml",
+    }
+)
+
 _EXCLUDED_DIRS = frozenset(
     {
         ".git",
@@ -100,6 +135,37 @@ _EXCLUDED_DIRS = frozenset(
 )
 
 _ADR_DIR_NAMES = frozenset({"adr", "adrs", "decisions"})
+
+SECRET_BEARING_PATTERNS: tuple[str, ...] = (
+    ".env*",
+    "*.pem",
+    "*.key",
+    "id_rsa",
+    "id_dsa",
+    "id_ecdsa",
+    "id_ed25519",
+    ".netrc",
+    ".pgpass",
+    "credentials*",
+    ".npmrc",
+    ".pypirc",
+    "secrets.*",
+)
+"""Filenames DDR-0002 refuses to read at all, checked against the **basename**
+only (never the full path), with :mod:`fnmatch`, case-sensitive.
+
+``.env*`` and ``credentials*`` are transcribed verbatim from Spec Constraint
+4a. They are deliberately *broad*: the narrower ``.env``/``.env.*`` pair this
+first shipped with missed ``.envrc`` — a direnv file, which routinely holds
+exported credentials — and ``credentialsfile``. When the rule is "never read
+these bytes", over-matching costs a withheld document that is still reported as
+present, while under-matching costs a leaked secret; those are not symmetric,
+so this errs wide on purpose."""
+
+
+def _is_secret_bearing(relative_path: str) -> bool:
+    name = Path(relative_path).name
+    return any(fnmatch.fnmatch(name, pattern) for pattern in SECRET_BEARING_PATTERNS)
 
 
 class RepoPathError(ValueError):
@@ -152,6 +218,10 @@ class RepoContext:
         reported as missing — never substituted with plausible content.
         Returning ``""`` (an existing but empty file) counts as **found** and
         simply contributes no excerpt.
+
+        A secret-bearing file (DDR-0002, Constraint 4a) is refused before its
+        bytes are ever touched: reported as ``excluded: secret-bearing``,
+        distinct from ``not found`` and ``not examined``, and never opened.
         """
         candidate = self.repo_path / relative_path
 
@@ -174,6 +244,14 @@ class RepoContext:
             self._miss(relative_path, "not a regular file")
             return None
 
+        # Metadata checks precede exclusion so absent, escaping, and non-file
+        # paths retain their truthful reasons. Existing contained regular files
+        # are refused immediately before their bytes could be read.
+        resolved_relative = resolved.relative_to(self.repo_path).as_posix()
+        if _is_secret_bearing(relative_path) or _is_secret_bearing(resolved_relative):
+            self._miss(relative_path, "excluded: secret-bearing")
+            return None
+
         try:
             raw = resolved.read_bytes()
         except OSError as exc:
@@ -191,6 +269,72 @@ class RepoContext:
         self.sources_found.append(relative_path)
         self.files_read.append(relative_path)
         return text
+
+    def read_sources(self, relative_pattern: str) -> Iterator[tuple[str, str]]:
+        """Yield readable sources for one declared path or safe basename glob.
+
+        Globs are limited to the final path component. The declared pattern is
+        marked found when one matching file is readable, while files_read names
+        the concrete files.
+        """
+        if not any(character in relative_pattern for character in "*?["):
+            text = self.read_source(relative_pattern)
+            if text is not None:
+                yield relative_pattern, text
+            return
+
+        pattern = Path(relative_pattern)
+        parent_parts = pattern.parts[:-1]
+        if (
+            pattern.is_absolute()
+            or ".." in pattern.parts
+            or any(
+                any(character in part for character in "*?[") for part in parent_parts
+            )
+        ):
+            self._miss(relative_pattern, "unsupported source pattern")
+            return
+
+        directory = self.repo_path.joinpath(*parent_parts)
+        if not _is_contained(directory, self.repo_path) or not directory.is_dir():
+            self._miss(relative_pattern, "not found in the target repository")
+            return
+
+        matches = tuple(
+            entry
+            for entry in _sorted_entries(directory)
+            if fnmatch.fnmatchcase(entry.name, pattern.name)
+            and entry.is_file()
+            and _is_contained(entry, self.repo_path)
+        )
+        if not matches:
+            self._miss(relative_pattern, "not found in the target repository")
+            return
+
+        found_pattern = False
+        for entry in matches:
+            concrete = entry.relative_to(self.repo_path).as_posix()
+            text = self.read_source(concrete)
+            if text is None:
+                continue
+            if not found_pattern:
+                self.sources_found.append(relative_pattern)
+                found_pattern = True
+            yield concrete, text
+
+        if not found_pattern:
+            self._miss(
+                relative_pattern, "matching files existed but none were readable"
+            )
+
+    def iter_code_sources(self, limit: int = MAX_CODE_SOURCES) -> Iterator[str]:
+        """Yield a bounded, lazy, containment-safe standalone code inventory."""
+        for index, relative_path in enumerate(
+            _walk(self.repo_path, self.repo_path, extensions=_CODE_EXTENSIONS)
+        ):
+            if index >= limit:
+                return
+            yield relative_path
 
     def _miss(self, relative_path: str, reason: str) -> None:
         """Record a source that produced no text. Returns nothing — call sites
@@ -360,8 +504,14 @@ def _root_files_matching(repo: Path, prefix: str) -> Iterator[str]:
             yield entry.name
 
 
-def _walk(directory: Path, repo: Path) -> Iterator[str]:
-    """Yield document files under ``directory``, depth-first, sorted.
+def _walk(
+    directory: Path,
+    repo: Path,
+    *,
+    extensions: frozenset[str] = _DOC_EXTENSIONS,
+    _visited: set[Path] | None = None,
+) -> Iterator[str]:
+    """Yield matching files under the directory, depth-first and sorted.
 
     A subdirectory that resolves outside the repository is not descended into.
     ``read_source`` refuses to read such a path anyway, so this is not what
@@ -371,24 +521,37 @@ def _walk(directory: Path, repo: Path) -> Iterator[str]:
     anything about the repo. The same containment test ``read_source`` uses is
     applied here so the two cannot disagree.
 
-    An *in-repo* symlink loop is a different matter: it stays contained, so only
-    :data:`MAX_DOC_SOURCES` terminates it. That ceiling is load-bearing for
-    termination, not merely a performance guard.
+    Resolved directories are visited once, so in-repo symlink cycles terminate
+    without relying on the outer discovery bound.
     """
     # Checked on entry rather than at the recursive call, so it covers the roots
     # `_candidate_docs` passes in too: `docs/` itself can be the escaping link.
-    if (
-        not directory.is_dir()
-        or directory.name in _EXCLUDED_DIRS
-        or not _is_contained(directory, repo)
-    ):
+    if not directory.is_dir() or directory.name in _EXCLUDED_DIRS:
         return
+    try:
+        resolved = directory.resolve()
+    except OSError:
+        return
+    if not resolved.is_relative_to(repo):
+        return
+
+    # Share resolved directories through recursion to stop in-repo symlink
+    # cycles without materialising the file inventory.
+    if _visited is None:
+        _visited = set()
+    if resolved in _visited:
+        return
+    _visited.add(resolved)
 
     for entry in _sorted_entries(directory):
         if entry.is_dir():
             if entry.name not in _EXCLUDED_DIRS:
-                yield from _walk(entry, repo)
-        elif entry.is_file() and entry.suffix.lower() in _DOC_EXTENSIONS:
+                yield from _walk(entry, repo, extensions=extensions, _visited=_visited)
+        elif (
+            entry.is_file()
+            and entry.suffix.lower() in extensions
+            and _is_contained(entry, repo)
+        ):
             yield entry.relative_to(repo).as_posix()
 
 

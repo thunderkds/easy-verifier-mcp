@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from ..core.context import whole_file_excerpt
 from ..core.models import DimensionContext, DimensionDescriptor, Excerpt
+from . import _doc_extract
 
 NAME = "architecture"
 
@@ -27,20 +27,22 @@ SOURCES_SOUGHT: tuple[str, ...] = (
     "README.md",
 )
 
+MARKERS: tuple[str, ...] = ()
+"""Empty on purpose (behaviour-preserving refactor, AC #8): the pre-T007
+``architecture`` dimension always yielded the whole bounded document for every
+found source — no section filtering. ``_doc_extract`` treats an empty marker
+set as exactly that request, so this refactor changes nothing observable."""
+
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
-    """Yield one bounded excerpt per readable declared source.
+    """Yield bounded excerpts from each readable declared source.
 
     A generator, not a list: the pipeline stops pulling once its byte ceiling is
-    reached, so sources after that point are never even opened.
+    reached, so sources after that point are never even opened. Extraction is
+    shared with the other three document-shaped dimensions via ``_doc_extract``
+    — this module supplies only the declared sources and markers.
     """
-    for source in SOURCES_SOUGHT:
-        text = context.read_source(source)
-        if text is None:
-            continue  # Recorded as missing by read_source. Never substituted.
-        excerpt = whole_file_excerpt(source, text)
-        if excerpt is not None:
-            yield excerpt
+    yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
 
 
 DESCRIPTOR = DimensionDescriptor(

@@ -4,14 +4,18 @@
 registry: a registry adds a failure mode flat wiring does not have — a dimension
 silently missing because its module was never imported.
 
-Six more descriptors land in T006–T008.
+Three more descriptors (security, test-strategy, blast-radius) land in
+T008–T010.
 """
 
 from __future__ import annotations
 
 from ..core.models import DimensionDescriptor
-from . import architecture
+from . import architecture, code_quality, requirement_fidelity, solution_fit
 
 DIMENSIONS: dict[str, DimensionDescriptor] = {
     architecture.NAME: architecture.DESCRIPTOR,
+    solution_fit.NAME: solution_fit.DESCRIPTOR,
+    requirement_fidelity.NAME: requirement_fidelity.DESCRIPTOR,
+    code_quality.NAME: code_quality.DESCRIPTOR,
 }
