@@ -89,8 +89,11 @@ class DimensionContext(Protocol):
     repo_path: object
     mode: str
     scope: str
+    resolved_scope: object | None
 
     def read_source(self, relative_path: str) -> str | None: ...
+
+    def request_secret_source(self, relative_path: str) -> str | None: ...
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,18 @@ class DimensionDescriptor:
     ``list`` forces full materialisation on exactly the monorepo size that most
     needs budgeting.
     """
+
+
+@dataclass(frozen=True)
+class ApprovalRequest:
+    """A safe per-file request for operator consent to read excluded bytes.
+
+    Carries only a repository-relative path and fixed reason; never file
+    contents, callback details, a verdict, or an inferred risk level.
+    """
+
+    path: str
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -169,6 +184,12 @@ class EvidencePack:
     FR-011b). ``None`` only when a pack was built by a caller that predates
     T005 and never went through :func:`easy_verifier.core.budget.budget`;
     every pack ``run_dimension`` builds sets this."""
+
+    approval_requests: tuple[ApprovalRequest, ...] = field(default=())
+    """Per-file operator approvals requested by the security dimension.
+
+    Empty for existing callers and every other dimension.
+    """
 
 
 @dataclass(frozen=True)

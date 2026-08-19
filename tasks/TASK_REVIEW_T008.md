@@ -22,7 +22,16 @@
 
 ## Demonstration
 
-**BEFORE**: [pasted timestamped command output showing the security dimension absent/failing, captured before the first implementation commit]
+**BEFORE**: 2026-08-19T03:09:11Z — `PYTHONPATH=src PATH=/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin:$PATH pytest tests/test_t008_security.py -q && python -m easy_verifier.adapters.cli security --repo . --scope project | head -30`
+
+```text
+ERROR: file or directory not found: tests/test_t008_security.py
+
+
+no tests ran in 0.00s
+```
+
+Exit status: 4.
 
 **AFTER**: [same command, post-change]
 
