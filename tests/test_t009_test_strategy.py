@@ -532,3 +532,66 @@ def test_cli_exposes_the_dimension_end_to_end(tmp_path, capsys) -> None:
     assert payload["dimension"] == "test-strategy"
     assert payload["scope"] == "project"
     assert payload["files_read"] == ["tests/test_a.py"]
+
+
+def test_monorepo_subprojects_do_not_borrow_each_others_tests(tmp_path: Path) -> None:
+    """A same-named test in a *different* subproject is not a correspondence.
+
+    Stage 4 P1: correspondence indexed test basenames across the whole
+    repository, so ``svc_b``'s ``test_payments.py`` was reported as covering
+    ``svc_a``'s ``payments.py`` — a confident claim about a file nothing tests.
+    The Go rule already refused this across directories; every other ecosystem
+    took the fabricated match.
+
+    The fixture pins both directions at once: the cross-subproject match must
+    disappear, and the two layouts that legitimately span directories — a
+    project-root ``src/`` + ``tests/`` split and a co-located pair — must keep
+    matching, so the fix cannot trade one defect for the other.
+    """
+    files = {
+        # independent subprojects: same basename, different service
+        "svc_a/src/payments.py": "def charge(): ...\n",
+        "svc_a/src/orders.py": "def order(): ...\n",
+        "svc_b/tests/test_payments.py": "def test_payments(): ...\n",
+        "svc_b/tests/test_ordering_helpers.py": "def test_helpers(): ...\n",
+        # co-located pair, same directory
+        "colo/widget.py": "def widget(): ...\n",
+        "colo/widget_test.py": "def test_widget(): ...\n",
+    }
+    for relative, body in files.items():
+        (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / relative).write_text(body, encoding="utf-8")
+
+    pack = run_dimension(test_strategy.DESCRIPTOR, tmp_path, scope="project")
+    reason = _correspondence_reason(pack)
+
+    assert "svc_a/src/payments.py ->" not in reason
+    assert "svc_b" not in reason.split("no test discovered")[0]
+    gap = reason.split("no test discovered")[1]
+    assert "svc_a/src/payments.py" in gap
+    assert "svc_a/src/orders.py" in gap
+    # The layouts that must survive the boundary rule.
+    assert "colo/widget.py -> colo/widget_test.py" in reason
+
+
+def test_project_root_src_and_tests_split_still_matches(tmp_path: Path) -> None:
+    """The commonest Python layout of all spans two directories, and a nested
+    package under ``src/`` must still reach a flat ``tests/`` tree. Pinned
+    separately so the monorepo boundary rule can never quietly kill it."""
+    files = {
+        "pyproject.toml": '[tool.pytest.ini_options]\ntestpaths = ["tests"]\n',
+        "src/foo.py": "def foo(): ...\n",
+        "src/deep/pkg/bar.py": "def bar(): ...\n",
+        "tests/test_foo.py": "def test_foo(): ...\n",
+        "tests/unit/test_bar.py": "def test_bar(): ...\n",
+    }
+    for relative, body in files.items():
+        (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / relative).write_text(body, encoding="utf-8")
+
+    pack = run_dimension(test_strategy.DESCRIPTOR, tmp_path, scope="project")
+    reason = _correspondence_reason(pack)
+
+    assert "src/foo.py -> tests/test_foo.py" in reason
+    assert "src/deep/pkg/bar.py -> tests/unit/test_bar.py" in reason
+    assert "no test discovered" not in reason

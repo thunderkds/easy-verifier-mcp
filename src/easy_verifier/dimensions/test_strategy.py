@@ -166,6 +166,48 @@ _SOURCE_SUFFIXES = frozenset(
 
 _CONFIG_SUFFIXES = frozenset({".cfg", ".ini", ".json", ".toml", ".yaml", ".yml"})
 
+#: Files that mark the root of an independently buildable project. Their
+#: directory is a correspondence boundary: a test on the far side of one
+#: belongs to a different project, whatever its name says.
+_MANIFEST_NAMES = frozenset(
+    {
+        "build.gradle",
+        "build.gradle.kts",
+        "cargo.toml",
+        "composer.json",
+        "gemfile",
+        "go.mod",
+        "package.json",
+        "pom.xml",
+        "pyproject.toml",
+        "setup.cfg",
+        "setup.py",
+    }
+)
+
+#: Directory names that describe a *layout within* a project rather than a
+#: project of its own. Everything above the first of these is the project the
+#: file belongs to — which is what keeps the commonest layout there is,
+#: ``src/foo.py`` <-> ``tests/test_foo.py``, matching across two directories
+#: while ``svc_a/src`` and ``svc_b/tests`` stay apart.
+_LAYOUT_SEGMENTS = frozenset(
+    {
+        "__tests__",
+        "app",
+        "cmd",
+        "internal",
+        "lib",
+        "pkg",
+        "source",
+        "sources",
+        "spec",
+        "specs",
+        "src",
+        "test",
+        "tests",
+    }
+)
+
 #: Candidate categories in descending evidence relevance. The read cap is spent
 #: in this order, never in path order.
 _RANK_CORRESPONDING_TEST = 0
@@ -342,25 +384,34 @@ def _correspondence(
 ) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
     """Map each source file in scope to its conventionally named test files.
 
-    Conventional only. Where no convention matches, the file is returned as
-    unmatched — reported as "no test discovered" — rather than attached to the
-    nearest plausible test.
+    Conventional **and project-local**. A name match is accepted only when both
+    files sit inside the same project (see :func:`_project_boundary`): in a
+    monorepo, ``svc_b/tests/test_payments.py`` is not a test of
+    ``svc_a/src/payments.py``, however exactly the names line up. Where no
+    convention matches, or the match crosses a project boundary, the file is
+    returned as unmatched — reported as "no test discovered" — rather than
+    attached to the nearest plausible test.
     """
     by_name: dict[str, list[str]] = {}
     for test in tests:
         by_name.setdefault(PurePosixPath(test).name, []).append(test)
+
+    boundaries = _manifest_dirs(scope_files)
 
     matched: dict[str, tuple[str, ...]] = {}
     unmatched: list[str] = []
     for source in scope_files:
         if not _is_source_file(source):
             continue
+        source_project = _project_boundary(source, boundaries)
         hits: list[str] = []
         for name in _expected_test_names(source):
             for test in by_name.get(name, ()):
-                # Go's convention is same-package, same-directory. Matching a
-                # `foo_test.go` from an unrelated package would be a fabricated
-                # correspondence.
+                # Two files that belong to different projects are unrelated,
+                # whatever their names say. Go's convention is stricter still:
+                # same package means same directory.
+                if _project_boundary(test, boundaries) != source_project:
+                    continue
                 if source.endswith(".go") and _parent(test) != _parent(source):
                     continue
                 hits.append(test)
@@ -369,6 +420,59 @@ def _correspondence(
         else:
             unmatched.append(source)
     return matched, tuple(unmatched)
+
+
+def _manifest_dirs(scope_files: tuple[str, ...]) -> frozenset[str]:
+    """Directories in scope that hold a project manifest, as POSIX prefixes."""
+    return frozenset(
+        _parent(path).strip(".")
+        for path in scope_files
+        if PurePosixPath(path).name.lower() in _MANIFEST_NAMES
+    )
+
+
+def _project_boundary(path: str, manifest_dirs: frozenset[str]) -> str:
+    """The project ``path`` belongs to, as a repository-relative directory.
+
+    Two independent signals, and the **more specific** one wins, because either
+    alone gets a real layout wrong:
+
+    * the deepest ancestor holding a manifest — but a monorepo whose
+      subprojects carry no manifest of their own would collapse to the repo
+      root and match across services;
+    * everything above the file's first *layout* segment (``src``, ``tests``,
+      ``pkg``, …) — but a subproject manifest sitting below such a segment
+      would be ignored.
+
+    Both are ancestors of the file, so "more specific" is simply the longer of
+    the two. A file with neither signal is its own directory's project, which
+    is what keeps a co-located ``widget.py`` + ``widget_test.py`` pair together
+    without letting a same-named file two directories away join them.
+    """
+    directory = _parent(path).strip(".")
+    parts = PurePosixPath(directory).parts if directory else ()
+
+    layout = "/".join(parts)
+    for index, part in enumerate(parts):
+        if part.lower() in _LAYOUT_SEGMENTS:
+            layout = "/".join(parts[:index])
+            break
+
+    manifest = ""
+    for candidate in manifest_dirs:
+        if not _is_ancestor(candidate, directory):
+            continue
+        if len(candidate) > len(manifest):
+            manifest = candidate
+
+    return layout if len(layout) > len(manifest) else manifest
+
+
+def _is_ancestor(candidate: str, directory: str) -> bool:
+    """True when ``candidate`` is ``directory`` or one of its ancestors."""
+    if candidate == "":
+        return True
+    return directory == candidate or directory.startswith(f"{candidate}/")
 
 
 def _expected_test_names(source: str) -> tuple[str, ...]:

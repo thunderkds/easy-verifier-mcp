@@ -100,3 +100,60 @@ repo's own test tree is read as evidence.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
+
+---
+
+## Stage 4 Review
+
+### P1 — Cross-subproject false correspondence (found by the Supervisor, fixed)
+
+**Finding.** `_correspondence` indexed test basenames across the **whole repository**, so a test in
+one independent subproject was reported as covering a same-named source in another. On the reviewer's
+fixture the pack claimed `svc_a/src/payments.py -> svc_b/tests/test_payments.py`, telling the calling
+agent that a file nothing in `svc_a` tests was covered — the exact "confident-but-unfounded claim"
+the guide's Approach section forbids, and the unticked Edge Case Checklist row *"Monorepo with several
+independent test suites in subprojects"*. The Go branch already refused a cross-directory
+`foo_test.go`; Python, JS/TS, Ruby, Java and C# had no guard at all.
+
+**Reproduced before fixing.** The new regression test was written first and run against the pre-fix
+commit `832a6ef`:
+
+```
+$ PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest tests/test_t009_test_strategy.py -q \
+    -k "monorepo or project_root_src"
+>       assert "svc_a/src/payments.py ->" not in reason
+E       AssertionError: ... 'svc_a/src/payments.py -> svc_b/tests/test_payments.py; no test
+E       discovered for 1 file(s): svc_a/src/orders.py'
+1 failed, 1 passed, 17 deselected in 0.08s
+```
+
+The second selected test (`test_project_root_src_and_tests_split_still_matches`) passed pre-fix: it is
+the pin ensuring the fix cannot trade this defect for the opposite one.
+
+**Fix.** A name match is now accepted only when both files resolve to the same project
+(`_project_boundary`). The boundary takes the **more specific** of two signals, because either alone
+mis-reads a real layout: the deepest ancestor holding a manifest (`pyproject.toml`, `package.json`,
+`go.mod`, `Cargo.toml`, …), and everything above the file's first *layout* segment (`src`, `tests`,
+`pkg`, `__tests__`, …). That keeps `src/foo.py -> tests/test_foo.py` — including a nested
+`src/deep/pkg/bar.py -> tests/unit/test_bar.py` — while separating `svc_a/src` from `svc_b/tests`
+even when neither subproject carries a manifest of its own. A cross-boundary match is reported as
+"no test discovered", never guessed. The Go same-directory rule is retained on top.
+
+**Verified on the reviewer's exact fixture** (2026-08-20T11:39:10Z, via the real CLI):
+
+```
+$ python -m easy_verifier.adapters.cli test-strategy --repo <mono> --scope project
+... test discovered for 1 file(s): colo/widget.py -> colo/widget_test.py;
+    no test discovered for 2 file(s): svc_a/src/orders.py, svc_a/src/payments.py
+```
+
+**Regression tests**: `test_monorepo_subprojects_do_not_borrow_each_others_tests` and
+`test_project_root_src_and_tests_split_still_matches` in `tests/test_t009_test_strategy.py`.
+
+**Post-fix suite**: `python -m pytest -q` → `313 passed in 1.29s`, exit code 0 read directly (311 + 2
+new). `ruff check .` → `All checks passed!`.
+
+**Root cause worth carrying forward**: every correspondence fixture in the original 534-line suite
+used a single flat project, where repo-wide and project-scoped matching are indistinguishable — the
+same blind spot shape as T008's cap test built from 205 identical files. A selection rule needs a
+fixture where the right answer and the wrong answer are *different files*.
