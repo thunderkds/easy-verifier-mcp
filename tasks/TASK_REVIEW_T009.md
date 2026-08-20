@@ -157,3 +157,80 @@ new). `ruff check .` → `All checks passed!`.
 used a single flat project, where repo-wide and project-scoped matching are indistinguishable — the
 same blind spot shape as T008's cap test built from 205 identical files. A selection rule needs a
 fixture where the right answer and the wrong answer are *different files*.
+
+
+---
+
+## Stage 4 — Supervisor close-out (2026-08-20)
+
+**code-review (mandatory): P0 0 / P1 1 (fixed, `b50865a`) / P2 0 / P3 0.**
+**security-review: ☐ N/A** — Low risk per the guide's own Completion Checklist; this dimension opens
+no new read surface (it *refuses* coverage artifacts) and adds no subprocess, network or path-resolver
+primitive.
+**blast-radius / migration-safety: ☐ N/A** — Low risk, no sensitive-data handling, no DB.
+
+### P1 — cross-subproject false correspondence (conf 100, reproduced pre-fix)
+
+`_correspondence` indexed tests by basename across the whole repository, so `svc_b/tests/test_payments.py`
+was reported as covering `svc_a/src/payments.py` in a two-service repo. This is the failure the guide's
+Approach section names outright — *"a wrong correspondence is worse than an admitted gap"* — and Edge
+Case Checklist item *"Monorepo with several independent test suites in subprojects"*, which was unticked
+and untested.
+
+Notable: the author **had already identified this hazard** and guarded it for Go, commenting that
+matching a `foo_test.go` from an unrelated package would be a fabricated correspondence. The reasoning
+was right; it was simply not generalised beyond Go. Python, JS/TS, Ruby, Java and C# were unguarded.
+
+**Why the suite could not see it**: all correspondence fixtures used a single flat project, where
+repo-wide matching and project-scoped matching are indistinguishable. Same shape as T008's cap test
+using 205 identical files. **A selection rule needs a fixture where the right answer and the wrong
+answer are different files.**
+
+**Fix**: `_project_boundary` takes the more specific (longer) of two ancestor signals — deepest ancestor
+holding a manifest, or everything above the file's first layout segment (`src`, `tests`, `pkg`, `lib`,
+`cmd`, `internal`, `__tests__`). Either signal alone mis-reads a real layout: manifests alone fail on a
+manifest-less monorepo, layout segments alone fail when a subproject manifest sits below such a segment.
+Cross-boundary pairs report "no test discovered" rather than guessing. Go's same-directory rule retained
+on top. The agent flagged this refinement to the Supervisor's prescribed approach before building it.
+
+### Independent re-verification by the Supervisor, at the CLI
+
+Cases 1, 2 and 4 are the agent's; **case 3 was constructed by the Supervisor after the fix**, so it was
+not a fixture the implementation was tuned against.
+
+| Fixture | Result |
+|---|---|
+| Manifest-less monorepo (`svc_a/src` + `svc_b/tests`) | `no test discovered for 2 file(s): svc_a/src/orders.py, svc_a/src/payments.py` — false match gone |
+| Flat `src/` + `tests/` | `src/foo.py -> tests/test_foo.py` — unchanged, no overcorrection |
+| **Manifest monorepo, both services holding a same-named test** | `svc_a/src/payments.py -> svc_a/tests/test_payments.py` **only** — matches its own suite, not `svc_b`'s |
+| Deep nesting across a root split (`src/deep/pkg/bar.py`) | `-> tests/unit/test_bar.py` — a naive same-directory rule would have killed this |
+
+Do-not-regress list re-checked at the CLI: coverage artifacts still named-but-unopened with `0.87`/`91%`
+absent from the pack; `--scope task` with the selector omitted still yields `files_read []` plus the
+unresolved warning; AC #4 still returns the guide's Acceptance Criteria excerpt under kit-aware task
+scope. Suite `313 passed`, exit `0` read directly; `ruff check .` exit `0`.
+
+### Accepted residue (recorded, not fixed)
+
+- **Pseudo-source channel for AC #3.** Per-run scope-file names cannot enter the miss list directly —
+  `pipeline._missing_sources` drops any `SourceMiss` whose source is not in the static `sources_sought`.
+  Rather than propose a core change, the agent declared `CORRESPONDENCE_SOURCE` as a permanent
+  pseudo-source whose *reason* carries both sides of the result, following T008's `git history` precedent.
+  Accepted: no core change needed, and the miss list stays an exact partition of `sources_sought`.
+- **Correspondence names are capped at `MAX_NAMED_FILES` (10).** With 25 unmatched files the reason
+  renders 10 names plus `(+15 more)` and an exact `25 file(s)` count. Truthful and bounded per FR-011b,
+  but a reviewing agent cannot act on the unnamed remainder without narrowing scope.
+- **Discovery is strictly scope-bounded.** Under `changes`/`task`/`worktree` the dimension does not walk
+  outside the resolved file set; a warning states that a corresponding test living elsewhere is reported
+  as *not discovered*, which is not the same as absent. Trades a possible false gap for a guaranteed
+  absence of false coverage claims — the correct direction for this project.
+- **A production module named `test_*.py` is classified as a test file** (this dimension's own source is
+  visible as such in the AFTER capture). That is pytest's own convention; requiring a `tests/` ancestor
+  would drop every co-located suite.
+
+### Pre-existing, not T009's
+
+`files_read` lists `tasks/TASK_GUIDE_T009.md` twice under `task` scope. Reproduces on `architecture`,
+`code-quality` and `security`. Left alone.
+
+**Stage 4 closed. Stage 5 `verify` is outstanding — it is user-invocation-only.**
