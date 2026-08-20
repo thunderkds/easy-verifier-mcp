@@ -14,12 +14,12 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t009_test_strategy.py` — 17 tests, one per Success Criterion (1–4) plus AC #1/#5/#6/#7/#8/#9, the ranked-cap ordering guard, the declared-source probe guard, and the missing-vs-bogus selector pair. `PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest tests/test_t009_test_strategy.py -q` → `17 passed in 0.19s` (2026-08-20T11:34:02Z, exit 0). |
+| Verification command run | ☑ pass | See the AFTER capture below: `pytest tests/test_t009_test_strategy.py -q` → `17 passed`, and `python -m easy_verifier.adapters.cli test-strategy --repo .` now prints a real pack (was `invalid choice: 'test-strategy'` in BEFORE). |
+| Negative cases hold | ☑ pass | Empty repo → `coverage_score 0.0`, full miss list, no estimate. `--scope task` with the flag **omitted** → `resolved_scope=None`, zero files read, explicit "could not be resolved" warning (no widening); with it **empty** and with it **bogus** (`T999`) → empty task scope, zero files read. `--scope changes` without `--ref` → same refusal. Coverage artifacts (`coverage.xml`, `.coverage`, `htmlcov/`) named in a warning but never read and their figures never serialized. |
+| verify | ☐ pass / ☐ fail / ☐ N/A | Not run by the implementer — `verify` is user-invocation-only. The CLI was driven manually with each selector present, omitted, empty and bogus (see Negative cases) as a stand-in; Stage 5 `verify` still owed. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | Changed set: `src/easy_verifier/dimensions/test_strategy.py` (new), `src/easy_verifier/dimensions/__init__.py` (one registry row), `tests/test_t009_test_strategy.py` (new), `tests/test_t001_pipeline.py` (registry expectation only). `core/**`, `_doc_extract.py` and `.claude/hooks/**` untouched. |
+| Full smoke suite still green (no regression) | ☑ pass | `PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest -q` → `311 passed in 1.31s`, exit 0 (baseline 294 + 17 new). `ruff check .` → `All checks passed!`. |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
 | **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
@@ -57,7 +57,44 @@ easy-verifier: error: argument dimension: invalid choice: 'test-strategy' (choos
 Neither half of the Verification Command can run: the test file does not exist, and `test-strategy`
 is not a dimension the CLI accepts.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (2026-08-20T11:34:02Z, same commands, same worktree):
+
+```
+$ PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest tests/test_t009_test_strategy.py -q
+.................                                                        [100%]
+17 passed in 0.19s
+exit=0
+$ PYTHONPATH=src python -m easy_verifier.adapters.cli test-strategy --repo . | head -30
+{
+  "dimension": "test-strategy",
+  "mode": "kit-aware",
+  "scope": "project",
+  "files_read": [
+    "pyproject.toml",
+    "tests/conftest.py",
+    "src/easy_verifier/dimensions/test_strategy.py",
+    "tests/test_t001_pipeline.py",
+    "tests/test_t002_context.py",
+    "tests/test_t003_scope.py",
+    "tests/test_t004_redact.py",
+    "tests/test_t005_budget.py",
+    "tests/test_t006_findings.py",
+    "tests/test_t007_doc_dimensions.py",
+    "tests/test_t008_security.py",
+    "tests/test_t009_test_strategy.py"
+  ],
+  "excerpts": [
+    {
+      "path": "pyproject.toml",
+      "start_line": 20,
+      "end_line": 29,
+      "text": "dev = [\"pytest>=7.4\", \"ruff>=0.6\"]\n\n[tool.setuptools.packages.find]\nwhere = [\"src\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n..."
+    },
+```
+
+The dimension is now a CLI choice, the pytest configuration is cited at its real
+lines (`pyproject.toml:20-29`, the `[tool.pytest.ini_options]` block), and the
+repo's own test tree is read as evidence.
 
 **DELTA**: [one sentence — what a user can now do that they could not before]
 
