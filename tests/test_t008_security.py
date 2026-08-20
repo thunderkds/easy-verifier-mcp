@@ -360,9 +360,7 @@ def test_declared_sources_are_probed_so_miss_reasons_are_truthful(
     source_dir = tmp_path / "src"
     source_dir.mkdir()
     (source_dir / "auth.py").write_text("def login(): ...\n", encoding="utf-8")
-    (tmp_path / ".env").write_text(
-        f"API_TOKEN={_fake_secret(31)}\n", encoding="utf-8"
-    )
+    (tmp_path / ".env").write_text(f"API_TOKEN={_fake_secret(31)}\n", encoding="utf-8")
 
     pack = run_dimension(security.DESCRIPTOR, tmp_path, scope="project")
     reasons = _reasons(pack)
@@ -383,3 +381,49 @@ def test_declared_sources_are_probed_so_miss_reasons_are_truthful(
 
     # Nothing is left claiming it merely was not examined.
     assert not any("not examined" in reason for reason in reasons.values())
+
+
+def test_narrow_scope_without_its_selector_does_not_widen_to_the_whole_repo(
+    tmp_path: Path,
+) -> None:
+    """A narrow scope that never resolved must not silently become project scope.
+
+    Regression for a Stage 5 finding: `resolve_scope` raises when `task`/`changes`
+    is requested without its selector, `run_dimension` collapses that to
+    `resolved_scope = None`, and the dimension read that as "whole repository" —
+    emitting project-scope evidence under a narrow scope's label with no warning.
+    The existing suite only ever exercised a *bogus* selector, never a missing one.
+    """
+    (tmp_path / "requirements.txt").write_text("requests==2.0\n", encoding="utf-8")
+    source_dir = tmp_path / "src"
+    source_dir.mkdir()
+    (source_dir / "auth.py").write_text("def login(): ...\n", encoding="utf-8")
+
+    for scope in ("task", "changes"):
+        pack = run_dimension(security.DESCRIPTOR, tmp_path, scope=scope)
+
+        assert pack.scope == scope
+        assert pack.excerpts == ()
+        assert pack.files_read == ()
+        assert pack.sources_found == ()
+        assert pack.coverage_score == 0.0
+
+    # `task` raises inside `resolve_scope`; the widening was reachable only here.
+    pack = run_dimension(security.DESCRIPTOR, tmp_path, scope="task")
+    assert any("could not be resolved" in warning for warning in pack.warnings)
+    reasons = {miss.source: miss.reason for miss in pack.sources_missing}
+    assert set(reasons) == set(security.SOURCES_SOUGHT)
+    assert all(
+        "task scope could not be resolved" in reason for reason in reasons.values()
+    )
+
+
+def test_bogus_task_selector_still_resolves_to_an_empty_scope(tmp_path: Path) -> None:
+    """The contrast case: a *present* but unmatched selector is not a failure."""
+    (tmp_path / "requirements.txt").write_text("requests==2.0\n", encoding="utf-8")
+
+    pack = run_dimension(security.DESCRIPTOR, tmp_path, scope="task", task_id="T999")
+
+    assert pack.files_read == ()
+    reasons = {miss.source: miss.reason for miss in pack.sources_missing}
+    assert reasons["requirements.txt"] == "not in the resolved task scope"

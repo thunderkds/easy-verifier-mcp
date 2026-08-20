@@ -47,6 +47,22 @@ PSEUDO_SOURCES: dict[str, str] = {
     ),
 }
 
+#: Emitted when a narrow scope never resolved. Stated rather than silently
+#: widened: ``resolve_scope`` raises when ``task``/``changes`` is asked for
+#: without its required selector, and ``run_dimension`` turns that into
+#: ``resolved_scope = None``. Reading that as "whole repository" would return
+#: project-scope evidence under a narrow scope's label.
+UNRESOLVED_SCOPE_WARNING = (
+    "The {scope} scope could not be resolved, most likely because its required "
+    "selector was not supplied. No evidence was gathered; this pack is not "
+    "whole-repository output."
+)
+
+UNRESOLVED_SCOPE_REASON = (
+    "not examined: the {scope} scope could not be resolved "
+    "(its required selector was not supplied)"
+)
+
 #: Category names in descending evidence relevance. The candidate cap is spent
 #: in this order, not in path order — an alphabetical cap drops a manifest or a
 #: Dockerfile on any repository larger than the cap.
@@ -142,7 +158,21 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     resolved_scope = context.resolved_scope
     scope_files = frozenset(getattr(resolved_scope, "files", ()) or ())
     scope_kind = getattr(resolved_scope, "kind", None)
-    # `project` (and the no-resolution fallback) covers the whole repository, so
+
+    # A *narrow* scope that never resolved is a failure, not an invitation to
+    # read the whole repository. `run_dimension` collapses `ScopeError` into
+    # `resolved_scope = None`, so "unresolved" and "project" arrive here looking
+    # identical; the requested scope name is what tells them apart. Reporting
+    # this rather than widening is the same requirement as the miss list:
+    # the pack must not assert more than was actually checked.
+    if resolved_scope is None and context.scope != "project":
+        _warn(context, UNRESOLVED_SCOPE_WARNING.format(scope=context.scope))
+        reason = UNRESOLVED_SCOPE_REASON.format(scope=context.scope)
+        for source in SOURCES_SOUGHT:
+            context.sources_missing.append(SourceMiss(source=source, reason=reason))
+        return
+
+    # `project` (and its no-resolution fallback) covers the whole repository, so
     # every declared source is in bounds. A narrow scope is not allowed to reach
     # outside its own file set just because a name is declared.
     whole_repo = resolved_scope is None or scope_kind == "project"
@@ -203,6 +233,16 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         excerpt = whole_file_excerpt(source, text)
         if excerpt is not None:
             yield excerpt
+
+
+def _warn(context: DimensionContext, message: str) -> None:
+    """Append a pack warning once, however many budget passes call ``collect``.
+
+    ``run_dimension`` copies ``context.warnings`` onto the pack after the budget
+    drain, so appending here reaches the caller without any pipeline change.
+    """
+    if message not in context.warnings:
+        context.warnings = (*context.warnings, message)
 
 
 def _ranked_candidates(files) -> list[tuple[int, str]]:

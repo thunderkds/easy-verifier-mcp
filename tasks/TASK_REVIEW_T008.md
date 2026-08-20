@@ -13,7 +13,7 @@
 | Negative cases hold | ☒ pass | Miss list on this repo is now truthful in all three states — 9 declared sources report `not found in the target repository` (previously all fabricated as `not examined: the byte budget was reached before this source was read`), `git history (out of scope for v1)` reports `out of scope for v1: git history is not searched by this dimension`, and a seeded `.env` reports `excluded: secret-bearing; operator approval required` with one `ApprovalRequest` and zero raw values in the serialized pack (AC #11/#12 gate re-verified, not regressed). |
 | verify | ☒ pass | Ran the dimension live against this repo post-fix: `coverage 0.0909…`, `found ('pyproject.toml',)`, `files_read 77 excerpts 15`, and every one of the 10 misses carries a reason that reflects what was actually checked. Pre-fix the same run reported four non-existent files (`.env`, `Dockerfile`, `package.json`, `src/auth.py`) as budget-exhausted. |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☒ pass | Reviewed: `src/easy_verifier/dimensions/security.py` (the only source file changed) and `tests/test_t008_security.py`. Deliberately **not** changed: `core/pipeline.py::_missing_sources` (its `not examined` default is correct for the doc dimensions — the defect was security.py never probing), `core/redact.py` and `dimensions/_doc_extract.py` (Files Must NOT Touch), `core/context.py` (no new API needed; the pseudo-source and out-of-scope reasons append to the public `context.sources_missing` record). No shared machinery was touched. |
-| Full smoke suite still green (no regression) | ☒ pass | `PATH=…/.venv/bin:$PATH PYTHONPATH=src python -m pytest -q` → `292 passed in 1.24s`, exit code `0` read directly (not piped). Baseline before the fix was 290 passed; the delta is exactly the two new regression tests. `ruff check .` → `All checks passed!`, exit `0`. |
+| Full smoke suite still green (no regression) | ☒ pass | `PATH=…/.venv/bin:$PATH PYTHONPATH=src python -m pytest -q` → **`294 passed`**, exit code `0` read directly (not piped). Baseline before this task was 290; the delta is exactly the four new regression tests (two for the Stage 4 P1s, two for the Stage 5 scope-widening finding). `ruff check .` → `All checks passed!`, exit `0`. |
 | **UI: Visual regression (diff or verdict pasted)** | ☒ N/A | Pure backend task; no UI exists in v1. |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☒ N/A | Pure backend task; no UI exists in v1. |
 | **UI: Responsiveness at target viewports** | ☒ N/A | Pure backend task; no UI exists in v1. |
@@ -184,6 +184,68 @@ no DPIA is implied.
    deliberately — a T004 follow-up, since `redact.py` is Files-Must-NOT-Touch here.
 2. Wire the `secret_approval` callback through `run_dimension` and the adapters (see accepted residue
    below), so the gate is operable rather than structurally always-refuse.
+
+### Stage 5 `verify` finding — P1, escaped the Stage 4 gates (fixed)
+
+Recorded here rather than under `code-review` because it was **caught at Stage 5, after every Stage 4
+gate above had already passed**. Both the Stage 4 code-review and the remediation's own regression
+suite missed it; only exercising the real CLI surface exposed it.
+
+**Finding.** Omitting a narrow scope's required selector silently widened the run to a whole-repo
+declared-source probe, while the pack still labelled itself with the narrow scope's name.
+
+```text
+$ python -m easy_verifier.adapters.cli security --repo <tmp> --scope task
+"scope": "task", "warnings": [], files_read: ["requirements.txt", "src/auth.py"]   # identical to --scope project
+```
+
+**Chain.** `resolve_scope` *raises* `ScopeError` when `task` scope receives no `task_id`
+→ `pipeline.py:71`'s `except ScopeError: resolved_scope = None`
+→ `security.py`'s `whole_repo = resolved_scope is None or scope_kind == "project"` read that failure
+as "whole repository, every declared source is in bounds". This breaks the invariant `pipeline.py:60`
+states in its own words: *"narrow scopes receive only the explicit selector their resolver requires
+and never widen on failure."*
+
+**Why it was a blocker, not residue.** Same class as the fabricated miss reasons this remediation
+existed to fix — a pack asserting more than was checked. A calling agent reading `scope: task` would
+reason about whole-repo excerpts as task-relevant evidence.
+
+**Why the tests missed it.** The suite exercised only a *bogus* selector (`--task-id T999`, which
+resolves to an empty scope and behaves correctly), never a *missing* one. The two narrow kinds also
+diverged under the same user error: `changes` without `--ref` returns an empty scope instead of
+raising, so it never widened and the symmetry hid the gap.
+
+**Fix — seam chosen and why.** Fixed in `dimensions/security.py`, **not** in `pipeline.py`. The
+requested scope name (`context.scope`) already distinguishes "unresolved" from "project", so no
+shared-machinery change was required; `run_dimension` copies `context.warnings` onto the pack *after*
+the budget drain, so the dimension can declare the failure through the existing seam. A narrow scope
+that never resolved now gathers nothing, records every declared source with an explicit unresolved
+reason, and emits a pack warning.
+
+```text
+$ python -m easy_verifier.adapters.cli security --repo <tmp> --scope task     # after
+scope      task
+files_read []
+excerpts   0
+coverage   0.0
+warning    The task scope could not be resolved, most likely because its required selector was not
+           supplied. No evidence was gathered; this pack is not whole-repository output.
+miss[0]    {'source': 'requirements.txt', 'reason': 'not examined: the task scope could not be
+            resolved (its required selector was not supplied)'}
+
+$ ... --scope task --task-id T999     # contrast: present selector, unchanged
+files_read []
+miss[0]    {'source': 'requirements.txt', 'reason': 'not in the resolved task scope'}
+```
+
+**Regression.** `test_narrow_scope_without_its_selector_does_not_widen_to_the_whole_repo` — covers
+both narrow kinds, asserts empty evidence, the warning, and that every declared source carries the
+unresolved reason. Verified to **fail on the pre-fix module** (`Left contains 2 more items, first
+extra item: Excerpt(path='requirements.txt', ...)`). Paired with
+`test_bogus_task_selector_still_resolves_to_an_empty_scope`, which pins the contrast case so a future
+fix cannot collapse the two.
+
+Post-fix suite: **294 passed**, exit `0` read directly; `ruff check .` → `All checks passed!`.
 
 ### Accepted residue (recorded, not fixed)
 
