@@ -17,11 +17,13 @@ itself, so no caller can emit a response without it (FR-004).
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
-from .models import Excerpt, SourceMiss
+from .models import ApprovalRequest, Excerpt, SourceMiss
 from .redact import redact
+
+SECRET_APPROVAL_REASON = "secret-bearing contents require per-file operator approval"
 
 MAX_EXCERPT_LINES = 200
 """Upper bound on lines in a single whole-file excerpt."""
@@ -193,6 +195,7 @@ class RepoContext:
         artifacts_missing: tuple[SourceMiss, ...] = (),
         doc_sources: tuple[str, ...] = (),
         warnings: tuple[str, ...] = (),
+        secret_approval: Callable[[str], bool] | None = None,
     ) -> None:
         self.repo_path = repo_path
         self.mode = mode
@@ -207,9 +210,14 @@ class RepoContext:
         if mode == MODE_STANDALONE and LIMITED_CONTEXT_WARNING not in warnings:
             warnings = (LIMITED_CONTEXT_WARNING, *warnings)
         self.warnings = warnings
+        self.resolved_scope: object | None = None
         self.files_read: list[str] = []
         self.sources_found: list[str] = []
         self.sources_missing: list[SourceMiss] = []
+        self.approval_requests: list[ApprovalRequest] = []
+        self._secret_approval = secret_approval
+        self._secret_approval_decisions: dict[str, bool] = {}
+        self._approved_secret_reads: set[str] = set()
 
     def read_source(self, relative_path: str) -> str | None:
         """Return the text of a declared source, or ``None`` if unusable.
@@ -248,7 +256,10 @@ class RepoContext:
         # paths retain their truthful reasons. Existing contained regular files
         # are refused immediately before their bytes could be read.
         resolved_relative = resolved.relative_to(self.repo_path).as_posix()
-        if _is_secret_bearing(relative_path) or _is_secret_bearing(resolved_relative):
+        secret_bearing = _is_secret_bearing(relative_path) or _is_secret_bearing(
+            resolved_relative
+        )
+        if secret_bearing and relative_path not in self._approved_secret_reads:
             self._miss(relative_path, "excluded: secret-bearing")
             return None
 
@@ -269,6 +280,62 @@ class RepoContext:
         self.sources_found.append(relative_path)
         self.files_read.append(relative_path)
         return text
+
+    def request_secret_source(self, relative_path: str) -> str | None:
+        """Request operator approval before reading one excluded secret file.
+
+        This capability is intentionally separate from :meth:`read_source`,
+        whose default exclusion remains unconditionally safe for every other
+        dimension. Approval is cached per path so lazy budget passes never
+        prompt more than once. Missing or unsafe paths retain their ordinary
+        structured miss instead of manufacturing an approval request.
+        """
+        candidate = self.repo_path / relative_path
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            return self.read_source(relative_path)
+
+        if (
+            not resolved.is_relative_to(self.repo_path)
+            or not resolved.exists()
+            or not resolved.is_file()
+        ):
+            return self.read_source(relative_path)
+
+        resolved_relative = resolved.relative_to(self.repo_path).as_posix()
+        if not (
+            _is_secret_bearing(relative_path) or _is_secret_bearing(resolved_relative)
+        ):
+            return self.read_source(relative_path)
+
+        if relative_path not in self._secret_approval_decisions:
+            self.approval_requests.append(
+                ApprovalRequest(
+                    path=redact(relative_path),
+                    reason=SECRET_APPROVAL_REASON,
+                )
+            )
+            approved = False
+            if self._secret_approval is not None:
+                try:
+                    approved = bool(self._secret_approval(relative_path))
+                except Exception:  # noqa: BLE001 - approval failure means refuse
+                    approved = False
+            self._secret_approval_decisions[relative_path] = approved
+
+        if not self._secret_approval_decisions[relative_path]:
+            self._miss(
+                relative_path,
+                "excluded: secret-bearing; operator approval required",
+            )
+            return None
+
+        self._approved_secret_reads.add(relative_path)
+        try:
+            return self.read_source(relative_path)
+        finally:
+            self._approved_secret_reads.discard(relative_path)
 
     def read_sources(self, relative_pattern: str) -> Iterator[tuple[str, str]]:
         """Yield readable sources for one declared path or safe basename glob.
@@ -342,7 +409,12 @@ class RepoContext:
         self.sources_missing.append(SourceMiss(source=relative_path, reason=reason))
 
 
-def detect_context(repo_path: str | Path, scope: str = DEFAULT_SCOPE) -> RepoContext:
+def detect_context(
+    repo_path: str | Path,
+    scope: str = DEFAULT_SCOPE,
+    *,
+    secret_approval: Callable[[str], bool] | None = None,
+) -> RepoContext:
     """Decide whether ``repo_path`` was built with the kit, and say what it saw.
 
     Detection is deliberately dumb and total: each probe is an existence and
@@ -378,6 +450,7 @@ def detect_context(repo_path: str | Path, scope: str = DEFAULT_SCOPE) -> RepoCon
         artifacts_missing=missing,
         doc_sources=doc_sources,
         warnings=warnings,
+        secret_approval=secret_approval,
     )
 
 

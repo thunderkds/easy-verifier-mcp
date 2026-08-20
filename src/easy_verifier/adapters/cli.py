@@ -17,6 +17,7 @@ import sys
 from collections.abc import Sequence
 
 from ..core.pipeline import DEFAULT_BUDGET_BYTES, RepoPathError, run_dimension
+from ..core.scope import VALID_KINDS
 from ..dimensions import DIMENSIONS
 
 
@@ -29,6 +30,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "dimension", choices=sorted(DIMENSIONS), help="dimension to run"
     )
     parser.add_argument("--repo", default=".", help="path to the target repository")
+    parser.add_argument(
+        "--scope",
+        choices=sorted(VALID_KINDS),
+        default="project",
+        help="repository scope to evaluate",
+    )
+    parser.add_argument("--ref", help="local git ref/range for changes scope")
+    parser.add_argument(
+        "--task-id",
+        help="task identifier for task scope",
+    )
     parser.add_argument(
         "--budget-bytes",
         type=int,
@@ -45,7 +57,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         pack = run_dimension(
             DIMENSIONS[args.dimension],
             repo_path=args.repo,
+            scope=args.scope,
             budget_bytes=args.budget_bytes,
+            ref=args.ref,
+            task_id=args.task_id,
         )
     except RepoPathError as exc:
         print(f"error: {exc}", file=sys.stderr)

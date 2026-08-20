@@ -41,6 +41,9 @@ def run_dimension(
     repo_path: str | Path,
     scope: str = DEFAULT_SCOPE,
     budget_bytes: int = DEFAULT_BUDGET_BYTES,
+    *,
+    ref: str | None = None,
+    task_id: str | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
@@ -54,17 +57,19 @@ def run_dimension(
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
 
-    # `resolve_scope` (T003) needs no extra arguments for `project` (the
-    # default) or `worktree`; `changes`/`task` need a `ref`/`task_id` that
-    # this function's signature has no way to accept, so those two kinds
-    # still fall back to `None` here — the same tier-3-only behaviour this
-    # pipeline had before `budget.py` existed, not a regression. A caller
-    # that wants real `changes`/`task` tiering resolves its own `Scope` and
-    # calls `budget()` directly.
+    # Scope resolution remains centralized; narrow scopes receive only the
+    # explicit selector their resolver requires and never widen on failure.
     try:
-        resolved_scope = resolve_scope(scope, context.repo_path, context)
+        resolved_scope = resolve_scope(
+            scope,
+            context.repo_path,
+            context,
+            ref=ref,
+            task_id=task_id,
+        )
     except ScopeError:
         resolved_scope = None
+    context.resolved_scope = resolved_scope
 
     # The *call* is handed over, not its result: a conforming dimension can
     # still read and parse eagerly before returning its lazy iterator, and an
@@ -124,6 +129,7 @@ def run_dimension(
         # copying the context's warnings here is what makes FR-004 hold for
         # every response and every report without any adapter opting in.
         warnings=context.warnings,
+        approval_requests=tuple(context.approval_requests),
     )
 
 
