@@ -33,8 +33,29 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-08-20T11:26:38Z on `feat/t009-test-strategy` at `8d96335`, before any
+implementation commit — the guide's Verification Command, run in the worktree):
+
+```
+$ date -u
+Thu Aug 20 11:26:38 AM UTC 2026
+$ git log --oneline -1
+8d96335 docs(T009): carry Supervisor gate sign-off onto the branch
+$ PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest tests/test_t009_test_strategy.py -q
+ERROR: file or directory not found: tests/test_t009_test_strategy.py
+
+no tests ran in 0.00s
+pytest exit=4
+$ PYTHONPATH=src python -m easy_verifier.adapters.cli test-strategy --repo .
+usage: easy-verifier [-h] [--repo REPO]
+                     [--scope {changes,project,task,worktree}] [--ref REF]
+                     [--task-id TASK_ID] [--budget-bytes BUDGET_BYTES]
+                     {architecture,code-quality,requirement-fidelity,security,solution-fit}
+easy-verifier: error: argument dimension: invalid choice: 'test-strategy' (choose from 'architecture', 'code-quality', 'requirement-fidelity', 'security', 'solution-fit')
+```
+
+Neither half of the Verification Command can run: the test file does not exist, and `test-strategy`
+is not a dimension the CLI accepts.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
