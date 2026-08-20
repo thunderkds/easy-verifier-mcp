@@ -46,10 +46,15 @@ change under evaluation is actually covered.
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary — `PROJECT_SPEC.md` Constraint 8 names
+      `test-strategy` explicitly as one of the three bespoke dimensions that must **not** be forced
+      through `_doc_extract`, which AC #1 restates
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above —
+      verified 2026-08-20 by the Supervisor: FR-003, FR-004, FR-005, FR-007, FR-009, FR-010, FR-011,
+      FR-013, FR-016, FR-016a, NFR-002, NFR-007 all present in `PRD.md`. Note FR-016a (cited by
+      AC #3) is a distinct row from FR-016 — both exist
 
 ---
 
