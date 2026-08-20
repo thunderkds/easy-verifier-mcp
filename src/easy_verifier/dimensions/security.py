@@ -11,7 +11,7 @@ from fnmatch import fnmatchcase
 from pathlib import PurePosixPath
 
 from ..core.context import SECRET_BEARING_PATTERNS, whole_file_excerpt
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt
+from ..core.models import DimensionContext, DimensionDescriptor, Excerpt, SourceMiss
 from ..core.redact import scan
 
 NAME = "security"
@@ -37,6 +37,26 @@ SOURCES_SOUGHT: tuple[str, ...] = (
 )
 
 MAX_SECURITY_SOURCES = 200
+
+#: Declared entries that name a body of evidence rather than a repository path.
+#: Probing them as paths would report a truthful-looking "not found" for
+#: something that was never a file, so each states its own reason instead.
+PSEUDO_SOURCES: dict[str, str] = {
+    "git history (out of scope for v1)": (
+        "out of scope for v1: git history is not searched by this dimension"
+    ),
+}
+
+#: Category names in descending evidence relevance. The candidate cap is spent
+#: in this order, not in path order — an alphabetical cap drops a manifest or a
+#: Dockerfile on any repository larger than the cap.
+_CATEGORY_RANK: tuple[str, ...] = (
+    "credential material",
+    "dependency manifest",
+    "permission, container, or CI configuration",
+    "auth or crypto code",
+)
+_GENERIC_RANK = len(_CATEGORY_RANK)
 
 _DEPENDENCY_NAMES = frozenset(
     {
@@ -83,6 +103,7 @@ _AUTH_MARKERS = (
     "rbac",
     "security",
 )
+_TEST_SEGMENTS = frozenset({"test", "tests", "fixtures", "testdata", "__tests__"})
 _TEXT_SUFFIXES = frozenset(
     {
         ".c",
@@ -119,19 +140,56 @@ _TEXT_SUFFIXES = frozenset(
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """Yield bounded security evidence from the resolved scope, lazily."""
     resolved_scope = context.resolved_scope
-    if resolved_scope is None:
-        candidates = SOURCES_SOUGHT if context.scope == "project" else ()
-    else:
-        candidates = tuple(sorted(getattr(resolved_scope, "files", ())))
+    scope_files = frozenset(getattr(resolved_scope, "files", ()) or ())
+    scope_kind = getattr(resolved_scope, "kind", None)
+    # `project` (and the no-resolution fallback) covers the whole repository, so
+    # every declared source is in bounds. A narrow scope is not allowed to reach
+    # outside its own file set just because a name is declared.
+    whole_repo = resolved_scope is None or scope_kind == "project"
 
-    for index, source in enumerate(candidates):
-        if index >= MAX_SECURITY_SOURCES:
-            return
+    probed: set[str] = set()
 
-        category = _category(source)
-        if category is None and not _is_scannable(source):
+    # Declared sources are probed explicitly, before anything else. Without this
+    # the miss list is guesswork: an absent `package.json` is indistinguishable
+    # from one the budget never reached, and coverage counts only the declared
+    # names that happen to collide with a scope entry.
+    for source in SOURCES_SOUGHT:
+        pseudo_reason = PSEUDO_SOURCES.get(source)
+        if pseudo_reason is not None:
+            context.sources_missing.append(
+                SourceMiss(source=source, reason=pseudo_reason)
+            )
             continue
 
+        if not whole_repo and source not in scope_files:
+            context.sources_missing.append(
+                SourceMiss(
+                    source=source,
+                    reason=f"not in the resolved {scope_kind} scope",
+                )
+            )
+            continue
+
+        probed.add(source)
+        text = context.request_secret_source(source)
+        if text is None:
+            continue
+        excerpt = whole_file_excerpt(source, text)
+        if excerpt is not None:
+            yield excerpt
+
+    if resolved_scope is None:
+        return
+
+    reads = 0
+    for rank, source in _ranked_candidates(scope_files):
+        if reads >= MAX_SECURITY_SOURCES:
+            return
+        if source in probed:
+            continue
+
+        category = None if rank == _GENERIC_RANK else _CATEGORY_RANK[rank]
+        reads += 1
         text = context.request_secret_source(source)
         if text is None:
             continue
@@ -147,6 +205,27 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             yield excerpt
 
 
+def _ranked_candidates(files) -> list[tuple[int, str]]:
+    """Scope files ordered by category relevance, ties broken by path.
+
+    Ordering happens before the cap so the bounded read budget goes to
+    credential material, manifests and configuration first, and only then to
+    generic scannable text.
+    """
+    ranked: list[tuple[int, str]] = []
+    for source in files:
+        category = _category(source)
+        if category is None:
+            if not _is_scannable(source):
+                continue
+            rank = _GENERIC_RANK
+        else:
+            rank = _CATEGORY_RANK.index(category)
+        ranked.append((rank, source))
+    ranked.sort()
+    return ranked
+
+
 def _category(source: str) -> str | None:
     lower = source.lower()
     name = PurePosixPath(lower).name
@@ -155,7 +234,7 @@ def _category(source: str) -> str | None:
         return "credential material"
     if name in _DEPENDENCY_NAMES or fnmatchcase(name, "requirements*.txt"):
         return "dependency manifest"
-    if any(marker in lower for marker in _AUTH_MARKERS):
+    if _has_auth_marker(lower):
         return "auth or crypto code"
     if (
         name in _CONFIG_NAMES
@@ -167,6 +246,19 @@ def _category(source: str) -> str | None:
     ):
         return "permission, container, or CI configuration"
     return None
+
+
+def _has_auth_marker(lower_path: str) -> bool:
+    """True when a *non-test* path segment carries an auth or crypto marker.
+
+    Matching the whole path meant a repository's own test tree scored as auth
+    code and was emitted as whole-file excerpts. Test paths still reach the
+    generic tier and are surfaced when a detector actually hits.
+    """
+    segments = PurePosixPath(lower_path).parts
+    if any(segment in _TEST_SEGMENTS for segment in segments):
+        return False
+    return any(marker in segment for segment in segments for marker in _AUTH_MARKERS)
 
 
 def _is_scannable(source: str) -> bool:

@@ -315,3 +315,71 @@ def test_security_candidate_reads_are_bounded(tmp_path: Path) -> None:
 
     assert len(set(pack.files_read)) == security.MAX_SECURITY_SOURCES
     assert f"auth_{security.MAX_SECURITY_SOURCES + 4:03}.py" not in pack.files_read
+
+
+def test_relevant_sources_outrank_alphabetically_earlier_filler(
+    tmp_path: Path,
+) -> None:
+    """The candidate cap must be spent on relevance, not on arrival order.
+
+    Regression for a Stage 4 P1: candidates were read in alphabetical order, so
+    on any repo above ``MAX_SECURITY_SOURCES`` the whole cap was consumed by
+    whatever sorted first and real evidence was dropped silently.
+    """
+    for index in range(security.MAX_SECURITY_SOURCES + 5):
+        (tmp_path / f"aaa_{index:03}.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("requests==2.0\n", encoding="utf-8")
+    container = tmp_path / "zzz"
+    container.mkdir()
+    (container / "Dockerfile").write_text(
+        "FROM python:3.12\nUSER root\n", encoding="utf-8"
+    )
+
+    pack = run_dimension(security.DESCRIPTOR, tmp_path, scope="project")
+
+    paths = [excerpt.path for excerpt in pack.excerpts]
+    assert "requirements.txt" in paths
+    assert "zzz/Dockerfile" in paths
+    assert pack.coverage_score is not None and pack.coverage_score > 0.0
+
+
+def _reasons(pack: EvidencePack) -> dict[str, str]:
+    return {miss.source: miss.reason for miss in pack.sources_missing}
+
+
+def test_declared_sources_are_probed_so_miss_reasons_are_truthful(
+    tmp_path: Path,
+) -> None:
+    """Absent declared sources must read ``not found``, never ``not examined``.
+
+    Regression for a Stage 4 P1: ``collect`` never probed ``SOURCES_SOUGHT``, so
+    every declared source fell through to the pipeline's "not examined" default
+    and the miss list was fabricated.
+    """
+    (tmp_path / "requirements.txt").write_text("requests==2.0\n", encoding="utf-8")
+    source_dir = tmp_path / "src"
+    source_dir.mkdir()
+    (source_dir / "auth.py").write_text("def login(): ...\n", encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        f"API_TOKEN={_fake_secret(31)}\n", encoding="utf-8"
+    )
+
+    pack = run_dimension(security.DESCRIPTOR, tmp_path, scope="project")
+    reasons = _reasons(pack)
+
+    assert "requirements.txt" in pack.sources_found
+    assert "src/auth.py" in pack.sources_found
+
+    # Genuinely absent — the truthful state is "not found".
+    for absent in ("package.json", "Dockerfile", "compose.yaml", "poetry.lock"):
+        assert reasons[absent] == "not found in the target repository", absent
+
+    # Present but withheld — distinct from both of the above (AC #11/#13).
+    assert reasons[".env"] == "excluded: secret-bearing; operator approval required"
+    assert ".env" not in pack.sources_found
+
+    # The v1 out-of-scope pseudo-source states its own reason.
+    assert "out of scope for v1" in reasons["git history (out of scope for v1)"]
+
+    # Nothing is left claiming it merely was not examined.
+    assert not any("not examined" in reason for reason in reasons.values())
