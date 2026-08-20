@@ -266,3 +266,50 @@ Post-fix suite: **294 passed**, exit `0` read directly; `ruff check .` → `All 
   production the gate is therefore structurally always-refuse. AC #12's requirement ("defaults to
   refuse", surfaces a request) is satisfied — `approval_requests` reaches the pack and the operator sees
   it — but no operator can currently approve. Acceptable for v1; listed as a hardening candidate above.
+
+---
+
+## Stage 5 — verify (Supervisor, 2026-08-20)
+
+**First run: FAIL.** Driven at the real CLI surface (`python -m easy_verifier.adapters.cli`), not
+through the in-process API, against three repositories: a seeded standalone repo with a live `.env`,
+a 205-file alphabetical-filler repo, and this repo. The two Stage 4 P1 fixes held at the CLI. One new
+defect surfaced that all three Stage 4 gates had passed over — see the Stage 5 section above; fixed in
+`4e4c07a`.
+
+**Re-verified after the fix, by the Supervisor, at the CLI:**
+
+| Probe | Result |
+|---|---|
+| `--scope task`, selector omitted | `files_read []`, `excerpts 0`, `coverage 0.0`, explicit warning on the pack, every declared source reasoned `not examined: the task scope could not be resolved (its required selector was not supplied)` |
+| `--scope task --task-id T999` (bogus but present) | unchanged — `files_read []`, no warning, `not in the resolved task scope` |
+| `--scope changes`, no `--ref` | unchanged — `files_read []`, `not in the resolved changes scope` |
+| `--scope task --task-id T008` (valid) | resolves to the guide; no security-category evidence in it, so 0 excerpts — correct |
+| 205-filler ordering repo | `['requirements.txt', 'zzz/Dockerfile']` — P1-1 fix holds |
+| seeded `.env` | withheld, one `ApprovalRequest`, `AKIA…` absent from stdout; misses truthful in all three states |
+| this repo, `--scope project` | zero `not examined` reasons anywhere; no verdict-shaped key |
+| full suite / lint | `294 passed`, exit `0` read directly; `ruff check .` exit `0` |
+
+**Verdict: PASS.**
+
+### Note on the Evidence-table counts
+
+The Stage 4 Evidence rows above quote `files_read 77 / excerpts 15 / untruncated`. At Stage 5 the same
+command reports `75 / 14 / truncated True / omitted_count 1`. This is not a selection regression: this
+task's own commits grew `security.py` and `test_t008_security.py`, and the target repository being
+scanned **is this repository**, so the pack crossed the 120 KB budget. The overflow is declared through
+`truncated`/`omitted_count`, which is the designed behaviour (T005). The Stage 4 numbers are left as
+recorded — they were true when taken, and rewriting evidence after the fact is exactly what an audit
+trail must not do.
+
+### Pre-existing issues observed while verifying — not T008's, not fixed here
+
+- `files_read` contains duplicate entries under `task` scope. Reproduces on `architecture` (3 dupes)
+  and `code-quality` (1) at the same scope; `project` scope has none. T008's own bounded-reads test
+  compares `len(set(pack.files_read))`, which is presumably why it was never noticed.
+- `--budget-bytes 0` raises an uncaught `BudgetError` traceback at the CLI on every dimension —
+  `cli.py` catches only `RepoPathError`.
+- `scope.py` diverges on failure: `task` without a selector raises `ScopeError` while `changes` without
+  one returns an empty scope. T008 now handles both correctly at its own boundary, but
+  `pipeline.py:60`'s "never widen on failure" invariant is still enforced by convention rather than by
+  construction for the other dimensions. Candidate follow-up task on `scope.py`/`pipeline.py`.
