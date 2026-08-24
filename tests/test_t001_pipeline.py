@@ -573,8 +573,9 @@ def test_registry_is_a_plain_dict_of_descriptors():
 
     T001 shipped with only `architecture` registered; T007 adds the other
     three document-shaped dimensions (`solution-fit`, `requirement-fidelity`,
-    `code-quality`), and T008 adds bespoke `security`. The registry stays a
-    plain dict either way — that is what this test actually pins.
+    `code-quality`), T008 adds bespoke `security`, T009 `test-strategy` and
+    T010 `blast-radius` — all seven of FR-010's dimensions. The registry stays
+    a plain dict either way — that is what this test actually pins.
     """
     assert isinstance(DIMENSIONS, dict)
     assert set(DIMENSIONS) == {
@@ -584,6 +585,7 @@ def test_registry_is_a_plain_dict_of_descriptors():
         "code-quality",
         "security",
         "test-strategy",
+        "blast-radius",
     }
     descriptor = DIMENSIONS["architecture"]
     assert type(descriptor) is DimensionDescriptor

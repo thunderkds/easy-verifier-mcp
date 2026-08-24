@@ -59,9 +59,49 @@ easy-verifier: error: argument dimension: invalid choice: 'blast-radius' (choose
 > Note: the guide's Verification Command reads `--range HEAD~1..HEAD`; the CLI's flag is `--ref`.
 > The command above uses the corrected flag, and the guide text has been corrected in this task.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: same commands, `2026-08-24T10:42:04Z`, in the T010 worktree:
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```console
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-08-24T10:42:04Z
+
+$ PYTHONPATH=src .venv/bin/python -m pytest tests/test_t010_blast_radius.py -q
+..................                                                       [100%]
+18 passed in 1.01s
+pytest exit=0
+
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli blast-radius --repo . \
+    --scope changes --ref HEAD~1..HEAD | head -30
+warning [kit-aware]: Method: reference evidence in this pack comes from a textual search for
+each scope file's path, dotted module path and file stem across the repository's code files. It
+is not a resolved import graph — no target code was parsed, imported or run — so a same-named
+symbol in an unrelated module is reported (over-reporting) and an aliased or dynamically formed
+reference is not (under-reporting). Co-change evidence counts files appearing in the same local
+git commits as a scope file: correlation in history, not a dependency.
+warning [kit-aware]: Entry points were looked for in these packaging manifests: pyproject.toml,
+setup.py, package.json, Cargo.toml, go.mod; by these declaration markers: [project.scripts],
+[project.gui-scripts], [project.entry-points, console_scripts, entry_points, [[bin]], "bin",
+"exports", "main", module ; and in entry-point-shaped files (__init__.py, __main__.py, main.*,
+cli.*, app.*, server.*, routes.*, urls.py, index.*) surfaced by the reference search. Manifests
+that are not in the repository are named in sources_missing.
+warning [kit-aware]: Files that changed alongside the scope file(s) within the last 200 local
+commits (number of commits they shared, not a dependency): PROJECT_KANBAN.md (2),
+PROJECT_SPEC.md (1), memory/MEMORY.md (1), memory/NEXT-SESSION.md (1),
+tasks/TASK_GUIDE_T001.md (1), … and 5 more. History is not followed across renames, so a file
+renamed inside this window contributes only under its current name.
+{
+  "dimension": "blast-radius",
+  "mode": "kit-aware",
+  "scope": "changes",
+  "files_read": [
+    "pyproject.toml",
+    ...
+```
+
+**DELTA**: a caller can now ask `easy-verifier blast-radius` for a repository's *code-dependency*
+reach — which files textually reference the active scope, which files local git history shows
+changing alongside them, and which packaging manifests declare downstream entry points — with the
+discovery method stated in the pack itself and no risk rating anywhere.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T010.jsonl`, never the
 implementing agent alone]
