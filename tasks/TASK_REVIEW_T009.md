@@ -17,8 +17,8 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t009_test_strategy.py` — 17 tests, one per Success Criterion (1–4) plus AC #1/#5/#6/#7/#8/#9, the ranked-cap ordering guard, the declared-source probe guard, and the missing-vs-bogus selector pair. `PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest tests/test_t009_test_strategy.py -q` → `17 passed in 0.19s` (2026-08-20T11:34:02Z, exit 0). |
 | Verification command run | ☑ pass | See the AFTER capture below: `pytest tests/test_t009_test_strategy.py -q` → `17 passed`, and `python -m easy_verifier.adapters.cli test-strategy --repo .` now prints a real pack (was `invalid choice: 'test-strategy'` in BEFORE). |
 | Negative cases hold | ☑ pass | Empty repo → `coverage_score 0.0`, full miss list, no estimate. `--scope task` with the flag **omitted** → `resolved_scope=None`, zero files read, explicit "could not be resolved" warning (no widening); with it **empty** and with it **bogus** (`T999`) → empty task scope, zero files read. `--scope changes` without `--ref` → same refusal. Coverage artifacts (`coverage.xml`, `.coverage`, `htmlcov/`) named in a warning but never read and their figures never serialized. |
-| verify | ☐ pass / ☐ fail / ☐ N/A | Not run by the implementer — `verify` is user-invocation-only. The CLI was driven manually with each selector present, omitted, empty and bogus (see Negative cases) as a stand-in; Stage 5 `verify` still owed. |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | Changed set: `src/easy_verifier/dimensions/test_strategy.py` (new), `src/easy_verifier/dimensions/__init__.py` (one registry row), `tests/test_t009_test_strategy.py` (new), `tests/test_t001_pipeline.py` (registry expectation only). `core/**`, `_doc_extract.py` and `.claude/hooks/**` untouched. |
+| verify | ☑ pass | Run by the Supervisor at the real CLI on `591c0ce` (2026-08-24), **after** an initial FAIL on `75b58ab`. First pass FAILED: the pack cited `tests/conftest.py` in `files_read` and in an excerpt while `sources_missing` reported `conftest.py` as `not found in the target repository`, understating `coverage_score` to 0.111 (1/9). Re-verified post-fix: contradiction gone, `sources_found ['pyproject.toml', 'conftest.py']`, `coverage_score 0.2222…` (2/9), genuine absences still reported `not found`. Adversarial probes: root-vs-vendored `package.json` precedence (root wins), basename collision under `vendor/` (see Stage 5 finding), `--scope task` and `--scope changes` with the selector omitted (no widening, warning intact). Full suite `314 passed`, exit 0, read directly. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Changed set: `src/easy_verifier/dimensions/test_strategy.py` (new), `src/easy_verifier/dimensions/__init__.py` (one registry row), `tests/test_t009_test_strategy.py` (new), `tests/test_t001_pipeline.py` (registry expectation only). `core/**`, `_doc_extract.py` and `.claude/hooks/**` untouched. |
 | Full smoke suite still green (no regression) | ☑ pass | `PATH=<main>/.venv/bin:$PATH PYTHONPATH=src python -m pytest -q` → `311 passed in 1.31s`, exit 0 (baseline 294 + 17 new). `ruff check .` → `All checks passed!`. |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
@@ -351,3 +351,62 @@ excluded from this remediation's scope by the spawn prompt; neither touched.
 
 **Remediation closed. Commits: see `git log develop..HEAD` on `feat/t009-test-strategy` in this
 worktree.**
+
+
+---
+
+## Stage 5 — Supervisor `verify` (2026-08-24)
+
+`verify` was run twice, at the real CLI, with the main checkout's interpreter (the worktree has no
+`.venv`).
+
+### First pass — FAIL on `75b58ab`
+
+The defect was reachable on the **default invocation** against this repo — no adversarial fixture
+needed. One pack contradicted itself:
+
+```
+"files_read": ["pyproject.toml", "tests/conftest.py", ...]
+"excerpts":   [... {"path": "tests/conftest.py", "start_line": 1, "end_line": 13} ...]
+"sources_missing": [... {"source": "conftest.py",
+                         "reason": "not found in the target repository"} ...]
+"coverage_score": 0.1111111111111111
+```
+
+Isolating probe: a temp repo with a **root** `conftest.py` reported it correctly, confirming the
+declared-source probe resolved bare names at repo root only while the scope sweep read the same file
+from its real subdirectory.
+
+This is the third instance of the project's recurring miss-list defect class (after T007's false
+secret-file reasons and T008's wholly fabricated miss list), and the first in the opposite
+direction: the read *did* happen and the miss list still denied it. Stage 4 had closed on this task,
+including an independent CLI re-verification, without catching it.
+
+### Second pass — PASS on `591c0ce`
+
+Remediation verified as described in the Evidence table's `verify` row. No regression to T008's
+no-widening fix.
+
+### Finding carried forward (NOT a T009 regression — filed against `core/scope.py`)
+
+The basename fallback inherits whatever `core/scope.py:_EXCLUDED_DIRS` misses. `node_modules` is
+excluded and was correctly never read; `vendor/` is **not** in that set. In a repo with no config of
+its own, a vendored dependency's file is credited as the project's declared source:
+
+```
+# temp repo: no project-level config; vendor/some_dep/{package.json,pytest.ini}
+found      ['pytest.ini', 'package.json']
+files_read ['vendor/some_dep/pytest.ini', 'vendor/some_dep/package.json']
+```
+
+That is the mirror image of the defect just fixed — a false `sources_found` entry rather than a
+false miss. It is not charged to T009: the gap is in the shared exclusion set, which this task's
+scope lock correctly kept the implementer out of, and the pre-fix code only avoided it by being
+wrong in the other direction. A one-line addition to `_EXCLUDED_DIRS` fixes it for every dimension
+at once.
+
+Secondary, accepted: `sources_found` now names `conftest.py` for a file living at
+`tests/conftest.py`. The label is the declared source and `files_read` disambiguates, but a caller
+reading `sources_found` alone gets a path that does not exist.
+
+**Stage 5 closed — PASS.**
