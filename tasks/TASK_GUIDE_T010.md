@@ -48,10 +48,15 @@ consequences travel.
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (Supervisor, 2026-08-24)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary — "scope", "excerpt", "sources_sought"/"miss list" used as the kit defines them; the guide's naming note correctly separates *code-dependency* blast radius from the kit's data-breach `blast-radius` **skill**
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above — verified by grep: FR-003/004/006/008/009/010/011/013/016/016a and NFR-002/007/009/012 all present
+
+> **Gate defect found at sign-off, not blocking**: the Verification Command below reads
+> `--range HEAD~1..HEAD`, but the CLI's flag for `changes` scope is `--ref` (`--ref REF`, per
+> `easy-verifier --help`). The command as written fails with an unrecognized-argument error. Use
+> `--ref HEAD~1..HEAD` and correct the guide in passing.
 
 ---
 

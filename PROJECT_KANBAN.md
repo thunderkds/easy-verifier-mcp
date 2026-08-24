@@ -15,7 +15,6 @@
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 
 **Wave 2 — Dimensions (parallelizable once Wave 1 is stable)**
-- [ ] **T010** — `blast-radius` dimension (bespoke) | backend-developer | C2 | Risk: Low | P1
 - [ ] **T011** — Dimension discovery operation (FR-013a) | backend-developer | C0 | Risk: Low | P1
 
 **Wave 3 — Output**
@@ -32,7 +31,7 @@ _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`
 
 ### In Progress
 
-_(none)_
+- [ ] **T010** — `blast-radius` dimension (bespoke) | backend-developer | C2 | Risk: Low | P1
 
 ### Ready for Review
 
