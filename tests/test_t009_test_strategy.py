@@ -511,6 +511,37 @@ def test_declared_sources_are_probed_so_every_miss_reason_is_truthful(
     assert not any("byte budget" in reason for reason in reasons.values())
 
 
+def test_nested_declared_source_is_never_both_cited_and_declared_missing(
+    tmp_path: Path,
+) -> None:
+    """A declared bare name found and cited from a subdirectory must not also
+    land in ``sources_missing`` — the contradiction T009's Stage 5 `verify`
+    found on this repo's own ``tests/conftest.py``.
+
+    ``pytest.ini``/``tox.ini``/``setup.cfg``/``pyproject.toml``/``package.json``/
+    ``jest.config.js`` share the same bare-name declaration as ``conftest.py``,
+    so this fixture nests one of the others too, to cover the same fix.
+    """
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "conftest.py").write_text("import pytest\n", encoding="utf-8")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\ntestpaths = ['tests']\n", encoding="utf-8"
+    )
+
+    pack = run_dimension(test_strategy.DESCRIPTOR, tmp_path, scope="project")
+    reasons = _reasons(pack)
+
+    assert "tests/conftest.py" in pack.files_read
+    assert "conftest.py" not in reasons
+    assert "sub/pyproject.toml" in pack.files_read
+    assert "pyproject.toml" not in reasons
+
+    sought = len(test_strategy.SOURCES_SOUGHT)
+    found = len(pack.sources_found)
+    assert pack.coverage_score == found / sought
+
+
 def test_standalone_mode_carries_the_limited_context_warning(tmp_path: Path) -> None:
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "test_a.py").write_text("def test_a(): ...\n", "utf-8")

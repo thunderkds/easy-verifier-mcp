@@ -234,3 +234,120 @@ scope. Suite `313 passed`, exit `0` read directly; `ruff check .` exit `0`.
 `code-quality` and `security`. Left alone.
 
 **Stage 4 closed. Stage 5 `verify` is outstanding — it is user-invocation-only.**
+
+---
+
+## Remediation (Stage 5 `verify` finding, P1)
+
+`verify` at the real CLI found the declared-source probe loop resolving every bare `SOURCES_SOUGHT`
+name (`conftest.py`, `pytest.ini`, `tox.ini`, `setup.cfg`, `pyproject.toml`, `package.json`,
+`jest.config.js`) against the repo root only, while the later scope sweep read the same file from
+wherever it actually lives — contradicting itself when the two disagreed on location.
+
+### Demonstration — Remediation BEFORE (captured 2026-08-24 17:13:59 +0700, commit `75b58ab`, before any fix)
+
+```
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli test-strategy --repo .
+```
+```json
+{
+  "files_read_has_tests_conftest": true,
+  "excerpt_paths": ["tests/conftest.py"],
+  "sources_missing_conftest": [
+    {"source": "conftest.py", "reason": "not found in the target repository"}
+  ],
+  "coverage_score": 0.1111111111111111
+}
+```
+`tests/conftest.py` is read and cited (`files_read`, `excerpts`), yet the declared checklist entry
+`conftest.py` is simultaneously reported `not found in the target repository` and `coverage_score` is
+computed as 1/9 instead of 2/9 — a factually false miss reason and an understated score.
+
+### Reproduce-before-fix (regression test, red on `75b58ab`)
+
+Added `test_nested_declared_source_is_never_both_cited_and_declared_missing` to
+`tests/test_t009_test_strategy.py`. Pre-fix failure:
+
+```
+assert "tests/conftest.py" in pack.files_read
+>       assert "conftest.py" not in reasons
+E       AssertionError: assert 'conftest.py' not in {'pytest.ini': 'not found in the target repository', ...}
+```
+
+### Root cause and fix
+
+`collect()`'s declared-source loop called `reader.read(source)` on the literal bare name, e.g.
+`reader.read("conftest.py")`, which only ever resolves at the repo root via `RepoContext.read_source`.
+The later scope sweep separately read `tests/conftest.py` (the real location) under its full path,
+so the two never agreed.
+
+`src/easy_verifier/dimensions/test_strategy.py`:
+- Added `_resolve_declared_source(source, scope_files)`: for a bare declared name (no `/`) not
+  present at the literal root path, it looks up a matching basename inside the already-computed
+  `scope_files` (the full repo walk in `project` scope; the narrow file set otherwise — the same
+  containment the scope already enforced, no new walk or resolver). Several matches resolve
+  deterministically to the shallowest, then alphabetically first. A declared name that already
+  includes a directory (`.github/workflows/ci.yml`) is left unchanged — that location is convention-
+  fixed, not root-anchored by omission.
+- The probe loop now reads the resolved path. `core/pipeline.py`'s `found` set (untouched — it is a
+  Files-Must-Not-Touch core file) does a literal string match between `sources_sought` and
+  `context.sources_found`, so when the resolved path differs from the declared name, the declared
+  name is additionally appended to `context.sources_found` directly — the concrete path was already
+  recorded there by `read_source` (honest `files_read`/citation), and the declared name is credited
+  as the same file under its checklist label, never left in `sources_missing`.
+- Narrow scopes (`task`/`changes`/`worktree`) still resolve only within their own `scope_files`, so a
+  bare name is never satisfied from outside the resolved scope — containment is unchanged.
+
+### Item 4 — audit of every other bare `SOURCES_SOUGHT` entry
+
+All of `pytest.ini`, `tox.ini`, `setup.cfg`, `pyproject.toml`, `package.json`, `jest.config.js` are
+bare names sharing the exact same root-only assumption as `conftest.py`, fixed uniformly by
+`_resolve_declared_source` (no per-name special-casing needed). `.github/workflows/ci.yml` is the one
+entry with a directory component — deliberately left root-anchored: GitHub Actions only ever reads
+workflow files from that exact path, so resolving it elsewhere would be wrong, not more honest.
+`CORRESPONDENCE_SOURCE` is a pseudo-source (T009's own precedent) and is excluded from resolution.
+
+### Post-fix pack (this repo, `--scope project`)
+
+```json
+{
+  "files_read_has_tests_conftest": true,
+  "sources_missing_conftest": [],
+  "sources_found": ["pyproject.toml", "conftest.py"],
+  "coverage_score": 0.2222222222222222
+}
+```
+`conftest.py` no longer appears in `sources_missing`; `coverage_score` is now 2/9, matching the two
+declared sources actually found (`pyproject.toml` at root, `conftest.py` under `tests/`).
+
+### Narrow-scope regression re-check (requirement 5, re-driven post-fix)
+
+```
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli test-strategy --repo . --scope task
+warning [kit-aware]: The task scope could not be resolved, most likely because its required selector
+was not supplied. No evidence was gathered; this pack is not whole-repository output.
+
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli test-strategy --repo . --scope changes
+warning [kit-aware]: The changes scope could not be resolved, most likely because its required selector
+was not supplied. No evidence was gathered; this pack is not whole-repository output.
+```
+Both still yield the unresolved-selector warning and no evidence — no regression to whole-repo
+leakage.
+
+### Evidence
+
+| Check | Command | Result |
+|---|---|---|
+| Regression test, pre-fix (red) | `pytest tests/test_t009_test_strategy.py::test_nested_declared_source_is_never_both_cited_and_declared_missing -q` | `1 failed` (see above) |
+| `tests/test_t009_test_strategy.py` | `PYTHONPATH=src .venv/bin/python -m pytest tests/test_t009_test_strategy.py -q` | `20 passed`, exit `0` |
+| Full suite | `PYTHONPATH=src .venv/bin/python -m pytest -q` | `314 passed`, exit `0` |
+| Lint | `ruff check src tests` | `All checks passed!`, exit `0` |
+| Format | `ruff format --check src tests` | Clean for the two files this task touched; the one pre-existing hit in `tests/test_t005_budget.py` predates this task and is untouched |
+
+### Out of scope (unchanged, owned elsewhere)
+
+`files_read` duplicates under `task` scope, and the `--budget-bytes 0` traceback — both explicitly
+excluded from this remediation's scope by the spawn prompt; neither touched.
+
+**Remediation closed. Commits: see `git log develop..HEAD` on `feat/t009-test-strategy` in this
+worktree.**
