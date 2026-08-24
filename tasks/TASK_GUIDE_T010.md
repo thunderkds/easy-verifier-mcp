@@ -100,7 +100,7 @@ consequences travel.
 
 ```bash
 pytest tests/test_t010_blast_radius.py -q && \
-  python -m easy_verifier.adapters.cli blast-radius --repo . --scope changes --range HEAD~1..HEAD | head -30
+  python -m easy_verifier.adapters.cli blast-radius --repo . --scope changes --ref HEAD~1..HEAD | head -30
 ```
 
 ### Evidence (filled by reviewer at Stage 4/5)

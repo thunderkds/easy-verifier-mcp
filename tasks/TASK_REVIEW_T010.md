@@ -1,6 +1,6 @@
-# TASK_REVIEW — T[NNN]: [Short Title]
+# TASK_REVIEW — T010: blast-radius dimension (bespoke)
 
-> Sibling of `tasks/TASK_GUIDE_T[NNN].md`. Everything here is **filled by the reviewer at Stage
+> Sibling of `tasks/TASK_GUIDE_T010.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
 > every turn and never fills these two sections.
 >
@@ -33,8 +33,31 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured `2026-08-24T10:32:41Z`, in the T010 worktree, before any implementation
+commit existed (`git log develop..HEAD` was empty):
+
+```console
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-08-24T10:32:41Z
+
+$ PYTHONPATH=src .venv/bin/python -m pytest tests/test_t010_blast_radius.py -q
+ERROR: file or directory not found: tests/test_t010_blast_radius.py
+
+no tests ran in 0.00s
+pytest exit=4
+
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli blast-radius --repo . \
+    --scope changes --ref HEAD~1..HEAD
+usage: easy-verifier [-h] [--repo REPO]
+                     [--scope {changes,project,task,worktree}] [--ref REF]
+                     [--task-id TASK_ID] [--budget-bytes BUDGET_BYTES]
+                     {architecture,code-quality,requirement-fidelity,security,solution-fit,test-strategy}
+easy-verifier: error: argument dimension: invalid choice: 'blast-radius' (choose from 'architecture',
+'code-quality', 'requirement-fidelity', 'security', 'solution-fit', 'test-strategy')
+```
+
+> Note: the guide's Verification Command reads `--range HEAD~1..HEAD`; the CLI's flag is `--ref`.
+> The command above uses the corrected flag, and the guide text has been corrected in this task.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
