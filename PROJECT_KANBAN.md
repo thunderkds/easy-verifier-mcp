@@ -34,7 +34,10 @@ _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`
 
 ### In Progress
 
-_(none)_
+- 🔄 **T013** — `report.py`: self-contained multi-dimension HTML into target `reports/` | backend-developer | C2 | Risk: Med | P0 | worktree `../easy-verifier-mcp-t013` on `feat/t013-report` | Started 2026-08-25
+- 🔄 **T012** — `synthesis.py`: combined multi-dimension pack + aggregate coverage | backend-developer | C1 | Risk: Low | P1 | worktree `../easy-verifier-mcp-t012` on `feat/t012-synthesis` | Started 2026-08-25
+
+> **Run in parallel by user decision (2026-08-25), against the Supervisor's recommendation to sequence T012 before T013.** T013's declared input is T012's declared output. The seam is therefore **not** an agent design choice: `CombinedPack`/`CoverageSummary`/`DimensionSlot` are locked by the Supervisor as **DDR-0003** in `memory/decisions.md` and handed verbatim to both spawns. T012 implements them in `core/models.py`; T013 imports them and builds its own fixtures rather than waiting. The **per-dimension byte budget** (user decision, same date) closes T012's Requirement Fidelity Gate open question and is recorded on the pack as `budget_model`. **Integration risk that remains and is being accepted knowingly**: neither branch's suite can see a contract violation in the other — the exact shape of the T002/T004 redaction defect, which passed both branches alone and only failed at Stage 5. Stage 5 for whichever task merges second must re-run the *first* task's suite against the merged tree, not just its own.
 
 ### Ready for Review
 

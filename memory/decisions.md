@@ -532,3 +532,65 @@ admits nothing and drains its stream by construction.
 **All seven of FR-010's dimensions are now wired.** Wave 2 is complete; Wave 3 (T012 synthesis, T013
 report) is next.
 
+
+---
+
+## DDR-0003 — T012/T013 seam contract, locked by the Supervisor (2026-08-25)
+
+**Context.** The user elected to run T012 (`synthesis.py`) and T013 (`report.py`) **in parallel**,
+against the Supervisor's recommendation to sequence them. T013's declared input is exactly T012's
+declared output (`CombinedPack` / `CoverageSummary`). Two agents in two worktrees, each inventing
+half of a seam, is the rework this project has already paid for once (T002/T004's redaction seam,
+caught only at Stage 5 integration because each branch's tests passed alone).
+
+**Decision.** The seam is **not** an agent design choice. The Supervisor fixes it here, at Stage 2
+authority, and hands the identical text to both spawns. T012 **implements** these types in
+`core/models.py`; T013 **imports** them and does not define, widen, or shadow them. If either agent
+believes the contract is wrong, it stops and reports to the Supervisor **before** building — it does
+not adapt around it.
+
+```python
+@dataclass(frozen=True)
+class DimensionSlot:
+    dimension: str
+    pack: EvidencePack | None      # None iff error is set
+    error: str | None              # structured failure; T012 AC #6
+
+@dataclass(frozen=True)
+class CoverageSummary:
+    per_dimension: tuple[tuple[str, float | None], ...]        # deterministic order
+    combined: float | None                                     # None, never 0.0, when nothing sought
+    method: str                                                # states how `combined` was derived; T012 AC #2
+    misses: tuple[tuple[str, tuple[SourceMiss, ...]], ...]     # union, named per dimension; T012 AC #3
+
+@dataclass(frozen=True)
+class CombinedPack:
+    slots: tuple[DimensionSlot, ...]   # deterministic order regardless of request order; T012 AC #10
+    coverage: CoverageSummary
+    budget_model: str                  # literal "per-dimension"; see below
+```
+
+**Rationale for the shape.**
+- `coverage_score` on `EvidencePack` is already `float | None` with `None` meaning "nothing sought",
+  explicitly *not* `0.0`. `CoverageSummary.combined` inherits that rule rather than inventing a
+  second convention for the same idea.
+- `misses` is carried **inside** `CoverageSummary`, not beside it, so FR-016a ("coverage is never
+  presented without its miss list") is structural rather than conventional. A renderer cannot reach
+  a score without having the miss list in hand. This directly answers T013 AC #6, which otherwise
+  depends on the renderer remembering.
+- `error` is a plain `str` slot rather than an exception: T012 AC #6 requires one dimension's failure
+  not to abort the call, and T013 must be able to render that failure as a visible gap rather than
+  as a missing section a reader cannot distinguish from "this dimension had nothing to say".
+
+**Budget model: per-dimension (user decision, 2026-08-25).** Each dimension in a combined call gets
+the full byte budget independently, and truncation is reported per dimension (T012 AC #5). This is
+what makes T012 AC #9 exact — a one-dimension `combined_pack` is genuinely equivalent to calling
+`run_dimension` directly, with no special case. The accepted cost is that NFR-009's boundedness on a
+seven-dimension call now rests on the caller asking for fewer dimensions rather than on an engine
+ceiling; `budget_model` is carried on the pack so the report states which regime produced it and a
+future total-budget mode is a value change, not a schema change.
+
+**Standing instruction to both agents.** T013 must not wait for T012's code to exist. Write against
+this contract and construct fixtures directly. Where T013's tests need a `CombinedPack`, they build
+one literally — that is a feature, not a workaround: it keeps T013's suite from depending on T012's
+dimension execution, which is the same isolation that let T007's tests survive T005's rework.
