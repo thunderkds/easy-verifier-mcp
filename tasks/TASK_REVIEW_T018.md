@@ -33,12 +33,29 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: Verbatim prior content of `README.md` in full (a single line, no trailing newline):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+# easy-verifier-mcp
+```
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**AFTER**: `README.md` is now a full operator-facing document (what the tool is/refuses to do, the
+seven dimensions checked against `DIMENSIONS`, the four scopes and their selectors, both adapters
+with runnable-vs-planned commands, safety posture, coverage/miss-list rule, standalone/kit-aware
+modes) plus `tests/test_t018_readme.py`, a doc-truth test enforcing that every fenced command block
+is either runnable today or carries a `planned` marker:
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+```
+$ .venv/bin/python -m pytest tests/test_t018_readme.py -q
+......                                                                   [100%]
+6 passed in 0.29s
+$ echo exit=$?
+exit=0
+```
+
+**DELTA**: A newcomer can now read `README.md` alone to learn what runs today (the CLI) versus what
+is planned (MCP, Docker, discovery/combined/write-report), and a future edit that drops the
+`planned` marker or lets `DIMENSIONS` drift from the doc is caught by an automated test instead of
+going unnoticed.
+
+**WITNESS**: [to be filled from `memory/event-trace/T018.jsonl` at Stage 4/5 review]
