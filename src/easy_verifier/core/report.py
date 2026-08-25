@@ -146,6 +146,21 @@ class _Ctx:
             )
         return html.escape(text, quote=True)
 
+    def agent_text(self, value: object) -> str:
+        """Escape free text the *calling agent* wrote, redacting it first.
+
+        Excerpts are redacted at the evidence layer (T004) before they ever
+        reach a pack. Finding titles, details and suggestions are not: they are
+        prose the calling agent composed, and an agent describing a hardcoded
+        credential routinely quotes it ("the key AKIA... must be rotated").
+        That text used to land verbatim in a file written into the evaluated
+        repository -- the one artifact this system creates whose own advisory
+        says it will be committed, attached to tickets and pasted into pull
+        requests. The pack layer redacting is not enough once a new egress
+        path is added; this is that path.
+        """
+        return self.esc(redact("" if value is None else str(value)))
+
     def path(self, value: str | None) -> str:
         """Render a path field as repo-relative, escaped.
 
@@ -581,16 +596,16 @@ def _render_finding(ctx: _Ctx, finding: Finding, excerpts: dict[str, Any]) -> st
     )
     suggestion = (
         f'<p class="suggestion"><strong>Suggested improvement:</strong> '
-        f"{ctx.esc(finding.suggestion)}</p>"
+        f"{ctx.agent_text(finding.suggestion)}</p>"
         if finding.suggestion
         else ""
     )
     return (
         '<li class="finding">'
-        f"<h4>{ctx.esc(finding.title)}</h4>"
+        f"<h4>{ctx.agent_text(finding.title)}</h4>"
         f'<p class="confidence">Confidence: <span class="confidence-value">'
         f"{ctx.esc(finding.confidence)}</span> (stated by the calling agent)</p>"
-        f'<p class="detail">{ctx.esc(finding.detail)}</p>'
+        f'<p class="detail">{ctx.agent_text(finding.detail)}</p>'
         f"{evidence}{quoted}{suggestion}</li>"
     )
 

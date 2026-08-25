@@ -1042,3 +1042,67 @@ def test_a_dimension_that_genuinely_reached_everything_still_reads_as_clean(
     _, document = _write(target_repo, [_finding("architecture")], packs)
 
     assert "every declared source on the checklist was reached" in document
+
+
+def test_a_secret_quoted_in_a_finding_never_reaches_the_written_report(
+    target_repo: Path,
+) -> None:
+    """Finding text is the calling agent's prose, and it is a real egress path.
+
+    Excerpts are redacted at the evidence layer (T004) before they reach a
+    pack, so the report inherited that protection for quoted code. Finding
+    titles, details and suggestions inherited nothing -- and an agent reporting
+    a hardcoded credential routinely quotes the credential. The value landed
+    verbatim in a file written into the evaluated repository, whose own
+    advisory says it will be committed, attached to tickets and pasted into
+    pull requests.
+    """
+    secret = "AKIAIOSFODNN7EXAMPLE"
+    pack = _pack("security")
+    packs = CombinedPack(
+        slots=(DimensionSlot("security", pack, None),),
+        coverage=CoverageSummary(
+            per_dimension=(("security", 1.0),),
+            combined=1.0,
+            method="pooled found/sought",
+            misses=(("security", ()),),
+        ),
+        budget_model="per-dimension",
+    )
+    finding = _finding(
+        "security",
+        title=f"Hardcoded key {secret} in app.py",
+        detail=f"The literal value is {secret} and must be rotated.",
+        suggestion=f"Replace {secret} with an environment variable.",
+    )
+
+    _, document = _write(target_repo, [finding], packs)
+
+    assert secret not in document
+    # the finding itself is still rendered -- redaction, not suppression
+    assert "Hardcoded key" in document
+    assert "must be rotated" in document
+
+
+def test_ordinary_finding_prose_survives_redaction_unchanged(
+    target_repo: Path,
+) -> None:
+    """Redaction must not eat normal text -- a renderer that mangles prose is
+    a different bug, not a fix."""
+    pack = _pack("architecture")
+    packs = CombinedPack(
+        slots=(DimensionSlot("architecture", pack, None),),
+        coverage=CoverageSummary(
+            per_dimension=(("architecture", 1.0),),
+            combined=1.0,
+            method="pooled found/sought",
+            misses=(("architecture", ()),),
+        ),
+        budget_model="per-dimension",
+    )
+    prose = "The module boundary between core and adapters is not enforced."
+    finding = _finding("architecture", title="Layering", detail=prose)
+
+    _, document = _write(target_repo, [finding], packs)
+
+    assert prose in document
