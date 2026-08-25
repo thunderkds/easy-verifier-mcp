@@ -473,3 +473,42 @@ def test_the_cli_exposes_the_dimension() -> None:
 
     assert result.returncode == 0, result.stderr
     assert '"dimension": "blast-radius"' in result.stdout
+
+
+def test_a_cap_truncated_sweep_never_reports_a_repository_wide_zero(
+    tmp_path: Path,
+) -> None:
+    """A referencing file beyond ``MAX_SCAN_FILES`` must not read as absence.
+
+    Regression for the Stage 4 P1: with the only consumer sorting past the scan
+    ceiling, the pack reported "examined: no referencing line was found in the
+    400 repository file(s) scanned" and carried no warning about the ceiling —
+    a bounded sweep asserting an unbounded result. Same relevance-blind-cap
+    class as T008's alphabetical candidate cap.
+    """
+    (tmp_path / "aaa").mkdir()
+    (tmp_path / "zzz").mkdir()
+    (tmp_path / "aaa" / "target.py").write_text("def thing():\n    return 1\n")
+    for index in range(blast_radius.MAX_SCAN_FILES + 100):
+        (tmp_path / "aaa" / f"filler_{index:05d}.py").write_text(f"x = {index}\n")
+    (tmp_path / "zzz" / "consumer.py").write_text(
+        "from aaa.target import thing\n\nprint(thing())\n"
+    )
+    _init_repo(tmp_path)
+
+    context = detect_context(tmp_path, scope="worktree")
+
+    class _Scope:
+        kind = "worktree"
+        files = ("aaa/target.py",)
+        changed_files = ()
+
+    context.resolved_scope = _Scope()
+    list(blast_radius.collect(context))
+
+    reason = {miss.source: miss.reason for miss in context.sources_missing}[
+        blast_radius.REFERENCES_SOURCE
+    ]
+    assert "ceiling" in reason
+    assert str(blast_radius.MAX_SCAN_FILES) in reason
+    assert any("ceiling" in warning for warning in context.warnings)

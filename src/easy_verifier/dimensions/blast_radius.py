@@ -128,6 +128,12 @@ SHALLOW_CLONE_WARNING = (
     "present locally, so the counts above are partial rather than a total."
 )
 
+SCAN_CAP_WARNING = (
+    "The reference sweep stopped at its ceiling of {cap} repository file(s); "
+    "files beyond it were never opened, so an absence of referencing lines "
+    "below is bounded by that ceiling rather than a repository-wide result."
+)
+
 SCOPE_TRUNCATION_WARNING = (
     "The resolved scope named {total} files; reference and history evidence "
     "was expanded from the first {kept} of them only."
@@ -311,15 +317,30 @@ def _reference_excerpts(
                 context.sources_found.append(REFERENCES_SOURCE)
             yield excerpt
 
+    # The sweep is bounded by MAX_SCAN_FILES, and a sweep that hit that ceiling
+    # did not finish. Reporting its emptiness as a plain "checked and found
+    # nothing" would state a repository-wide absence the sweep never
+    # established — the relevance-blind-cap defect class (T008 P1a), in the one
+    # place this dimension is asked to be honest (AC #5: it may over-report,
+    # but it may not go silent).
+    capped = scanned >= MAX_SCAN_FILES
+    if capped:
+        _warn(context, SCAN_CAP_WARNING.format(cap=MAX_SCAN_FILES))
+
     if not matched:
-        # Reaching here means the sweep really ran out — "checked and found
-        # nothing", which is a different statement from "not checked" (AC #3).
-        _miss(
-            context,
-            REFERENCES_SOURCE,
+        # "Checked and found nothing" is a different statement from "not
+        # checked" (AC #3), and both are different from "checked as far as the
+        # ceiling allowed".
+        bound = (
             f"examined: no referencing line was found in the {scanned} repository "
-            f"file(s) scanned for the {len(scope_files)} scope file(s)",
+            f"file(s) scanned for the {len(scope_files)} scope file(s), and the "
+            f"sweep stopped at its ceiling of {MAX_SCAN_FILES} file(s) — files "
+            "beyond it were never opened"
+            if capped
+            else f"examined: no referencing line was found in the {scanned} "
+            f"repository file(s) scanned for the {len(scope_files)} scope file(s)"
         )
+        _miss(context, REFERENCES_SOURCE, bound)
 
 
 def _tokens_for(path: str) -> frozenset[str]:
