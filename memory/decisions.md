@@ -535,7 +535,7 @@ report) is next.
 
 ---
 
-## DDR-0003 — T012/T013 seam contract, locked by the Supervisor (2026-08-25)
+## DDR-0004 — T012/T013 seam contract, locked by the Supervisor (2026-08-25)
 
 **Context.** The user elected to run T012 (`synthesis.py`) and T013 (`report.py`) **in parallel**,
 against the Supervisor's recommendation to sequence them. T013's declared input is exactly T012's
