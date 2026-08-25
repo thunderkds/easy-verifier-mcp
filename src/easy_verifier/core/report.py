@@ -398,6 +398,16 @@ def _coverage_entry(
     if misses:
         rows = "".join(_miss_row(ctx, miss) for miss in misses)
         miss_block = f'<ul class="miss-list">{rows}</ul>'
+    elif score is None:
+        # An all-clear must never be printed for an entry that has no score.
+        # "no misses" and "no score" together mean the dimension produced
+        # nothing at all -- a crash, most often -- and "every declared source
+        # was reached" is then flatly false. The dimension's own section
+        # carries the real reason.
+        miss_block = (
+            '<p class="miss-list miss-list-empty">No coverage was recorded for '
+            "this entry — see its section below for why.</p>"
+        )
     else:
         miss_block = (
             '<p class="miss-list miss-list-empty">No sources missing — every '
@@ -412,8 +422,18 @@ def _coverage_entry(
 
 
 def _format_score(score: float | None) -> str:
+    """Render a score, or say there isn't one -- without inventing why.
+
+    ``None`` reaches here from two different situations: a dimension that
+    sought nothing, and a dimension that failed and produced no pack at all.
+    This function cannot tell them apart, so it must not name a cause. It said
+    "no sources were sought" for both, which rendered a crashed dimension as a
+    benign one. The adjacent miss list is what explains the gap (FR-016a) --
+    that adjacency is the whole reason the miss list is a required argument to
+    :func:`_coverage_entry`.
+    """
     if score is None:
-        return "n/a — no sources were sought"
+        return "n/a"
     return f"{score * 100:.1f}%"
 
 

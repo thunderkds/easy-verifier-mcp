@@ -510,7 +510,7 @@ def test_a_dimension_with_no_misses_still_says_so_next_to_its_score(
     assert "No sources missing" in body
 
 
-def test_a_score_of_none_reads_as_nothing_sought_not_as_zero(target_repo: Path):
+def test_a_score_of_none_reads_as_not_applicable_not_as_zero(target_repo: Path):
     pack = _pack(
         "architecture", sources_sought=(), sources_found=(), coverage_score=None
     )
@@ -527,7 +527,10 @@ def test_a_score_of_none_reads_as_nothing_sought_not_as_zero(target_repo: Path):
 
     _, document = _write(target_repo, [_finding("architecture")], packs)
 
-    assert "no sources were sought" in document
+    # "n/a", not "0.0%" -- and deliberately without a fabricated cause: this
+    # renderer cannot tell "sought nothing" from "the dimension crashed".
+    assert "n/a" in document
+    assert "no sources were sought" not in document
     assert "0.0%" not in document
 
 
@@ -975,3 +978,67 @@ def test_many_findings_stay_in_one_document(target_repo: Path):
     assert len(list((target_repo / "reports").glob("*.html"))) == 1
     assert document.count('<li class="finding">') == 300
     assert path.stat().st_size > 0
+
+
+# --- Stage 4 review regressions (T013) ------------------------------------
+
+
+def test_a_failed_dimension_is_never_rendered_as_a_clean_all_clear(
+    target_repo: Path,
+) -> None:
+    """A dimension that produced no pack must not render as a benign one.
+
+    ``_format_score(None)`` asserted "no sources were sought" and an empty miss
+    list asserted "every declared source on the checklist was reached". Both
+    are false for a dimension that crashed, and together they rendered a
+    RuntimeError as a clean row -- in a document whose dimension section
+    printed the error message a few hundred pixels further down. Found by
+    rendering the document and looking at it, not by reading the diff.
+    """
+    packs = CombinedPack(
+        slots=(DimensionSlot("boom", None, "RuntimeError: collector exploded"),),
+        coverage=CoverageSummary(
+            per_dimension=(("boom", None),),
+            combined=None,
+            method="pooled found/sought",
+            misses=(),
+        ),
+        budget_model="per-dimension",
+    )
+
+    _, document = _write(target_repo, [], packs)
+
+    assert "every declared source on the checklist was reached" not in document
+    assert "no sources were sought" not in document
+    # the honest signal is still present
+    assert "collector exploded" in document
+
+
+def test_a_dimension_that_genuinely_reached_everything_still_reads_as_clean(
+    target_repo: Path,
+) -> None:
+    """The fix must not turn every empty miss list into a caveat.
+
+    A warning that fires on every report carries no information -- the same
+    reason the exclusion note on the aggregate is conditional.
+    """
+    pack = _pack(
+        "architecture",
+        sources_sought=("README.md",),
+        sources_found=("README.md",),
+        coverage_score=1.0,
+    )
+    packs = CombinedPack(
+        slots=(DimensionSlot("architecture", pack, None),),
+        coverage=CoverageSummary(
+            per_dimension=(("architecture", 1.0),),
+            combined=1.0,
+            method="pooled found/sought",
+            misses=(("architecture", ()),),
+        ),
+        budget_model="per-dimension",
+    )
+
+    _, document = _write(target_repo, [_finding("architecture")], packs)
+
+    assert "every declared source on the checklist was reached" in document
