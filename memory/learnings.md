@@ -246,3 +246,144 @@ the only path to the expected excerpt. Assert positive evidence, not merely the 
 fallback type.
 
 **Security pattern**: classify a file after resolving it, but before reading bytes. Checking only the
+
+
+### 2026-08-20 — T008: three defects, and what each one's test could not see
+
+All three shipped with a green suite. The pattern across them is the same: **the assertion was on the
+shape of the output, never on the claim the output makes.**
+
+1. **Relevance-blind cap.** `sorted(scope.files)[:200]` dropped real evidence — a 205-filler repo with a
+   root `requirements.txt` and `zzz/Dockerfile` returned **zero excerpts**. The bounded-reads test used
+   205 *identical* fixture files, so no ordering was observable at all. **A cap test whose fixtures are
+   interchangeable tests the cap and nothing else.** Give the fixture set a right answer and a wrong
+   answer, or it cannot fail.
+2. **Fabricated miss list.** The suite asserted `{miss.source for miss in ...} == set(SOURCES_SOUGHT)`
+   — the right *set*, every reason wrong. **Assert the reason, not just the key.** A miss list is the
+   dimension's honesty record; an unasserted reason field is where fiction accumulates.
+3. **Silent scope widening.** Caught only at Stage 5, after code-review, blast-radius and the direct
+   security-diff pass had all cleared the change. Reachable only by *running the CLI with a flag
+   omitted*. The tests covered a **bogus** `--task-id` (handled correctly all along) but never a
+   **missing** one. **Bad input and absent input are different tests**; a resolver that raises on one
+   and returns empty on the other proves they are not interchangeable.
+
+**Review procedure that caught 1 and 2** (extends the T005 note): re-run the dimension against a repo
+built to embarrass it — filler that sorts ahead of the real evidence, declared sources that genuinely
+do not exist — and read the miss reasons, not the excerpt list. Reading the diff did not catch either;
+both modules read coherently.
+
+**Stage 5 `verify` is not a formality after Stage 4 passes.** It is user-invocation-only and it is the
+only gate that drives the actual CLI. The third defect was invisible to every in-process gate because
+the in-process tests always pass a selector — a real operator omits one. **Where a task adds CLI flags,
+drive them wrong: omitted, empty, bogus, conflicting.**
+
+**Pre-existing issues surfaced while verifying T008** (none are T008's, all still open): `files_read`
+carries duplicate entries under `task` scope on `architecture` (3), `code-quality` (1) and `security`
+(1) — T008's own test compares `len(set(...))`, which is how it stayed invisible; and `--budget-bytes 0`
+raises an uncaught `BudgetError` traceback at the CLI on every dimension, since `cli.py` catches only
+`RepoPathError`.
+
+
+---
+
+## The miss-list defect class has now appeared four times (T007, T008, T009, T010)
+
+Three separate dimensions have shipped green suites whose `sources_missing` made statements the same
+pack contradicted:
+
+- **T007** — false miss reasons for secret files.
+- **T008** — the entire miss list fabricated; `collect` never probed `SOURCES_SOUGHT` at all, so
+  `pipeline._missing_sources` fell back to its default and reported files that do not exist in this
+  repo as `not examined: the byte budget was reached`.
+- **T009** — the inverse, and the most instructive: the read *did* happen, the excerpt is in the pack,
+  and the miss list still said `not found in the target repository`.
+
+**This is a standing review question, not a per-task one.** For any dimension, cross-check
+`sources_missing` against `files_read` and `excerpts` in the *same* pack before accepting it. An entry
+appearing in both is a contradiction on its face and needs no fixture to find.
+
+**T009's instance was reachable on the default invocation against this repo** — `test-strategy --repo .`
+and nothing else. Stage 4 had already closed, *including* an independent Supervisor re-verification at
+the CLI. What that pass evidently did was read the excerpt list and confirm the pack looked right;
+what it did not do was read the miss list against it. Reading the *reasons*, not the excerpts, remains
+the thing that finds these.
+
+**T010 is the fourth, and the first caught *before* merge by attacking the cap instead of the diff.**
+Its shape: a reference sweep bounded at `MAX_SCAN_FILES = 400` reported `examined: no referencing line
+was found in the 400 repository file(s) scanned` with no warning that it had stopped at a ceiling — a
+bounded sweep asserting an unbounded absence. Same class as T008's alphabetical `sorted(scope.files)
+[:200]` candidate cap. **What found it**: a fixture built to embarrass the implementation — scope file
+in `aaa/`, 500 fillers, the sole importer at `zzz/consumer.py`, past the ceiling. Reading the diff
+would not have; the cap and the miss reason are individually reasonable and only lie in combination.
+
+**The standing review question now has a second half.** Cross-checking `sources_missing` against
+`files_read`/`excerpts` is necessary but not sufficient: T010's pack was internally consistent — it
+really did scan 400 files and really found nothing in them. Also ask **what bounded the search, and
+does the miss reason say so?** Every dimension has a cap; a cap that does not surface in the reason it
+produces is this defect waiting to happen.
+
+**Also worth knowing**: T010 is the first dimension *not* to ship the `sources_missing`-contradicts-
+`files_read` form of this bug, because it reaches every declared source through `read_source`, which
+records found/missing itself. Routing declared-source probes through `read_source` rather than
+hand-rolling the bookkeeping is the structural fix, not vigilance.
+
+## Stage 5 `verify` failed T008 and T009 after both cleared every Stage 4 gate; T010 broke the streak
+
+T008 and T009 both passed code-review (and for T008, blast-radius plus a direct security-diff pass),
+then failed `verify`. Both defects were only observable by driving the real CLI. **T010 then passed
+`verify` on the first attempt** — the first task in this project to do so. The lesson is not that the
+gate loosened: Stage 4 found T010's P1 precisely *because* it drove a hostile fixture at the surface
+rather than reading the diff, which is the work Stage 5 had been doing by default. Keep treating a
+clean Stage 4 as no evidence about Stage 5 **unless** Stage 4 actually ran the thing.
+
+## The `pre_agent` hook's Demonstration-BEFORE warning is a false positive since T064
+
+It warns "T0xx's Demonstration BEFORE field is blank" by reading `tasks/TASK_GUIDE_Txxx.md`, but since
+T064 the `## Demonstration` block lives in the sibling `tasks/TASK_REVIEW_Txxx.md` and the guide keeps
+only a `> **Moved.**` pointer. The warning therefore fires on **every** correctly-filled task. It is
+advisory (non-blocking), so it costs nothing but attention — verify against the review file before
+acting on it. Candidate one-line fix in `.claude/hooks/pre_agent_validate_guide.py`.
+
+## Sabotage is how you tell a passing test from a test that cannot fail (T018)
+
+T018's `test_planned_command_blocks_are_never_executed` looped over the README's command blocks and
+did nothing in the loop body, so the monkeypatched `subprocess.run` it relied on was unreachable. It
+passed. It also passed with `_is_planned` hardwired to `True`, **and** with it hardwired to `False` —
+two contradictory premises, both green. It asserted nothing at all, while appearing to guard the one
+rule the guide had called binding.
+
+**The technique that found it, and that generalises**: hardwire the predicate the test depends on to
+each of its extremes and re-run. A test that survives both is pinning nothing. This costs two `sed`
+calls and takes seconds, and it is now the cheapest reliable check this project has for its most
+persistent defect class:
+
+* T005 — the AC #2 test passed *because* its tier-3 prefix was exactly short enough for one eviction
+* T008 — 205 interchangeable fixture files, so a relevance-blind cap was invisible; and no assertion
+  on miss *reasons* at all
+* T010 — the zero-reference test used a repo small enough that the sweep genuinely exhausted, so the
+  cap-truncated path was never exercised
+* T018 — a loop body that ran nothing
+
+Four different shapes, one property: **the test could not distinguish the correct implementation from
+the broken one.** Reading the assertion is not enough; the assertion was plausible in every case.
+Break the premise and see whether the test notices.
+
+## Pinning documentation: fenced commands are checkable, prose is not (T018)
+
+A doc-truth test that executes the commands in a README is worth having — but T018's two Stage 4 P1s
+split cleanly across what it can and cannot see. The one it caught nothing of was **prose**: the
+README claimed `changes` scope's `--ref` was optional when omitting it refuses, and no test could
+have known, because only fenced blocks are parsed. The lesson is not to distrust doc tests but to
+know their boundary: **they pin syntax and exit codes, never claims.** Claims are checked by driving
+the tool and comparing, which is a Stage 5 activity.
+
+Three mechanical limits worth remembering before writing another one:
+
+* `shlex.split` + `subprocess` with no shell means `$(pwd)`, pipes and `&&` never expand — any
+  documented command using shell syntax is unverifiable regardless of how it is marked;
+* a "planned"/"not-yet-built" marker is an **escape hatch that hides a genuinely broken command**,
+  since marked blocks are never run. Mismarking is undetectable by construction;
+* if the documented surface is mostly unbuilt, the runnable half of the test can shrink to a single
+  command without anyone noticing. T018 pins exactly one, and the flags that *do* work today live
+  only in prose.
+

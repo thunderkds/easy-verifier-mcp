@@ -438,3 +438,97 @@ tiering and source selection are separate concerns; T007 makes the important kit
 inside collection rather than forcing a permanent second budget pass on every dimension call.
 **Security boundary**: secret-file exclusion checks both the requested path and the resolved target,
 so a safe-name symlink cannot alias `.env` bytes into an evidence pack.
+
+
+### 2026-08-20 — T008 merged; the HITL secret gate, and `resolve_scope` failure is not "whole repo"
+
+`security` is bespoke as Constraint 8 requires — it does not import `_doc_extract`. Its evidence is
+selected in two passes inside `collect()`: declared sources from `SOURCES_SOUGHT` are probed first and
+explicitly, then the resolved scope's remaining files are swept in category-ranked order (credential
+material → dependency manifest → permission/container/CI config → auth/crypto code → generic
+scannable) up to `MAX_SECURITY_SOURCES` (200).
+
+**Why declared sources are probed separately.** `pipeline._missing_sources` can only report a reason
+that some `read_source` call actually recorded. A dimension that never probes its own declared
+checklist gets the `not examined` default for every entry, which is a claim the engine did not check.
+T008 shipped that way and reported `.env`, `Dockerfile`, `package.json` and `src/auth.py` — none of
+which exist in this repo — as `not examined: the byte budget was reached`. The shared default is
+correct for the doc dimensions, which do probe; the fix belongs in the dimension, not in `pipeline.py`.
+**Any future dimension that selects by walking a scope rather than by reading its declared list must
+probe the list explicitly, or its miss list is fiction.**
+
+**The HITL gate (DDR-0002) lives only in `security`.** `context.read_source` refuses secret-bearing
+paths unconditionally for every dimension. `context.request_secret_source` is the only door, it
+defaults to refuse, it requests approval per file, it caches the decision per path so lazy budget
+passes cannot re-prompt, and a raising approval callback is caught and treated as refusal. Approved
+contents still pass through `budget.py:204`'s redaction seam, so an approved `.env` is fingerprinted
+in the pack rather than emitted raw. **Accepted for v1**: `secret_approval` is never threaded through
+`run_dimension` or either adapter, so the gate is structurally always-refuse in production — the
+operator sees `approval_requests` on the pack but cannot consent. Hardening candidate, with closing
+T004's two documented detector floors, which the gate now makes reachable on purpose.
+
+**A failed scope resolution is not the same as `project` scope.** `run_dimension` collapses
+`ScopeError` to `resolved_scope = None`, and T008 initially read that as "whole repository", so
+`--scope task` with no `--task-id` read repository-root files while labelling the pack `scope: task`
+with empty warnings — contradicting `pipeline.py:60`'s own stated "never widen on failure" invariant.
+A dimension must distinguish *unresolved* from *project* using `context.scope` (the requested name,
+always present) rather than `resolved_scope` alone, and declare the failure through `context.warnings`,
+which `run_dimension` copies onto the pack after the budget drain.
+
+**Known divergence, deliberately not fixed in T008**: `scope.py` fails two different ways — `task`
+without a selector *raises*, `changes` without one returns an empty scope. Each dimension currently
+absorbs that at its own boundary. Candidate follow-up on `scope.py`/`pipeline.py` to make the
+invariant structural rather than conventional.
+
+
+---
+
+## T009 — `test-strategy` dimension (merged 2026-08-24)
+
+**A declared source is a checklist label, not a path.** `SOURCES_SOUGHT` lists bare filenames
+(`conftest.py`, `pytest.ini`, `package.json`); `RepoContext.read_source` resolves a bare name at the
+repo root only. T009 shipped probing those names literally, so any project keeping its config in a
+subdirectory got a miss reason its own `files_read` and `excerpts` contradicted.
+
+Fixed by `_resolve_declared_source(source, scope_files)`: for a bare name absent at the root, look up
+a basename match inside the **already-computed** `scope_files` — no new walk, no new resolver, so the
+existing containment check is inherited rather than re-implemented. `core/pipeline.py` matches
+`sources_sought` against `sources_found` by literal string equality, so when the resolved path differs
+from the declared name the declared name is *additionally* appended to `sources_found`; the concrete
+path is already recorded there by `read_source` for honest citation.
+
+`.github/workflows/ci.yml` is the one entry deliberately left root-anchored — GitHub Actions only ever
+reads that exact path, so a match elsewhere would be meaningless.
+
+**Consequence to watch**: the basename fallback inherits whatever `core/scope.py:_EXCLUDED_DIRS`
+misses. `node_modules` is in that set, `vendor/` is not — so in a repo with no config of its own, a
+vendored dependency's `package.json` is credited as the project's declared source. Filed against
+`scope.py` (one-line fix, benefits every dimension); not charged to T009.
+
+## T010 — `blast-radius` dimension (merged 2026-08-25)
+
+*Code-dependency* reach, deliberately not the kit's `blast-radius` **skill** (data-breach impact).
+Three cheap sources, none of which parses, imports or executes target code: a **textual** reference
+search (one alternation over every scope file's path, dotted module path and stem, one lazy pass over
+the repository), **git co-change** history from a single `git log --name-only` over the last 200
+commits, and **declared entry points** cited from packaging manifests.
+
+Two design commitments worth keeping straight:
+
+* **Textual, and it says so.** `METHOD_WARNING` ships on every pack: over-reporting on same-named
+  symbols, under-reporting on aliases and dynamic references. A real resolver would be per-ecosystem,
+  enormous, and would still miss the dynamic cases. That admission *is* the product (AC #5) — which is
+  why a silently truncated sweep is the one unacceptable failure, and became the Stage 4 P1.
+* **`project` scope reports repository hotspots, not references.** Expanding every file against every
+  other is quadratic, so references and co-change are declared out of scope there with a stated reason.
+  Consequence recorded as residue (d): under `project` scope the pack has **zero citable excerpts**
+  unless the repo declares an entry point, and in a non-git directory it is entirely empty — every
+  source honestly refused, but no evidence path exists for that combination.
+
+`MAX_SCAN_FILES = 400` is what bounds the tier-1 drain, not the byte budget: `core/budget.py` runs a
+tier-1 pass first, and a referencing file is almost never itself a changed file, so that pass usually
+admits nothing and drains its stream by construction.
+
+**All seven of FR-010's dimensions are now wired.** Wave 2 is complete; Wave 3 (T012 synthesis, T013
+report) is next.
+

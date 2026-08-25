@@ -15,45 +15,75 @@
 
 ---
 
-## ▶ START HERE — handoff from the 2026-08-17 session
+## ▶ START HERE — handoff from the 2026-08-25 session
 
-**State**: **T007 is merged to `develop` at `a948f11`** — 7 of 17 tasks done. Post-merge:
-**55 focused tests, 279 full suite, ruff clean**, final independent re-review P0 0/P1 0. Nothing is
-In Progress or Ready for Review.
+**State**: **T018 is merged to `develop`** — 11 of 18 tasks done (T018 was added 2026-08-25 by user
+request as a new Wave 6). Wave 2 stays complete: all seven of FR-010's dimensions are wired, and the
+repo now has a real README. Post-merge on the main checkout: **339 tests, ruff clean**. Nothing is In
+Progress or Ready for Review.
 
 **Unpushed**: local `develop` is ahead of the remote. The remote is named **`github`**, not `origin` —
 this is not cosmetic, it breaks tooling (see below).
 
-**Next action**: continue **Wave 2** with T008 (`security`), T009, T010, or T011.
-T007 re-opened T005's tier-2 narrowing without changing `budget.py`: declared kit sources and
-task-guide globs are read directly; standalone mode uses discovered docs then bounded code fallback.
+**Next action**: **Wave 3** — T013 (`report.py`, C2/Med/P0) or T012 (`synthesis.py`, C1/Low/P1).
+T013 is the higher priority and was unblocked by T004.
 
-**Spawn-prompt additions earned so far — keep all three in every spawn:**
+**Spawn-prompt additions earned so far — keep all four in every spawn:**
 1. *"Commit your work before reporting ready-for-review."* (T003 reported done with zero commits.)
 2. *"Before writing any file walk or path resolver, find the existing one and port its hardening."*
-   (T003 rewrote a walk and reproduced T002's exact symlink escape.)
+   (T003 rewrote a walk and reproduced T002's exact symlink escape. T008, T009 and T010 all obeyed it —
+   T010 reaches every declared source through `read_source` rather than hand-rolling bookkeeping, and
+   that alone is why it is the first dimension not to ship the miss-list contradiction.)
 3. *"Implement the guide's prescribed Approach; if you intend to substitute a different design, say so
-   before you build it, not in the completion report."* (T005 substituted single-eviction admission
-   for the guide's tier passes; it did not satisfy AC #2.)
+   before you build it, not in the completion report."*
+4. *"Reproduce the reported defect before fixing it, and confirm your new test fails on the pre-fix
+   commit."* (T008 did this unprompted; T009's and T010's remediations both pasted the red output.)
 
-**Review procedure this session proved out — keep doing it**: re-run an ordering/selection AC with
-*adversarial numbers*, not the author's fixture. That is what caught T005's P1. Reading the diff did
-not, because the module docstring defended the wrong design coherently and the agent's own
-self-report was honest and detailed.
+**Cheapest reliable check for this project's most persistent defect class**: hardwire the predicate a
+test depends on to each of its extremes and re-run. A test that passes under both is pinning nothing.
+That is how T018's P1(b) was caught, and it retroactively explains T005, T008 and T010 — four shapes,
+one property: the test could not tell the correct implementation from the broken one.
 
-**Tooling gotcha**: the built-in `security-review` skill **cannot run in this repo** — it resolves the
-diff via `origin/HEAD` and the remote is named `github`. Either add an `origin` remote / `HEAD` ref,
-or review the diff surface directly and record that substitution in the evidence (what T005 did).
+**Review procedure — six sessions have proved it out**: re-run a selection or ordering AC against **a
+repo built to embarrass the implementation**, never the author's fixture. Cross-check `sources_missing`
+against `files_read` and `excerpts` in the same pack — **and now also ask what *bounded* the search and
+whether the miss reason says so.** T010's pack was internally consistent and still lied: it really did
+scan 400 files and really found nothing in them, because the only consumer sat past the ceiling. Every
+dimension has a cap; a cap that does not surface in the reason it produces is this defect waiting.
+
+**Stage 5 `verify` failed T008 and T009 after both cleared every Stage 4 gate — T010 broke the streak**,
+passing on the first attempt. Not because the gate loosened: Stage 4 caught T010's P1 by driving a
+hostile fixture at the CLI rather than reading the diff. A clean Stage 4 is still no evidence about
+Stage 5 **unless Stage 4 actually ran the thing**. `verify` is user-invocation-only — the Supervisor
+cannot call it via the Skill tool and must hand back to the user.
+
+**Tooling gotchas**:
+- The built-in `security-review` skill **cannot run in this repo** — it resolves the diff via
+  `origin/HEAD` and the remote is named `github`. Review the diff surface directly and record the
+  substitution in the evidence.
+- The `pre_agent` hook warns that a task's Demonstration BEFORE field is blank by reading the
+  **guide**, but since T064 that block lives in `tasks/TASK_REVIEW_Txxx.md`. It fires on every
+  correctly-filled task. Advisory only — check the review file before believing it.
 
 **Waiting on the user (do not proceed without a decision)**:
 - **T017 HITL gate** — FR-022 says adapters produce "identical" output, the KPI table says
   "byte-equal". Timestamps and host-vs-container paths differ by construction, so byte-equality is
   unachievable as written. Blocks the whole verification suite.
+- **T010 residue (d)** — under `project` scope `blast-radius` yields zero citable excerpts unless the
+  repo declares an entry point, and in a non-git directory the pack is entirely empty. Every source is
+  honestly refused, but no evidence path exists for that combination. Recorded for a decision, not fixed.
+
+**Open follow-up candidates (none scheduled)**: add `vendor` to `core/scope.py:_EXCLUDED_DIRS`;
+**`files_read` duplicated 2× on a default invocation** (budget's tier passes call `collect` twice *and*
+`blast-radius` re-opens each manifest in its reference sweep — 800 entries for a 400-file sweep, T009's
+residue now visible without a narrow scope); make `pipeline.py:60`'s "never widen on failure" invariant
+structural rather than conventional; close T004's two detector floors; thread `secret_approval` through
+the adapters so T008's HITL gate is operable; `--budget-bytes 0` traceback at the CLI; a manifest read
+but declaring nothing is credited in `sources_found` and counts toward `coverage_score`.
 
 **Standing traps — read `learnings.md` before verifying or merging**:
 - Agent worktrees have **no `.venv`**; verify with the main checkout's interpreter and read pytest's
   **exit code directly** (piping through `tail` masks it, and did let a commit land on a red suite).
-  Symlinking `.venv` into the worktree also satisfies the merge gate's `PATH=.venv/bin:$PATH` pattern.
 - The merge gate blocks while the board still shows the task **In Progress** — move it to Done and
   copy `TASK_REVIEW_Txxx.md` into the main checkout *before* merging.
 - The gate's own error message recommends `CLAUDE_ACTIVE_TASK=`, which **cannot work** from inside a
@@ -78,6 +108,14 @@ or review the diff surface directly and record that substitution in the evidence
 - [Context-packer architecture](decisions.md) — engine performs no LLM inference; all reasoning comes from the calling agent (MCP main agent, or user's agent CLI).
 - [Two adapters, one core](decisions.md) — `mcp_server.py` (FastMCP HTTP/SSE) + `cli.py` (repo path); thin adapters, identical output required.
 - [Two-step report flow](decisions.md) — pack → caller reasons → `write_report` validates + renders HTML into target repo `reports/`.
+- [T008: security dimension + HITL secret gate](decisions.md) — bespoke two-pass selection (declared probe, then category-ranked sweep); `request_secret_source` is the only door to secret-bearing files and defaults to refuse; a failed `resolve_scope` is **not** `project` scope.
+- [A dimension must probe its own declared sources](decisions.md) — `pipeline._missing_sources` can only report reasons some read actually recorded; walk-only selection makes the whole miss list fiction.
+- [T009: a declared source is a checklist label, not a path](decisions.md) — bare `SOURCES_SOUGHT` names resolved at repo root only, so a subdirectory config was cited and declared missing in the same pack; `_resolve_declared_source` falls back to a basename match inside the already-computed `scope_files`.
+- [T010: blast-radius is textual, and says so](decisions.md) — reference search + git co-change + declared entry points, none parsing or running target code; `project` scope reports repository hotspots because references there are quadratic; `MAX_SCAN_FILES` bounds the tier-1 drain, not the byte budget.
+- ⚠️ **[The miss-list defect class has shipped four times](learnings.md)** — T007 false secret reasons, T008 a wholly fabricated list, T009 the inverse (read happened, miss list denied it), T010 a cap-truncated sweep asserting a repo-wide zero. Standing review questions: cross-check `sources_missing` against `files_read`/`excerpts`, **and ask what bounded the search and whether the miss reason says so**.
+- [Route declared-source probes through `read_source`](learnings.md) — it records found/missing itself; that is why T010 is the first dimension not to ship the miss-list contradiction. Structural, not vigilance.
+- ⚠️ **[The `pre_agent` Demonstration-BEFORE warning is a false positive](learnings.md)** — it reads the guide, but since T064 the block lives in `TASK_REVIEW_Txxx.md`. Fires on every correct task.
+- [T008 test blind spots](learnings.md) — interchangeable cap fixtures, unasserted miss *reasons*, and bogus-vs-missing CLI selectors: three green-suite defects, one caught only by Stage 5 `verify`.
 - [Redact secrets at evidence layer](decisions.md) — secret values fingerprinted before leaving the engine; never reach agent, report, or log. → see DDR-0001
 - ▶ **[DDR-0002: never read secret-bearing files](decisions.md)** (user, 2026-08-16). `.env*`/`*.pem`/`*.key`/`id_rsa`/… excluded at `read_source()`; existence reported as `excluded: secret-bearing`, contents withheld. T008 gets a per-file HITL gate defaulting to refuse. **Complements, does not replace, DDR-0001** — a live-key-shaped token in a `README.md` proved exclusion alone is insufficient. Landed as Spec Constraint 4a + AC rows on T007/T008/T013 before pickup.
 - ⚠️ **Never put a real vendor prefix in a test fixture** (`sk_live_`, `ghp_`, `xoxb-`). Scanners match on shape and cannot tell a fake from a real key — GitHub push protection rejected a push over T004's fixtures. Detectors match on `key=value` shape and character mix, never the prefix, so synthetic values test the same path. Convention: spell the fakeness in, as `FAKEfake…`.
@@ -96,6 +134,10 @@ or review the diff surface directly and record that substitution in the evidence
 - ▶ **[T004 shipped — redaction is real](decisions.md)** (merged 2026-08-16, `1acfa5c`). Layered detectors: named patterns → entropy → per-segment key material, the last being what makes paths and URI passwords safe while keeping paths readable. **Two misses accepted, not fixed**: a credential assignment whose value is followed by trailing prose with no comment marker, and single-char-class tokens of 12–31 chars. Both anchors exist so the tool stays usable evaluating its own repo. T013 unblocked.
 - ▶ **[T002, T006 and T003 merged](decisions.md)** (2026-08-16). `develop`: **198 tests**, ruff clean, **5/17 tasks done**. T003 = `resolve_scope()`, four scope kinds, read-only git only.
 - ▶ **[T005 merged — Wave 1 complete](decisions.md)** (2026-08-17, `cd7bb57`). `develop`: **224 tests**, ruff clean, **6/17 done**. `budget(collect, scope, limit_bytes)` — `collect` is a **zero-arg callable**, invoked once per non-empty tier (≤3 passes). `resolve_scope` finally wired into `run_dimension`, closing T003's waived debt; `changes`/`task` still tier as `None` there.
+- ⚠️ **[Sabotage is how you tell a passing test from one that cannot fail](learnings.md)** — hardwire the predicate to both extremes; T018's planned-blocks test passed under both. Fifth instance after T005, T008, T010.
+- [Pinning docs: fenced commands are checkable, prose is not](learnings.md) — a doc-truth test pins syntax and exit codes, never claims; `shlex.split` with no shell cannot validate `$(pwd)`/pipes/`&&`; a "planned" marker hides a genuinely broken command by construction.
+- ▶ **[T018 merged — the repo has a README](decisions.md)** (2026-08-25, `ee12ad6`). `develop`: **339 tests**, ruff clean, **11 of 18 done**. Documents the full intended v1 surface with every command either runnable-today or explicitly marked planned, both halves test-enforced.
+- ▶ **[T010 merged — Wave 2 complete](decisions.md)** (2026-08-25, `3e8b573`). `develop`: **333 tests**, ruff clean, **10 of 17 done**. All seven FR-010 dimensions wired. First task to pass Stage 5 `verify` on the first attempt; its Stage 4 P1 (cap-truncated sweep reporting a repo-wide zero) was found by a fixture built to embarrass the implementation.
 - ▶ **[T007 doc dimensions complete](decisions.md)** — shared extraction serves exactly four dimensions; kit declarations and task-guide globs are direct candidates, while standalone uses discovered docs then bounded code fallback. Secret exclusion checks resolved targets.
 - ✅ **[Tier-2 narrowing revisited](decisions.md)** — no `budget.py` change: source selection makes kit artifacts candidates without forcing a permanent second relevance pass on every call.
 - ⚠️ **[A test can pass *because of* the defect's exact shape](learnings.md)** — T005's AC test used a tier-3 prefix exactly short enough for its one-eviction bug to look like tiering; one more excerpt and the pack held zero changed files. Re-run ordering/selection ACs with adversarial numbers, never the author's fixture. An honestly flagged deviation is a pointer to test harder, not sign-off.
