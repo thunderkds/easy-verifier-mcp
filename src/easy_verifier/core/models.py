@@ -222,6 +222,20 @@ class RedactionResult:
     hits: tuple[RedactionHit, ...]
 
 
+# ---------------------------------------------------------------------------
+# T012/T013 seam (DDR-0004, Supervisor-locked).
+#
+# These three types are T012's output and T013's input. T012 owns them and
+# builds them in `core.synthesis`; T013 only reads them in `core.report`. They
+# were locked by the Supervisor before either task started because the two were
+# built in parallel, in separate worktrees, and neither branch's tests could
+# have caught a mismatch. Both branches defined them independently and the
+# definitions came out field-identical, so merging them was a de-duplication
+# rather than a reconciliation of two designs. Change them in step, or not at
+# all.
+# ---------------------------------------------------------------------------
+
+
 @dataclass(frozen=True)
 class DimensionSlot:
     """One requested dimension's outcome inside a :class:`CombinedPack`.
@@ -274,3 +288,28 @@ class CombinedPack:
     full byte budget independently (user decision, 2026-08-25). A future
     total-budget regime is therefore a value change here, not a schema
     change."""
+
+
+@dataclass(frozen=True)
+class ReportResult:
+    """What :func:`easy_verifier.core.report.write_report` returns.
+
+    Validation failures are *not* reported here: they raise
+    :class:`easy_verifier.core.findings.ValidationError` before any file is
+    opened, so a ``ReportResult`` existing at all means a report was written.
+    """
+
+    path: str
+    """Repository-relative POSIX path of the written report, e.g.
+    ``reports/evidence-report-project-20260825T095341-123456Z.html``.
+    Relative on purpose: an absolute path here is the container-internal leak
+    FR-021c forbids, and the caller already knows the target repo."""
+
+    absolute_path: str
+    """The resolved path on the machine that ran the write. Returned to the
+    caller (who is on that machine) but never rendered into the document."""
+
+    advisory: str | None
+    """The NFR-011 sensitivity advisory, set only on the **first** report
+    written into this target's ``reports/``. ``None`` on later writes; the
+    advisory itself is rendered in every report regardless."""
