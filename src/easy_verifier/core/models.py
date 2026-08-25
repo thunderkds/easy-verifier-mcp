@@ -220,3 +220,57 @@ class RedactionResult:
 
     text: str
     hits: tuple[RedactionHit, ...]
+
+
+@dataclass(frozen=True)
+class DimensionSlot:
+    """One requested dimension's outcome inside a :class:`CombinedPack`.
+
+    ``pack`` is ``None`` iff ``error`` is set — a dimension that fails does not
+    abort the whole combined call (FR-025 robustness); its slot simply carries
+    a structured failure instead of a pack, and the other slots are unaffected.
+    """
+
+    dimension: str
+    pack: EvidencePack | None
+    error: str | None
+
+
+@dataclass(frozen=True)
+class CoverageSummary:
+    """Aggregation only — no interpretation of what the numbers mean together
+    (FR-026). Deciding what several dimensions' coverage implies together is
+    the calling agent's job, not this engine's.
+    """
+
+    per_dimension: tuple[tuple[str, float | None], ...]
+    """Deterministic order, mirroring :attr:`CombinedPack.slots`."""
+
+    combined: float | None
+    """``None`` — never ``0.0`` — when nothing was sought anywhere, mirroring
+    :attr:`EvidencePack.coverage_score`'s convention."""
+
+    method: str
+    """States exactly how ``combined`` was derived (FR-025), e.g. a pooled
+    found/sought ratio across every dimension that sought anything."""
+
+    misses: tuple[tuple[str, tuple[SourceMiss, ...]], ...]
+    """The union of miss lists, named per dimension (FR-016a). Lives inside
+    ``CoverageSummary`` — not beside it — so a renderer cannot reach a score
+    without also having its miss list."""
+
+
+@dataclass(frozen=True)
+class CombinedPack:
+    """The result of :func:`easy_verifier.core.synthesis.combined_pack`."""
+
+    slots: tuple[DimensionSlot, ...]
+    """Deterministic order regardless of the order dimensions were requested
+    in."""
+
+    coverage: CoverageSummary
+    budget_model: str
+    """Literal ``"per-dimension"``: each dimension in a combined call gets the
+    full byte budget independently (user decision, 2026-08-25). A future
+    total-budget regime is therefore a value change here, not a schema
+    change."""
