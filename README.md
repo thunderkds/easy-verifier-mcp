@@ -40,12 +40,13 @@ evidence** rather than silently widening to the whole repository:
 | Scope | Selector | What it evaluates |
 |---|---|---|
 | `task` | `--task-id` | One task's `tasks/TASK_GUIDE_Txxx.md` and its acceptance criteria (kit-aware mode only) |
-| `changes` | `--ref` (optional) | A git diff/commit range/branch — no network remote required |
+| `changes` | `--ref` (**required**) | A git diff/commit range/branch — no network remote required |
 | `worktree` | none | Uncommitted working-tree changes |
 | `project` | none | The whole repository |
 
-`task` scope with no `--task-id` is a refusal, not a fallback — it gathers nothing rather than
-quietly evaluating the whole project.
+A narrow scope with no selector is a refusal, not a fallback: `task` without `--task-id` and
+`changes` without `--ref` both gather nothing and say so in a warning, rather than quietly
+evaluating the whole project.
 
 ## Two modes: kit-aware and standalone
 

@@ -95,17 +95,26 @@ def test_readme_has_at_least_one_command_block():
     assert _readme_blocks(), "expected at least one shell command block in README.md"
 
 
-def test_runnable_readme_commands_exit_zero():
-    """Success Criterion 1: every unmarked (= runnable-today) block exits 0."""
-    unmarked = [
-        (marker, command)
-        for marker, _lang, command in _readme_blocks()
+def _run_unmarked(blocks) -> list[tuple[str, subprocess.CompletedProcess]]:
+    """Run exactly the unmarked blocks, in order, and return what ran.
+
+    The single place that decides *which* blocks execute, so the exit-0 rule
+    and the never-execute-a-planned-block rule are asserted against the same
+    behaviour rather than each re-implementing the filter.
+    """
+    return [
+        (command, _run(command))
+        for marker, _lang, command in blocks
         if not _is_planned(marker)
     ]
-    assert unmarked, "expected at least one runnable-today command in README.md"
 
-    for _marker, command in unmarked:
-        result = _run(command)
+
+def test_runnable_readme_commands_exit_zero():
+    """Success Criterion 1: every unmarked (= runnable-today) block exits 0."""
+    ran = _run_unmarked(_readme_blocks())
+    assert ran, "expected at least one runnable-today command in README.md"
+
+    for command, result in ran:
         assert result.returncode == 0, (
             f"unmarked README command must run today: {command!r}\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
@@ -117,9 +126,15 @@ def test_readme_never_leaves_reports_behind():
     whole suite of them must not create reports/ in this repo."""
     reports_dir = REPO_ROOT / "reports"
     existed_before = reports_dir.exists()
-    for marker, _lang, command in _readme_blocks():
-        if not _is_planned(marker):
-            _run(command)
+    _run_unmarked(_readme_blocks())
+    if existed_before:
+        # Nothing to assert: a pre-existing reports/ makes "was it created?"
+        # unanswerable. Said out loud rather than passing silently.
+        import pytest
+
+        pytest.skip(
+            "reports/ already exists in this checkout; creation is unobservable"
+        )
     if not existed_before:
         assert not reports_dir.exists(), (
             "a runnable README command wrote reports/ into this repo"
@@ -128,15 +143,41 @@ def test_readme_never_leaves_reports_behind():
 
 def test_planned_command_blocks_are_never_executed(monkeypatch):
     """Success Criterion 2, negative half: a planned block must not be run at
-    all — asserting that would fail for the wrong reason (missing Docker)."""
+    all — asserting that would fail for the wrong reason (missing Docker).
 
-    def _fail(*_args, **_kwargs):
-        raise AssertionError("a planned command block must not be executed")
+    This drives the real runner and records what it actually invoked, so the
+    test fails if the filter is wrong in *either* direction. The earlier shape
+    of this test looped over the blocks and did nothing, which meant it passed
+    whether every block was planned or none of them were: it could not fail,
+    and so pinned nothing (Stage 4 P1).
+    """
+    invoked: list[list[str]] = []
 
-    monkeypatch.setattr(subprocess, "run", _fail)
-    for marker, _lang, _command in _readme_blocks():
-        if _is_planned(marker):
-            continue  # would raise via the patched subprocess.run if hit
+    def _record(args, *_rest, **_kwargs):
+        invoked.append(list(args))
+        return subprocess.CompletedProcess(args, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _record)
+
+    blocks = _readme_blocks()
+    _run_unmarked(blocks)
+
+    planned = [command for marker, _lang, command in blocks if _is_planned(marker)]
+    assert planned, "expected at least one planned block to guard against"
+    for command in planned:
+        first = shlex.split(command)[0]
+        assert not any(call and call[0] == first for call in invoked), (
+            f"a planned command block was executed: {command!r}"
+        )
+
+    unmarked = [command for marker, _lang, command in blocks if not _is_planned(marker)]
+    # Both sides pinned: without this, a filter that marked *everything*
+    # planned would satisfy the check above with 0 == 0.
+    assert unmarked, "expected at least one unmarked block to actually run"
+    assert len(invoked) == len(unmarked), (
+        f"expected exactly the {len(unmarked)} unmarked block(s) to run, "
+        f"but {len(invoked)} command(s) were invoked"
+    )
 
 
 def test_documented_dimensions_match_the_registry():
