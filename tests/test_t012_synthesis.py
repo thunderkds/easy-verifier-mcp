@@ -448,3 +448,30 @@ def test_cli_combined_exits_2_on_a_bad_repo_path_like_the_single_path(capsys) ->
         ["combined", "--dimensions", "architecture", "--repo", "/nope/does-not-exist"]
     )
     assert single == combined == 2
+
+
+def test_a_failed_dimension_gets_a_miss_entry_not_an_empty_one(monkeypatch) -> None:
+    """A dimension that produced no pack must not look like one that reached
+    everything.
+
+    Omitting failed dimensions from ``misses`` left "no score and no misses" --
+    indistinguishable from "sought nothing, reached everything" -- with the only
+    honest signal on ``slots[].error``. T013's renderer consumed that faithfully
+    and printed a crashed dimension as clean.
+    """
+    real = synthesis.run_dimension
+
+    def flaky(descriptor, **kwargs):
+        if descriptor.name == "security":
+            raise RuntimeError("collector exploded")
+        return real(descriptor, **kwargs)
+
+    monkeypatch.setattr(synthesis, "run_dimension", flaky)
+    result = synthesis.combined_pack(["architecture", "security"], ".")
+
+    named = dict(result.coverage.misses)
+    assert "security" in named, "the failed dimension is absent from the miss list"
+    assert named["security"], "the failed dimension has an empty miss list"
+    reason = named["security"][0].reason
+    assert "failed" in reason
+    assert "collector exploded" in reason

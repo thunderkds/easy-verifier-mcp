@@ -25,7 +25,7 @@ from pathlib import Path
 
 from ..dimensions import DIMENSIONS, list_dimensions
 from . import redact as redact_module
-from .models import CombinedPack, CoverageSummary, DimensionSlot
+from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
     DEFAULT_BUDGET_BYTES,
     DEFAULT_SCOPE,
@@ -145,10 +145,28 @@ def _aggregate_coverage(slots: list[DimensionSlot]) -> CoverageSummary:
             requested=len(slots),
         )
 
+    # A failed dimension still gets a miss entry. Dropping it left the only
+    # trace of the failure on `slots[].error`, so any reader holding just this
+    # summary saw a dimension with no score and no misses -- which reads as
+    # "sought nothing, reached everything". T013 rendered exactly that: a
+    # crashed dimension shown as clean, on a page that printed the traceback
+    # message one section further down.
     misses = tuple(
-        (slot.dimension, slot.pack.sources_missing)
+        (
+            slot.dimension,
+            slot.pack.sources_missing
+            if slot.pack is not None
+            else (
+                SourceMiss(
+                    source=slot.dimension,
+                    reason=(
+                        "not examined: the dimension failed and produced no "
+                        f"evidence pack ({slot.error})"
+                    ),
+                ),
+            ),
+        )
         for slot in slots
-        if slot.pack is not None
     )
 
     return CoverageSummary(
