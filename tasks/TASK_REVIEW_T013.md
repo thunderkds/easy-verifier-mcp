@@ -70,3 +70,66 @@ string escaped, and nothing fetched from the network when the file is opened.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T013.jsonl`, never the
 implementing agent alone]
+
+---
+
+## Stage 4 — security-review (T013, Medium risk)
+
+**The built-in `security-review` skill could not run.** It resolves the diff via
+`origin/HEAD` and this repository's remote is named `github`, so it aborts with
+`fatal: ambiguous argument 'origin/HEAD...'`. This is the **fifth** task blocked by
+the same cause (T005, T008 previously recorded it). The Supervisor reviewed the diff
+surface directly and drove the attacks below against the running code; substitution
+recorded here per the precedent set in `TASK_REVIEW_T008.md`.
+
+**Threat model.** T013 is the first component that writes a durable artifact into a
+*third-party* repository, and that artifact renders text an LLM wrote about code it
+read. Two egress paths matter: the file itself (committed, ticketed, pasted into a
+PR) and, in MCP mode, the same content reaching a possibly-hosted model.
+
+| # | Attack | Result |
+|---|---|---|
+| 1 | XSS via finding title / detail / suggestion (`<script>alert('xss')</script> & "quoted"`) | **PASS** — rendered as text. Every caller-supplied value in the module routes through `_Ctx.esc`/`_Ctx.path`/`_Ctx.agent_text`; an audit of every f-string interpolation found no unescaped sink. |
+| 2 | Markup smuggling via a "helpful" Markdown subset | **PASS** — none offered; pinned by `test_no_markdown_subset_is_honoured`. |
+| 3 | Attribute-context injection | **PASS** — no caller value is interpolated into an HTML attribute; `html.escape(quote=True)` regardless. |
+| 4 | `confidence` as a free-text sink | **PASS** — validated against the closed `CONFIDENCE_DOMAIN` before rendering. |
+| 5 | Report filename pre-planted as a symlink to a victim file outside `reports/` | **PASS** — `os.open(O_CREAT\|O_EXCL)` refuses to follow it, the writer rolls to `-2`, victim byte-identical afterwards. |
+| 6 | `reports/` itself a symlink pointing outside the repository | **PASS** — refused with `ReportWriteError`; target directory verified empty (NFR-007). |
+| 7 | Container-internal absolute path in a *path field* and in *prose* | **PASS** — both scrubbed (FR-021c); the prose case is what `esc`'s prefix strip covers. |
+| 8 | Raw secret in an excerpt | **PASS** — fingerprinted upstream by T004; `AKIA…****:a09e8ab4fd7c` rendered, raw value absent. |
+| 9 | **Raw secret quoted in the calling agent's own finding text** | **FAIL → fixed in `9797794`** — see below. |
+| 10 | Network egress from the rendered document | **PASS** — opened in headless Chromium with `--host-resolver-rules="MAP * ~NOTFOUND"`; renders fully, zero `ERR_`/`net::` events, zero external references. |
+
+### P1 — secret leak via finding text (fixed, `9797794`)
+
+Excerpts are redacted at the evidence layer before they reach a pack, so quoted code
+inherited that protection. **Finding titles, details and suggestions inherited
+nothing.** An agent reporting a hardcoded credential routinely quotes it in all three
+fields, and a finding written as `Hardcoded key AKIAIOSFODNN7EXAMPLE in app.py` put
+the raw value into the written file **three times** — while the engine's own
+`redact()` catches that exact string.
+
+This is precisely the risk the guide's T004 blast-radius note names: *"this task is
+where redaction stops being precautionary… T013 makes it durable inside someone
+else's repository."* Redaction at the pack layer stops being sufficient the moment a
+new egress path is added.
+
+Fixed with `_Ctx.agent_text()` (redact → escape), applied to the three caller-authored
+free-text fields only. Excerpt text stays on `esc` alone: already redacted upstream, a
+second pass would be redundant. Redaction, not suppression — the finding still renders.
+Pinned by a test confirmed red on `6624901`, plus a guard that ordinary prose survives.
+
+### Accepted residue
+
+- **TOCTOU between `_guard_reports_dir` and the write.** Containment is checked, then
+  `mkdir` and `open` run. An attacker with write access to the *target* repository
+  could swap `reports/` for a symlink in that window. `O_CREAT|O_EXCL` still protects
+  the final component (attack 5), so the exposure is the directory, not the file. Not
+  fixed: the attacker already has write access to the repository being evaluated, so
+  this grants nothing they lack, and closing it properly needs `O_DIRECTORY`/`openat`
+  plumbing well beyond this task's scope. **Recorded, not hidden.**
+- **DDR-0001's premise is now load-bearing.** The unsalted-fingerprint decision rests
+  on reports staying inside the evaluated repo. They still do — nothing here transmits
+  — but the NFR-011 advisory explicitly tells the reader the file may travel. If a
+  future task makes reports travel *by design*, salting must be reconsidered first, as
+  the guide's note requires.
