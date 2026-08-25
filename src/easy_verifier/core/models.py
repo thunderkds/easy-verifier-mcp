@@ -220,3 +220,61 @@ class RedactionResult:
 
     text: str
     hits: tuple[RedactionHit, ...]
+
+
+# ---------------------------------------------------------------------------
+# T012/T013 seam (DDR-0004, Supervisor-locked).
+#
+# These three types are T012's output and T013's input. T012 owns them; T013
+# only imports them. They are defined here by T013 solely because T012's branch
+# has not merged yet and the renderer cannot compile or be tested without them.
+# The definitions below are byte-identical to the locked contract, so the merge
+# is a de-duplication, not a reconciliation of two designs.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DimensionSlot:
+    dimension: str
+    pack: EvidencePack | None  # None iff error is set
+    error: str | None
+
+
+@dataclass(frozen=True)
+class CoverageSummary:
+    per_dimension: tuple[tuple[str, float | None], ...]
+    combined: float | None  # None, never 0.0, when nothing sought
+    method: str
+    misses: tuple[tuple[str, tuple[SourceMiss, ...]], ...]  # union, named per dimension
+
+
+@dataclass(frozen=True)
+class CombinedPack:
+    slots: tuple[DimensionSlot, ...]
+    coverage: CoverageSummary
+    budget_model: str  # literal "per-dimension"
+
+
+@dataclass(frozen=True)
+class ReportResult:
+    """What :func:`easy_verifier.core.report.write_report` returns.
+
+    Validation failures are *not* reported here: they raise
+    :class:`easy_verifier.core.findings.ValidationError` before any file is
+    opened, so a ``ReportResult`` existing at all means a report was written.
+    """
+
+    path: str
+    """Repository-relative POSIX path of the written report, e.g.
+    ``reports/evidence-report-project-20260825T095341-123456Z.html``.
+    Relative on purpose: an absolute path here is the container-internal leak
+    FR-021c forbids, and the caller already knows the target repo."""
+
+    absolute_path: str
+    """The resolved path on the machine that ran the write. Returned to the
+    caller (who is on that machine) but never rendered into the document."""
+
+    advisory: str | None
+    """The NFR-011 sensitivity advisory, set only on the **first** report
+    written into this target's ``reports/``. ``None`` on later writes; the
+    advisory itself is rendered in every report regardless."""
