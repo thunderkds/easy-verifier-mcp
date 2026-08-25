@@ -26,12 +26,15 @@ _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`
 - [ ] **T015** — `cli.py`: full surface, `--findings <path>` or stdin JSON, no server | backend-developer | C1 | Risk: Low | P0
 - [ ] **T016** — Dockerfile + compose: non-root, read-only mount except `reports/` | common-infrastructure | C1 | Risk: Med | P0
 
+**Wave 6 — Documentation (added 2026-08-25, user request)**
+- [ ] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | backend-developer | C1 | Risk: Low | P2
+
 **Wave 5 — Verification (QA-owned)**
 - [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof (**HITL gate: parity definition**) | qa-expert | C2 | Risk: High | P0
 
 ### In Progress
 
-_(none)_
+- [ ] **T018** — README documenting the intended v1 surface, with a doc-truth test | backend-developer | C1 | Risk: Low | P2
 
 ### Ready for Review
 
