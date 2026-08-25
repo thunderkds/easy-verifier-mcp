@@ -1,4 +1,4 @@
-# TASK_REVIEW — T[NNN]: [Short Title]
+# TASK_REVIEW — T012: synthesis.py — combined pack + aggregate coverage
 
 > Sibling of `tasks/TASK_GUIDE_T[NNN].md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,12 +33,45 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: Captured 2026-08-25T09:58:48Z, working tree stashed back to the pre-implementation state
+(`git stash -u` on top of `5d61f46`, no `synthesis.py`/`combined` subcommand/`CombinedPack` model yet
+existed):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-08-25T09:58:48Z
+$ PYTHONPATH=src python -c "from easy_verifier.core.synthesis import combined_pack"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'easy_verifier.core.synthesis'
+```
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**AFTER**: Captured 2026-08-25T09:58:55Z, same worktree with the implementation applied:
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T012.jsonl`, never the
-implementing agent alone]
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-08-25T09:58:55Z
+$ PYTHONPATH=src python -m pytest tests/test_t012_synthesis.py -q
+......................                                                   [100%]
+22 passed in 3.39s
+$ PYTHONPATH=src python -m easy_verifier.adapters.cli combined --repo . --dimensions architecture,security > /tmp/combined_out.json
+$ echo exit=$?
+exit=0
+$ tail -3 /tmp/combined_out.json
+    ]
+  },
+  "budget_model": "per-dimension"
+}
+```
+
+**DELTA**: A caller can now request several named dimensions in one `combined_pack()` call (or the
+CLI's `combined --dimensions a,b,...` subcommand) and get their packs back together with a single
+aggregate `CoverageSummary` — per-dimension scores, a pooled combined figure, the union of miss
+lists named per dimension, and the stated combining method — where before each dimension had to be
+run and reconciled separately by the caller.
+
+**WITNESS**: backend-developer (Sonnet 5), 2026-08-25, ran both captures directly in the
+`easy-verifier-mcp-t012` worktree using the main checkout's `.venv/bin/python` interpreter
+(`PYTHONPATH=src`); `memory/event-trace/T012.jsonl` does not exist in this worktree, so this is the
+implementer's own run — an independent Stage 4/5 re-run by the Supervisor/reviewer is still required
+per standing procedure.

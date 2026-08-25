@@ -30,3 +30,14 @@ DIMENSIONS: dict[str, DimensionDescriptor] = {
     test_strategy.NAME: test_strategy.DESCRIPTOR,
     blast_radius.NAME: blast_radius.DESCRIPTOR,
 }
+
+
+def list_dimensions() -> tuple[str, ...]:
+    """The single source of valid dimension names, sorted for determinism.
+
+    Any caller that needs to validate a requested name, or present the set of
+    choices to a user, reads this — never a second, hand-maintained list
+    (precedent: a duplicated list is how a checklist and its enforcement drift
+    apart, per T003/T008/T010).
+    """
+    return tuple(sorted(DIMENSIONS))
