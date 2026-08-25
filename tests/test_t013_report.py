@@ -720,6 +720,32 @@ def test_container_internal_paths_never_reach_the_document(target_repo: Path):
     assert "app.py" in document
 
 
+def test_a_relative_path_that_climbs_out_of_the_repo_is_not_printed(
+    target_repo: Path,
+):
+    packs = _combined(
+        {
+            "architecture": _pack(
+                "architecture",
+                files_read=("../../etc/passwd",),
+                sources_missing=(
+                    SourceMiss(
+                        "../../../secrets/prod.yml",
+                        "not found in the target repository",
+                    ),
+                ),
+            )
+        }
+    )
+
+    _, document = _write(target_repo, [_finding("architecture")], packs)
+
+    assert ".." not in document
+    assert "passwd" in document, (
+        "the basename is still reported, only the climb is dropped"
+    )
+
+
 def test_the_repo_prefix_is_scrubbed_from_free_text(target_repo: Path):
     """The container case: the repo *is* mounted at the leaked prefix, so an
     absolute path inside prose is not a path field and must still not survive."""

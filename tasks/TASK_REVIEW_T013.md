@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t013_report.py` — 39 tests, one or more per AC #1–#15 plus the edge-case checklist (read-only `reports/`, symlinked target repo, `reports/` symlinked out of the repo, zero findings, 300 findings, non-ASCII). `39 passed in 0.34s`, exit 0. |
+| Verification command run | ☑ pass | `pytest tests/test_t013_report.py -q` → `39 passed`; the trailing `grep -cE 'https?://\|<script src\|@import'` on `/tmp/evtest/reports/*.html` prints **2**, and both hits are the fixture's URL rendered as *escaped text* inside an excerpt (`LOGO = &quot;https://cdn.example.com/logo.png&quot;`) — exactly the loose-grep false positive the guide's Test Plan predicted. The AC #2 check is the parsing scan in `_external_references()`, which returns `[]` on the same file. |
+| Negative cases hold | ☑ pass | Six sabotages, each reverted after capture: **(A)** an external `<link>` in `<head>` → `test_report_requests_nothing_from_the_network` FAILED; **(B)** `O_EXCL`→`O_TRUNC` → `test_an_existing_filename_is_never_overwritten` FAILED; **(C)** a bare `pack.coverage_score` rendered in the pack-meta block → `test_every_rendered_score_sits_with_its_named_miss_list` FAILED (`assert 5 == 3`, "a coverage score appears outside a coverage entry"); **(D)** write-then-validate → both AC #9 tests FAILED; **(E)** `_Ctx.esc` returning text unescaped → 4 escaping tests FAILED; **(F)** a "helpful" Markdown subset added to `esc` → `test_no_markdown_subset_is_honoured` FAILED. |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| Full smoke suite still green (no regression) | ☑ pass | `pytest tests -q` → `378 passed` (339 pre-existing + 39 new), exit 0. `ruff check src tests` + `ruff format --check` clean. |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | No UI in this project (`PROJECT_SPEC.md` Critical Constraint 11). This task renders a static document from structured data — no component, no interaction, no design system. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | As above — N/A per Critical Constraint 11. |
+| **UI: Responsiveness at target viewports** | ☑ N/A | As above — N/A per Critical Constraint 11. The inlined CSS does carry a fluid `max-width` and `white-space: pre-wrap` on excerpts, but no viewport testing is claimed. |
 
 ---
 
@@ -50,9 +50,23 @@ ls: cannot access 'src/easy_verifier/core/report.py': No such file or directory
 exit=2
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (captured 2026-08-25T10:03:25Z, same worktree, at `6b5d401`+):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ date -u
+Tue Aug 25 10:03:25 AM UTC 2026
+$ .venv/bin/python -m pytest tests/test_t013_report.py -q
+.......................................                                  [100%]
+39 passed in 0.34s
+exit=0
+$ ls -l /tmp/evtest/reports/
+-rw-r--r-- 1 hungnguyenhuu hungnguyenhuu 9667 Aug 25 17:00 evidence-report-project-20260825T100038-582758Z.html
+```
+
+**DELTA**: A caller can hand validated findings plus a multi-dimension `CombinedPack` to
+`write_report` and get one self-contained, collision-proof HTML report written into the *evaluated*
+repository's `reports/` — every coverage score shown with its named miss list, every caller-supplied
+string escaped, and nothing fetched from the network when the file is opened.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T013.jsonl`, never the
 implementing agent alone]
