@@ -26,7 +26,9 @@ def excerpt(index: int, *, path: str | None = None, size: int = 2000) -> Excerpt
     """An excerpt whose text is exactly ``size`` bytes."""
     text = str(index % 10) * size
     assert len(text.encode("utf-8")) == size
-    return Excerpt(path=path or f"f{index}.md", start_line=1, end_line=1, text=text)
+    return Excerpt(
+        path=path or f"f{index}.md", start_line=1, end_line=1, text=text
+    )
 
 
 class InstrumentedCollect:
