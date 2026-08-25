@@ -11,7 +11,8 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.adapters.cli import main as cli_main
-from easy_verifier.core.pipeline import run_dimension
+from easy_verifier.core import synthesis
+from easy_verifier.core.pipeline import RepoPathError, run_dimension
 from easy_verifier.core.synthesis import combined_pack
 from easy_verifier.dimensions import DIMENSIONS, list_dimensions
 
@@ -385,3 +386,65 @@ def test_cli_single_dimension_still_works_unchanged() -> None:
         check=False,
     ).returncode
     assert exit_code == 0
+
+
+# --- Stage 4 review regressions (T012) ------------------------------------
+
+
+def test_aggregate_method_names_the_dimensions_excluded_by_failure(
+    monkeypatch, tmp_path
+) -> None:
+    """A coverage figure must say what bounded it.
+
+    A dimension that raises contributes nothing to the pooled ratio, and
+    renders in ``per_dimension`` as ``None`` -- indistinguishable from a
+    dimension that sought nothing. Unless ``method`` names the exclusion, a
+    reader holding only the :class:`CoverageSummary` sees a confident number
+    computed over a silently smaller set. This is the same defect class as the
+    cap-truncated sweep that reported a repository-wide zero (T010).
+    """
+    real = synthesis.run_dimension
+
+    def flaky(descriptor, **kwargs):
+        if descriptor.name == "security":
+            raise RuntimeError("boom")
+        return real(descriptor, **kwargs)
+
+    monkeypatch.setattr(synthesis, "run_dimension", flaky)
+    result = synthesis.combined_pack(["architecture", "security"], ".")
+
+    method = result.coverage.method
+    assert "security" in method
+    assert "EXCLUDED" in method
+    # and the healthy dimension is not mislabelled as excluded
+    assert "architecture" not in method.split("EXCLUDED")[1]
+
+
+def test_aggregate_method_is_unchanged_when_every_dimension_succeeds() -> None:
+    """The exclusion note must not fire on a clean run -- a permanent warning
+    is the same as no warning."""
+    result = synthesis.combined_pack(["architecture"], ".")
+    assert "EXCLUDED" not in result.coverage.method
+
+
+def test_an_unusable_repo_path_raises_instead_of_filling_every_slot_with_errors() -> (
+    None
+):
+    """AC #6 isolates a failing *dimension*, not a failing precondition.
+
+    A repository path that does not exist makes every dimension fail
+    identically. Reporting that as a successful combined call full of error
+    slots gave the CLI exit 0 for a repo that is not there, while the
+    single-dimension path exits 2 -- an FR-022 divergence between two entry
+    points that must agree.
+    """
+    with pytest.raises(RepoPathError):
+        synthesis.combined_pack(["architecture", "security"], "/nope/does-not-exist")
+
+
+def test_cli_combined_exits_2_on_a_bad_repo_path_like_the_single_path(capsys) -> None:
+    single = cli_main(["architecture", "--repo", "/nope/does-not-exist"])
+    combined = cli_main(
+        ["combined", "--dimensions", "architecture", "--repo", "/nope/does-not-exist"]
+    )
+    assert single == combined == 2

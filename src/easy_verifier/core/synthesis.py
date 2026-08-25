@@ -26,7 +26,12 @@ from pathlib import Path
 from ..dimensions import DIMENSIONS, list_dimensions
 from . import redact as redact_module
 from .models import CombinedPack, CoverageSummary, DimensionSlot
-from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE, run_dimension
+from .pipeline import (
+    DEFAULT_BUDGET_BYTES,
+    DEFAULT_SCOPE,
+    RepoPathError,
+    run_dimension,
+)
 
 BUDGET_MODEL = "per-dimension"
 
@@ -34,6 +39,12 @@ _AGGREGATE_METHOD = (
     "pooled: sum(sources_found) / sum(sources_sought) across every requested "
     "dimension whose sources_sought is non-empty; dimensions that sought "
     "nothing do not affect the ratio"
+)
+
+_EXCLUSION_NOTE = (
+    "; EXCLUDED from the ratio because they failed and produced no pack: "
+    "{names} — the figure above describes only the {counted} dimension(s) that "
+    "ran, not the {requested} requested"
 )
 
 
@@ -83,6 +94,14 @@ def combined_pack(
                 ref=ref,
                 task_id=task_id,
             )
+        except RepoPathError:
+            # NOT isolated. AC #6's robustness is about one *dimension* failing
+            # while the others still return; an unusable repository path is a
+            # precondition of the whole call, and every dimension would fail
+            # identically. Swallowing it per-slot turned "this repo does not
+            # exist" into a successful call full of error slots, and gave the
+            # CLI exit 0 where the single-dimension path exits 2 (FR-022).
+            raise
         except Exception as exc:  # noqa: BLE001 - isolated per dimension, never re-raised
             # Redacted like any other engine-surfaced message (NFR-010): an
             # exception raised outside a dimension's own collect() has not
@@ -111,6 +130,21 @@ def _aggregate_coverage(slots: list[DimensionSlot]) -> CoverageSummary:
         found_total += len(slot.pack.sources_found)
     combined = (found_total / sought_total) if sought_total else None
 
+    # A coverage figure must say what bounded it. A dimension that raised
+    # contributes nothing to `found_total`/`sought_total`, so the ratio is
+    # computed over a subset -- and `per_dimension` renders a failed dimension
+    # as `None`, which is indistinguishable from one that sought nothing. If
+    # the exclusion is not named here, the only honest signal lives on
+    # `slots[].error`, and any reader holding just this summary is misled.
+    failed = tuple(slot.dimension for slot in slots if slot.pack is None)
+    method = _AGGREGATE_METHOD
+    if failed:
+        method += _EXCLUSION_NOTE.format(
+            names=", ".join(failed),
+            counted=len(slots) - len(failed),
+            requested=len(slots),
+        )
+
     misses = tuple(
         (slot.dimension, slot.pack.sources_missing)
         for slot in slots
@@ -120,7 +154,7 @@ def _aggregate_coverage(slots: list[DimensionSlot]) -> CoverageSummary:
     return CoverageSummary(
         per_dimension=per_dimension,
         combined=combined,
-        method=_AGGREGATE_METHOD,
+        method=method,
         misses=misses,
     )
 
