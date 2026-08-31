@@ -17,16 +17,15 @@
 
 ## ▶ START HERE — handoff from the 2026-08-25 session
 
-**State**: **T018 is merged to `develop`** — 11 of 18 tasks done (T018 was added 2026-08-25 by user
+**State**: **T012 and T013 are merged to `develop`** (2026-08-25) — 13 of 18 tasks done (T018 was added 2026-08-25 by user
 request as a new Wave 6). Wave 2 stays complete: all seven of FR-010's dimensions are wired, and the
-repo now has a real README. Post-merge on the main checkout: **339 tests, ruff clean**. Nothing is In
-Progress or Ready for Review.
+repo now has a real README. Post-merge on the main checkout: **409 tests, ruff clean**. Nothing is In
+Progress or Ready for Review. **`develop` is unpushed and the user has not yet authorised a push.**
 
 **Unpushed**: local `develop` is ahead of the remote. The remote is named **`github`**, not `origin` —
 this is not cosmetic, it breaks tooling (see below).
 
-**Next action**: **Wave 3** — T013 (`report.py`, C2/Med/P0) or T012 (`synthesis.py`, C1/Low/P1).
-T013 is the higher priority and was unblocked by T004.
+**Next action**: Wave 3 is complete. **T013's biggest open residue: `write_report` is reachable from no adapter** — no CLI subcommand exists, so the only way to produce a report is importing the function, and the guide's own Verification Command is unrunnable. That is the obvious next slice, and T015 may already own it.
 
 **Spawn-prompt additions earned so far — keep all four in every spawn:**
 1. *"Commit your work before reporting ready-for-review."* (T003 reported done with zero commits.)
@@ -112,6 +111,10 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 - [A dimension must probe its own declared sources](decisions.md) — `pipeline._missing_sources` can only report reasons some read actually recorded; walk-only selection makes the whole miss list fiction.
 - [T009: a declared source is a checklist label, not a path](decisions.md) — bare `SOURCES_SOUGHT` names resolved at repo root only, so a subdirectory config was cited and declared missing in the same pack; `_resolve_declared_source` falls back to a basename match inside the already-computed `scope_files`.
 - [T010: blast-radius is textual, and says so](decisions.md) — reference search + git co-change + declared entry points, none parsing or running target code; `project` scope reports repository hotspots because references there are quadratic; `MAX_SCAN_FILES` bounds the tier-1 drain, not the byte budget.
+- ⚠️ **[The miss-list defect class has now shipped seven times](learnings.md)** — T007/T008/T009/T010/T018 plus **T012 and T013** (2026-08-25). Standing review questions unchanged, and one added: **a sentinel with two possible causes is this defect in miniature.** `coverage_score is None` meant both "sought nothing" and "crashed"; the renderer had to invent a cause and picked the benign one, printing a crashed dimension as clean. Split the sentinel or carry the cause beside it — never let the display layer guess.
+- 🔎 **[Render the document; don't just test it](learnings.md)** — T013's P1 was invisible to 39 tests, a diff review, and the seam contract built to prevent it. Headless Chromium with `--host-resolver-rules="MAP * ~NOTFOUND"` proves FR-018 self-containment *and* gives you a page to read. Snap Chromium can't write into `/tmp/claude-1000` or dotted `$HOME` dirs.
+- 🔐 **[A new egress path invalidates upstream redaction](learnings.md)** — excerpts are redacted at the evidence layer; T013's finding *prose* inherited nothing, so a secret the agent quoted landed verbatim in a file written into the target repo. Re-ask the redaction question at every new boundary; `_Ctx.agent_text()` (redact → escape) is the fix shape.
+- 🐚 **[zsh does not word-split unquoted variables](learnings.md)** — a CLI probe in a `for` loop reported a phantom argparse error. Use explicit args or arrays.
 - 🔒 **[DDR-0004: the T012/T013 seam contract is Supervisor-locked](decisions.md)** (2026-08-25) — the user chose to run T012 and T013 **in parallel** over the Supervisor's recommendation to sequence them, so `CombinedPack`/`CoverageSummary`/`DimensionSlot` are fixed at Stage 2 authority and handed identically to both spawns. T012 implements them in `models.py`; T013 imports and never redefines them. `misses` lives **inside** `CoverageSummary` so FR-016a is structural — a renderer cannot reach a score without its miss list. Budget model is **per-dimension** (user decision), carried on the pack as `budget_model` so a future total-budget regime is a value change, not a schema change. Either agent that thinks the contract is wrong **stops and reports before building**.
 - ⚠️ **[The miss-list defect class has shipped four times](learnings.md)** — T007 false secret reasons, T008 a wholly fabricated list, T009 the inverse (read happened, miss list denied it), T010 a cap-truncated sweep asserting a repo-wide zero. Standing review questions: cross-check `sources_missing` against `files_read`/`excerpts`, **and ask what bounded the search and whether the miss reason says so**.
 - [Route declared-source probes through `read_source`](learnings.md) — it records found/missing itself; that is why T010 is the first dimension not to ship the miss-list contradiction. Structural, not vigilance.
@@ -150,6 +153,7 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 - ⚠️ **[A merge of two green branches can be a regression](learnings.md)** — T002 moved the path check that T004 had hardened with redaction; both suites passed alone, the leak existed only in the combination. **After every conflict resolution, re-probe any cross-cutting property (redaction/validation/auth/logging) that attached to a line the other branch relocated.**
 - [Truncation is rejection-triggered; `omitted_count` is a lower bound](decisions.md) — pull until one item doesn't fit, drop it, stop. Never drain to count: for a file-reading `collect` that means reading every file. Fixes a T001 guide contradiction; aligns T001 with T005.
 - [T012 budget recommendation: per-dimension, not pooled](decisions.md) — a total budget split across dimensions makes each pack's contents depend on what else was requested, breaking reproducibility. Decision to be recorded when T012 is picked up.
+- ▶ **[The verifier now emits a quality *rating*; FR-013 amended](decisions.md)** — engine-computed numbers are allowed when produced by **declared rules over measured metrics** (never a model, NFR-001 intact). Three words, never interchangeable: `coverage_score` = what we READ, **rating** = what our RULES compute, **assessment** = what the AGENT concluded, **divergence** = the gap, reported never reconciled. **Below a declared coverage floor the engine emits NO number** — a structured abstention, never `0`/`None`/a low rating → see DDR-0003. Wave 7 = T019–T022; T022 must follow T014/T015.
 
 ### Gotchas (see [learnings.md](learnings.md))
 

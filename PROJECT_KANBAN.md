@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-08-17
+**Last updated**: 2026-08-26
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -28,6 +28,12 @@ _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`
 
 **Wave 6 — Documentation (added 2026-08-25, user request)**
 - [x] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | ✅ Done 2026-08-25
+
+**Wave 7 — Quality rating & assessment (added 2026-08-26, user request; see `docs/ddr/0003-abstain-from-rating-below-coverage-floor.md`)**
+- [ ] **T019** — `metrics.py`: measured facts computed over the evidence pack only (test strength, security surface, evidence coverage, code shape) | backend-developer | C2 | Risk: Low | P0
+- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0
+- [ ] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | backend-developer | C2 | Risk: Med | P1
+- [ ] **T022** — `score` operation in both adapters + report score panel (**must follow T014 and T015**) | backend-developer | C1 | Risk: Low | P0
 
 **Wave 5 — Verification (QA-owned)**
 - [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof (**HITL gate: parity definition**) | qa-expert | C2 | Risk: High | P0
@@ -82,6 +88,6 @@ _(none)_
 | 1 Environment Setup | ✅ Done |
 | 1.5 Sub-Agent Architecture | ✅ Done |
 | 2 Planning (/plan) | ✅ Done |
-| 3 Execution | 🔄 In Progress (13/18 done) |
+| 3 Execution | 🔄 In Progress (13/22 done) |
 | 4 Review | 🔄 In Progress |
 | 5 Integration & Verify | 🔄 In Progress |

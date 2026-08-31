@@ -590,7 +590,64 @@ seven-dimension call now rests on the caller asking for fewer dimensions rather 
 ceiling; `budget_model` is carried on the pack so the report states which regime produced it and a
 future total-budget mode is a value change, not a schema change.
 
+**Outcome (2026-08-25, both tasks merged).** The contract held: both agents defined the three
+types independently, in separate worktrees, and the definitions came out **field-identical**. The
+merge conflict in `core/models.py` was therefore a de-duplication, not a reconciliation — T012's
+documented versions were kept (it owns and constructs them), T013's `ReportResult` was added
+alongside. This is the reusable result: when two parallel tasks meet at a data type, locking the
+type at Stage 2 and handing identical text to both spawns costs one Supervisor decision and removes
+the whole class of merge-time redesign.
+
+**What it did *not* prevent.** A structural guarantee constrains the shape of the data, not the
+truth of every field in it. `misses` living inside `CoverageSummary` made it impossible to render a
+score without a miss list — and T013 still rendered a crashed dimension as clean, because
+`per_dimension` gave `(name, None)` for both "sought nothing" and "failed", and an empty miss list
+was read as an all-clear. Locking a schema buys you less than it feels like; see [[learnings.md]].
+
 **Standing instruction to both agents.** T013 must not wait for T012's code to exist. Write against
 this contract and construct fixtures directly. Where T013's tests need a `CombinedPack`, they build
 one literally — that is a feature, not a workaround: it keeps T013's suite from depending on T012's
 dimension execution, which is the same isolation that let T007's tests survive T005's rework.
+
+---
+
+## 2026-08-26 — The verifier emits a quality rating; FR-013 amended, abstention made a state
+
+**Decision.** The product's headline output becomes a quality number, per user direction: "input is
+the source code... the verifier will run through and output the analytics score." FR-013 is amended
+from *no score* to **no score the engine inferred**. A *rating* computed by declared, inspectable
+rules over measured metrics is permitted and must cite the metric values it came from. NFR-001 is
+untouched — no model call enters the engine under any framing.
+
+**Why.** Without this the tool produces evidence packs that only an LLM caller can turn into a
+verdict, which fails Case B (an engineer with a repo and no agent in the loop) and fails the user's
+stated intent. → see DDR-0003.
+
+**Terminology, locked (grill-with-docs, 2026-08-26).** Three numbers, three words, because `score`
+was already claimed by `coverage_score` and `models.py:9` opens by declaring the module carries no
+score at all:
+- `coverage_score` — unchanged: how much the engine could READ.
+- **rating** — what the engine's declared RULES compute (0–100).
+- **assessment** — what the calling AGENT concluded, rolled up from its findings (0–100).
+- **divergence** — the gap between them, reported and never reconciled.
+
+**Four sub-decisions, all closed by the user:**
+1. **Dual score, side by side.** The rule-based rating always renders and needs no agent; the
+   assessment renders beside it when findings were submitted. Divergence is its own signal.
+2. **Abstain below a coverage floor.** A rating computed off thin evidence is unfounded and looks
+   identical to a founded one — the eighth appearance of this project's oldest defect class. Below a
+   declared per-dimension floor the engine emits no number, only a structured abstention. → DDR-0003.
+3. **Metrics are computed centrally, over the pack.** Not by a new per-dimension callable, which
+   would be a second code path outside the budget/redaction choke point Option D exists to make
+   unbypassable. A metric therefore *cannot* cite what the pack never read — true by construction.
+4. **Whole-set metrics abstain on a truncated pack.** A ratio computed after the byte budget dropped
+   files describes what survived, not the repo — and `omitted_count` is only a lower bound, so the
+   engine cannot even say how much it missed. Evidence-local metrics (a detector hit) still compute.
+
+**Cost, accepted and stated.** Output is non-uniform: every consumer must handle a number *or* an
+abstention. And an abstaining dimension can *raise* the overall, which makes the "5 of 7 contributed"
+disclosure load-bearing rather than decorative — T020 AC #8 exists to pin exactly that.
+
+**Tasks.** T019 metrics · T020 judge · T021 assessment · T022 adapters+report. T022 is sequenced
+**after** T014/T015 (adding an operation to an adapter mid-restructure is double work), and T017's
+parity suite moves last because it must now prove parity of the ratings too.

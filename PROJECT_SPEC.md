@@ -51,6 +51,9 @@ src/easy_verifier/
   core/budget.py            relevance order, lazy truncation    FR-011a/b
   core/findings.py          schema + write_report validation    FR-015, 015a
   core/synthesis.py         combined pack, aggregate coverage   FR-025, 026
+  core/metrics.py           measured facts, over the pack only  FR-027, 027a
+  core/judge.py             declared rules -> rating, floors    FR-028, 028a/b, DDR-0003
+  core/assessment.py        findings rollup + divergence        FR-029, 029a
   core/report.py            self-contained multi-dim HTML       FR-014, 017, 018, 018a/b
   dimensions/*.py           seven descriptors                   FR-010
 ```
@@ -64,6 +67,10 @@ src/easy_verifier/
 | **Evidence pack** | The structured return value of one dimension: files actually read, citable excerpts with path + line refs, `sources_sought` misses, coverage score, truncation field. Contains no verdict. |
 | **Dimension** | One evaluation axis (7 in v1). Implemented as static descriptor data + a `collect` callable, executed by `run_dimension()`. Never a class, never registered. |
 | **Coverage score** | Unweighted `found / sought` over a dimension's declared source checklist. Never rendered without the named miss list (FR-016a). |
+| **Rating** | A 0–100 quality number the engine computes itself, by **declared rules over measured metrics**. Inspectable and repeatable: no LLM, no inference. Never rendered without the metric values it was computed from. Distinct from *coverage score* (which measures what was read, not what was found) and from *assessment* (which is an agent's judgment). |
+| **Assessment** | A 0–100 quality number derived from the calling agent's submitted findings, weighted by their severity and confidence. Present only when findings were submitted; the engine performs the arithmetic, never the judgment (FR-026). |
+| **Divergence** | The gap between a dimension's *rating* and its *assessment* when both exist. Reported as its own signal: rules and agent disagreeing is information, not an error to reconcile. |
+| **Metric** | One measured, citable fact about the target (e.g. test-to-source ratio, secret-detector hits). Carries the file references it was computed from. Metrics are inputs to a *rating*; a metric is never itself a judgment. |
 | **Kit-aware mode** | Target repo contains kit artifacts (`PROJECT_SPEC.md`, `PRD.md`, `PROJECT_KANBAN.md`, `tasks/`, `memory/`); these are loaded as ground truth. |
 | **Standalone mode** | No kit artifacts. Docs first (`README*`, `docs/`, ADRs, `CONTRIBUTING*`), code only where docs are silent. Emits a limited-context warning everywhere. |
 | **Scope** | One of `task`, `changes`, `worktree`, `project` — what slice of the repo is under evaluation. |
@@ -76,6 +83,8 @@ src/easy_verifier/
 ## Critical Constraints
 
 1. **No LLM inference in the engine, ever.** No model call, no API key, not behind an env var (NFR-001, out-of-scope list). Any task introducing one is rejected at review.
+1a. **A rating is arithmetic, not an opinion.** FR-013 was amended 2026-08-26 (DDR-0003) to permit a rating computed by *declared, inspectable rules over measured metrics*. This does **not** relax Constraint 1 by a single line: no model call enters the engine under any framing, including "just for scoring". A rating that cannot be recomputed by hand from the metrics printed beside it is a violation.
+1b. **Abstention is a state, never a value.** A dimension below its coverage floor, and a whole-set-dependent metric over a truncated pack, emit *no number*. Encoding either as `0`, `None`, or a low rating is rejected at review — it is the conflation defect this project has shipped seven times (DDR-0003 Context).
 2. **No invention.** Absent context is reported as absent (FR-005). A dimension may never substitute a plausible value.
 3. **`collect` returns `Iterable[Excerpt]`, consumed lazily by `budget()`.** Non-negotiable — returning a `list` forces full materialisation on exactly the monorepo size that most needs budgeting.
 4. **Redaction happens inside `run_dimension()`, at the evidence layer** (NFR-010, DDR-0001). A raw detected secret must never reach a pack, a report, a log, or an error message. Bypassing `run_dimension()` to build a pack is prohibited.

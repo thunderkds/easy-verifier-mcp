@@ -50,6 +50,7 @@ so, loudly, as a measurable coverage score. The result is an evaluation a develo
 | US-009 | As a Standalone Developer, I want the same tool to work whether or not the repo was kit-built, so I learn one workflow. | P2 |
 | US-010 | As either caller, I want one report that spans several dimensions and carries suggested improvements, so I get a synthesized evaluation rather than seven disconnected documents I have to reconcile myself. | P1, P2 |
 | US-011 | As a Reviewing Agent, I want to discover which dimensions exist and what context each one seeks, so I can choose the right ones without reading the verifier's source. | P3 |
+| US-012 | As either caller, I want to point the verifier at a repository or feature and get quality numbers back in one run, so I can gauge quality without first standing up a reasoning agent — and I want it to decline to give me a number rather than give me an unfounded one. | P1, P2 |
 
 ---
 
@@ -85,7 +86,7 @@ Each FR must trace to at least one User Story.
 | FR-011a | Each evidence pack must respect a per-dimension byte budget, defaulting to 120 KB and overridable per call. Candidate content must be ordered by relevance to the active scope (changed files first, then spec-referenced files, then the remainder) so truncation drops the least-relevant tail. | US-004 |
 | FR-011b | A truncated pack must report truncation explicitly as a structured field stating that truncation occurred and how many items were omitted. Silent truncation is prohibited, and omitted items must appear in the coverage list defined by FR-016a. | US-003, US-004 |
 | FR-012 | The security dimension must be callable in both modes and in every scope, and must never be gated behind kit-aware mode. | US-007 |
-| FR-013 | No dimension may return a verdict, score, or judgment produced by the engine. Dimensions return evidence only; reasoning is performed by the calling agent. | US-004 |
+| FR-013 | No dimension may return a verdict, score, or judgment the engine **inferred**. Dimensions return evidence only; semantic reasoning is performed by the calling agent. **Amended 2026-08-26 (DDR-0003)**: a *rating* computed by declared, inspectable rules over measured metrics is permitted, and must cite the metric values it was computed from. NFR-001 is untouched — the judge is arithmetic, never a model. | US-004, US-012 |
 | FR-013a | The system must expose a **discovery** operation listing every available dimension with its human-readable purpose and its declared `sources_sought` list, available in both adapters. | US-011 |
 
 ### Findings, confidence & reporting
@@ -110,6 +111,17 @@ Each FR must trace to at least one User Story.
 | FR-024 | Suggestions are advisory text only. The system must never apply, patch, or auto-fix anything in the target repository (reinforces NFR-007). | US-010 |
 | FR-025 | The engine must provide a **combined pack** operation that runs several named dimensions in one call and returns their packs together with an aggregate coverage summary, so a caller can synthesize across dimensions without issuing seven separate calls and reassembling them by hand. | US-004, US-010 |
 | FR-026 | Cross-dimension synthesis — deciding what the findings *mean together* — is performed by the calling agent, not the engine. The engine's contribution to synthesis is aggregation and presentation only, never interpretation (reinforces FR-013, NFR-001). | US-010 |
+
+### Quality rating & assessment
+
+| FR-027 | The engine must compute **metrics** — measured, citable facts about the target (test strength, security surface, evidence coverage, code shape) — exclusively from the evidence pack a dimension already produced. A metric may never read a file the pack did not cite, so that every number is auditable against the evidence beside it. | US-012 |
+| FR-027a | Every metric must declare whether it is **whole-set-dependent** (ratios, densities, aggregate counts) or **evidence-local** (a detector hit, which is real regardless of what else was dropped). A whole-set-dependent metric computed over a truncated pack describes what survived the byte budget, not the repository, and must therefore abstain rather than report a value (DDR-0003). | US-003, US-012 |
+| FR-028 | The engine must compute a per-dimension **rating** (0–100) from those metrics using rules declared as static, inspectable data. The rules must be readable without reading the engine's source, and a threshold change must be a value change rather than a code change. | US-012 |
+| FR-028a | Each dimension must declare a **coverage floor**. Below it, the engine emits **no rating** for that dimension — it emits a structured abstention naming the floor, the achieved coverage, and the sources not reached. An abstention is a distinct state and must never be encoded as `0`, `None`, or a low rating: "we could not see this" must be indistinguishable from nothing except itself, and never mistakable for "this is bad" (FR-005, DDR-0003). | US-003, US-012 |
+| FR-028b | An **overall** rating must average only the dimensions that rated, and must disclose in the same field how many of the seven contributed and which abstained, with each abstention's reason. An aggregate that does not state what bounded it is prohibited. Note that an abstaining dimension can *raise* the overall, which makes the disclosure load-bearing. | US-003, US-012 |
+| FR-029 | When the calling agent submits findings, the engine must compute an **assessment** (0–100) per dimension as a severity- and confidence-weighted rollup of those findings. The engine performs the arithmetic; the judgment remains the agent's (FR-026). | US-010, US-012 |
+| FR-029a | Where a rating and an assessment both exist for a dimension, the report and both adapters must render them **side by side** with their **divergence**, and must never blend, reconcile, or adjudicate between them. Disagreement between measured rules and an agent's judgment is signal to be surfaced, not an error to resolve. | US-010, US-012 |
+| FR-030 | A rating must be obtainable from a **single invocation against a repository path**, with no findings submitted and no agent in the loop. The assessment layer enriches that output when findings are present; it is never a precondition for a number. | US-002, US-012 |
 
 ### Entry points
 

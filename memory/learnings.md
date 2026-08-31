@@ -387,3 +387,60 @@ Three mechanical limits worth remembering before writing another one:
   command without anyone noticing. T018 pins exactly one, and the flags that *do* work today live
   only in prose.
 
+
+
+---
+
+## The miss-list defect class, instances 5–7 (T018, T012, T013) — 2026-08-25
+
+The class now has **seven** instances: T007 false secret reasons, T008 a fabricated miss list, T009
+the inverse (read happened, miss list denied it), T010 a cap-truncated sweep asserting a repo-wide
+zero, T018 a green test that could not fail, and now T012 + T013 twice more. The invariant across
+all seven: **a component reports an absence it did not actually establish**, and the reason it gives
+does not disclose what bounded it.
+
+**T012**: `combined` was pooled over only the dimensions that ran, and `method` did not say two of
+seven had failed. **T013**: `_format_score(None)` asserted "no sources were sought" and an empty
+miss list asserted "every declared source was reached" — for a dimension that had crashed. The same
+page printed `RuntimeError: collector exploded` for that dimension one section further down, so the
+document contradicted itself.
+
+**The two questions that catch this class**, now proven across seven instances:
+1. Cross-check `sources_missing` against `files_read` and `excerpts` in the same pack.
+2. **Ask what bounded the search, and whether the reason says so.** A cap, a crash, a budget, an
+   unresolved scope — each is a boundary, and a boundary that does not surface in the reason it
+   produces is this defect waiting.
+
+**New, and the reason T013's instance survived two defenses aimed at it**: a `None` that can arrive
+from two different causes is this defect in miniature. `coverage_score is None` meant both "sought
+nothing" and "produced nothing at all". Any renderer downstream *must* invent a cause to display,
+and it will pick the benign one. **Where a sentinel has two possible causes, either split it or
+carry the cause beside it — do not let the display layer guess.**
+
+## Rendering is a review technique, not just a deliverable — 2026-08-25
+
+T013's P1 was invisible to a 39-test suite, to a code review of the diff, and to the seam contract
+designed to prevent exactly it. It took **opening the HTML in a browser and reading it**. Headless
+Chromium with `--host-resolver-rules="MAP * ~NOTFOUND"` both proves FR-018 self-containment and
+gives you the page to actually look at. For any task whose output is a document, render it and read
+it before believing the tests. (Snap Chromium cannot write screenshots into `/tmp/claude-1000` or
+dotted `$HOME` dirs — use a plain `~/dir`.)
+
+## A new egress path invalidates upstream redaction — 2026-08-25
+
+T013's security P1: excerpts are redacted at the evidence layer, so quoted code was safe. Finding
+titles, details and suggestions — prose the *calling agent* composed — inherited nothing, and an
+agent reporting a hardcoded credential quotes it in all three. Raw secrets landed in a file written
+into someone else's repository.
+
+**The rule**: when a component creates a new way for content to leave the system, re-ask the
+redaction question at that boundary. "The pack layer redacts" answers a question about packs, not
+about a durable HTML file that the system's own advisory says will be committed and pasted into
+pull requests. `_Ctx.agent_text()` (redact → escape) is the fix shape: redaction, not suppression.
+
+## zsh does not word-split unquoted variables — 2026-08-25
+
+A verification probe reported a phantom argparse failure (`unrecognized arguments: --scope task`)
+because `for a in "--scope task"; do cmd $a` passes **one** token in zsh, unlike bash. The shell
+here is zsh. Use explicit arguments or an array when driving a CLI in a loop, and be suspicious of a
+parse error that only reproduces inside a loop.
