@@ -102,3 +102,70 @@ state rather than reporting a byte-budget artefact as a fact about the repositor
 the Bash calls are attributable via `memory/event-trace/T019.jsonl`. **Stage 5 must re-run this
 independently** — a clean Stage 4 is no evidence about Stage 5 unless Stage 4 actually ran the thing,
 and here the Supervisor is the independent runner.
+
+---
+
+## Stage 4 Review (Supervisor, independent — 2026-08-31)
+
+`Skill({ skill: "code-review" })` **was run by the Supervisor**, closing the substitution the
+implementing agent recorded above (the `Skill` tool was unavailable in its session, not in mine).
+Scope per Phase 0: the three new files; blast radius is **zero existing modules** — nothing imports
+`core.metrics` yet and no existing file was touched (`git diff --stat develop..HEAD` confirms three
+new files, 1612 insertions, 0 deletions).
+
+**Phase 0.5 — entry-point reachability**: `compute_metrics` exists and is exported, but is reachable
+from **no adapter**. Normally a P2 finding; here it is **pre-waived by the guide's own Dependencies &
+Reachability section**, which declares the gap known and accepted because T022 owns the wiring. This
+is materially unlike T013's reachability debt, where no consumer task existed.
+
+**Verdict: P0 0 / P1 0 / P2 2 (both accepted as residue) / P3 1. No safe fixes to apply; no
+remediation commit required.** This is the second task in the project to reach Stage 4 with no P1
+(after T006), and the first to arrive with its own mutation testing already done.
+
+### Independent verification performed (not taken on the agent's word)
+
+| Claim | How checked | Result |
+|---|---|---|
+| 3 commits, BEFORE captured first | `git log --oneline develop..HEAD` | Holds — `2197285` (BEFORE) precedes `36d82c8` (implementation) |
+| 438 pass, exit 0 | Re-run from the main checkout's interpreter, exit code read directly, never piped | Holds — `438 passed`, `SUITE_EXIT=0` |
+| ruff clean | `ruff check src tests` + `ruff format --check` | Holds — both exit 0 |
+| Citation guard is wired, not decorative | Grepped every caller — `check_citations` is called by `compute_metrics` per dimension, not only from tests | Holds |
+| Truncation gate cannot be forgotten by a metric author | Read `compute_metrics`: the `WHOLE_SET and truncated` branch short-circuits **before** `definition.compute` runs | Holds — structural, matching the docstring's claim |
+| Mutation table is accurate | **Re-ran three sabotages independently**: truncation gate → `if False:` = **8 failed**; `_dedup` → identity = **1 failed**; `check_citations` → no-op = **2 failed**. Tree restored, `29 passed` | Holds — counts match the reported table |
+| `files_read` 2x duplication does not double any count | Drove a hostile pack with every path repeated; compared all 11 metric outcomes against the single-copy pack | Holds — **no metric differs** |
+| Zero denominators / empty pack | Drove src-only, tests-only, and a wholly empty pack | Holds — abstains rather than dividing; **nothing raises**; 11/11 abstain on the empty pack |
+| `coverage_score` `None` vs `0.0` do not collapse | Read `_declared_source_coverage` | Holds — `None` abstains with a reason that names the distinction explicitly |
+| **No new egress path for secrets (the T013 class)** | Grepped every use of `Excerpt.text`: consumed **only** into integer counts (`_count_test_functions`, `_count_assertions`); no excerpt text, fingerprint or `RedactionHit` value is ever interpolated into `derivation` or `computed_from`, which carry only paths and numbers | Holds — the T013 lesson does **not** recur |
+| Duplication was forced, not chosen | Verified `dimensions/test_strategy.py` imports `..core.context`, which imports `pathlib.Path` — so importing its helpers would break AC #2's structural no-I/O test, and extracting a shared module was barred by the guide's Must-Not-Touch table | Holds — the agent's justification is accurate |
+
+### Findings
+
+**P2-1 — ~150 lines of path classification duplicated between `core/metrics.py` and
+`dimensions/test_strategy.py`** (confidence 100). `_is_test_file`, `_is_source_file`,
+`_correspondence` and the `_project_boundary` monorepo rule are ported verbatim. Drift here is
+silent: the two copies can disagree about what counts as a test file, and only one of them feeds the
+rating T020 will build. **Accepted for this task, not charged to it** — the guide's scope lock made
+the correct fix unreachable, exactly as T009's `_EXCLUDED_DIRS` residue was filed against `scope.py`
+rather than against T009. **Follow-up: extract a pure `core/paths.py` that both import**; it needs
+its own task and permission to edit `dimensions/*.py`.
+
+**P2-2 — assertion and test-declaration counting is textual and enumerated** (confidence 100), so an
+unlisted framework shape is **under**-counted. Accepted: both affected metrics say so in their own
+`derivation`, making it a disclosed lower bound rather than a silent guess — which is this project's
+required standard (FR-005). Worth revisiting only if T020 gives these two metrics real weight.
+
+**P3-1 — a pack with `truncated=True` and `omitted_count=0` produces "at least 0 item(s) omitted"**
+(confidence 100), which is vacuous phrasing. **Unreachable from the real pipeline**: `budget.py` sets
+`omitted_count = 1` in the same branch that sets `truncated = True`, so only a hand-built pack can
+reach it, and it fails safe (the metric still abstains). Recorded, not fixed.
+
+### Residue carried forward (Supervisor-confirmed, all disclosed by the agent)
+
+- The duplicated path-classification block (P2-1) — needs a follow-up task.
+- Unreachable from any adapter — known, accepted, T022 owns it.
+- Textual assertion counting under-counts unlisted frameworks (P2-2) — disclosed in `derivation`.
+- `compute_metrics` accepts `EvidencePack` **or** `CombinedPack`. The guide's ACs are written against
+  `EvidencePack` while its edge cases assume `CombinedPack` slots; the agent supported both and
+  **flagged it before building**, per standing instruction 3. Supervisor accepts: it resolves a
+  genuine ambiguity in the guide rather than papering over it, and `Metric.dimension` keeps names
+  stable for T020.
