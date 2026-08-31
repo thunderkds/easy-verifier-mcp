@@ -14,12 +14,12 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_metrics.py` — 29 new tests, written in this task. AC map: #1 `test_compute_metrics_returns_metrics_with_name_kind_and_citations`; #2 `test_metrics_module_imports_nothing_that_reads_the_filesystem` (+ `test_the_no_io_assertion_can_fail`); #3 `test_all_four_families_ship`; #4 `test_whole_set_abstains_and_evidence_local_computes_under_truncation`, `test_every_declared_whole_set_metric_abstains_on_truncation`, `test_truncation_is_believed_from_either_field`, `test_omitted_count_is_never_phrased_as_exact`; #5 same parametrized pair; #6 `test_abstention_is_not_a_number_and_cannot_be_used_as_one`, `test_consumer_reaching_for_a_number_is_stopped_at_the_boundary`; #7 `test_every_non_abstaining_metric_cites_refs_the_pack_actually_read`, `test_a_fabricated_metric_citing_an_unread_path_is_rejected`, `test_a_value_with_no_citation_at_all_is_rejected`; #8 `test_test_strength_measures_ratio_uncovered_modules_and_assertion_density`, `test_a_source_file_with_no_test_is_counted_as_uncovered`, `test_a_cross_project_test_does_not_cover_a_same_named_source`, `test_assertion_density_uses_only_test_file_excerpts`; #9 `test_metrics_are_byte_identical_across_two_processes`, `test_serialization_is_stable_within_a_process_and_reflects_abstentions`; #10 `test_every_value_states_how_to_recompute_it_from_the_evidence`, `test_redaction_metrics_are_recomputable_by_hand`. Edge cases: `test_files_read_duplicated_twice_does_not_double_any_count`, `test_an_empty_but_untruncated_pack_abstains_and_never_raises`, `test_coverage_none_and_zero_do_not_collapse`, `test_tests_but_no_source_and_source_but_no_tests`, `test_a_dimension_that_failed_gets_no_metrics_and_is_named`, `test_a_combined_pack_yields_each_metric_once_per_surviving_dimension`. |
-| Verification command run | ☑ pass | The guide's command adapted for the `.venv`-less worktree (standing MEMORY.md trap: `PATH=.venv/bin:$PATH` there silently falls back to system python). Ran `PYTHONPATH=src <main-checkout>/.venv/bin/python -m pytest tests/test_metrics.py -q`, exit code read directly, not piped:<br>`2026-08-31T09:19:58Z`<br>`.............................  [100%]`<br>`29 passed in 0.25s`<br>`exit=0` |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_metrics.py` — **32** new tests, written in this task (29 at first submission + 3 Stage 5 regressions, see the Remediation section below). AC map: #1 `test_compute_metrics_returns_metrics_with_name_kind_and_citations`; #2 `test_metrics_module_imports_nothing_that_reads_the_filesystem` (+ `test_the_no_io_assertion_can_fail`); #3 `test_all_four_families_ship`; #4 `test_whole_set_abstains_and_evidence_local_computes_under_truncation`, `test_every_declared_whole_set_metric_abstains_on_truncation`, `test_truncation_is_believed_from_either_field`, `test_omitted_count_is_never_phrased_as_exact`; #5 same parametrized pair; #6 `test_abstention_is_not_a_number_and_cannot_be_used_as_one`, `test_consumer_reaching_for_a_number_is_stopped_at_the_boundary`; #7 `test_every_non_abstaining_metric_cites_refs_the_pack_actually_read`, `test_a_fabricated_metric_citing_an_unread_path_is_rejected`, `test_a_value_with_no_citation_at_all_is_rejected`; #8 `test_test_strength_measures_ratio_uncovered_modules_and_assertion_density`, `test_a_source_file_with_no_test_is_counted_as_uncovered`, `test_a_cross_project_test_does_not_cover_a_same_named_source`, `test_assertion_density_uses_only_test_file_excerpts`; #9 `test_metrics_are_byte_identical_across_two_processes`, `test_serialization_is_stable_within_a_process_and_reflects_abstentions`; #10 `test_every_value_states_how_to_recompute_it_from_the_evidence`, `test_redaction_metrics_are_recomputable_by_hand`. Edge cases: `test_files_read_duplicated_twice_does_not_double_any_count`, `test_an_empty_but_untruncated_pack_abstains_and_never_raises`, `test_coverage_none_and_zero_do_not_collapse`, `test_tests_but_no_source_and_source_but_no_tests`, `test_a_dimension_that_failed_gets_no_metrics_and_is_named`, `test_a_combined_pack_yields_each_metric_once_per_surviving_dimension`. |
+| Verification command run | ☑ pass | The guide's command adapted for the `.venv`-less worktree (standing MEMORY.md trap: `PATH=.venv/bin:$PATH` there silently falls back to system python). Ran `PYTHONPATH=src <main-checkout>/.venv/bin/python -m pytest tests/test_metrics.py -q`, exit code read directly, not piped:<br>`2026-08-31T09:19:58Z`<br>`.............................  [100%]`<br>`29 passed in 0.25s`<br>`exit=0`<br><br>**Re-run after the Stage 5 remediation (`7d4831b`)**: `32 passed`, `exit=0`. |
 | Negative cases hold | ☑ pass | Two layers. (a) Explicit negative tests: `test_a_fabricated_metric_citing_an_unread_path_is_rejected` drives `check_citations` with a metric citing `src/never_read.py` and asserts `MetricCitationError`, then re-drives the *same guard* with an honest citation and asserts it passes — so the guard is not merely rejecting everything. `test_the_no_io_assertion_can_fail` runs the AST check against a module that really does `Path(...).read_text()`. (b) **Mutation sabotage of the implementation** — eight targeted mutations, each re-running the suite; every one turned at least one test red:<br>`M1 whole_set truncation gate -> if False:` → 8 failed, 21 passed<br>`M2 _dedup removed` → 1 failed (`test_files_read_duplicated_twice_does_not_double_any_count`)<br>`M3 project-boundary check removed` → 1 failed (`test_a_cross_project_test_does_not_cover_a_same_named_source`)<br>`M4 citation guard neutered` → 1 failed (`test_a_fabricated_metric_citing_an_unread_path_is_rejected`)<br>`M5 coverage_score None collapsed to 0.0` → 1 failed (`test_coverage_none_and_zero_do_not_collapse`)<br>`M6 empty-pack abstention given omitted_lower_bound=0` → 1 failed (`test_an_empty_but_untruncated_pack_abstains_and_never_raises`)<br>`M7 assertion counting stops filtering to test files` → 1 failed (`test_assertion_density_uses_only_test_file_excerpts`)<br>`M8 truncation read from the flat field only` → 1 failed (`test_truncation_is_believed_from_either_field`)<br>M2 **survived the first round** — the original test compared a symmetric fixture against itself, so dedup could be deleted with no observable change. It was rewritten with an asymmetric fixture and absolute expected values (0.5, 2/3, 1) and now fails under M2. That is the exact green-test-that-cannot-fail this project has shipped five times, caught before commit. |
-| verify | ☐ pass / ☐ fail / ☑ N/A | Not run by the implementing agent: `verify` is user-invocation-only (MEMORY.md). Deferred to Stage 5 — pass. Note the entry point is unreachable from any adapter by design (T022 owns the wiring), so a Stage 5 `verify` of T019 is a library-level exercise of `compute_metrics`, not a CLI run. |
+| verify | ☑ pass (after remediation) | **Stage 5 `verify` FAILED the first submission** and found a real defect — see the Remediation section. Fixed in `7d4831b`; the Supervisor's own reproduction now yields `source_file_share = 1/17 = 0.0588` instead of `0.0`, and the two false abstentions are gone. Re-verification by the Supervisor is required before merge; the implementing agent cannot self-certify this row. Originally recorded as: not run by the implementing agent: `verify` is user-invocation-only (MEMORY.md). Deferred to Stage 5 — pass. Note the entry point is unreachable from any adapter by design (T022 owns the wiring), so a Stage 5 `verify` of T019 is a library-level exercise of `compute_metrics`, not a CLI run. |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed: `src/easy_verifier/core/metrics.py` (new, the entire change) and `tests/test_metrics.py` (new). Blast radius is **zero existing modules** — nothing in the repo imports `core.metrics`, and this task adds no import to any existing file (`git show --stat` lists only the two new files plus this review). `dimensions/*.py`, `core/pipeline.py` and `core/models.py` were read but **not modified**, as the guide's Must-Not-Touch table requires. Skipped: the rest of the repo, because no call site changed. |
-| Full smoke suite still green (no regression) | ☑ pass | `PYTHONPATH=src <main-checkout>/.venv/bin/python -m pytest -q` → `438 passed in 6.22s`, exit code `0` read directly. Baseline on `develop` was 409 tests; 409 + 29 = 438, so every pre-existing test still runs and passes. `ruff format --check` clean; `ruff check src tests` → `All checks passed!`, exit `0`. |
+| Full smoke suite still green (no regression) | ☑ pass | Post-remediation: `PYTHONPATH=src <main-checkout>/.venv/bin/python -m pytest -q` → **`441 passed in 6.59s`**, exit code `0` read directly. (First submission: `438 passed in 6.22s`, exit `0`.) Baseline on `develop` was 409 tests; 409 + 29 = 438, so every pre-existing test still runs and passes. `ruff format --check` clean; `ruff check src tests` → `All checks passed!`, exit `0`. |
 | **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure-backend task: one library module and its unit tests. No UI component, no rendered output. |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | As above — nothing is rendered. |
 | **UI: Responsiveness at target viewports** | ☑ N/A | As above — nothing is rendered. |
@@ -57,6 +57,101 @@ so GitHub push protection has nothing to match on.
 
 ---
 
+## Stage 5 Remediation — `verify` failure and fix
+
+**Verdict on the first submission: FAILED.** The Supervisor drove `compute_metrics` over a **real**
+`test-strategy` pack at `project` scope against this repo, rather than over a fixture. Three of
+eleven metrics misreported.
+
+**The defect.** `files_read` contains `src/easy_verifier/dimensions/test_strategy.py` — production
+source whose basename matches `test_*.py`. `_is_test_file` classified it by name, so on the real
+17-file pack:
+
+```
+source_file_share                  = 0.0       (truth: 1/17 = 0.0588)
+  derivation: 0 source file(s) / 17 deduplicated file(s) read, listed here
+test_to_source_ratio               = ABSTAIN
+  reason: no source file appears in the evidence, so the ratio has a zero denominator
+source_files_without_covering_test = ABSTAIN   (same false reason)
+```
+
+The abstention reason was the worse half: *"no source file appears in the evidence"* is a positive
+claim **about the evidence**, and it was false — the file was in `files_read`. This is the project's
+signature defect class: a value or sentinel whose stated cause is not the real one. It violates
+**AC #10** specifically, because a human recomputing by hand from the listed files gets 1/17, not
+0/17, and nothing in the derivation disclosed that "source file" was a basename heuristic. T020 is
+about to build a rating on these metrics, where a heuristic `0.0` reads as "bad".
+
+**Reproduced red before fixing** (standing instruction 4). Three regression tests were written
+first and run against `53dccac`, the unfixed head:
+
+```
+FAILED tests/test_metrics.py::test_source_under_a_source_root_is_source_even_when_named_test_something
+FAILED tests/test_metrics.py::test_directory_evidence_beats_name_evidence_in_both_directions
+FAILED tests/test_metrics.py::test_classification_rule_is_disclosed_wherever_it_decides_the_answer
+3 failed, 29 passed in 0.16s
+RED exit=1
+```
+
+**The fix** (`7d4831b`), two parts, both required by the Supervisor's scope note:
+
+1. *Classification.* `_is_test_file` consults **directory evidence first, deepest segment wins**,
+   and falls back to the basename only for a file under neither a source root nor a test root. A new
+   `_SOURCE_DIR_SEGMENTS` set (`src`, `lib`, `pkg`, `app`, `cmd`, `internal`, `source`, `sources`)
+   supplies the source side. `src/pkg/test_helpers.py` is source; `src/pkg/nested/tests/test_real.py`
+   is a test. **No literal path is special-cased.**
+2. *Disclosure.* Every derivation and abstention reason that depends on the rule now carries
+   `_CLASSIFIED_BY`, stating that source-vs-test came from a path convention and never from reading
+   or parsing the file. The zero-denominator abstention now reads *"no file in this pack classifies
+   as source"* — true of the classifier — instead of asserting something false about the repository.
+
+**On point 3 (should `source_file_share = 0.0` abstain?) — judgement call, recorded.** It **stays a
+value**. Its denominator is every file read, so `0.0` is well defined arithmetic, unlike the
+genuinely undefined zero-denominator cases which do abstain. Abstaining would also discard a real
+fact — that N files were read and none classified as source. Instead its derivation now says
+explicitly, when the numerator is zero: *"none did, so this share is 0.0 by the rule below, not
+because the repository has no source"*. If the Supervisor prefers abstention here, it is a
+three-line change and I will make it.
+
+**Post-fix values on the real pack** (`test-strategy`, `project` scope, this repo, 17 deduped files,
+untruncated):
+
+```
+test_to_source_ratio                   whole_set      15.0
+source_files_without_covering_test     whole_set      1     (src/easy_verifier/dimensions/test_strategy.py)
+assertion_density_per_test             whole_set      2.6296296296296298   (284 assertions / 108 test functions)
+assertions_observed                    evidence_local 284
+redaction_hits_observed                evidence_local 38
+redacted_file_share                    whole_set      0.4117647058823529   (7 of 17 files)
+excerpts_observed                      evidence_local 17
+declared_source_coverage               whole_set      0.2222222222222222   (2 of 9 declared sources)
+evidence_lines_observed                evidence_local 3023
+mean_excerpt_lines                     whole_set      177.8235294117647
+source_file_share                      whole_set      0.058823529411764705 (1 of 17 -- was 0.0)
+```
+
+**Mutation sabotage re-run after the fix** — six mutations, every one red, including the two the
+Supervisor named as touching this code:
+
+| Mutation | Result |
+|---|---|
+| M3 project-boundary check removed (re-run) | 1 failed — `test_a_cross_project_test_does_not_cover_a_same_named_source` |
+| M7 test-excerpt filter removed (re-run) | 1 failed — `test_assertion_density_uses_only_test_file_excerpts` |
+| M9 directory evidence ignored (**the shipped defect, reintroduced**) | 2 failed — both new classification regressions |
+| M10 deepest-wins reversed to shallowest-wins | 1 failed — `test_directory_evidence_beats_name_evidence_in_both_directions` |
+| M11 directory evidence only ever answers "source" | 10 failed — the sabotage direction that proves the rule classifies **both** ways |
+| M12 disclosure string gutted | 1 failed — `test_classification_rule_is_disclosed_wherever_it_decides_the_answer` |
+
+**Scope held.** `src/easy_verifier/dimensions/test_strategy.py` classifies the same file the same
+way and was **not touched**: it is on this task's Must-Not-Touch list, changing it would alter T009's
+shipped behaviour and tests, and the Supervisor is filing it as a separate follow-up. The duplicated
+classification block between the two modules remains recorded residue (self-review P3), not resolved
+here. Nothing else the Supervisor verified was disturbed: `ruff check src tests` clean, the citation
+guard, dedup, empty/zero-denominator handling and the truncation gate all still pass, and the full
+suite went 438 → 441 with no pre-existing test changed.
+
+---
+
 ## Demonstration
 
 > Anchors what this task delivered to an observable before/after pair. BEFORE has no `N/A` path:
@@ -79,17 +174,26 @@ no tests ran in 0.00s
 exit=4
 ```
 
-**AFTER** (same command, same worktree, after `36d82c8`):
+**AFTER** (same command, same worktree, after the Stage 5 remediation `7d4831b`):
 
 ```
-2026-08-31T09:19:58Z
 $ PYTHONPATH=src python -m pytest tests/test_metrics.py -q
-.............................                                            [100%]
-29 passed in 0.25s
+................................                                         [100%]
+32 passed in 0.14s
 exit=0
 ```
 
-Full suite for regression: `438 passed in 6.22s`, exit `0` (was 409 on `develop`).
+Full suite for regression: `441 passed in 6.59s`, exit `0` (was 409 on `develop`).
+
+And the observable behaviour change the remediation bought, on the real `test-strategy` pack over
+this repo — the same three metrics, before and after `7d4831b`:
+
+```
+                                        53dccac      7d4831b
+source_file_share                          0.0        0.058823529411764705   (= 1/17)
+test_to_source_ratio                   ABSTAIN        15.0
+source_files_without_covering_test     ABSTAIN        1
+```
 
 **DELTA**: a caller holding an evidence pack can now call
 `easy_verifier.core.metrics.compute_metrics(pack)` and get eleven measured, individually cited facts
@@ -98,7 +202,9 @@ number the engine produced was its own `coverage_score`; every whole-set figure 
 state rather than reporting a byte-budget artefact as a fact about the repository.
 
 **WITNESS**: run by the Backend-Implementer in worktree `easy-verifier-mcp-t019` on 2026-08-31
-(BEFORE 09:11:53Z, AFTER 09:19:58Z), with `.claude/hooks/.state/active_task` set to `T019` for both;
+(BEFORE 09:11:53Z, AFTER 09:19:58Z, remediation same day), with
+`.claude/hooks/.state/active_task` set to `T019` throughout; the Stage 5 `verify` failure that
+prompted `7d4831b` was found **by the Supervisor**, not by the implementing agent —
 the Bash calls are attributable via `memory/event-trace/T019.jsonl`. **Stage 5 must re-run this
 independently** — a clean Stage 4 is no evidence about Stage 5 unless Stage 4 actually ran the thing,
 and here the Supervisor is the independent runner.
