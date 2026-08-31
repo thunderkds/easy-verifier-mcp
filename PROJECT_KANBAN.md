@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-08-26
+**Last updated**: 2026-08-31
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -30,7 +30,6 @@ _(complete through Stage 4; T011 is awaiting integration below)_
 - [x] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | ✅ Done 2026-08-25
 
 **Wave 7 — Quality rating & assessment (added 2026-08-26, user request; see `docs/ddr/0003-abstain-from-rating-below-coverage-floor.md`)**
-- [ ] **T019** — `metrics.py`: measured facts computed over the evidence pack only (test strength, security surface, evidence coverage, code shape) | backend-developer | C2 | Risk: Low | P0
 - [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0
 - [ ] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | backend-developer | C2 | Risk: Med | P1
 - [ ] **T022** — `score` operation in both adapters + report score panel (**must follow T014 and T015**) | backend-developer | C1 | Risk: Low | P0
@@ -45,6 +44,7 @@ _(none)_
 ### Ready for Review
 
 - [ ] **T011** — Dimension discovery operation (FR-013a) | C0 | Risk: Low | P1 | 8 focused tests (418 suite total) · ruff clean · manual code-review **P0 0/P1 1 fixed/P2 0/P3 0** (`code-review` skill unavailable in Codex) · security-review ☑ N/A (static package metadata only; no target-repo input, network, subprocess, or report write) · exact verification command passed · branch `feat/t011-dimension-discovery`, worktree `/tmp/easy-verifier-mcp-t011`
+- [ ] **T019** — `metrics.py`: measured facts computed over the evidence pack only | C2 | Risk: Low | P0 | 29 tests (438 suite total) · ruff clean · code-review **P0 0/P1 0/P2 2 (accepted)/P3 1** · security-review ☑ N/A (Low risk; no new filesystem, subprocess or network primitive — import set asserted as a whitelist by test) · **awaiting Stage 5 `verify` (user-invocation-only)** · branch `feat/t019-metrics`, worktree `../easy-verifier-mcp-t019`
 
 ### Done
 
