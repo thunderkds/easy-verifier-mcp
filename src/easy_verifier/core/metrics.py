@@ -70,6 +70,13 @@ FAMILIES = (
     FAMILY_CODE_SHAPE,
 )
 
+_CLASSIFIED_BY = (
+    "source vs. test is classified by path convention, never by reading or "
+    "parsing the file: the deepest directory segment naming a source root "
+    "(src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and "
+    "only a file under neither is decided by its basename"
+)
+
 _TRUNCATED_ABSTENTION = (
     "whole-set-dependent: the byte budget truncated this pack, so any ratio, "
     "density or share computed here describes what survived the budget, not "
@@ -275,8 +282,9 @@ def _test_to_source_ratio(view: _PackView) -> _Computed:
     if not view.source_files:
         return MetricAbstention(
             reason=(
-                "no source file appears in the evidence, so the ratio has a "
-                "zero denominator; that is not the same as a ratio of 0"
+                "no file in this pack classifies as source, so the ratio has "
+                "a zero denominator; that is not the same as a ratio of 0. "
+                + _CLASSIFIED_BY
             )
         )
     refs = tuple(sorted(set(view.source_files) | set(view.test_files)))
@@ -284,7 +292,8 @@ def _test_to_source_ratio(view: _PackView) -> _Computed:
         len(view.test_files) / len(view.source_files),
         refs,
         f"{len(view.test_files)} test file(s) / {len(view.source_files)} "
-        "source file(s), over the deduplicated files_read listed here",
+        "source file(s), over the deduplicated files_read listed here; "
+        + _CLASSIFIED_BY,
     )
 
 
@@ -292,8 +301,8 @@ def _sources_without_covering_test(view: _PackView) -> _Computed:
     if not view.source_files:
         return MetricAbstention(
             reason=(
-                "no source file appears in the evidence, so there is nothing "
-                "whose test correspondence could be checked"
+                "no file in this pack classifies as source, so there is "
+                "nothing whose test correspondence could be checked. " + _CLASSIFIED_BY
             )
         )
     _matched, unmatched = _correspondence(view.files, view.test_files)
@@ -302,7 +311,9 @@ def _sources_without_covering_test(view: _PackView) -> _Computed:
         tuple(sorted(view.source_files)),
         f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
         "conventionally named test file in the same project inside this pack: "
-        + (", ".join(sorted(unmatched)) or "(none)"),
+        + (", ".join(sorted(unmatched)) or "(none)")
+        + "; "
+        + _CLASSIFIED_BY,
     )
 
 
@@ -310,8 +321,9 @@ def _assertion_density_per_test(view: _PackView) -> _Computed:
     if not view.test_excerpts:
         return MetricAbstention(
             reason=(
-                "no excerpt from a test file is present in the evidence, so "
-                "there is no test body to measure assertions in"
+                "no excerpt from a file classifying as a test is present in "
+                "the evidence, so there is no test body to measure "
+                "assertions in. " + _CLASSIFIED_BY
             )
         )
     tests = sum(_count_test_functions(e.text) for e in view.test_excerpts)
@@ -328,7 +340,7 @@ def _assertion_density_per_test(view: _PackView) -> _Computed:
         assertions / tests,
         tuple(sorted(e.ref for e in view.test_excerpts)),
         f"{assertions} assertion(s) / {tests} test function(s), counted "
-        "textually in the test-file excerpts listed here",
+        "textually in the test-file excerpts listed here; " + _CLASSIFIED_BY,
     )
 
 
@@ -336,8 +348,9 @@ def _assertions_observed(view: _PackView) -> _Computed:
     if not view.test_excerpts:
         return MetricAbstention(
             reason=(
-                "no excerpt from a test file is present in the evidence, so "
-                "there is nothing to have observed an assertion in"
+                "no excerpt from a file classifying as a test is present in "
+                "the evidence, so there is nothing to have observed an "
+                "assertion in. " + _CLASSIFIED_BY
             )
         )
     assertions = sum(_count_assertions(e.text) for e in view.test_excerpts)
@@ -346,7 +359,7 @@ def _assertions_observed(view: _PackView) -> _Computed:
         tuple(sorted(e.ref for e in view.test_excerpts)),
         f"{assertions} assertion(s) counted textually in the test-file "
         "excerpts listed here; a lower bound on the repository, since it "
-        "counts only what this pack contains",
+        "counts only what this pack contains; " + _CLASSIFIED_BY,
     )
 
 
@@ -446,8 +459,16 @@ def _source_file_share(view: _PackView) -> _Computed:
     return (
         len(view.source_files) / len(view.files),
         tuple(sorted(view.files)),
-        f"{len(view.source_files)} source file(s) / {len(view.files)} "
-        "deduplicated file(s) read, listed here",
+        f"{len(view.source_files)} of {len(view.files)} deduplicated file(s) "
+        "read classify as source and are listed here"
+        + (
+            " -- none did, so this share is 0.0 by the rule below, not because "
+            "the repository has no source"
+            if not view.source_files
+            else ""
+        )
+        + "; "
+        + _CLASSIFIED_BY,
     )
 
 
@@ -672,6 +693,23 @@ def _excerpt_lines(excerpt: Excerpt) -> int:
 
 _TEST_DIR_SEGMENTS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 
+#: Directory segments that mark a **source** root. Not in `test_strategy.py`:
+#: added here after Stage 5 `verify` found that name evidence alone classified
+#: `src/easy_verifier/dimensions/test_strategy.py` -- production code -- as a
+#: test, because its basename matches `test_*.py`. On the real pack that made
+#: `source_file_share` publish 0.0 where the truth was 1/17, and made two other
+#: metrics abstain claiming "no source file appears in the evidence" while the
+#: file sat in `files_read`.
+#:
+#: The rule: **directory evidence beats name evidence**, and the *deepest*
+#: directory segment wins, because it is the most specific statement about the
+#: file. `src/pkg/test_helpers.py` is source; `src/pkg/tests/test_real.py` is a
+#: test; a file under neither kind of directory falls back to its basename.
+#: Nothing here special-cases a literal path.
+_SOURCE_DIR_SEGMENTS = frozenset(
+    {"app", "cmd", "internal", "lib", "pkg", "source", "sources", "src"}
+)
+
 _TEST_NAME_PATTERNS = (
     re.compile(r"^test_.+\.py$"),
     re.compile(r"^.+_test\.py$"),
@@ -742,13 +780,38 @@ def _parent(path: str) -> str:
 
 
 def _is_test_file(path: str) -> bool:
+    """True when ``path`` is a test file under :data:`_CLASSIFIED_BY`'s rule.
+
+    Directory evidence first and deepest-wins, name evidence only as a
+    fallback -- see :data:`_SOURCE_DIR_SEGMENTS` for why the order matters.
+    Only files with a source suffix can be tests either way, so a fixture
+    ``tests/data/sample.json`` is neither test nor source.
+    """
     name = PurePosixPath(path).name
-    if any(pattern.match(name) for pattern in _TEST_NAME_PATTERNS):
-        return True
-    parts = PurePosixPath(path).parts[:-1]
-    return any(part.lower() in _TEST_DIR_SEGMENTS for part in parts) and (
-        PurePosixPath(name).suffix in _SOURCE_SUFFIXES
-    )
+    if PurePosixPath(name).suffix not in _SOURCE_SUFFIXES:
+        return False
+
+    directory = _directory_evidence(path)
+    if directory is not None:
+        return directory
+
+    return any(pattern.match(name) for pattern in _TEST_NAME_PATTERNS)
+
+
+def _directory_evidence(path: str) -> bool | None:
+    """``True`` test / ``False`` source / ``None`` when the path says neither.
+
+    The deepest matching segment wins: it is the most specific claim about the
+    file, so ``src/pkg/tests/test_a.py`` is a test and ``tests/fixtures/src/
+    thing.py`` is source, without either rule needing to know about the other.
+    """
+    for part in reversed(PurePosixPath(path).parts[:-1]):
+        lowered = part.lower()
+        if lowered in _TEST_DIR_SEGMENTS:
+            return True
+        if lowered in _SOURCE_DIR_SEGMENTS:
+            return False
+    return None
 
 
 def _is_source_file(path: str) -> bool:

@@ -624,3 +624,85 @@ def test_a_combined_pack_yields_each_metric_once_per_surviving_dimension():
         (m.dimension, m.abstained) for m in metrics if m.name == "test_to_source_ratio"
     }
     assert per_dimension == {("test-strategy", False), ("security", True)}
+
+
+# ---------------------------------------------------------------------------
+# Stage 5 regression: production source whose basename looks like a test
+# ---------------------------------------------------------------------------
+
+
+def test_source_under_a_source_root_is_source_even_when_named_test_something():
+    """Stage 5 `verify` defect: `src/.../test_strategy.py` is production code.
+
+    Its basename matches `test_*.py`, so name evidence alone classified it as a
+    test. On the real `test-strategy` pack over this repo that made
+    `source_file_share` publish 0.0 (truth: 1/17) and made two more metrics
+    abstain claiming "no source file appears in the evidence" -- a positive
+    claim about the evidence that was false, with the file sitting in
+    `files_read`. Directory evidence must beat name evidence.
+    """
+    pack = make_pack(
+        files_read=(
+            "pyproject.toml",
+            "src/easy_verifier/dimensions/test_strategy.py",
+            "tests/test_t009_test_strategy.py",
+        ),
+        excerpts=(),
+    )
+    metrics = compute_metrics(pack)
+
+    share = named(metrics, "source_file_share")
+    assert share.numeric_value == 1 / 3, "1 source of 3 files read, not 0"
+
+    ratio = named(metrics, "test_to_source_ratio")
+    assert not ratio.abstained, "there IS a source file; abstaining here lies"
+    assert ratio.numeric_value == 1.0
+
+    uncovered = named(metrics, "source_files_without_covering_test")
+    assert not uncovered.abstained
+    # `tests/test_t009_test_strategy.py` is not the conventional name for
+    # `test_strategy.py` (`test_test_strategy.py` would be), so it is uncovered.
+    assert uncovered.numeric_value == 1
+
+
+def test_directory_evidence_beats_name_evidence_in_both_directions():
+    """Sabotage pair: the rule must classify BOTH ways, not just rescue `src/`.
+
+    If it only ever said "source", the assertion above would pass against a
+    classifier that had simply stopped detecting tests at all.
+    """
+    metrics = compute_metrics(
+        make_pack(
+            files_read=(
+                "src/pkg/test_helpers.py",  # source root, test-shaped name
+                "src/pkg/nested/tests/test_real.py",  # deeper test dir wins
+                "tests/test_plain.py",  # test dir, test-shaped name
+                "src/pkg/widget.py",  # plain source
+            ),
+            excerpts=(),
+        )
+    )
+    # sources: test_helpers.py + widget.py; tests: test_real.py + test_plain.py
+    assert named(metrics, "source_file_share").numeric_value == 0.5
+    assert named(metrics, "test_to_source_ratio").numeric_value == 1.0
+
+
+def test_classification_rule_is_disclosed_wherever_it_decides_the_answer():
+    """AC #10: a human recomputing by hand must be told the rule was a
+    heuristic over paths, not a fact about the repository."""
+    values = compute_metrics(make_pack(excerpts=()))
+    for name in (
+        "test_to_source_ratio",
+        "source_files_without_covering_test",
+        "source_file_share",
+    ):
+        assert "path convention" in named(values, name).derivation, name
+
+    # And the abstention reason must describe the classifier, never assert
+    # something false about the evidence.
+    docs_only = compute_metrics(
+        make_pack(files_read=("README.md", "docs/guide.md"), excerpts=())
+    )
+    reason = named(docs_only, "test_to_source_ratio").abstention.reason
+    assert "path convention" in reason
+    assert "no source file appears in the evidence" not in reason
