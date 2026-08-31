@@ -44,11 +44,11 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
-from .models import CombinedPack, EvidencePack
+from .models import CombinedPack, EvidencePack, Excerpt
 
 WHOLE_SET = "whole_set"
 """A ratio, density or aggregate share: it describes the whole set it was
@@ -163,7 +163,7 @@ class MetricSet:
     reader holding only this set from reading their absence as "measured and
     found nothing"."""
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Metric]:
         return iter(self.metrics)
 
     def __len__(self) -> int:
@@ -230,7 +230,7 @@ class _PackView:
 
     source_files: tuple[str, ...]
     test_files: tuple[str, ...]
-    test_excerpts: tuple[object, ...]
+    test_excerpts: tuple[Excerpt, ...]
 
 
 def _view(pack: EvidencePack) -> _PackView:
@@ -544,7 +544,7 @@ def compute_metrics(pack: EvidencePack | CombinedPack) -> MetricSet:
     for dimension, evidence in packs:
         view = _view(evidence)
         truncated, omitted = _truncation_of(evidence)
-        allowed = _allowed_refs(evidence)
+        allowed = allowed_refs(evidence)
         for definition in METRIC_DEFINITIONS:
             if definition.kind == WHOLE_SET and truncated:
                 computed: _Computed = MetricAbstention(
@@ -604,11 +604,8 @@ def check_citations(metrics: Sequence[Metric], allowed_refs: frozenset[str]) -> 
 
 
 def allowed_refs(pack: EvidencePack) -> frozenset[str]:
-    """Every reference a metric over ``pack`` may legitimately cite."""
-    return _allowed_refs(pack)
-
-
-def _allowed_refs(pack: EvidencePack) -> frozenset[str]:
+    """Every reference a metric over ``pack`` may legitimately cite: each path
+    in ``files_read``, and each excerpt's ``ref`` and ``path``."""
     refs = set(pack.files_read)
     for excerpt in pack.excerpts:
         refs.add(excerpt.ref)
@@ -648,7 +645,7 @@ def _truncation_of(pack: EvidencePack) -> tuple[bool, int]:
     return truncated, omitted
 
 
-def _excerpt_lines(excerpt) -> int:
+def _excerpt_lines(excerpt: Excerpt) -> int:
     return max(0, excerpt.end_line - excerpt.start_line + 1)
 
 
