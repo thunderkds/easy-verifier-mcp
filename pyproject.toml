@@ -17,6 +17,7 @@ license = { file = "LICENSE" }
 dependencies = ["mcp>=1.29,<2"]
 
 [project.scripts]
+easy-verifier = "easy_verifier.adapters.cli:main"
 easy-verifier-mcp = "easy_verifier.adapters.mcp_server:main"
 
 [project.optional-dependencies]

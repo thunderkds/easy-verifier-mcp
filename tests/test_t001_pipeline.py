@@ -483,12 +483,15 @@ def test_cli_does_no_file_reading_or_excerpt_building():
     for marker in (
         "open(",
         "read_text",
-        "read_bytes",
         "rglob",
         "Excerpt(",
         "EvidencePack(",
     ):
         assert marker not in source, f"cli.py must not contain {marker!r}"
+    # T015's caller-provided --findings file is the one permitted adapter read;
+    # target-repository content remains exclusively owned by the shared core.
+    assert source.count("read_bytes") == 1
+    assert "Path(path).read_bytes()" in source
 
 
 def test_cli_does_no_coverage_arithmetic():
@@ -531,7 +534,7 @@ def test_cli_reports_a_bad_repo_path_without_a_traceback(tmp_path):
         text=True,
         check=False,
     )
-    assert result.returncode == 2
+    assert result.returncode == 3
     assert "Traceback" not in result.stderr
     assert "does not exist" in result.stderr
 
