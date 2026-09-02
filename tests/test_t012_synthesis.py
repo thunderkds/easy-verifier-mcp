@@ -442,12 +442,12 @@ def test_an_unusable_repo_path_raises_instead_of_filling_every_slot_with_errors(
         synthesis.combined_pack(["architecture", "security"], "/nope/does-not-exist")
 
 
-def test_cli_combined_exits_2_on_a_bad_repo_path_like_the_single_path(capsys) -> None:
+def test_cli_combined_uses_the_operational_exit_for_a_bad_repo_path(capsys) -> None:
     single = cli_main(["architecture", "--repo", "/nope/does-not-exist"])
     combined = cli_main(
         ["combined", "--dimensions", "architecture", "--repo", "/nope/does-not-exist"]
     )
-    assert single == combined == 2
+    assert single == combined == 3
 
 
 def test_a_failed_dimension_gets_a_miss_entry_not_an_empty_one(monkeypatch) -> None:

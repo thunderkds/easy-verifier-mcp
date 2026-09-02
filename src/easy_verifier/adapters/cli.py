@@ -1,14 +1,4 @@
-"""Path-mode CLI adapter (FR-020, FR-021).
-
-Parses arguments, calls the core, serializes the result. It reads no files,
-builds no excerpts and does no coverage arithmetic — all of that belongs to
-``run_dimension``/``combined_pack``, so that this adapter and the MCP adapter
-(T009) cannot drift apart (FR-022).
-
-    python -m easy_verifier.adapters.cli architecture --repo .
-    python -m easy_verifier.adapters.cli combined --repo . \\
-        --dimensions architecture,security
-"""
+"""Thin path-mode CLI over the shared easy-verifier core."""
 
 from __future__ import annotations
 
@@ -17,37 +7,98 @@ import dataclasses
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
-from ..core.pipeline import DEFAULT_BUDGET_BYTES, RepoPathError, run_dimension
+from ..core.findings import ValidationError
+from ..core.pipeline import (
+    DEFAULT_BUDGET_BYTES,
+    DEFAULT_SCOPE,
+    RepoPathError,
+    run_dimension,
+)
+from ..core.report import ReportWriteError
+from ..core.report import write_report as core_write_report
 from ..core.scope import VALID_KINDS
 from ..core.synthesis import combined_pack
 from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
 
+VALIDATION_EXIT = 2
+OPERATIONAL_EXIT = 3
 _COMBINED = "combined"
 _DISCOVERY = "list-dimensions"
+_WRITE_REPORT = "write-report"
+
+
+def _dimension_help() -> str:
+    lines = ["dimensions:"]
+    lines.extend(f"  {item.name}: {item.purpose}" for item in list_dimensions())
+    return "\n".join(lines)
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="easy-verifier",
-        description="Print an evidence pack for one dimension of a repository, "
-        "or several combined.",
+        description="Gather citable repository evidence as machine-readable JSON.",
+        epilog=_dimension_help(),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "dimension",
-        choices=sorted((*dimension_names(), _COMBINED, _DISCOVERY)),
-        help="dimension to run, 'combined', or 'list-dimensions' for discovery",
+    commands = parser.add_subparsers(dest="operation", required=True)
+
+    commands.add_parser(
+        _DISCOVERY,
+        help="list every evidence dimension and its declared sources",
     )
-    parser.add_argument("--repo", default=".", help="path to the target repository")
+
+    for descriptor in list_dimensions():
+        command = commands.add_parser(descriptor.name, help=descriptor.purpose)
+        _add_target_arguments(command)
+
+    combined = commands.add_parser(
+        _COMBINED,
+        help="gather several dimensions into one combined pack",
+    )
+    _add_target_arguments(combined)
+    combined.add_argument(
+        "--dimensions",
+        required=True,
+        help="comma-separated dimension names",
+    )
+
+    report = commands.add_parser(
+        _WRITE_REPORT,
+        help="validate findings and write an evidence report",
+    )
+    _add_target_arguments(report)
+    report.add_argument(
+        "--dimensions",
+        help="comma-separated dimensions to gather; defaults to all seven",
+    )
+    report.add_argument(
+        "--findings",
+        metavar="PATH",
+        help="findings JSON file; takes precedence over piped stdin",
+    )
+    return parser
+
+
+def _add_target_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--repo", default=".", help="target repository (default: cwd)")
     parser.add_argument(
         "--scope",
         choices=sorted(VALID_KINDS),
-        default="project",
+        default=DEFAULT_SCOPE,
         help="repository scope to evaluate",
     )
-    parser.add_argument("--ref", help="local git ref/range for changes scope")
     parser.add_argument(
+        "--range",
+        "--ref",
+        dest="ref",
+        help="local git ref or range for changes scope",
+    )
+    parser.add_argument(
+        "--task",
         "--task-id",
+        dest="task_id",
         help="task identifier for task scope",
     )
     parser.add_argument(
@@ -56,73 +107,85 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_BUDGET_BYTES,
         help="byte ceiling for excerpt text",
     )
-    parser.add_argument(
-        "--dimensions",
-        help="comma-separated dimension names, required with 'combined', "
-        "e.g. architecture,security",
-    )
-    return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    if args.dimension == _DISCOVERY:
-        print(
-            json.dumps(
-                [dataclasses.asdict(item) for item in list_dimensions()], indent=2
-            )
-        )
+    args = _build_parser().parse_args(argv)
+    try:
+        if args.operation == _DISCOVERY:
+            return _emit([dataclasses.asdict(item) for item in list_dimensions()])
+        if args.operation == _COMBINED:
+            return _run_combined(args)
+        if args.operation == _WRITE_REPORT:
+            return _run_report(args)
+        return _run_single(args)
+    except BrokenPipeError:
         return 0
-    if args.dimension == _COMBINED:
-        if not args.dimensions:
-            parser.error("'combined' requires --dimensions")
-        return _run_combined(args)
-    return _run_single(args)
+    except (RepoPathError, ReportWriteError, OSError) as exc:
+        print(f"operational error: {exc}", file=sys.stderr)
+        return OPERATIONAL_EXIT
+    except (ValidationError, ValueError) as exc:
+        print(f"validation error: {exc}", file=sys.stderr)
+        return VALIDATION_EXIT
 
 
 def _run_single(args: argparse.Namespace) -> int:
-    try:
-        pack = run_dimension(
-            DIMENSIONS[args.dimension],
-            repo_path=args.repo,
-            scope=args.scope,
-            budget_bytes=args.budget_bytes,
-            ref=args.ref,
-            task_id=args.task_id,
-        )
-    except RepoPathError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
-
-    # `mode` and `warnings` are fields of the pack, so they are already in the
-    # JSON. They are echoed on stderr as well because a standalone run's caveat
-    # has to be visible to a human reading a terminal, not only to a parser
-    # (FR-004) — stderr keeps stdout a clean JSON document.
+    pack = run_dimension(
+        DIMENSIONS[args.operation],
+        repo_path=args.repo,
+        scope=args.scope,
+        budget_bytes=args.budget_bytes,
+        ref=args.ref,
+        task_id=args.task_id,
+    )
     for warning in pack.warnings:
         print(f"warning [{pack.mode}]: {warning}", file=sys.stderr)
-
-    print(json.dumps(dataclasses.asdict(pack), indent=2))
-    return 0
+    return _emit(dataclasses.asdict(pack))
 
 
 def _run_combined(args: argparse.Namespace) -> int:
-    names = [name.strip() for name in args.dimensions.split(",") if name.strip()]
-    try:
-        result = combined_pack(
-            names,
-            repo_path=args.repo,
-            scope=args.scope,
-            budget_bytes=args.budget_bytes,
-            ref=args.ref,
-            task_id=args.task_id,
-        )
-    except (RepoPathError, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
+    result = combined_pack(
+        _parse_dimensions(args.dimensions),
+        repo_path=args.repo,
+        scope=args.scope,
+        budget_bytes=args.budget_bytes,
+        ref=args.ref,
+        task_id=args.task_id,
+    )
+    return _emit(dataclasses.asdict(result))
 
-    print(json.dumps(dataclasses.asdict(result), indent=2))
+
+def _run_report(args: argparse.Namespace) -> int:
+    findings = _read_findings(args.findings)
+    packs = combined_pack(
+        _parse_dimensions(args.dimensions) if args.dimensions else dimension_names(),
+        repo_path=args.repo,
+        scope=args.scope,
+        budget_bytes=args.budget_bytes,
+        ref=args.ref,
+        task_id=args.task_id,
+    )
+    result = core_write_report(findings, packs, args.repo)
+    return _emit({"path": result.path, "advisory": result.advisory})
+
+
+def _read_findings(path: str | None) -> bytes:
+    if path is not None:
+        return Path(path).read_bytes()
+    if sys.stdin.isatty():
+        raise ValueError(
+            "write-report requires --findings PATH or findings JSON on stdin"
+        )
+    return sys.stdin.buffer.read()
+
+
+def _parse_dimensions(value: str) -> list[str]:
+    return [name.strip() for name in value.split(",") if name.strip()]
+
+
+def _emit(payload: object) -> int:
+    json.dump(payload, sys.stdout, indent=2)
+    sys.stdout.write("\n")
     return 0
 
 
