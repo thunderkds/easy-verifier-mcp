@@ -1,10 +1,10 @@
-"""Doc-truth test for README.md (T018).
+"""Doc-truth test for README.md (T018, updated when T016 shipped).
 
-The README documents the intended v1 surface, most of which does not exist yet
-(the MCP adapter, Docker, and write-report command). The
-rule this test enforces: every fenced shell-command block in the README is
-either runnable today, or explicitly carries the ``planned`` marker described
-below. A command that is neither is a doc that lies.
+Every fenced shell-command block is a side-effect-free command that must run
+today. Installation, report-writing, long-running server, and Docker examples
+use ``console`` fences: they are real commands, but this test must not mutate
+the checkout, wait on stdio, or require the Docker daemon merely to prove the
+README's safe smoke commands.
 
 Marker convention: a fenced block is "planned" if the contiguous run of
 blockquote lines (``> ...``) directly preceding the fence contains the literal
@@ -14,11 +14,6 @@ token ``planned`` (case-insensitive), e.g.::
     ```bash
     docker run ...
     ```
-
-A planned block is never executed — a placeholder command like ``docker run``
-would fail for the wrong reason (no Docker image) and that is not the
-property being tested. A block with no such marker must exit 0 when run
-against this repo, writing nothing.
 
 Only fenced blocks whose info string is ``bash``/``sh``/``shell`` are treated
 as commands; other fences (json, console output, …) are not commands and are
@@ -141,43 +136,13 @@ def test_readme_never_leaves_reports_behind():
         )
 
 
-def test_planned_command_blocks_are_never_executed(monkeypatch):
-    """Success Criterion 2, negative half: a planned block must not be run at
-    all — asserting that would fail for the wrong reason (missing Docker).
+def test_no_shipped_command_is_still_marked_planned():
+    planned = [
+        command for marker, _lang, command in _readme_blocks() if _is_planned(marker)
+    ]
 
-    This drives the real runner and records what it actually invoked, so the
-    test fails if the filter is wrong in *either* direction. The earlier shape
-    of this test looped over the blocks and did nothing, which meant it passed
-    whether every block was planned or none of them were: it could not fail,
-    and so pinned nothing (Stage 4 P1).
-    """
-    invoked: list[list[str]] = []
-
-    def _record(args, *_rest, **_kwargs):
-        invoked.append(list(args))
-        return subprocess.CompletedProcess(args, returncode=0, stdout="", stderr="")
-
-    monkeypatch.setattr(subprocess, "run", _record)
-
-    blocks = _readme_blocks()
-    _run_unmarked(blocks)
-
-    planned = [command for marker, _lang, command in blocks if _is_planned(marker)]
-    assert planned, "expected at least one planned block to guard against"
-    for command in planned:
-        first = shlex.split(command)[0]
-        assert not any(call and call[0] == first for call in invoked), (
-            f"a planned command block was executed: {command!r}"
-        )
-
-    unmarked = [command for marker, _lang, command in blocks if not _is_planned(marker)]
-    # Both sides pinned: without this, a filter that marked *everything*
-    # planned would satisfy the check above with 0 == 0.
-    assert unmarked, "expected at least one unmarked block to actually run"
-    assert len(invoked) == len(unmarked), (
-        f"expected exactly the {len(unmarked)} unmarked block(s) to run, "
-        f"but {len(invoked)} command(s) were invoked"
-    )
+    assert planned == []
+    assert "planned" not in README_PATH.read_text(encoding="utf-8").lower()
 
 
 def test_documented_dimensions_match_the_registry():
