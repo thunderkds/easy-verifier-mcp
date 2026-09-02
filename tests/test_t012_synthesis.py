@@ -14,7 +14,7 @@ from easy_verifier.adapters.cli import main as cli_main
 from easy_verifier.core import synthesis
 from easy_verifier.core.pipeline import RepoPathError, run_dimension
 from easy_verifier.core.synthesis import combined_pack
-from easy_verifier.dimensions import DIMENSIONS, list_dimensions
+from easy_verifier.dimensions import DIMENSIONS, dimension_names
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -25,10 +25,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_all_seven_dimensions_return_a_slot_each() -> None:
-    result = combined_pack(list_dimensions(), REPO_ROOT, scope="project")
+    result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
     assert len(result.slots) == 7
-    assert {slot.dimension for slot in result.slots} == set(list_dimensions())
+    assert {slot.dimension for slot in result.slots} == set(dimension_names())
     for slot in result.slots:
         assert slot.error is None
         assert slot.pack is not None
@@ -140,7 +140,7 @@ def test_budget_model_is_recorded_as_per_dimension() -> None:
 
 
 def test_truncation_is_visible_per_dimension_not_merged() -> None:
-    result = combined_pack(list_dimensions(), REPO_ROOT, scope="project")
+    result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
     for slot in result.slots:
         assert slot.pack is not None
         # each pack still carries its own truncated/omitted_count fields
@@ -218,14 +218,14 @@ def test_all_dimensions_failing_yields_a_result_not_an_exception(monkeypatch) ->
 
     monkeypatch.setattr(synthesis_module, "run_dimension", _always_boom)
 
-    result = combined_pack(list_dimensions(), REPO_ROOT, scope="project")
+    result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
     assert len(result.slots) == 7
     assert all(slot.pack is None and slot.error is not None for slot in result.slots)
 
 
 # ---------------------------------------------------------------------------
-# AC #7 — unknown dimension name rejected, valid names from list_dimensions()
+# AC #7 — unknown dimension name rejected, valid names from dimension_names()
 # ---------------------------------------------------------------------------
 
 
@@ -235,14 +235,14 @@ def test_unknown_dimension_name_is_rejected_naming_valid_dimensions() -> None:
 
     message = str(excinfo.value)
     assert "not-a-dimension" in message
-    for name in list_dimensions():
+    for name in dimension_names():
         assert name in message
 
 
-def test_valid_names_come_from_list_dimensions_not_a_duplicated_list() -> None:
+def test_valid_names_come_from_dimension_names_not_a_duplicated_list() -> None:
     # Sabotage check: if a second hand list existed and drifted, this would
     # catch it by asserting the two sources are the same object's output.
-    assert set(list_dimensions()) == set(DIMENSIONS)
+    assert set(dimension_names()) == set(DIMENSIONS)
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +306,7 @@ def test_sabotage_order_uses_request_order_not_canonical_order() -> None:
 
     assert actual_order != request_order_extreme
     assert actual_order == tuple(
-        name for name in list_dimensions() if name in requested
+        name for name in dimension_names() if name in requested
     )
 
 
@@ -331,7 +331,7 @@ def test_duplicate_names_are_deduplicated_and_run_once() -> None:
 
 
 def test_aggregated_misses_are_consistent_with_each_packs_own_miss_list() -> None:
-    result = combined_pack(list_dimensions(), REPO_ROOT, scope="project")
+    result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
     misses_by_name = dict(result.coverage.misses)
 
     for slot in result.slots:

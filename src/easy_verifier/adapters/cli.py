@@ -21,9 +21,10 @@ from collections.abc import Sequence
 from ..core.pipeline import DEFAULT_BUDGET_BYTES, RepoPathError, run_dimension
 from ..core.scope import VALID_KINDS
 from ..core.synthesis import combined_pack
-from ..dimensions import DIMENSIONS
+from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
 
 _COMBINED = "combined"
+_DISCOVERY = "list-dimensions"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -34,8 +35,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "dimension",
-        choices=sorted((*DIMENSIONS, _COMBINED)),
-        help="dimension to run, or 'combined' to run several at once",
+        choices=sorted((*dimension_names(), _COMBINED, _DISCOVERY)),
+        help="dimension to run, 'combined', or 'list-dimensions' for discovery",
     )
     parser.add_argument("--repo", default=".", help="path to the target repository")
     parser.add_argument(
@@ -67,6 +68,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
+    if args.dimension == _DISCOVERY:
+        print(
+            json.dumps(
+                [dataclasses.asdict(item) for item in list_dimensions()], indent=2
+            )
+        )
+        return 0
     if args.dimension == _COMBINED:
         if not args.dimensions:
             parser.error("'combined' requires --dimensions")

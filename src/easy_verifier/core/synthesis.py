@@ -23,7 +23,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..dimensions import DIMENSIONS, list_dimensions
+from ..dimensions import DIMENSIONS
+from ..dimensions import dimension_names as available_dimension_names
 from . import redact as redact_module
 from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
@@ -60,28 +61,30 @@ def combined_pack(
     """Run each named dimension and return their packs plus aggregate coverage.
 
     Raises ``ValueError`` if ``dimension_names`` is empty or names a dimension
-    ``list_dimensions()`` does not know — never against a second, duplicated
+    ``available_dimension_names()`` does not know — never against a second,
+    duplicated
     list of valid names. Duplicate names are deduplicated; a dimension that
     raises does not abort the call, and carries a structured error in its slot
     instead of a pack.
     """
+    available_names = available_dimension_names()
     if not dimension_names:
         raise ValueError(
             "combined_pack requires at least one dimension name; valid "
-            f"dimensions: {', '.join(list_dimensions())}"
+            f"dimensions: {', '.join(available_names)}"
         )
 
     requested = set(dimension_names)
-    valid = set(list_dimensions())
+    valid = set(available_names)
     unknown = requested - valid
     if unknown:
         raise ValueError(
             f"unknown dimension(s): {', '.join(sorted(unknown))}; "
-            f"valid dimensions: {', '.join(list_dimensions())}"
+            f"valid dimensions: {', '.join(available_names)}"
         )
 
     # Canonical, deterministic order regardless of the order requested (AC #10).
-    ordered_names = tuple(name for name in list_dimensions() if name in requested)
+    ordered_names = tuple(name for name in available_names if name in requested)
 
     slots: list[DimensionSlot] = []
     for name in ordered_names:

@@ -1,7 +1,7 @@
 """Doc-truth test for README.md (T018).
 
 The README documents the intended v1 surface, most of which does not exist yet
-(the MCP adapter, Docker, discovery/combined-pack/write-report commands). The
+(the MCP adapter, Docker, and write-report command). The
 rule this test enforces: every fenced shell-command block in the README is
 either runnable today, or explicitly carries the ``planned`` marker described
 below. A command that is neither is a doc that lies.
@@ -196,6 +196,17 @@ def test_documented_dimensions_match_the_registry():
     assert not unregistered, (
         f"README.md names dimensions not in DIMENSIONS: {sorted(unregistered)}"
     )
+
+
+def test_discovery_command_is_runnable_today_and_uses_the_public_name():
+    matches = [
+        (marker, command)
+        for marker, _lang, command in _readme_blocks()
+        if "list-dimensions" in command
+    ]
+
+    assert matches == [("", "python -m easy_verifier.adapters.cli list-dimensions")]
+    assert _run(matches[0][1]).returncode == 0
 
 
 def test_an_unmarked_unrunnable_block_fails_the_rule(tmp_path):

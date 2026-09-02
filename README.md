@@ -71,10 +71,10 @@ This prints one dimension's evidence pack as JSON to stdout (warnings, if any, g
 stdout stays parseable). `--scope` accepts `task`, `changes`, `worktree`, or `project`; `--ref` and
 `--task-id` supply the `changes`/`task` selectors.
 
-> **Planned (T011).** A discovery command listing every dimension with its purpose and its
-> declared sources, so a caller doesn't need to already know the dimension names above:
+A discovery command lists every dimension with its purpose and declared sources, so a caller
+doesn't need to already know the dimension names above:
 ```bash
-python -m easy_verifier.adapters.cli discover
+python -m easy_verifier.adapters.cli list-dimensions
 ```
 
 > **Planned (T012).** A combined-pack command that runs several dimensions in one call and returns
