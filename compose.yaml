@@ -1,0 +1,25 @@
+services:
+  verifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: easy-verifier-mcp:0.1.0
+    stdin_open: true
+    read_only: true
+    network_mode: none
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - type: bind
+        source: ${EASY_VERIFIER_REPO:-.}
+        target: /workspace
+        read_only: true
+      - type: bind
+        source: ${EASY_VERIFIER_REPORTS:-./reports}
+        target: /workspace/reports

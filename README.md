@@ -61,10 +61,16 @@ explicit warning that context is limited — it is never left implicit.
 
 Two adapters share one core; neither has evaluation logic of its own, so they cannot drift apart.
 
-### CLI — runnable today, no server or container required
+Install the package into a Python 3.11+ environment for both console entry points:
+
+```console
+python -m pip install .
+```
+
+### CLI — no server or container required
 
 ```bash
-python -m easy_verifier.adapters.cli security --repo . --scope worktree
+python -m easy_verifier.adapters.cli security --repo . --scope project
 ```
 
 This prints one dimension's evidence pack as JSON to stdout (warnings, if any, go to stderr so
@@ -73,48 +79,72 @@ stdout stays parseable). `--scope` accepts `task`, `changes`, `worktree`, or `pr
 
 A discovery command lists every dimension with its purpose and declared sources, so a caller
 doesn't need to already know the dimension names above:
+
 ```bash
 python -m easy_verifier.adapters.cli list-dimensions
 ```
 
-> **Planned (T012).** A combined-pack command that runs several dimensions in one call and returns
-> an aggregate coverage summary, instead of issuing one call per dimension:
+Run several dimensions in one call and receive an aggregate coverage summary:
+
 ```bash
 python -m easy_verifier.adapters.cli combined --repo . --dimensions security,architecture
 ```
 
-> **Planned (T013, T015).** A `write_report` command accepting a calling agent's findings as JSON
-> and rendering them into a self-contained HTML report under the evaluated repo's `reports/` —
-> never this repo's:
-```bash
-python -m easy_verifier.adapters.cli write-report --repo . --findings findings.json
+`write-report` accepts findings from `--findings PATH`, or from stdin when the flag is omitted.
+The named file takes precedence when both are supplied:
+
+```console
+easy-verifier write-report --repo /path/to/repo --findings findings.json
 ```
 
-### MCP — planned (T014), stdio by default
+Validation failures exit 2, operational failures exit 3, errors stay on stderr, and only the JSON
+result is written to stdout.
 
-> **Planned (T014).** No MCP server exists yet. Once shipped, registration will run the container
-> over stdio, no port published:
-```bash
-docker run -i --rm -v "$(pwd)":/workspace easy-verifier-mcp
+### MCP — stdio by default
+
+Run the local server directly with no arguments; stdout is reserved for the MCP protocol:
+
+```console
+easy-verifier-mcp
 ```
 
-The MCP adapter will expose the same dimensions, discovery, and `write_report` as MCP tools. The
-default and required transport is **stdio**, spoken across the container boundary — no port, no
-bind address, no server lifecycle to manage. An HTTP/SSE transport may be offered as an opt-in
-convenience flag; when enabled it binds to `127.0.0.1` only and never to a routable address,
+The MCP adapter exposes the same dimensions, discovery, combined pack, and `write_report` as MCP
+tools. The default and required transport is **stdio**, spoken across the container boundary — no
+port, no bind address, no server lifecycle to manage. An HTTP/SSE transport may be offered as an
+opt-in convenience flag; when enabled it binds to `127.0.0.1` only and never to a routable address,
 including inside a container.
 
-### Docker — planned (T016)
+### Docker — read-only target, writable reports only
 
-> **Planned (T016).** No Dockerfile exists yet:
-```bash
-docker compose up
+The Compose service uses pinned Python and MCP versions, runs as UID/GID `10001`, drops all
+capabilities, has no runtime network, publishes no ports, and mounts the target repository
+read-only. Prepare a dedicated reports directory owned by that fixed non-root identity:
+
+```console
+mkdir -p /path/to/repo/reports
+sudo chown 10001:10001 /path/to/repo/reports
 ```
 
-The container will run as a non-root user, mount the target repository read-only except for its
-`reports/` directory, take all configuration from environment variables, and speak stdio by
-default. The repository being evaluated is mounted as a volume — this tool never needs anything
-installed inside the target.
+Build and start one stdio session with host paths supplied only through environment variables:
+
+```console
+docker compose build
+EASY_VERIFIER_REPO=/path/to/repo \
+EASY_VERIFIER_REPORTS=/path/to/repo/reports \
+docker compose run --rm --no-tty verifier
+```
+
+The loopback-only HTTP/SSE opt-in is deliberately not published by Compose; use stdio across the
+container boundary. The target needs no package or executable installed. On SELinux hosts, add an
+appropriate `:z`/`:Z` label to equivalent bind mounts. macOS and Windows Docker Desktop translate
+bind-mount ownership differently, so confirm the reports directory is writable by UID `10001`.
+
+To exercise the real MCP handshake, non-root UID, read-only root, writable reports overlay, Git,
+network isolation, capabilities, ports, and container-path scrubbing in one pass:
+
+```console
+docker compose build && bash scripts/verify_container.sh
+```
 
 ## Where reports go
 
