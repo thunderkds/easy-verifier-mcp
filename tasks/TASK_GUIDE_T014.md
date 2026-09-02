@@ -46,10 +46,10 @@ Expose the engine to an agent harness over MCP, locally, without opening anythin
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
 
 ---
 
@@ -58,6 +58,12 @@ Expose the engine to an agent harness over MCP, locally, without opening anythin
 **Depends on**: T011 — `list_dimensions()` is one of the exposed tools; T013 — `write_report()` is another, and the tool surface is not complete without it.
 
 **Entry point**: `mcp_server`
+
+**SDK compatibility decision (2026-09-02)**: The approved guide names FastMCP and legacy SSE.
+Current `mcp` v2 replaces FastMCP with `MCPServer`; the official SDK advises v1 applications to
+constrain the dependency below v2 until migrated. T014 therefore uses `mcp>=1.29,<2`, tested against
+locally available v1.29.0, so maintained v1 patch releases remain eligible without admitting the
+breaking v2 API.
 
 ---
 
@@ -173,11 +179,11 @@ Structural test for AC #5 mirroring the CLI thinness test from T001.
 
 ## Completion Checklist
 
-- [ ] Implementation done
+- [x] Implementation done
 - [ ] Self-review: `Skill({ skill: "code-review" })` run
 - [ ] Security review: `Skill({ skill: "security-review" })` run (Medium risk — required; network surface)
-- [ ] Lint passes
-- [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T014.md`'s Evidence table (Hard-Stop Gate 5)
+- [x] Lint passes
+- [x] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T014.md`'s Evidence table (Hard-Stop Gate 5)
 - [ ] `Skill({ skill: "verify" })` run — server registered and called from a real MCP client
 - [ ] `memory/MEMORY.md` updated (if new patterns or feedback learned)
-- [ ] Supervisor notified: task ready for Stage 4 review
+- [x] Supervisor notified: task ready for Stage 4 review

@@ -14,7 +14,10 @@ license = { file = "LICENSE" }
 # adapter (T014, `adapters/mcp_server.py`) and is added by that task; declaring
 # it here now would make `pip install -e .` fail for a package that does not
 # import it.
-dependencies = []
+dependencies = ["mcp>=1.29,<2"]
+
+[project.scripts]
+easy-verifier-mcp = "easy_verifier.adapters.mcp_server:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.6"]
