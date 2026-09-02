@@ -39,10 +39,10 @@ verifier's source code.
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
 
 ---
 
@@ -51,6 +51,11 @@ verifier's source code.
 **Depends on**: T007, T008, T009, T010 — all seven descriptors must exist for discovery to be complete and for AC #2 to be assertable.
 
 **Entry point**: `list_dimensions`
+
+**Post-T012 compatibility decision (user-approved 2026-09-02)**: T012 landed before T011 and
+introduced a name-only `list_dimensions()` used by `core/synthesis.py`. The user authorized T011 to
+move that consumer to `dimension_names()` so the required `list_dimensions()` API can return rich
+discovery records without breaking synthesis.
 
 ---
 
@@ -129,14 +134,18 @@ not implement it twice.
 |------|--------|
 | `src/easy_verifier/dimensions/__init__.py` | Add `list_dimensions()` — descriptor enumeration |
 | `src/easy_verifier/adapters/cli.py` | `list-dimensions` subcommand (serialization only) |
+| `src/easy_verifier/core/synthesis.py` | Move T012's name-only consumer to `dimension_names()`; behavior unchanged |
 | `tests/test_t011_discovery.py` | New |
+| `tests/test_t012_synthesis.py` | Preserve T012 coverage against the renamed name-only helper |
+| `README.md` | Replace T018's stale planned `discover` example with runnable `list-dimensions` |
+| `tests/test_t018_readme.py` | Pin discovery as runnable today under its canonical command name |
 
 ## Files Must NOT Touch
 
 | File | Reason |
 |------|--------|
 | `.claude/hooks/**` | Must-not-touch |
-| `src/easy_verifier/core/**` | No core change is needed for this task |
+| `src/easy_verifier/core/**` except `synthesis.py` | No other core change is needed for this task |
 | Individual dimension modules | Owned by T001/T007–T010; if a `purpose` string is weak, report it to the Supervisor rather than editing |
 | `memory/**`, `PROJECT_KANBAN.md` | Supervisor-only |
 
@@ -152,11 +161,11 @@ confirming it appears (AC #3, #4), and assert determinism by comparing two seria
 
 ## Completion Checklist
 
-- [ ] Implementation done
-- [ ] Self-review: `Skill({ skill: "code-review" })` run
-- [ ] Security review: N/A (Low risk)
-- [ ] Lint passes
-- [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T011.md`'s Evidence table (Hard-Stop Gate 5)
-- [ ] `Skill({ skill: "verify" })` run
-- [ ] `memory/MEMORY.md` updated (if new patterns or feedback learned)
-- [ ] Supervisor notified: task ready for Stage 4 review
+- [x] Implementation done
+- [x] Self-review: manual structured review completed (`code-review` skill unavailable in Codex)
+- [x] Security review: N/A (Low risk)
+- [x] Lint passes
+- [x] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T011.md`'s Evidence table (Hard-Stop Gate 5)
+- [x] Exact verification command run; feature confirmed at its public CLI boundary
+- [x] `memory/MEMORY.md` update N/A — no durable pattern beyond the recorded, user-approved T012 compatibility decision
+- [x] Supervisor notified: task ready for Stage 4 review

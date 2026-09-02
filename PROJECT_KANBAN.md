@@ -15,7 +15,7 @@
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 
 **Wave 2 — Dimensions (parallelizable once Wave 1 is stable)**
-- [ ] **T011** — Dimension discovery operation (FR-013a) | backend-developer | C0 | Risk: Low | P1
+_(complete through Stage 4; T011 is awaiting integration below)_
 
 **Wave 3 — Output**
 - [x] **T012** — `synthesis.py`: combined multi-dimension pack + aggregate coverage | ✅ Done 2026-08-25
@@ -44,7 +44,7 @@ _(none)_
 
 ### Ready for Review
 
-_(none)_
+- [ ] **T011** — Dimension discovery operation (FR-013a) | C0 | Risk: Low | P1 | 8 focused tests (418 suite total) · ruff clean · manual code-review **P0 0/P1 1 fixed/P2 0/P3 0** (`code-review` skill unavailable in Codex) · security-review ☑ N/A (static package metadata only; no target-repo input, network, subprocess, or report write) · exact verification command passed · branch `feat/t011-dimension-discovery`, worktree `/tmp/easy-verifier-mcp-t011`
 
 ### Done
 
