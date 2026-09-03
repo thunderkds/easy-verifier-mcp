@@ -28,7 +28,6 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 - [x] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | ✅ Done 2026-08-25
 
 **Wave 7 — Quality rating & assessment (added 2026-08-26, user request; see `docs/ddr/0003-abstain-from-rating-below-coverage-floor.md`)**
-- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0
 - [ ] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | backend-developer | C2 | Risk: Med | P1
 - [ ] **T022** — `score` operation in both adapters + report score panel (**must follow T014 and T015**) | backend-developer | C1 | Risk: Low | P0
 
@@ -38,6 +37,7 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 ### In Progress
 
 - [ ] **T016** — Dockerfile + compose: non-root, read-only mount except `reports/` | C1 | Risk: Med | P0 | implementation merged via PR #8; static tests and compose expansion pass; **live verification blocked because this environment cannot access `/var/run/docker.sock`**
+- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Stage 3 started 2026-09-03; floor calibration and test oracle require Supervisor sign-off before implementation
 
 ### Ready for Review
 
