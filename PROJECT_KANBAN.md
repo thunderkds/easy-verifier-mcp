@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-03
+**Last updated**: 2026-09-12
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -37,11 +37,10 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 ### In Progress
 
 - [ ] **T016** — Dockerfile + compose: non-root, read-only mount except `reports/` | C1 | Risk: Med | P0 | implementation merged via PR #8; static tests and compose expansion pass; **live verification blocked because this environment cannot access `/var/run/docker.sock`**
-- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Stage 3 started 2026-09-03; floor calibration and test oracle require Supervisor sign-off before implementation
 
 ### Ready for Review
 
-_(none)_
+- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Recovered and reverified 2026-09-12: 66 focused tests, 539 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; publication pending, not merged
 
 ### Done
 

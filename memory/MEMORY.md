@@ -100,6 +100,7 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 
 ### Decisions
 
+- ▶ **[T020 verified locally; awaiting publication/integration](../tasks/TASK_REVIEW_T020.md)** (recovered and reverified 2026-09-12). Declared arithmetic ratings enforce inclusive coverage floors and typed abstention. Four adversarial review rounds closed seven P1 and four P2 boundary defects, including forged constructors, contradictory abstention provenance, malformed miss values, lying arithmetic methods, noncanonical serialization, and inconsistent coverage summaries. Recovery gates: 66 focused tests and 539 compatible full-suite tests passed; the project `.venv` still lacks `mcp`. Publication is pending and the task is not merged.
 - ▶ **[Integration strategy](decisions.md): local merges, one task at a time** (user, 2026-08-15; base updated 2026-08-16). **`develop` is now the Stage 3 integration branch** — `plan/stage2-task-breakdown` was pushed and merged via PR #2 (`e185baa`), closing the old "unpushed base" blocker. Per-task scrutiny is Stage 4 + Stage 5, not the PR.
 - ▶ **Stage 2 complete (2026-08-15).** `PROJECT_SPEC.md` + `PROJECT_KANBAN.md` + 17 TASK_GUIDEs exist; `PROJECT_KANBAN.md` is now the single source of in-flight state. `memory/NEXT-SESSION.md` deleted as designed. Stage 3 not started; no product code yet.
 - [Codebase Map](codebase-map.md) — structural snapshot: directory tree, entry points, blast-radius hotspots. Refresh via /map-codebase.

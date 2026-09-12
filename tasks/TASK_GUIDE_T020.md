@@ -45,14 +45,32 @@ identifies quality.
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with the glossary — **rating**, never "score"; `coverage_score` keeps its existing meaning and is *input*, not output
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user)
+- [x] Domain terms align with the glossary — **rating**, never "score"; `coverage_score` keeps its existing meaning and is *input*, not output
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
 
 > **Initial floor values are a judgment call, not a fact.** Propose them to the Supervisor with your
 > reasoning **before** implementing. Set too high the tool abstains constantly and is useless; set
 > too low the guarantee is theatre (DDR-0003, Negative consequences).
+
+**Supervisor-approved initial floors (2026-09-03; inclusive):**
+
+| Dimension | Floor | Calibration rationale |
+|-----------|------:|-----------------------|
+| architecture | 0.40 | Two of five architecture sources is the minimum useful pair; the live repository reaches 3/5 (0.60). |
+| solution-fit | 0.50 | One of the two intent sources is sufficient to ground the dimension; the live repository reaches 2/2. |
+| requirement-fidelity | 0.50 | Two of four requirement sources gives corroboration; the live repository reaches 4/4, while metric-level truncation still protects whole-set figures. |
+| code-quality | 0.16 | The six entries are alternative convention/config shapes; one real source is useful, and the live repository reaches 1/6 (0.1667). |
+| security | 0.25 | Eleven entries include mutually exclusive ecosystems and one permanent v1 pseudo-miss; the live repository reaches 3/11 (0.2727). |
+| test-strategy | 0.20 | Nine entries include ecosystem alternatives and a correspondence pseudo-source; the live repository reaches 2/9 (0.2222). |
+| blast-radius | 0.25 | Eight entries include alternative manifests and project-scope-inapplicable probes; the live repository reaches 2/8 (0.25). |
+
+A uniform 0.60 floor was rejected: it makes ordinary single-language repositories
+abstain by construction. These are starting values to recalibrate against more real
+repositories, not factual constants. `COVERAGE_FLOORS` in `core/judge.py` is the
+single declared table; a structural test requires its keys to equal dynamically
+discovered dimension names.
 
 ---
 
@@ -90,8 +108,8 @@ identifies quality.
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | Full metrics, coverage 0.88, floor 0.60 | A numeric rating carrying its inputs; recomputable by hand in the test | automated test |
-| 2 | Coverage 0.33, floor 0.60 | Abstention naming floor **0.60**, achieved **0.33**, and the unreached sources by name. No number anywhere in the value | automated test |
-| 3 | Six dimensions rate ~70, the seventh would have rated 20 but abstains | Overall **rises** vs. the all-seven case, **and** discloses "5 of 7" style provenance plus the abstainer's reason | automated test (AC #8) |
+| 2 | Coverage 0.33, floor 0.60 | Abstention naming floor **0.60**, achieved **0.33**, and the unreached sources by name. It carries no rating value; the numeric floor and achieved coverage remain required provenance. | automated test |
+| 3 | Six dimensions rate ~70, the seventh would have rated 20 but abstains | Overall **rises** vs. the all-seven case, **and** discloses exact "6 of 7" provenance plus the abstainer's reason | automated test (AC #8) |
 | 4 | All seven abstain | Overall abstention — not `0`, not `None`, no exception | automated test |
 | 5 | Floor hardwired to 0.0, then to 1.0, on the same input | Results differ (rating vs. abstention). A test passing under both is pinning nothing | automated test (sabotage) |
 
@@ -118,12 +136,12 @@ single declared table in this module — either is acceptable, a hand-maintained
 
 ## Edge Case Checklist
 
-- [ ] `coverage_score is None` (sought nothing) — is that below the floor, or not applicable? Decide explicitly and document; do **not** let `None` compare as zero
-- [ ] A dimension that raised entirely (`slot.pack is None`) — must abstain with a *different* reason than a floor miss
-- [ ] Floor exactly equal to achieved coverage — boundary must be declared inclusive or exclusive in the data, and tested at the boundary
-- [ ] A metric that abstains vs. a metric legitimately valued `0` — must not collapse (this is the project's seventh-instance defect)
-- [ ] Rounding: a rating rendered as `62` must not be `61.5` in one adapter and `62.4` in the other (FR-022)
-- [ ] An abstention reason must never be assembled by substring-matching prose — T013's AC #14 residue (c) is exactly this failing quietly
+- [x] `coverage_score is None` is `coverage_not_applicable`, distinct from a below-floor result; it is never compared as zero
+- [x] A dimension that raised entirely (`slot.pack is None`) abstains as `dimension_failed`, distinct from a floor miss
+- [x] Floor equality is inclusive (`achieved >= floor`) and tested for all seven dimensions
+- [x] Metric abstention is a distinct object; a legitimate numeric `0` remains rateable
+- [x] Ratings round once with Python `round` (ties to even), stated in the serialized method
+- [x] Abstention reasons are selected by structured `reason_code`, never prose substring matching
 
 ---
 
@@ -132,7 +150,8 @@ single declared table in this module — either is acceptable, a hand-maintained
 | File | Change |
 |------|--------|
 | `src/easy_verifier/core/judge.py` | New. `Rating`, `RatingAbstention`, `OverallRating`, `rate()`, `rate_overall()`, declared rule + floor tables |
-| `src/easy_verifier/dimensions/*.py` | **Data only** — add a declared `coverage_floor` to each descriptor. No logic |
+| `tasks/TASK_GUIDE_T020.md` | Record the approved Requirement Fidelity gate, floor values, and ambiguity resolutions |
+| `tasks/TASK_REVIEW_T020.md` | Record verification, review, and demonstration evidence |
 | `tests/test_judge.py` | New |
 
 ## Files Must NOT Touch
@@ -157,12 +176,12 @@ before it is written (the implementing agent must not be the sole author of its 
 
 ## Completion Checklist
 
-- [ ] Floor values proposed to Supervisor **before** implementation
-- [ ] Implementation done
-- [ ] Self-review: `Skill({ skill: "code-review" })` run
-- [ ] Security review: **required (Medium risk)** — the built-in skill cannot run in this repo (remote is `github`, not `origin`); review the diff surface directly and record the substitution, per the T008/T013 precedent
-- [ ] Lint passes
-- [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T020.md`'s Evidence table
-- [ ] `Skill({ skill: "verify" })` run
-- [ ] `memory/MEMORY.md` updated
-- [ ] Supervisor notified: task ready for Stage 4 review
+- [x] Floor values proposed to Supervisor **before** implementation
+- [x] Implementation done
+- [x] Self-review: named skill unavailable; bounded direct P0–P3 substitution recorded in `TASK_REVIEW_T020.md`
+- [x] Security review: direct diff-surface substitution recorded, per the T008/T013 precedent
+- [x] Lint passes
+- [x] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T020.md`'s Evidence table
+- [x] `Skill({ skill: "verify" })` unavailable; independent documented substitution passed
+- [x] `memory/MEMORY.md` updated
+- [x] Supervisor independently reviewed the task; ready for integration
