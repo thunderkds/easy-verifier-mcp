@@ -41,10 +41,18 @@ This is the task that makes the user's request true end to end: *point it at a p
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with the glossary
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor, 2026-09-12)
+- [x] Domain terms align with the glossary
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+
+**Surgical-scope clarification (Supervisor, 2026-09-12):** add
+`src/easy_verifier/core/score.py` as the shared orchestration entry point. The predicted list omitted
+the core function that FR-021 requires both adapters to delegate to; putting the orchestration in
+either adapter would violate AC #8. It consumes T019/T020/T021 unchanged and owns no new metric,
+weight, threshold, rounding, or rating arithmetic. Update `README.md` as well: its statement that
+the engine never returns a score became false when the approved T020–T022 surface landed, and
+leaving that contradiction would make the repository-facing contract materially inaccurate.
 
 ---
 
@@ -130,6 +138,8 @@ caller-authored field bypassing redaction.
 | `src/easy_verifier/adapters/cli.py` | `score` subcommand + `_run_score` |
 | `src/easy_verifier/adapters/mcp_server.py` | `score` tool registration |
 | `src/easy_verifier/core/report.py` | Score panel renderer |
+| `src/easy_verifier/core/score.py` | Shared adapter-independent orchestration over T019/T020/T021 |
+| `README.md` | Replace the obsolete no-score claim and document the runnable score surface |
 | `tests/test_score_operation.py` | New |
 
 ## Files Must NOT Touch
@@ -151,11 +161,11 @@ rather than one that happens to produce one.
 
 ## Completion Checklist
 
-- [ ] Implementation done
-- [ ] Self-review: `Skill({ skill: "code-review" })` run
-- [ ] Security review: N/A (Low risk — no new primitive; state so explicitly)
-- [ ] Lint passes
-- [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T022.md`'s Evidence table
-- [ ] `Skill({ skill: "verify" })` run — **at the real CLI**
-- [ ] `memory/MEMORY.md` updated
-- [ ] Supervisor notified: task ready for Stage 4 review
+- [x] Implementation done
+- [x] Self-review: named skill unavailable in this Codex session; bounded P0–P3 substitution recorded in `TASK_REVIEW_T022.md`
+- [x] Security review: N/A (Low risk — no new primitive; direct substitution recorded)
+- [x] Lint passes
+- [x] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T022.md`'s Evidence table
+- [x] Named `verify` skill unavailable; equivalent verification run **at the real CLI** and recorded
+- [x] `memory/MEMORY.md` updated
+- [x] Supervisor notified: task ready for Stage 4 review

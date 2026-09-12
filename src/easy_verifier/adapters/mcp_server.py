@@ -17,6 +17,7 @@ from mcp.server.fastmcp import FastMCP
 
 from ..core.pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE, run_dimension
 from ..core.report import write_report as core_write_report
+from ..core.score import score_repository
 from ..core.synthesis import combined_pack
 from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
 
@@ -90,6 +91,30 @@ def gather_combined(
             task_id=task_id,
         )
     )
+
+
+@mcp.tool(
+    name="score",
+    description="Rate all seven dimensions and optionally assess findings.",
+    structured_output=True,
+)
+def score(
+    repo: str = ".",
+    scope: str = DEFAULT_SCOPE,
+    budget_bytes: int = DEFAULT_BUDGET_BYTES,
+    ref: str | None = None,
+    task_id: str | None = None,
+    findings: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Delegate the complete rating operation to the shared score core."""
+    return score_repository(
+        repo,
+        scope=scope,
+        budget_bytes=budget_bytes,
+        ref=ref,
+        task_id=task_id,
+        findings=findings,
+    ).to_dict()
 
 
 @mcp.tool(

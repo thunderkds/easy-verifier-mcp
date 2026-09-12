@@ -28,7 +28,7 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 - [x] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | ✅ Done 2026-08-25
 
 **Wave 7 — Quality rating & assessment (added 2026-08-26, user request; see `docs/ddr/0003-abstain-from-rating-below-coverage-floor.md`)**
-- [ ] **T022** — `score` operation in both adapters + report score panel (**must follow T014 and T015**) | backend-developer | C1 | Risk: Low | P0
+_(T020 and T021 merged via PR #9; T022 is in progress below.)_
 
 **Wave 5 — Verification (QA-owned)**
 - [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof (**HITL gate: parity definition**) | qa-expert | C2 | Risk: High | P0
@@ -39,11 +39,12 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 
 ### Ready for Review
 
-- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Recovered and reverified 2026-09-12: 66 focused tests, 539 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; `feat/t020-judge` published to GitHub, not merged
-- [ ] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | backend-developer | C2 | Risk: Med | P1 | Stage 4/5 substitution complete locally 2026-09-12: 18 focused assessment tests, 52 assessment/findings tests, 562 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; not yet published or merged
+- [ ] **T022** — `score` operation in both adapters + report score panel | backend-developer | C1 | Risk: Low | P0 | 8 focused tests and 570 full-suite tests passed; real CLI returned seven ratings, 77 cited metrics, and disclosed overall 65; Ruff clean; P0 0/P1 0/P2 0 after remediation; ready for publication review.
 
 ### Done
 
+- [x] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | C2 | Risk: Med | Completed: 2026-09-12 | 18 focused assessment tests, 52 assessment/findings tests, 562 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; merged via PR #9 (`a6ca3e6`).
+- [x] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | C2 | Risk: Med | Completed: 2026-09-12 | 66 focused tests and 539 compatible full-suite tests passed; Ruff clean; P0 0/P1 0/P2 0 after remediation; merged as an ancestor of PR #9 (`a6ca3e6`).
 - [x] **T019** — `metrics.py`: measured facts computed over the evidence pack only | C2 | Risk: Low | Completed: 2026-09-03 | 32 focused tests and 441 full-suite tests passed after Stage 5 remediation; ruff clean; Stage 5 initially found source/test classification defects, fixed in `7d4831b`; merged via PR #4 (`ad28d3f`).
 - [x] **T015** — Complete path-mode CLI with findings file/stdin parity | C1 | Risk: Low | Completed: 2026-09-03 | 10 focused tests and 437 full-suite tests passed; installed console script and MCP payload parity verified; merged via PR #7 (`7abddb4`).
 - [x] **T014** — FastMCP adapter with stdio default and loopback-only HTTP/SSE opt-in | C1 | Risk: Med | Completed: 2026-09-03 | 9 focused tests and 427 full-suite tests passed; tool surface, transport boundary, and thin-adapter constraints verified; merged via PR #6 (`f3231e2`).
