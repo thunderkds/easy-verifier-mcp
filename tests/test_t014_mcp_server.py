@@ -31,7 +31,7 @@ def _call(name: str, arguments: dict):
     return structured
 
 
-def test_server_registers_the_exact_ten_descriptor_derived_tools() -> None:
+def test_server_registers_the_descriptor_derived_and_shared_tools() -> None:
     module = _server_module()
     tools = asyncio.run(module.mcp.list_tools())
     by_name = {tool.name: tool for tool in tools}
@@ -40,6 +40,7 @@ def test_server_registers_the_exact_ten_descriptor_derived_tools() -> None:
         *dimension_names(),
         "list_dimensions",
         "combined",
+        "score",
         "write_report",
     }
     for item in list_dimensions():
@@ -166,7 +167,7 @@ def test_tool_error_is_structured_and_server_survives() -> None:
         else:  # pragma: no cover - required assertion branch
             raise AssertionError("invalid repository should produce an MCP tool error")
 
-        assert len(await _server_module().mcp.list_tools()) == 10
+        assert len(await _server_module().mcp.list_tools()) == 11
 
     asyncio.run(exercise())
 

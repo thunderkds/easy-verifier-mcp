@@ -1,14 +1,15 @@
 # easy-verifier-mcp
 
 A local, no-LLM engine that gathers **evidence** about a repository — file excerpts, citations,
-lists of what it looked for and didn't find — so a calling agent (an MCP client, or a CLI script)
-can reason about the change on its own. It performs no inference, holds no opinion, and never
-returns a verdict. It requires no model API key: nothing here calls an LLM.
+lists of what it looked for and didn't find — and computes inspectable quality ratings from
+declared rules over measured facts. A calling agent can optionally submit its own findings for a
+separate assessment and divergence. The engine performs no inference and requires no model API
+key: nothing here calls an LLM.
 
 ## What it refuses to do
 
-- **No verdict, no score of "good"/"bad".** Every dimension returns evidence only; judgment is the
-  calling agent's job, not this engine's.
+- **No inferred verdict.** Ratings are deterministic arithmetic over cited metrics. Caller findings
+  produce a separate assessment; the engine never blends the two or invents a judgment.
 - **No inventing context.** A source it did not find is reported as missing, never guessed at or
   filled in.
 - **No coverage number without its miss list.** A "found 4/6" is always shown next to the two
@@ -90,6 +91,16 @@ Run several dimensions in one call and receive an aggregate coverage summary:
 python -m easy_verifier.adapters.cli combined --repo . --dimensions security,architecture
 ```
 
+Rate all seven dimensions in one call. The result includes every cited metric and an overall
+disclosure naming which dimensions contributed or abstained:
+
+```bash
+python -m easy_verifier.adapters.cli score --repo . --scope project
+```
+
+Pass optional findings through `--findings PATH` or stdin to add the caller-derived assessments and
+rating-to-assessment divergences to the same JSON output.
+
 `write-report` accepts findings from `--findings PATH`, or from stdin when the flag is omitted.
 The named file takes precedence when both are supplied:
 
@@ -108,11 +119,11 @@ Run the local server directly with no arguments; stdout is reserved for the MCP 
 easy-verifier-mcp
 ```
 
-The MCP adapter exposes the same dimensions, discovery, combined pack, and `write_report` as MCP
-tools. The default and required transport is **stdio**, spoken across the container boundary — no
-port, no bind address, no server lifecycle to manage. An HTTP/SSE transport may be offered as an
-opt-in convenience flag; when enabled it binds to `127.0.0.1` only and never to a routable address,
-including inside a container.
+The MCP adapter exposes the same dimensions, discovery, combined pack, `score`, and `write_report`
+as MCP tools. The default and required transport is **stdio**, spoken across the container boundary
+— no port, no bind address, no server lifecycle to manage. An HTTP/SSE transport may be offered as
+an opt-in convenience flag; when enabled it binds to `127.0.0.1` only and never to a routable
+address, including inside a container.
 
 ### Docker — read-only target, writable reports only
 
@@ -151,6 +162,10 @@ docker compose build && bash scripts/verify_container.sh
 Reports are written into the **evaluated repository's** `reports/` directory, never into this
 repo's — even when the two happen to be the same checkout (as they will be if you point this tool
 at itself). Nothing is overwritten; filenames are unique per scope and timestamp.
+
+Each full seven-dimension report includes a score panel with the rule-based rating, optional caller
+assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
+an abstention with its coverage boundary, never as zero or a low score.
 
 ## License
 

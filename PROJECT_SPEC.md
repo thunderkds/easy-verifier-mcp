@@ -150,3 +150,4 @@ Running log of key decisions, patterns, and lessons learned across tasks.
 | 2026-08-14 | Test fixtures are free: this repo is the kit-aware fixture, any installed pip package is the standalone fixture. No synthetic fixtures needed. | Stage 1 |
 | 2026-08-18 | The four document-shaped dimensions share one narrow extractor: kit declarations and task-guide globs are direct candidates; standalone mode reads discovered docs before a bounded code fallback. | T007 |
 | 2026-08-18 | Secret-file exclusion must check both the requested path and resolved target after truthful metadata checks, preventing safe-name symlink aliases without inventing file presence. | T007 |
+| 2026-09-12 | Adapter parity for quality output is kept structural by one `core.score` orchestration path: adapters only parse/serialize, while metric, rating, assessment, and divergence arithmetic remain in their owning modules. | T022 |

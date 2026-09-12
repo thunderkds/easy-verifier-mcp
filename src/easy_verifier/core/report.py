@@ -33,8 +33,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from easy_verifier.core.assessment import (
+    Assessment,
+    AssessmentAbsence,
+    Divergence,
+    DivergenceAbsence,
+)
 from easy_verifier.core.context import RepoPathError, _resolved_repo
 from easy_verifier.core.findings import Finding, validate_findings
+from easy_verifier.core.judge import OverallRating, Rating, RatingAbstention
 from easy_verifier.core.models import (
     CombinedPack,
     CoverageSummary,
@@ -43,6 +50,8 @@ from easy_verifier.core.models import (
     SourceMiss,
 )
 from easy_verifier.core.redact import redact
+from easy_verifier.core.score import ScoreResult, score_packs
+from easy_verifier.dimensions import dimension_names
 
 REPORTS_DIRNAME = "reports"
 
@@ -100,8 +109,13 @@ def write_report(
     first_write = not _has_existing_reports(reports_dir)
 
     ctx = _Ctx(repo=repo)
+    score = (
+        score_packs(packs, validated.by_dimension)
+        if tuple(slot.dimension for slot in packs.slots) == dimension_names()
+        else None
+    )
     document = _render_document(
-        ctx, validated.by_dimension, packs, first_write=first_write
+        ctx, validated.by_dimension, packs, score, first_write=first_write
     )
 
     written = _write_new_file(reports_dir, _filename(packs), document)
@@ -299,6 +313,7 @@ def _render_document(
     ctx: _Ctx,
     by_dimension: dict[str, tuple[Finding, ...]],
     packs: CombinedPack,
+    score: ScoreResult | None,
     *,
     first_write: bool,
 ) -> str:
@@ -318,6 +333,7 @@ def _render_document(
         _render_header(ctx, packs, generated, finding_count),
         _render_advisory(ctx, first_write=first_write),
         _render_warnings(ctx, packs),
+        _render_score_panel(ctx, score),
         _render_coverage(ctx, packs.coverage),
         _render_dimensions(ctx, by_dimension, packs),
         _render_footer(),
@@ -343,9 +359,9 @@ def _render_header(
         f"<dt>Budget model</dt><dd>{ctx.esc(packs.budget_model)}</dd>"
         f"<dt>Findings</dt><dd>{ctx.esc(finding_count)}</dd>"
         "</dl>"
-        '<p class="disclaimer">This engine performs no inference and renders no '
-        "verdict. Every claim below was made by the calling agent and is shown "
-        "next to the evidence it cited.</p>"
+        '<p class="disclaimer">This engine performs no inference. Ratings are '
+        "declared arithmetic over the cited metrics; every narrative claim below "
+        "was made by the calling agent and is shown next to its evidence.</p>"
         "</header>"
     )
 
@@ -378,6 +394,179 @@ def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
         '<section class="warning-banner"><h2>Context warnings</h2>'
         f"<ul>{items}</ul></section>"
     )
+
+
+def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
+    """Render declared ratings separately from optional caller assessments."""
+    if score is None:
+        return (
+            '<section class="score-panel"><h2>Quality score</h2>'
+            '<p class="score-unavailable">Overall and per-dimension ratings are '
+            "unavailable because this report does not contain all seven dimensions."
+            "</p></section>"
+        )
+
+    overall = score.overall
+    if type(overall) is OverallRating:
+        overall_html = (
+            '<div class="overall-rating"><h3>Overall</h3>'
+            f'<p class="rating-value">{ctx.esc(overall.value)}/100</p>'
+            f'<p class="rating-disclosure">{ctx.esc(overall.disclosure)}</p></div>'
+        )
+    else:
+        overall_html = (
+            '<div class="overall-rating rating-abstention"><h3>Overall</h3>'
+            '<p class="rating-withheld">Overall rating withheld</p>'
+            f"<p>{ctx.esc(overall.reason)}</p>"
+            f"{_render_nested_abstentions(ctx, overall)}"
+            "</div>"
+        )
+
+    assessments = (
+        {item.dimension: item for item in score.assessments.outcomes}
+        if score.assessments is not None
+        else {}
+    )
+    divergences = (
+        {item.dimension: item.divergence for item in score.comparisons.comparisons}
+        if score.comparisons is not None
+        else {}
+    )
+    cards = "".join(
+        _render_score_card(
+            ctx,
+            rating,
+            assessments.get(rating.dimension),
+            divergences.get(rating.dimension),
+        )
+        for rating in score.ratings
+    )
+    return (
+        '<section class="score-panel"><h2>Quality score</h2>'
+        '<p class="method">Ratings are declared arithmetic over the cited metrics. '
+        "An assessment appears only when caller findings were submitted; divergence "
+        "is shown separately and never blended.</p>"
+        f'{overall_html}<div class="score-grid">{cards}</div></section>'
+    )
+
+
+def _render_score_card(
+    ctx: _Ctx,
+    rating: Rating | RatingAbstention,
+    assessment: Assessment | AssessmentAbsence | None,
+    divergence: Divergence | DivergenceAbsence | None,
+) -> str:
+    if type(rating) is Rating:
+        inputs = "".join(_render_rating_input(ctx, item) for item in rating.inputs)
+        unavailable = "".join(
+            f"<li><code>{ctx.esc(name)}</code> — {ctx.esc(reason)}</li>"
+            for name, reason in rating.unavailable_metrics
+        )
+        unavailable_block = (
+            "<details><summary>Unavailable metrics</summary>"
+            f"<ul>{unavailable}</ul></details>"
+            if unavailable
+            else ""
+        )
+        rating_html = (
+            f'<p class="rating-value">Rating {ctx.esc(rating.value)}/100</p>'
+            f'<p class="rating-method">{ctx.esc(rating.method)}</p>'
+            f'<ol class="rating-inputs">{inputs}</ol>{unavailable_block}'
+        )
+        css = "score-card"
+    else:
+        misses = "".join(_miss_row(ctx, miss) for miss in rating.sources_missing)
+        coverage = ""
+        if rating.coverage_floor is not None:
+            achieved = (
+                "n/a"
+                if rating.achieved_coverage is None
+                else f"{rating.achieved_coverage * 100:.1f}%"
+            )
+            coverage = (
+                f"<p>Declared floor: {ctx.esc(rating.coverage_floor * 100)}% · "
+                f"achieved: {ctx.esc(achieved)}</p>"
+            )
+        failure = (
+            f'<p class="error">Failure: {ctx.esc(rating.failure)}</p>'
+            if rating.failure
+            else ""
+        )
+        rating_html = (
+            '<p class="rating-withheld">Rating withheld</p>'
+            f"<p>{ctx.esc(rating.reason_code)} — {ctx.esc(rating.reason)}</p>"
+            f'{coverage}{failure}<ul class="miss-list">{misses}</ul>'
+        )
+        css = f"score-card rating-abstention rating-{rating.reason_code}"
+
+    return (
+        f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
+        f"{rating_html}{_render_assessment(ctx, assessment)}"
+        f"{_render_divergence(ctx, divergence)}</article>"
+    )
+
+
+def _render_rating_input(ctx: _Ctx, item) -> str:
+    refs = "".join(
+        f"<li><code>{_render_ref(ctx, ref)}</code></li>" for ref in item.computed_from
+    )
+    return (
+        "<li>"
+        f"<code>{ctx.esc(item.metric_name)}</code> = {ctx.esc(item.metric_value)}; "
+        f"{ctx.esc(item.comparison)} {ctx.esc(item.threshold)}; weight "
+        f"{ctx.esc(item.weight)}; earned {ctx.esc(item.earned_weight)}"
+        f"<ul>{refs}</ul></li>"
+    )
+
+
+def _render_ref(ctx: _Ctx, ref: str) -> str:
+    path, separator, lines = ref.rpartition(":")
+    if separator and "-" in lines:
+        return f"{ctx.path(path)}:{ctx.esc(lines)}"
+    return ctx.path(ref)
+
+
+def _render_assessment(
+    ctx: _Ctx, assessment: Assessment | AssessmentAbsence | None
+) -> str:
+    if assessment is None:
+        return '<p class="assessment-absent">Assessment: not submitted</p>'
+    if type(assessment) is Assessment:
+        return (
+            '<p class="assessment-value">Assessment '
+            f"{ctx.esc(assessment.value)}/100</p>"
+            f'<p class="method">{ctx.esc(assessment.provenance)}</p>'
+        )
+    return (
+        '<p class="assessment-absent">Assessment absent: '
+        f"{ctx.esc(assessment.reason)}</p>"
+    )
+
+
+def _render_divergence(
+    ctx: _Ctx, divergence: Divergence | DivergenceAbsence | None
+) -> str:
+    if divergence is None:
+        return '<p class="divergence-absent">Divergence: not available</p>'
+    if type(divergence) is Divergence:
+        return (
+            '<p class="divergence-value">Divergence '
+            f"{ctx.esc(divergence.signed_gap):s} "
+            f"({ctx.esc(divergence.direction)})</p>"
+        )
+    return (
+        '<p class="divergence-absent">Divergence absent: '
+        f"{ctx.esc(divergence.reason)}</p>"
+    )
+
+
+def _render_nested_abstentions(ctx: _Ctx, overall) -> str:
+    rows = "".join(
+        f"<li><strong>{ctx.esc(item.dimension)}</strong>: "
+        f"{ctx.esc(item.reason_code)} — {ctx.esc(item.reason)}</li>"
+        for item in overall.abstentions
+    )
+    return f'<ul class="overall-abstentions">{rows}</ul>'
 
 
 def _render_coverage(ctx: _Ctx, coverage: CoverageSummary) -> str:
@@ -641,6 +830,21 @@ section, article { background: #111128; border: 1px solid #1e1e42;
 .warning-banner { border-left: 3px solid #ff3b6b; background: rgba(255,59,107,.08); }
 .coverage-entry { border-top: 1px solid #1e1e42; padding-top: .75rem;
   margin-top: .75rem; }
+.score-grid { display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: .75rem; }
+.score-card { margin: 0; min-width: 0; }
+.overall-rating { border-left: 3px solid #00ff88; padding-left: .8rem; margin: 1rem 0; }
+.rating-value, .assessment-value { font-size: 1.35rem; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: #00ff88; margin: .2rem 0; }
+.assessment-value { color: #ffb800; }
+.rating-method, .rating-inputs, .rating-disclosure, .assessment-absent,
+.divergence-absent, .divergence-value, .score-unavailable { font-size: .8rem; }
+.rating-abstention { border-color: #ffb800; background: rgba(255,184,0,.06); }
+.rating-dimension_failed { border-color: #ff3b6b; background: rgba(255,59,107,.08); }
+.rating-withheld { color: #ffb800; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .05em; }
+.rating-abstention .rating-value { display: none; }
 .coverage-score { font-size: 1.6rem; font-weight: 700; margin: .2rem 0;
   font-variant-numeric: tabular-nums; color: #00ff88; }
 .miss-list { margin: .25rem 0 0; padding-left: 1.1rem; font-size: .85rem; }

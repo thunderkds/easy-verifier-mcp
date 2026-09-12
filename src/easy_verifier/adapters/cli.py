@@ -19,6 +19,7 @@ from ..core.pipeline import (
 from ..core.report import ReportWriteError
 from ..core.report import write_report as core_write_report
 from ..core.scope import VALID_KINDS
+from ..core.score import score_repository
 from ..core.synthesis import combined_pack
 from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
 
@@ -27,6 +28,7 @@ OPERATIONAL_EXIT = 3
 _COMBINED = "combined"
 _DISCOVERY = "list-dimensions"
 _WRITE_REPORT = "write-report"
+_SCORE = "score"
 
 
 def _dimension_help() -> str:
@@ -78,6 +80,17 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="findings JSON file; takes precedence over piped stdin",
     )
+
+    score = commands.add_parser(
+        _SCORE,
+        help="rate all seven dimensions and optionally assess findings",
+    )
+    _add_target_arguments(score)
+    score.add_argument(
+        "--findings",
+        metavar="PATH",
+        help="optional findings JSON file; takes precedence over piped stdin",
+    )
     return parser
 
 
@@ -118,6 +131,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _run_combined(args)
         if args.operation == _WRITE_REPORT:
             return _run_report(args)
+        if args.operation == _SCORE:
+            return _run_score(args)
         return _run_single(args)
     except BrokenPipeError:
         return 0
@@ -169,14 +184,31 @@ def _run_report(args: argparse.Namespace) -> int:
     return _emit({"path": result.path, "advisory": result.advisory})
 
 
-def _read_findings(path: str | None) -> bytes:
+def _run_score(args: argparse.Namespace) -> int:
+    result = score_repository(
+        args.repo,
+        scope=args.scope,
+        budget_bytes=args.budget_bytes,
+        ref=args.ref,
+        task_id=args.task_id,
+        findings=_read_findings(args.findings, required=False),
+    )
+    return _emit(result.to_dict())
+
+
+def _read_findings(path: str | None, *, required: bool = True) -> bytes | None:
     if path is not None:
         return Path(path).read_bytes()
     if sys.stdin.isatty():
-        raise ValueError(
-            "write-report requires --findings PATH or findings JSON on stdin"
-        )
-    return sys.stdin.buffer.read()
+        if required:
+            raise ValueError(
+                "write-report requires --findings PATH or findings JSON on stdin"
+            )
+        return None
+    data = sys.stdin.buffer.read()
+    if required or data.strip():
+        return data
+    return None
 
 
 def _parse_dimensions(value: str) -> list[str]:
