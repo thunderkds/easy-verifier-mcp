@@ -13,9 +13,10 @@ checked-in verifier passes against a real Docker daemon.
 |-------|--------|------------------------|
 | New static acceptance tests | pass | `PYTHONPATH=src python -m pytest tests/test_t016_container_config.py -q` -> `4 passed` |
 | README truth tests | pass | `PYTHONPATH=src python -m pytest tests/test_t018_readme.py -q` -> `7 passed` |
-| Full regression suite | pass | `PYTHONPATH=src python -m pytest -q` -> `441 passed` |
+| Full regression suite | pass | Compatible provisioned interpreter with `PYTHONPATH=src python -m pytest -q` -> `570 passed, 1 upstream warning` |
 | Compose expansion | pass | `docker compose config --quiet` exits 0 and static tests inspect its JSON form |
 | Verifier shell syntax | pass | `bash -n scripts/verify_container.sh` exits 0 |
+| Post-T022 tool-surface regression | pass | T016/T014/T022 focused slice -> `21 passed`; verifier now compares the exact 11 tool names and includes `score`, rather than checking only a stale count. |
 | Live container verification | **blocked** | `docker info` -> permission denied opening `unix:///var/run/docker.sock` |
 
 ## Demonstration
@@ -49,7 +50,7 @@ if Docker is unavailable. On a Docker-capable host the required command remains:
 docker compose build && bash scripts/verify_container.sh
 ```
 
-That live gate checks the real MCP initialization, ten-tool listing, two tool
+That live gate checks the real MCP initialization, exact eleven-tool listing (including `score`), two tool
 calls, non-root UID, read-only target root, writable reports overlay, readable
 Git metadata, disabled network, dropped capabilities, absent ports, read-only
 container root, and report path normalization.

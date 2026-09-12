@@ -93,8 +93,26 @@ messages = {
     for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
     if (message := json.loads(line)).get("id") is not None
 }
-if len(messages[2]["result"]["tools"]) != 10:
-    raise SystemExit("FAIL: tools/list did not return exactly 10 tools")
+expected_tools = {
+    "architecture",
+    "blast-radius",
+    "code-quality",
+    "requirement-fidelity",
+    "security",
+    "solution-fit",
+    "test-strategy",
+    "list_dimensions",
+    "combined",
+    "score",
+    "write_report",
+}
+actual_tools = {tool["name"] for tool in messages[2]["result"]["tools"]}
+if actual_tools != expected_tools:
+    missing = sorted(expected_tools - actual_tools)
+    unexpected = sorted(actual_tools - expected_tools)
+    raise SystemExit(
+        f"FAIL: tools/list mismatch; missing={missing}, unexpected={unexpected}"
+    )
 for request_id in (3, 4):
     result = messages[request_id]["result"]
     if result.get("isError"):
@@ -107,4 +125,4 @@ if grep -q '/workspace' "$report_file"; then
   fail "report leaks the container-internal repository path"
 fi
 
-printf 'PASS: uid=%s, tools=10, root=read-only, reports=writable, network=none, ports=none, caps=none\n' "$uid"
+printf 'PASS: uid=%s, tools=11, root=read-only, reports=writable, network=none, ports=none, caps=none\n' "$uid"
