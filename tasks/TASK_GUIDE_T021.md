@@ -40,10 +40,10 @@
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with the glossary — **assessment**, never "agent score"
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the approved PRD request (Supervisor, 2026-09-12)
+- [x] Domain terms align with the glossary — **assessment**, never "agent score"
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
 
 > **Open design question — decide with the Supervisor BEFORE implementing.** `Finding` currently has
 > no `severity` field (`core/findings.py:57` — dimension, title, detail, evidence_ref, confidence,
@@ -53,6 +53,10 @@
 > provenance so a reader knows the weighting was assumed rather than supplied. **(b) is the
 > Supervisor's recommendation** — it keeps FR-015's two mandatory fields exactly two, and it makes an
 > assumed weight visible instead of silent. Do not decide this alone.
+
+**Resolved 2026-09-12 (user): option (b).** `severity` is optional. The declared
+default is applied only by assessment arithmetic and every default application is
+carried in the assessment's provenance.
 
 ---
 
@@ -146,12 +150,12 @@ reintroduce a merged figure and every behavioral test would still pass.
 
 ## Completion Checklist
 
-- [ ] Open design question resolved with the Supervisor **before** implementation
-- [ ] Implementation done
-- [ ] Self-review: `Skill({ skill: "code-review" })` run
-- [ ] Security review: **required (Medium risk)** — built-in cannot run here; review the diff surface directly and record the substitution
-- [ ] Lint passes
-- [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T021.md`'s Evidence table
-- [ ] `Skill({ skill: "verify" })` run
-- [ ] `memory/MEMORY.md` updated
-- [ ] Supervisor notified: task ready for Stage 4 review
+- [x] Open design question resolved with the Supervisor **before** implementation
+- [x] Implementation done
+- [x] Self-review: named `code-review` skill unavailable; bounded P0-P3 substitution recorded
+- [x] Security review: direct diff/AST substitution passed; no new I/O, process, network, environment, or model capability
+- [x] Lint passes
+- [x] Tests written AND pass — output recorded in `tasks/TASK_REVIEW_T021.md`
+- [x] Named `verify` skill unavailable; exact focused command and compatible full suite passed
+- [x] `memory/MEMORY.md` updated
+- [x] Supervisor completed bounded review; task ready for independent integration review

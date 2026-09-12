@@ -12,6 +12,8 @@ Canonical forms (documented, not negotiable):
   inclusive). A lone line number or any other shape is rejected.
 - ``confidence``: one of :data:`CONFIDENCE_DOMAIN`. An empty string or
   ``None`` is not a confidence value.
+- ``severity``: optional and, when present, one of :data:`SEVERITY_DOMAIN`.
+  Assessment applies and discloses its own declared default when omitted.
 
 Decided, undocumented-elsewhere edge cases (FR-015/FR-015a):
 - An empty findings list is **accepted** — it is a real result ("no findings
@@ -38,12 +40,23 @@ CONFIDENCE_DOMAIN = ("low", "medium", "high")
 """The documented confidence domain (FR-015). No numeric scale — this engine
 renders no verdict, so confidence is a coarse, caller-supplied qualifier."""
 
+SEVERITY_DOMAIN = ("low", "medium", "high")
+"""Optional caller-supplied finding severity values used by T021 arithmetic."""
+
 MAX_FINDINGS = 500
 """Bound on a single submission, so parsing stays O(findings) and bounded —
 not a claim about report quality."""
 
 _ALLOWED_FIELDS = frozenset(
-    {"dimension", "title", "detail", "evidence_ref", "confidence", "suggestion"}
+    {
+        "dimension",
+        "title",
+        "detail",
+        "evidence_ref",
+        "confidence",
+        "suggestion",
+        "severity",
+    }
 )
 _REQUIRED_STRING_FIELDS = ("dimension", "title", "detail")
 
@@ -65,6 +78,9 @@ class Finding:
     suggestion: str | None = None
     """Advisory text only (FR-024) — never written, patched, or executed by
     anything in this engine, including this module."""
+    severity: str | None = None
+    """Optional caller judgment. ``None`` remains explicit so assessment can
+    disclose that its declared default was applied."""
 
 
 @dataclass(frozen=True)
@@ -248,6 +264,17 @@ def _validate_one(
             )
         )
 
+    severity = raw.get("severity")
+    if severity is not None and severity not in SEVERITY_DOMAIN:
+        errors.append(
+            FindingError(
+                index,
+                title,
+                "severity",
+                f"severity {severity!r} is not in the allowed domain {SEVERITY_DOMAIN}",
+            )
+        )
+
     # A malformed finding cannot safely resolve a dimension/ref, so stop here
     # rather than risk a confusing secondary error on top of a primary one.
     if errors:
@@ -300,6 +327,7 @@ def _validate_one(
             evidence_ref=evidence_ref,
             confidence=confidence,
             suggestion=suggestion,
+            severity=severity,
         ),
         [],
     )

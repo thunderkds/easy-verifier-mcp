@@ -10,6 +10,7 @@ import pytest
 
 from easy_verifier.core.findings import (
     CONFIDENCE_DOMAIN,
+    SEVERITY_DOMAIN,
     Finding,
     ValidationError,
     validate_findings,
@@ -77,6 +78,27 @@ def test_accepts_a_well_formed_finding_with_optional_suggestion():
             suggestion="Extract a shared interface.",
         ),
     )
+
+
+def test_optional_severity_is_preserved_and_omission_stays_explicit():
+    explicit = validate_findings(
+        [valid_finding(severity="high")], base_packs()
+    ).findings[0]
+    omitted = validate_findings([valid_finding()], base_packs()).findings[0]
+    assert explicit.severity == "high"
+    assert omitted.severity is None
+
+
+@pytest.mark.parametrize("value", SEVERITY_DOMAIN)
+def test_each_severity_value_is_accepted(value):
+    result = validate_findings([valid_finding(severity=value)], base_packs())
+    assert result.findings[0].severity == value
+
+
+def test_out_of_domain_severity_is_rejected():
+    with pytest.raises(ValidationError) as exc_info:
+        validate_findings([valid_finding(severity="critical")], base_packs())
+    assert any(error.field == "severity" for error in exc_info.value.errors)
 
 
 # --------------------------------------------------------------------------
