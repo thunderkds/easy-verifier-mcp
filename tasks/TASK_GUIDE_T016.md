@@ -85,7 +85,7 @@ still does the job.
 
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
-| 1 | `docker build` then `docker run -i` with this repo mounted, sending an MCP `tools/list` | 10 tools listed | automated/scripted test |
+| 1 | `docker build` then `docker run -i` with this repo mounted, sending an MCP `tools/list` | All 11 tools listed, including T022's `score` | automated/scripted test |
 | 2 | `docker exec ... id -u` | Non-zero UID | scripted test |
 | 3 | `docker exec ... touch /workspace/NOPE` | Permission denied | scripted test |
 | 4 | `docker exec ... touch /workspace/reports/ok` | Succeeds | scripted test |

@@ -28,21 +28,22 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 - [x] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | ✅ Done 2026-08-25
 
 **Wave 7 — Quality rating & assessment (added 2026-08-26, user request; see `docs/ddr/0003-abstain-from-rating-below-coverage-floor.md`)**
-_(T020 and T021 merged via PR #9; T022 is in progress below.)_
+_(complete — T020 and T021 merged via PR #9; T022 merged via PR #10)_
 
 **Wave 5 — Verification (QA-owned)**
 - [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof (**HITL gate: parity definition**) | qa-expert | C2 | Risk: High | P0
 
 ### In Progress
 
-- [ ] **T016** — Dockerfile + compose: non-root, read-only mount except `reports/` | C1 | Risk: Med | P0 | implementation merged via PR #8; static tests and compose expansion pass; **live verification blocked because this environment cannot access `/var/run/docker.sock`**
+- [ ] **T016** — Dockerfile + compose: non-root, read-only mount except `reports/` | C1 | Risk: Med | P0 | implementation merged via PR #8; static tests and compose expansion pass; verifier updated for T022's 11-tool surface; **live verification blocked because this environment cannot access `/var/run/docker.sock`**
 
 ### Ready for Review
 
-- [ ] **T022** — `score` operation in both adapters + report score panel | backend-developer | C1 | Risk: Low | P0 | 8 focused tests and 570 full-suite tests passed; real CLI returned seven ratings, 77 cited metrics, and disclosed overall 65; Ruff clean; P0 0/P1 0/P2 0 after remediation; ready for publication review.
+_(empty)_
 
 ### Done
 
+- [x] **T022** — `score` operation in both adapters + report score panel | C1 | Risk: Low | Completed: 2026-09-12 | 8 focused tests and 570 full-suite tests passed; real CLI returned seven ratings, 77 cited metrics, and disclosed overall 65; Ruff clean; P0 0/P1 0/P2 0 after remediation; merged via PR #10 (`94cdc65`).
 - [x] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | C2 | Risk: Med | Completed: 2026-09-12 | 18 focused assessment tests, 52 assessment/findings tests, 562 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; merged via PR #9 (`a6ca3e6`).
 - [x] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | C2 | Risk: Med | Completed: 2026-09-12 | 66 focused tests and 539 compatible full-suite tests passed; Ruff clean; P0 0/P1 0/P2 0 after remediation; merged as an ancestor of PR #9 (`a6ca3e6`).
 - [x] **T019** — `metrics.py`: measured facts computed over the evidence pack only | C2 | Risk: Low | Completed: 2026-09-03 | 32 focused tests and 441 full-suite tests passed after Stage 5 remediation; ruff clean; Stage 5 initially found source/test classification defects, fixed in `7d4831b`; merged via PR #4 (`ad28d3f`).
