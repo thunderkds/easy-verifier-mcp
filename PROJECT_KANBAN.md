@@ -40,7 +40,7 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 
 ### Ready for Review
 
-- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Recovered and reverified 2026-09-12: 66 focused tests, 539 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; publication pending, not merged
+- [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Recovered and reverified 2026-09-12: 66 focused tests, 539 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; `feat/t020-judge` published to GitHub, not merged
 
 ### Done
 

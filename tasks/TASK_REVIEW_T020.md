@@ -21,6 +21,15 @@
 
 ---
 
+## Publication
+
+Recovered branch `feat/t020-judge` was first published to the `github` remote on
+2026-09-12 at commit `4d4fe09`. Push output created the remote branch and set the
+local branch to track `github/feat/t020-judge`. The task remains unmerged pending
+integration review.
+
+---
+
 ## Self-review
 
 The named `code-review` skill is unavailable in this Codex session. A bounded
