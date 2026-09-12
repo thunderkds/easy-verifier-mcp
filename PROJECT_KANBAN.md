@@ -28,7 +28,6 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 - [x] **T018** — `README.md`: full intended v1 surface + doc-truth test pinning every documented command | ✅ Done 2026-08-25
 
 **Wave 7 — Quality rating & assessment (added 2026-08-26, user request; see `docs/ddr/0003-abstain-from-rating-below-coverage-floor.md`)**
-- [ ] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | backend-developer | C2 | Risk: Med | P1
 - [ ] **T022** — `score` operation in both adapters + report score panel (**must follow T014 and T015**) | backend-developer | C1 | Risk: Low | P0
 
 **Wave 5 — Verification (QA-owned)**
@@ -41,6 +40,7 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 ### Ready for Review
 
 - [ ] **T020** — `judge.py`: declared rules → rating, per-dimension coverage floors, abstention as a distinct state, disclosed overall | backend-developer | C2 | Risk: Med | P0 | Recovered and reverified 2026-09-12: 66 focused tests, 539 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; `feat/t020-judge` published to GitHub, not merged
+- [ ] **T021** — `assessment.py`: severity/confidence-weighted findings rollup + rating↔assessment divergence, never reconciled | backend-developer | C2 | Risk: Med | P1 | Stage 4/5 substitution complete locally 2026-09-12: 18 focused assessment tests, 52 assessment/findings tests, 562 compatible full-suite tests, Ruff clean; P0 0/P1 0/P2 0 after remediation; not yet published or merged
 
 ### Done
 
