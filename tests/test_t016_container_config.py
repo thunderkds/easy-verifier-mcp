@@ -76,7 +76,9 @@ def test_container_verifier_is_valid_shell_and_checks_the_real_mcp_surface() -> 
         "CapDrop",
         "PortBindings",
         "git -C /workspace",
-        "timeout 90s",
+        "mkfifo",
+        "SECONDS + 90",
+        "no response received for request id",
     ):
         assert witness in source
 
