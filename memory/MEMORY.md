@@ -17,33 +17,58 @@
 
 ## ▶ START HERE — handoff from the 2026-09-16 session
 
-**State**: **19 of 22 tasks done.** Wave 7 (T020 ratings, T021 assessment, T022 score) is **complete**
-— T022 merged via PR #10 (`94cdc65`) and Stage 5-verified on `develop` on 2026-09-16. `develop` is
-**level with `github/develop`** (0 ahead, 0 behind) and the working tree is clean; the push
-authorisation question from earlier sessions is closed for everything merged so far. Post-merge:
-**570 tests, ruff clean.** Nothing is In Progress or Ready for Review except T016, below.
+**State**: **20 of 22 tasks done.** T022 and T016 both closed this session, each with Stage 5
+verification driven at a real surface. Post-merge: **570 tests, ruff clean.**
 
-**The engine now produces a score.** That is the single biggest change since the 2026-08-25 handoff
-and it reframes what this project is: `score_repository()` composes the fixed T019/T020/T021
-contracts into one operation exposed identically at the CLI (`easy-verifier score`) and MCP
-(`score` tool), with a `Quality score` panel in the HTML report. Ratings are declared arithmetic
-over cited metrics; a dimension below its coverage floor **abstains** rather than guessing; caller
-findings produce a separate assessment and an explicit divergence that is **never blended** into
-the rating. The README's old promise that the engine "never returns a score" was wrong and was
-corrected to "no *inferred verdict*".
+**Push state**: all of this session's work is **pushed** — `github/develop` is at `ec3b393`
+(the merge resolving the parallel T016 fix), confirmed after the user ran the push. Only the commit
+carrying this handoff may be outstanding; check with `git rev-list --left-right --count
+github/develop...develop` and raise it only if the right-hand number is non-zero. The remote is
+**`github`**, not `origin`, and the `git-guardrails` hook blocks `git push` from the Supervisor by
+design — the user runs it as `! git push github develop`.
 
-**Next action**: **T016 is newly unblocked — Docker is reachable in this environment** (`docker
-info` succeeds), which was the sole reason it sat open since 2026-09-02. Run `docker compose build
-&& bash scripts/verify_container.sh`. **Expect it to fail on a stale assertion, not on the
-container**: the script asserts `tools/list` returns *exactly 10* tools, and T022 added an eleventh
-(`score`). That count is a canary for adapter drift and should be updated deliberately, not just
-bumped. After T016, only **T017** remains, and it is HITL-gated (below).
+> Note for whoever writes here next: the same hook pattern-matches the literal string `git push`
+> **inside heredoc text**, not just in an executed command, so a Bash call that merely *documents*
+> that command is refused. Edit this file with the Write tool when the content mentions it.
 
-**FR-022 parity is now demonstrated rather than asserted.** T022's Stage 5 drove `score` at the real
-CLI *and* at the MCP server over real stdio with the same arguments and got the same `overall` and
-the same rating/abstention sequence. This is the first time the two adapters were compared at
-runtime. It matters for T017, whose whole subject is that parity — the method is reusable, and the
-**byte-equality** question below is the only thing still blocking it.
+**Only T017 remains, and it is now spawnable.** Its HITL gate closed today via **DDR-0005**: parity
+is byte-equality after a closed three-rule normalization — paths repo-relative, timestamps one
+fixed token, report filename excluded — with every other field compared byte-for-byte and no
+tolerance. **Binding on the implementer: widening that list is a spec change, not a test fix; an
+agent that finds a fourth difference stops and reports.** T017 is C2 / High Risk / P0, owned by
+`qa-expert`, guide at `tasks/TASK_GUIDE_T017.md`, and mandates `security-review` at Stage 4. T022's
+Stage 5 is the existence proof that the parity is reachable — the CLI and the MCP server returned
+the same `overall` and the same rating/abstention sequence for identical arguments.
+
+**What T016 turned out to be — read this before trusting any "blocked" status.** T016 sat open for
+two weeks labelled "Docker unreachable / static tests pass". Docker became reachable today and the
+container was correct all along. What was broken was `scripts/verify_container.sh`, in a way that
+**could not fail**: it closed stdin, the MCP server dropped trailing responses, and
+`for request_id in (3, 4)` raised `KeyError` before any pass/fail. The command had never once run to
+completion. **PR #11 (`8e3c560`, 2026-09-12) fixed the stale tool count and still could not reach the
+assertion** — a correct check added to a script that could not get to it, merged while Docker was
+unreachable so nothing ran it. Three consecutive status updates described a container nothing had
+verified. The generalizable form, now in `learnings.md`: **"blocked" was blocking *discovery*, not
+merely verification, and a check that has always failed for a plausible reason is indistinguishable
+from one that cannot pass.**
+
+**The defect recurred inside its own fix**, which is the part worth remembering: the first
+remediation made the timeout path print the entire expected id set instead of the missing one — a
+harness that knew exactly which id had vanished and declined to say. Caught only by driving a
+sabotaged copy, never by reading the diff. **The check that works: withhold one input deliberately
+and confirm the harness fails naming that input.** Running the real thing and seeing PASS cannot
+establish it, because the broken harness passed too.
+
+**Open follow-up, highest value**: T022 residue (a) — `ScoreResult.to_dict()` emits no `scope` and
+no `warnings`, so an unresolved `--scope task` reports a confident **overall 70** against a resolved
+project run's **66**, because abstention drops low contributors out of the average. Honest in every
+part, misleading in the headline; the ninth instance of that class and the first outside a single
+pack. Closing it is a schema addition and needs its own task.
+
+**New this session**: `.claude/skills/verify/SKILL.md` now exists and covers all four surfaces —
+CLI, MCP over stdio, HTML report, and the container (including the FIFO trick for driving the
+containerized server without losing the last response). Read it before any cold verification.
+
 
 **Spawn-prompt additions earned so far — keep all four in every spawn:**
 1. *"Commit your work before reporting ready-for-review."* (T003 reported done with zero commits.)
