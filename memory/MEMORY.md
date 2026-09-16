@@ -53,6 +53,17 @@ runtime. It matters for T017, whose whole subject is that parity — the method 
 4. *"Reproduce the reported defect before fixing it, and confirm your new test fails on the pre-fix
    commit."*
 
+**A verification harness is code — pin it to both extremes too.** T016 (2026-09-16) is the eighth
+instance of the green-test-that-cannot-fail class and the **first outside a test file**: the
+container was correct for two weeks while `scripts/verify_container.sh` could never reach its own
+final assertion (it closed stdin, the MCP server dropped trailing responses, `KeyError` before any
+pass/fail). "Static tests pass" on the board meant nothing. A script that exits non-zero for a
+plausible reason reads as a known failure rather than a broken check, which is exactly why it
+survived where unit-test instances were caught. The check that works: **drive a sabotaged copy with
+one input deliberately withheld and confirm it fails naming that input** — running the real thing
+and seeing PASS cannot establish it, because the broken harness passed too. It then recurred inside
+its own fix (the timeout named every id instead of the missing one). See `learnings.md`.
+
 **Cheapest reliable check for this project's most persistent defect class**: hardwire the predicate a
 test depends on to each of its extremes and re-run. A test that passes under both is pinning nothing.
 That is how T018's P1(b) was caught, and it retroactively explains T005, T008 and T010.

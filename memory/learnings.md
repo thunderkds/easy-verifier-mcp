@@ -444,3 +444,39 @@ A verification probe reported a phantom argparse failure (`unrecognized argument
 because `for a in "--scope task"; do cmd $a` passes **one** token in zsh, unlike bash. The shell
 here is zsh. Use explicit arguments or an array when driving a CLI in a loop, and be suspicious of a
 parse error that only reproduces inside a loop.
+
+## A verification harness is code, and needs both-extremes pinning too (T016, 2026-09-16)
+
+**The eighth instance of this project's green-test-that-cannot-fail class, and the first outside a
+test file.** T016 sat open for two weeks on what looked like an environment problem ("Docker
+unreachable"), with the board recording "static tests pass". When Docker became reachable, the
+container turned out to have been correct the whole time — non-root, read-only root, no caps, no
+network, no ports, no path leak. What was broken was `scripts/verify_container.sh`.
+
+It had two defects. The visible one was a stale `tools/list` count (10, after T022 added `score`).
+The real one: it piped a fixed request batch into `docker compose run` and closed stdin, and the MCP
+server exits on EOF before flushing trailing responses. Its final assertion `for request_id in (3,
+4)` therefore raised `KeyError` before reaching any real pass/fail — **the command had never once
+run to completion**, so the "static tests pass" note had been asserting nothing about the container
+for two weeks.
+
+**Why this one survived where unit-test instances were caught**: a script that exits non-zero for a
+plausible-looking reason reads as a known failure, not a broken check. Nobody re-reads it. A green
+test that cannot fail at least invites the question "what would make this red?"; a red script
+answers that question wrongly and closes it.
+
+**The generalizable rule**: pin a harness to both extremes exactly as you would the code it checks.
+For T016 that meant driving a sabotaged copy with one request deliberately withheld and confirming
+it fails *naming that id*. Step 1 — running the real thing and seeing PASS — could never have
+established this, because the broken harness also "passed".
+
+**It recurred inside its own fix.** The first remediation made the timeout path print the entire
+expected id set rather than the missing one, so a harness that knew exactly which id never arrived
+declined to say — the same honest-in-parts/uninformative-in-headline shape the task existed to fix,
+one layer down. Caught only by driving the sabotage, not by reading the diff.
+
+**Two probes worth reusing**, both of which covered ground nothing had tested: call `score` inside
+the container (adapter × packaging interactions are untested by default), and grep any containerized
+payload for `/workspace` — FR-021c had only ever been proven for *reports*, never for other
+operations. Also: `/tmp` in this image is writable but **`noexec`**, a defense `compose.yaml`
+declares that nothing had exercised.
