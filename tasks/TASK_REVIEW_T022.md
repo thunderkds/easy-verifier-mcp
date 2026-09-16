@@ -48,3 +48,80 @@ compatible provisioned Python environment.
 | P2 | `README.md` still claimed that the approved engine never returns a score. | Reframed the promise as no inferred verdict, documented declared ratings/assessments/divergence, and added the runnable score command to the existing doc-truth gate. |
 
 Post-remediation result: P0 0 / P1 0 / P2 0.
+
+## Stage 5 verification (Supervisor, 2026-09-16)
+
+Run on `develop` at `94cdc65` (post-merge), not in the implementer's worktree — the first
+independent run of T022 at the real surfaces after integration. Cold start: the repo's `.venv` did
+not have the project installed, so `easy-verifier` was not on PATH until `.venv/bin/python -m pip
+install -e .`. The recipe is now persisted at `.claude/skills/verify/SKILL.md` so the next session
+skips this.
+
+**Verdict: PASS.**
+
+| Surface | Driven | Observed |
+|---|---|---|
+| CLI | `easy-verifier score --repo . --scope project` | exit 0; 125 KB payload; 7 ratings, 77 metrics, `overall.value 66`, 7/7 contributors |
+| CLI + findings | `… --findings f.json` (2 architecture findings) | payload gains `assessments` + `divergences`; architecture rating 82 vs assessment 69, `signed_gap -13`, `direction agent_harsher` — reported side by side, never blended |
+| MCP | `stdio_client` → `call_tool("score", {"repo":".","scope":"task"})` | tool list includes `score`; `overall 70` and the identical `rating`/`rating_abstention` kind sequence as the CLI at the same arguments — **FR-022 parity holds on this pair** |
+| Report | `write-report --scope task --findings f.json` | `<h2>Quality score</h2>` panel renders overall 70/100, the "abstention can raise the overall" disclosure, per-rule arithmetic with `computed_from` refs, unavailable-metric reasons, `Rating withheld — below_coverage_floor · Declared floor: 25.0% · achieved: 0.0%` with full miss lists, and `Assessment 70/100 · Divergence -12 (agent_harsher)` |
+
+Note: the Demonstration block above records overall **65** from the implementer's 2026-09-12
+worktree; this run observed **66** on `develop`. The difference is repository drift between the two
+commits, not a scoring change — the operation is deterministic for a fixed tree.
+
+**Probes driven at the surface (all held):**
+
+- `write-report < /dev/null` → unchanged `validation error … malformed JSON`, exit 2. The
+  `_read_findings(required=False)` refactor did **not** loosen `write-report`; this was the main
+  regression risk in the diff.
+- `score < /dev/null` → exit 0, full score. Empty stdin correctly reads as "no findings".
+- Malformed findings → `finding[-1] (None) [<payload>]: malformed JSON at line 1, column 1`;
+  unknown field → `finding[0] ('x') [<unknown>]: unknown field(s): bogus`. Both exit 2, both name
+  the offender.
+- `--repo /nonexistent` → exit **3 from both `score` and a single dimension**; no exit-code
+  divergence between operations.
+- `--scope task` with no `--task` → exit 0, matching the single-dimension path. Three dimensions
+  abstain and every miss reason reads `not examined: the task scope could not be resolved (its
+  required selector was not supplied)` — **T008's widening class does not reproduce** in the
+  abstention layer.
+- `--budget-bytes 0`, `--findings` passed twice, `--findings /dev/null` → no traceback; last flag
+  wins; empty file rejected as malformed JSON.
+
+## Open residue (recorded, not fixed)
+
+(a) **The `score` payload never states what scope produced it, or that the scope failed.**
+`ScoreResult.to_dict()` emits only `ratings` / `overall` / `metrics` — no `scope`, no `warnings`.
+Under `--scope task` with no `--task`, `architecture` still rates **82** (it reads repo-root docs,
+which is mode-driven rather than scope-driven) while three siblings abstain citing the unresolved
+scope, and the run reports a confident **overall 70** — *higher* than the fully-resolved
+`--scope project` run's **66**, because abstention removes low contributors from the average. The
+truth is present in every miss reason and in the panel's own "abstention can raise the overall"
+line, so nothing here is a lie; what is missing is elevation. This is **this project's recurring
+miss-list defect class moved one layer up**: honest in the parts, misleading in the headline. The
+prior seven instances were all inside a single dimension's pack, where DDR-0004's structural fix
+reaches; a composition layer that re-publishes those packs as one number is outside that fix's
+scope. The obvious closure is a `scope` block on the payload carrying the resolved kind, its
+selector, and any pipeline warnings — a schema addition, so it needs its own task rather than a
+review-stage patch.
+
+(b) **`score --scope project` takes 5–10 minutes and prints nothing until it finishes.** No
+progress output on a seven-dimension gather. It had to be backgrounded to survive a 120s tool
+timeout, and a concurrent second invocation was starved into a 600s timeout that did not reproduce
+when run alone. This is friction in the operation most likely to be a user's first command.
+
+(c) **`--findings` on a missing path leaks a raw errno**: `operational error: [Errno 2] No such
+file or directory: '/…/nope.json'` (exit 3). Every other error at this surface is phrased for the
+operator (`target repository path does not exist: …`); this one exposes the exception's `repr`.
+Cosmetic, but it is the error a user is most likely to reach by typo.
+
+(d) `--findings /dev/null` (an empty **file**) reports `malformed JSON at line 1, column 1`, while
+*omitting* `--findings` entirely is accepted. Passing an empty file is the likelier accident and
+gets the less helpful message.
+
+(e) Environment, not T022: the checked-in `.venv` does not have the project installed, so
+`easy-verifier` is absent from PATH until `pip install -e .`. It blocks any cold verification.
+
+(f) Pre-existing T009/T010 residue, newly visible as an asymmetry: `files_read` duplicates 2× on
+`architecture --scope task --task T022` (6 entries for 3 files) but **not** on the same command
+without `--task` (3 entries).

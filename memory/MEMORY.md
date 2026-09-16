@@ -15,70 +15,100 @@
 
 ---
 
-## ▶ START HERE — handoff from the 2026-08-25 session
+## ▶ START HERE — handoff from the 2026-09-16 session
 
-**State**: **T012 and T013 are merged to `develop`** (2026-08-25) — 13 of 18 tasks done (T018 was added 2026-08-25 by user
-request as a new Wave 6). Wave 2 stays complete: all seven of FR-010's dimensions are wired, and the
-repo now has a real README. Post-merge on the main checkout: **409 tests, ruff clean**. Nothing is In
-Progress or Ready for Review. **`develop` is unpushed and the user has not yet authorised a push.**
+**State**: **19 of 22 tasks done.** Wave 7 (T020 ratings, T021 assessment, T022 score) is **complete**
+— T022 merged via PR #10 (`94cdc65`) and Stage 5-verified on `develop` on 2026-09-16. `develop` is
+**level with `github/develop`** (0 ahead, 0 behind) and the working tree is clean; the push
+authorisation question from earlier sessions is closed for everything merged so far. Post-merge:
+**570 tests, ruff clean.** Nothing is In Progress or Ready for Review except T016, below.
 
-**Unpushed**: local `develop` is ahead of the remote. The remote is named **`github`**, not `origin` —
-this is not cosmetic, it breaks tooling (see below).
+**The engine now produces a score.** That is the single biggest change since the 2026-08-25 handoff
+and it reframes what this project is: `score_repository()` composes the fixed T019/T020/T021
+contracts into one operation exposed identically at the CLI (`easy-verifier score`) and MCP
+(`score` tool), with a `Quality score` panel in the HTML report. Ratings are declared arithmetic
+over cited metrics; a dimension below its coverage floor **abstains** rather than guessing; caller
+findings produce a separate assessment and an explicit divergence that is **never blended** into
+the rating. The README's old promise that the engine "never returns a score" was wrong and was
+corrected to "no *inferred verdict*".
 
-**Next action**: Wave 3 is complete. **T013's biggest open residue: `write_report` is reachable from no adapter** — no CLI subcommand exists, so the only way to produce a report is importing the function, and the guide's own Verification Command is unrunnable. That is the obvious next slice, and T015 may already own it.
+**Next action**: **T016 is newly unblocked — Docker is reachable in this environment** (`docker
+info` succeeds), which was the sole reason it sat open since 2026-09-02. Run `docker compose build
+&& bash scripts/verify_container.sh`. **Expect it to fail on a stale assertion, not on the
+container**: the script asserts `tools/list` returns *exactly 10* tools, and T022 added an eleventh
+(`score`). That count is a canary for adapter drift and should be updated deliberately, not just
+bumped. After T016, only **T017** remains, and it is HITL-gated (below).
+
+**FR-022 parity is now demonstrated rather than asserted.** T022's Stage 5 drove `score` at the real
+CLI *and* at the MCP server over real stdio with the same arguments and got the same `overall` and
+the same rating/abstention sequence. This is the first time the two adapters were compared at
+runtime. It matters for T017, whose whole subject is that parity — the method is reusable, and the
+**byte-equality** question below is the only thing still blocking it.
 
 **Spawn-prompt additions earned so far — keep all four in every spawn:**
 1. *"Commit your work before reporting ready-for-review."* (T003 reported done with zero commits.)
 2. *"Before writing any file walk or path resolver, find the existing one and port its hardening."*
-   (T003 rewrote a walk and reproduced T002's exact symlink escape. T008, T009 and T010 all obeyed it —
-   T010 reaches every declared source through `read_source` rather than hand-rolling bookkeeping, and
-   that alone is why it is the first dimension not to ship the miss-list contradiction.)
 3. *"Implement the guide's prescribed Approach; if you intend to substitute a different design, say so
    before you build it, not in the completion report."*
 4. *"Reproduce the reported defect before fixing it, and confirm your new test fails on the pre-fix
-   commit."* (T008 did this unprompted; T009's and T010's remediations both pasted the red output.)
+   commit."*
 
 **Cheapest reliable check for this project's most persistent defect class**: hardwire the predicate a
 test depends on to each of its extremes and re-run. A test that passes under both is pinning nothing.
-That is how T018's P1(b) was caught, and it retroactively explains T005, T008 and T010 — four shapes,
-one property: the test could not tell the correct implementation from the broken one.
+That is how T018's P1(b) was caught, and it retroactively explains T005, T008 and T010.
 
-**Review procedure — six sessions have proved it out**: re-run a selection or ordering AC against **a
-repo built to embarrass the implementation**, never the author's fixture. Cross-check `sources_missing`
-against `files_read` and `excerpts` in the same pack — **and now also ask what *bounded* the search and
-whether the miss reason says so.** T010's pack was internally consistent and still lied: it really did
-scan 400 files and really found nothing in them, because the only consumer sat past the ceiling. Every
-dimension has a cap; a cap that does not surface in the reason it produces is this defect waiting.
+**The miss-list defect class has now moved up a layer — this is the thing to watch.** Eight instances
+so far, all one property: *the output is honest in its parts and misleading in its headline.* T022's
+Stage 5 found the ninth and it is the first **outside** a single dimension's pack, so DDR-0004's
+structural fix cannot reach it: `ScoreResult.to_dict()` emits no `scope` and no `warnings`, so a
+`--scope task` run whose selector was never supplied reports a confident **overall 70** — *higher*
+than a fully-resolved project run's **66**, because abstention drops low contributors out of the
+average. Every miss reason names the unresolved scope and the panel says abstention can raise the
+overall, so nothing lies. What is missing is **elevation**. Recorded as residue (a) in
+`TASK_REVIEW_T022.md`; closing it is a schema addition and needs its own task.
 
-**Stage 5 `verify` failed T008 and T009 after both cleared every Stage 4 gate — T010 broke the streak**,
-passing on the first attempt. Not because the gate loosened: Stage 4 caught T010's P1 by driving a
-hostile fixture at the CLI rather than reading the diff. A clean Stage 4 is still no evidence about
-Stage 5 **unless Stage 4 actually ran the thing**. `verify` is user-invocation-only — the Supervisor
-cannot call it via the Skill tool and must hand back to the user.
+**Review procedure — seven sessions have proved it out**: re-run a selection or ordering AC against
+**a repo built to embarrass the implementation**, never the author's fixture. Cross-check
+`sources_missing` against `files_read` and `excerpts` in the same pack, and ask what *bounded* the
+search and whether the miss reason says so. **Now add: ask what the headline number omits, and
+whether the payload says which scope produced it.**
+
+**Stage 5 `verify` has now passed first-try twice (T010, T022) after failing T008 and T009.** Both
+first-try passes happened because Stage 4 *ran the thing* rather than reading the diff. A clean
+Stage 4 is still no evidence about Stage 5 unless Stage 4 actually drove the surface. `verify` is
+user-invocation-only — the Supervisor cannot call it via the Skill tool and must hand back to the user.
 
 **Tooling gotchas**:
+- **The repo's checked-in `.venv` does not have the project installed** — `easy-verifier` is off
+  PATH until `.venv/bin/python -m pip install -e .`. This blocks any cold verification; the recipe
+  and the surface-driving commands are now captured in **`.claude/skills/verify/SKILL.md`**.
+- **The shell here is zsh**: an unquoted `$VAR` holding several flags is *not* word-split. Write each
+  invocation out in full.
+- `score --scope project` runs **5–10 minutes printing nothing** and will blow a 120s tool timeout;
+  background it, and do not run two at once (a concurrent second call was starved into a 600s timeout
+  that did not reproduce alone). Use `--scope worktree` or `--scope task` for probes.
 - The built-in `security-review` skill **cannot run in this repo** — it resolves the diff via
   `origin/HEAD` and the remote is named `github`. Review the diff surface directly and record the
   substitution in the evidence.
 - The `pre_agent` hook warns that a task's Demonstration BEFORE field is blank by reading the
-  **guide**, but since T064 that block lives in `tasks/TASK_REVIEW_Txxx.md`. It fires on every
-  correctly-filled task. Advisory only — check the review file before believing it.
+  **guide**, but since T064 that block lives in `tasks/TASK_REVIEW_Txxx.md`. Advisory only.
 
 **Waiting on the user (do not proceed without a decision)**:
 - **T017 HITL gate** — FR-022 says adapters produce "identical" output, the KPI table says
   "byte-equal". Timestamps and host-vs-container paths differ by construction, so byte-equality is
-  unachievable as written. Blocks the whole verification suite.
+  unachievable as written. Blocks the last remaining task. T022's Stage 5 shows what *is* achievable:
+  identical payloads at the same arguments once the varying fields are named.
 - **T010 residue (d)** — under `project` scope `blast-radius` yields zero citable excerpts unless the
-  repo declares an entry point, and in a non-git directory the pack is entirely empty. Every source is
-  honestly refused, but no evidence path exists for that combination. Recorded for a decision, not fixed.
+  repo declares an entry point, and in a non-git directory the pack is entirely empty.
 
-**Open follow-up candidates (none scheduled)**: add `vendor` to `core/scope.py:_EXCLUDED_DIRS`;
-**`files_read` duplicated 2× on a default invocation** (budget's tier passes call `collect` twice *and*
-`blast-radius` re-opens each manifest in its reference sweep — 800 entries for a 400-file sweep, T009's
-residue now visible without a narrow scope); make `pipeline.py:60`'s "never widen on failure" invariant
-structural rather than conventional; close T004's two detector floors; thread `secret_approval` through
-the adapters so T008's HITL gate is operable; `--budget-bytes 0` traceback at the CLI; a manifest read
-but declaring nothing is credited in `sources_found` and counts toward `coverage_score`.
+**Open follow-up candidates (none scheduled)**: elevate scope/warnings into the `score` payload
+(T022 residue (a) — the highest-value one); add `vendor` to `core/scope.py:_EXCLUDED_DIRS`;
+`files_read` duplicated 2×; make `pipeline.py:60`'s "never widen on failure" invariant structural
+rather than conventional; close T004's two detector floors; thread `secret_approval` through the
+adapters so T008's HITL gate is operable; `--budget-bytes 0` traceback at the CLI; a manifest read
+but declaring nothing is credited in `sources_found` and counts toward `coverage_score`; the
+`[Errno 2]` repr leak on a missing `--findings` path.
+
 
 **Standing traps — read `learnings.md` before verifying or merging**:
 - Agent worktrees have **no `.venv`**; verify with the main checkout's interpreter and read pytest's
