@@ -21,6 +21,7 @@ now passes end-to-end.
 | Reproduced defect 1 (stale tool count) pre-fix | fail (expected) | `FAIL: tools/list did not return exactly 10 tools` |
 | Reproduced defect 2 (dropped final response) pre-fix | fail (expected) | with defect 1 patched to `11` on a scratch copy, `KeyError: 3` raised at the `for request_id in (3, 4)` loop — confirms the harness could never have reached its own last assertion |
 | Live container verification (`docker compose build && bash scripts/verify_container.sh`) | **pass** | see full output below; run twice for stability, both `exit=0` |
+| Stage 4 P2 fix — timeout path names only the missing id(s) | pass (both extremes pinned) | see "Stage 4 P2 fix" section below: unmodified script passes; a copy with only the id-4 request deleted fails naming `4` alone, not `1 2 3 4` |
 
 ## Demonstration
 
@@ -121,3 +122,85 @@ harness that silently dropped a response.
 
 No changes were made to `Dockerfile`, `compose.yaml`, or `src/` — the
 container itself was already verified correct.
+
+## Stage 4 review — P2 fix
+
+**P2 — the timeout path named every request id, not the missing one.** The
+first version of the deadline branch did:
+
+```bash
+fail "timed out waiting for responses to request ids: ${request_ids[*]}"
+```
+
+which always names all four ids regardless of which one(s) actually never
+arrived — the same "honest in its parts, uninformative in its headline"
+shape this task exists to fix. Confirmed live by the reviewer with a
+sabotaged copy missing only the id-4 request.
+
+**Fix**: extracted `missing_response_ids()`, the same set-difference the
+poll loop already computed, and had both the poll loop (`have_all_responses`)
+and the timeout `fail` message call it, so the deadline path now names only
+the request id(s) that are actually still missing. The 90s deadline and the
+"do not wait for the container to exit" behavior are unchanged — only the
+message on that path changed.
+
+Pinned to both extremes, per the reviewer's instruction:
+
+**1. Unmodified script → PASS, exit 0** (captured 2026-09-16T04:09:55Z):
+
+```text
+$ docker compose build --quiet && bash scripts/verify_container.sh
+ Image easy-verifier-mcp:0.1.0 Built
+ Container easy-verifier-t016-668-verifier-run-3657c864868d Creating
+ Container easy-verifier-t016-668-verifier-run-3657c864868d Created
+ Container easy-verifier-t016-668-verifier-run-b2769a246255 Creating
+ Container easy-verifier-t016-668-verifier-run-b2769a246255 Created
+PASS: uid=10001, tools=11, root=read-only, reports=writable, network=none, ports=none, caps=none
+exit=0
+```
+
+**2. Sabotaged copy with only the id-4 (`write_report`) request line deleted
+→ FAIL naming only id 4, exit 1** (captured 2026-09-16T04:10:11Z, `request_ids=(1 2 3 4)`
+left unchanged so the script itself still expects all four):
+
+```text
+$ timeout 150 bash /tmp/verify_container_sabotage_id4.sh
+ Container easy-verifier-t016-18551-verifier-run-bff2b68f2661 Creating
+ Container easy-verifier-t016-18551-verifier-run-bff2b68f2661 Created
+ Container easy-verifier-t016-18551-verifier-run-ecbf9249f8b5 Creating
+ Container easy-verifier-t016-18551-verifier-run-ecbf9249f8b5 Created
+FAIL: timed out waiting for response(s) to request id(s): 4
+exit=1
+```
+
+Only id 4 is named, matching the single request actually deleted; the
+deadline still fired at ~90s rather than waiting for `docker compose run`
+to exit on its own.
+
+**P3 (fixed, cheap) — the deciding heredoc's `json.loads` was less tolerant
+than the poller's.** `have_all_responses`/`missing_response_ids` already
+skip a line that fails `json.loads` with `try`/`except JSONDecodeError`;
+the final pass/fail heredoc did not, so a torn last line would raise an
+opaque traceback from the function that decides pass/fail while the poller
+treated the same line as a clean skip. Made the deciding heredoc build its
+`messages` dict with the same skip-on-`JSONDecodeError` loop instead of the
+walrus-in-dict-comprehension that had no exception handling.
+
+**P3 (accepted as residue, not changed) — `wait "$run_pid" || true` discards
+the container's exit status.** A server that crashed after emitting all four
+responses would still pass this harness; the payload assertions (tool set,
+`isError`, report contents) cover most of the practical failure surface, but
+a clean-exit-status check is not asserted separately. Per the reviewer's
+scope guidance, left as-is to avoid scope creep into container/process
+lifecycle handling beyond this task's charter (harness-fix only).
+
+**Record, not a defect — the dropped response is not really
+"nondeterministic".** Both observed drops (id 3 in this session's isolated
+repro, id 4 in the Supervisor's reordering test, and now id 4 again in the
+sabotage test above) are consistent with a single rule: it is always a
+**trailing run** of responses that is lost when stdin hits EOF, and *how
+many* trail off depends on how far behind the server's write buffer is at
+that moment relative to how many requests were queued after the point where
+the pipe closed. Calling this "nondeterministic" in the earlier handback
+undersold how reliably it reproduces — it is not random which id drops, it
+is always the tail of whatever hadn't been flushed yet.

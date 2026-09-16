@@ -99,7 +99,10 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"write_report","arguments":{"repo":"/workspace","dimensions":["architecture"],"findings":[]}}}' \
   >&3
 
-have_all_responses() {
+# Prints the still-missing request ids (space-separated, empty if none), so
+# both the poll loop and a timed-out caller can name exactly which id(s)
+# never arrived instead of restating the full expected set.
+missing_response_ids() {
   python3 - "$response_file" "${request_ids[@]}" <<'PY'
 import json
 import pathlib
@@ -116,15 +119,19 @@ if response_file.exists():
             continue
         if message.get("id") is not None:
             seen.add(message["id"])
-sys.exit(0 if expected <= seen else 1)
+print(" ".join(str(missing_id) for missing_id in sorted(expected - seen)))
 PY
+}
+
+have_all_responses() {
+  [[ -z "$(missing_response_ids)" ]]
 }
 
 deadline=$((SECONDS + 90))
 while ! have_all_responses; do
   if (( SECONDS >= deadline )); then
     exec 3>&-
-    fail "timed out waiting for responses to request ids: ${request_ids[*]}"
+    fail "timed out waiting for response(s) to request id(s): $(missing_response_ids)"
   fi
   if ! kill -0 "$run_pid" 2>/dev/null; then
     break
@@ -141,11 +148,14 @@ import pathlib
 import sys
 
 expected_ids = {1, 2, 3, 4}
-messages = {
-    message["id"]: message
-    for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
-    if (message := json.loads(line)).get("id") is not None
-}
+messages = {}
+for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    try:
+        message = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if message.get("id") is not None:
+        messages[message["id"]] = message
 missing = sorted(expected_ids - messages.keys())
 if missing:
     raise SystemExit(f"FAIL: no response received for request id(s): {missing}")
