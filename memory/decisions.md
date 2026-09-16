@@ -651,3 +651,33 @@ disclosure load-bearing rather than decorative — T020 AC #8 exists to pin exac
 **Tasks.** T019 metrics · T020 judge · T021 assessment · T022 adapters+report. T022 is sequenced
 **after** T014/T015 (adding an operation to an adapter mid-restructure is double work), and T017's
 parity suite moves last because it must now prove parity of the ratings too.
+
+## DDR-0005 — Adapter parity is byte-equality after a declared normalization (2026-09-16)
+
+**Decided by the user**, closing `PRD.md` open item #15 and the T017 HITL gate.
+
+FR-022 ("identical" output) and the KPI table ("byte-equal") contradicted each other, and neither was
+testable: the container mounts the target at `/workspace` while the host sees a real absolute path,
+and FR-018b gives report filenames sub-second UTC resolution *so that they never collide*. Two runs of
+the *same* adapter are not byte-equal.
+
+**Parity is byte-equality of both payloads after a closed, three-rule normalization**: paths made
+repo-relative, timestamps replaced by one fixed token, report filename excluded. Everything else —
+excerpt text and order, `files_read`, `sources_found`/`sources_missing` and every miss reason,
+`coverage_score`, warnings, truncation disclosure, ratings, abstentions, assessments, divergences — is
+compared byte-for-byte with **no tolerance**.
+
+**Why not "semantically identical, compared field by field"** (the rejected option): it moves the
+judgment into the comparator, which then holds private opinions about which differences matter. This
+project's recurring defect is output honest in its parts and misleading in its headline, and a field
+quietly excluded from comparison is indistinguishable from a field that matched. An enumerated list
+inverts that — it is short, lives in one place, doubles as the documentation of every legitimate
+host-vs-container difference, and anything not on it fails loudly.
+
+**Binding on T017**: widening the normalization list is a **spec change, not a test fix**. An agent
+that finds a difference outside the three rules stops and reports.
+
+**Revisit condition**: a third adapter differing in a way not reducible to paths or timestamps
+reopens this DDR rather than extending it with a fourth rule.
+
+Full text: `docs/ddr/0005-adapter-parity-is-byte-equality-after-declared-normalization.md`.

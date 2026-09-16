@@ -108,7 +108,7 @@ src/easy_verifier/
 | Secret redaction | **High** | A single leak path (log line, exception message, untruncated excerpt) defeats NFR-010 outright and is invisible until it has already happened. Fingerprint salting is still an open question (#14). | `core/redact.py`, `core/pipeline.py` |
 | Pipeline contract (`run_dimension`) | **Med** | It is the choke point: every cross-cutting guarantee lives here, and all seven dimensions are written against its signature. Changing it after Wave 2 starts is a broad rewrite. | `core/pipeline.py` |
 | Budgeting + lazy consumption | **Med** | Accidental materialisation of the `collect` iterable silently reintroduces the memory blow-up the design exists to prevent, and passes every functional test. | `core/budget.py` |
-| Adapter parity (FR-022) | **Med** | "Identical" vs. "byte-equal" is unresolved (#15); timestamps and host-vs-container paths differ by construction. | `adapters/*.py`, parity test |
+| Adapter parity (FR-022) | **Low** | **Resolved by DDR-0005 (2026-09-16)**: byte-equality after a declared normalization — paths repo-relative, timestamps a fixed token, report filename excluded; every other field compared byte-for-byte. Widening that list is a spec change, not a test fix. | `adapters/*.py`, parity test |
 | Container hardening | **Med** | Non-root, read-only mount except `reports/`, no elevated caps (NFR-013), on a tool that scans arbitrary trees for credentials. | `Dockerfile`, `compose.yaml` |
 | `write_report` validation | **Med** | It is the *only* thing standing between an unevidenced claim and a published report (NFR-004). Validation lives here, not in caller convention. | `core/findings.py` |
 

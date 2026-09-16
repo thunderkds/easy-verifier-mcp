@@ -31,7 +31,7 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 _(T020, T021 and T022 all merged and Stage 5-verified; Wave 7 is complete.)_
 
 **Wave 5 — Verification (QA-owned)**
-- [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof (**HITL gate: parity definition**) | qa-expert | C2 | Risk: High | P0
+- [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof | qa-expert | C2 | Risk: High | P0 | **HITL gate CLOSED 2026-09-16** — the user chose option A, recorded as **DDR-0005**: parity is byte-equality after a declared normalization (paths repo-relative, timestamps a fixed token, report filename excluded), with every other field compared byte-for-byte and no tolerance. `PRD.md` FR-022, the KPI row and open item #15 now agree; `PROJECT_SPEC.md` drops the risk from Med to Low. **Spawnable.** Note for the implementer: widening the normalization list is a spec change, not a test fix — stop and report instead.
 
 ### In Progress
 
@@ -75,8 +75,8 @@ _(empty)_
 | ~~_(all tasks until T004)_~~ | ~~**`redact()` is an identity passthrough**~~ — **CLOSED 2026-08-16.** T004 landed the real detector; the seam now fingerprints at the evidence layer. Verified BEFORE/AFTER in `tasks/TASK_REVIEW_T004.md`. Residue, recorded rather than hidden: two confirmed detector misses (a credential assignment whose value is followed by trailing prose with no comment marker; single-char-class tokens of 12–31 chars) — both P2, both accepted trade-offs that keep the tool usable when it evaluates its own repo. T013 is unblocked. | — |
 | ~~_(all Stage 3)_~~ | ~~**Base branch unpushed.**~~ **CLOSED 2026-08-16.** `plan/stage2-task-breakdown` was pushed and merged into `develop` via PR #2 (`e185baa`). `develop` is now the integration branch for Stage 3 task merges. | — |
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
-| T016 | Implementation is merged, but the required live-container verifier cannot reach `/var/run/docker.sock` in this environment. Static acceptance tests, Compose expansion, and shell syntax pass; the task remains open until `docker compose build && bash scripts/verify_container.sh` passes against a live daemon. | Docker-capable user environment |
-| T017 | **HITL gate (open item #15)**: FR-022 says adapters produce "identical" output; the KPI table says "byte-equal". Timestamps and host-vs-container absolute paths differ by construction, so byte-equality is unachievable as written. Needs a defined normalization or a weaker, precise word. | thunderkds |
+| ~~T016~~ | **Docker block CLOSED 2026-09-16** — the daemon is reachable, the image builds, and the container passes every hardening check on a live run. The task stays open only for two **script-side** defects the first complete run exposed (stale tool count; a harness that drops the final response, so its last assertion could never have passed) — in progress on `fix/t016-verifier`. | — |
+| ~~T017~~ | **CLOSED 2026-09-16.** The user chose byte-equality after a declared normalization (**DDR-0005**); FR-022 and the KPI row were contradicting each other, and both are now updated. **T017 is unblocked.** | — |
 
 > Both are gates at pickup time, not blockers on planning — the guides are written and the tasks are
 > spawnable the moment the decision is recorded.

@@ -94,10 +94,10 @@ user-invocation-only — the Supervisor cannot call it via the Skill tool and mu
   **guide**, but since T064 that block lives in `tasks/TASK_REVIEW_Txxx.md`. Advisory only.
 
 **Waiting on the user (do not proceed without a decision)**:
-- **T017 HITL gate** — FR-022 says adapters produce "identical" output, the KPI table says
-  "byte-equal". Timestamps and host-vs-container paths differ by construction, so byte-equality is
-  unachievable as written. Blocks the last remaining task. T022's Stage 5 shows what *is* achievable:
-  identical payloads at the same arguments once the varying fields are named.
+- ~~**T017 HITL gate**~~ — **CLOSED 2026-09-16 (DDR-0005)**: parity is byte-equality after a closed
+  three-rule normalization (paths repo-relative, timestamps one fixed token, report filename
+  excluded); everything else byte-for-byte, no tolerance. T017 is spawnable. **Binding**: widening
+  that list is a spec change, not a test fix — an agent finding a fourth difference stops and reports.
 - **T010 residue (d)** — under `project` scope `blast-radius` yields zero citable excerpts unless the
   repo declares an entry point, and in a non-git directory the pack is entirely empty.
 
@@ -148,6 +148,7 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 - 🔎 **[Render the document; don't just test it](learnings.md)** — T013's P1 was invisible to 39 tests, a diff review, and the seam contract built to prevent it. Headless Chromium with `--host-resolver-rules="MAP * ~NOTFOUND"` proves FR-018 self-containment *and* gives you a page to read. Snap Chromium can't write into `/tmp/claude-1000` or dotted `$HOME` dirs.
 - 🔐 **[A new egress path invalidates upstream redaction](learnings.md)** — excerpts are redacted at the evidence layer; T013's finding *prose* inherited nothing, so a secret the agent quoted landed verbatim in a file written into the target repo. Re-ask the redaction question at every new boundary; `_Ctx.agent_text()` (redact → escape) is the fix shape.
 - 🐚 **[zsh does not word-split unquoted variables](learnings.md)** — a CLI probe in a `for` loop reported a phantom argparse error. Use explicit args or arrays.
+- 🔒 **[DDR-0005: adapter parity is byte-equality after a declared normalization](decisions.md)** (2026-09-16) — user decision closing PRD open item #15 and the T017 gate. FR-022 said "identical" and the KPI said "byte-equal"; neither was testable, since the container mounts at `/workspace` and FR-018b makes report filenames unique by design. Parity is now byte-equality after exactly three normalizations — paths repo-relative, timestamps one fixed token, report filename excluded — with every other field compared byte-for-byte. The rejected alternative ("semantically identical", field by field) was refused because it hides *which* differences the comparator tolerates, this project's signature defect shape. **Widening the list is a spec change, not a test fix.**
 - 🔒 **[DDR-0004: the T012/T013 seam contract is Supervisor-locked](decisions.md)** (2026-08-25) — the user chose to run T012 and T013 **in parallel** over the Supervisor's recommendation to sequence them, so `CombinedPack`/`CoverageSummary`/`DimensionSlot` are fixed at Stage 2 authority and handed identically to both spawns. T012 implements them in `models.py`; T013 imports and never redefines them. `misses` lives **inside** `CoverageSummary` so FR-016a is structural — a renderer cannot reach a score without its miss list. Budget model is **per-dimension** (user decision), carried on the pack as `budget_model` so a future total-budget regime is a value change, not a schema change. Either agent that thinks the contract is wrong **stops and reports before building**.
 - ⚠️ **[The miss-list defect class has shipped four times](learnings.md)** — T007 false secret reasons, T008 a wholly fabricated list, T009 the inverse (read happened, miss list denied it), T010 a cap-truncated sweep asserting a repo-wide zero. Standing review questions: cross-check `sources_missing` against `files_read`/`excerpts`, **and ask what bounded the search and whether the miss reason says so**.
 - [Route declared-source probes through `read_source`](learnings.md) — it records found/missing itself; that is why T010 is the first dimension not to ship the miss-list contradiction. Structural, not vigilance.

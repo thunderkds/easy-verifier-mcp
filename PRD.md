@@ -135,7 +135,7 @@ Each FR must trace to at least one User Story.
 | FR-021a | The MCP adapter must ship a Dockerfile and compose configuration in v1, with all configuration supplied via environment variables and no host-absolute paths. The target repository must be mountable as a volume, and the container must speak stdio by default so no port need be published. | US-001, US-002 |
 | FR-021c | Paths inside the container must never leak into written reports. A report generated for a repo mounted at `/workspace` must reference the paths the operator recognises on the host, not container-internal ones. | US-008, US-009 |
 | FR-021b | The CLI adapter must remain runnable with no container and no server process, so Case B works from a plain checkout. | US-002 |
-| FR-022 | Both adapters must produce identical evidence packs and identical report output for the same repository, scope, and dimension. | US-009 |
+| FR-022 | Both adapters must produce **byte-equal** evidence packs and report output for the same repository, scope, and dimension, **after the declared normalization in DDR-0005** (paths made repo-relative, timestamps replaced by a fixed token, report filename excluded). Every field outside that list is compared byte-for-byte with no tolerance. | US-009 |
 
 ---
 
@@ -165,7 +165,7 @@ Each FR must trace to at least one User Story.
 |--------|----------|--------|--------------|
 | Dimensions available as separate tools | 0 | 7 | MCP tool listing + CLI subcommand listing |
 | Modes producing a usable report | 0 | 2 (kit-aware, standalone) | Integration test against one kit repo and one plain repo |
-| Entry points producing identical output | 0 | 2 (MCP, CLI) | Parity test asserting byte-equal evidence pack for same input |
+| Entry points producing identical output | 0 | 2 (MCP, CLI) | Parity test asserting byte-equal evidence pack for the same input, **on the DDR-0005 normalized form**; any difference outside the declared normalization fails the test and names the field |
 | Unevidenced findings reaching a report | n/a | 0 | `write_report` validation test suite |
 | Limited-context warning present in standalone reports | n/a | 100% | Assertion in standalone-mode integration test |
 | Reports requiring a network fetch to render | n/a | 0 | Static scan of rendered HTML for external URLs |
@@ -217,4 +217,4 @@ Added during the Stage 2 pre-flight gap audit (2026-08-14).
 | 12 | **No dimension discovery** — a caller had no way to learn what dimensions exist or what context each seeks without reading the source. | **Resolved** (G9): FR-013a, US-011. | Supervisor |
 | 13 | **Transport mismatch** — HTTP/SSE was mandated by inheritance from `easy-ui-mcp`, but the engine is stateless and the harness connects locally via Docker. An unauthenticated local port that reads arbitrary repos is exposure bought for no benefit. | **Resolved** (G11) by user correction: harness connects **locally via Docker container, never the internet**. stdio is the default and required transport (FR-019a); HTTP/SSE is opt-in and loopback-bound (FR-019b). Added NFR-012 (local-only), NFR-013 (least-privilege container), FR-021c (no container-path leakage). | thunderkds |
 | 14 | **Open**: whether the redaction fingerprint hash is salted. Unsalted allows correlating the same secret across scans; salted resists dictionary attacks on low-entropy values. | Open — must be closed when the redaction task is planned. DDR-0001 follow-up. | thunderkds |
-| 15 | **Open**: FR-022 says adapters produce "identical" output, and the KPI table says "byte-equal". Timestamps and absolute paths differ between host and container runs, so byte-equality needs a defined normalization or a weaker, precise word. | Open — resolve when the parity test is specified. | Supervisor |
+| 15 | FR-022 said adapters produce "identical" output while the KPI table said "byte-equal"; timestamps and host-vs-container absolute paths differ by construction, so neither was testable as written. | **Resolved 2026-09-16** (user decision, DDR-0005): parity is **byte-equality after a declared normalization** — paths repo-relative, timestamps a fixed token, report filename excluded; everything else byte-for-byte. The alternative ("semantically identical", compared field by field) was rejected because it hides which differences the comparator tolerates. FR-022 and the KPI row now agree. **T017 is unblocked.** | Supervisor |
