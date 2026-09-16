@@ -253,3 +253,29 @@ untrusted input.
 | Visual regression | ☐ N/A — pure-backend task, no UI component |
 | Design-system compliance | ☐ N/A — pure-backend task, no UI component |
 | Responsiveness | ☐ N/A — pure-backend task, no UI component |
+
+## Merge note — parallel fix upstream (2026-09-16)
+
+While this session was working, `develop` had already received **PR #11 (`8e3c560`, 2026-09-12),
+"fix(T016): verify the complete MCP tool surface"**. It fixed defect 1 — the stale exactly-10-tools
+assertion — in almost exactly the same way this branch did: a set comparison against the eleven
+expected tool names. That duplication is what produced the merge conflict in
+`scripts/verify_container.sh`, and it is resolved in favour of this branch's version, which contains
+the same tool-set check *plus* the FIFO fix for defect 2.
+
+The substantive point for the record: **PR #11 corrected the count but left the harness unable to
+reach the assertion.** Its script still ends in
+
+```bash
+timeout 90s docker compose run --rm --no-tty verifier >"$response_file"
+```
+
+with no FIFO and no held-open stdin, so the trailing response is still dropped and
+`for request_id in (3, 4)` still raises `KeyError` before any pass/fail. PR #11 was merged on
+2026-09-12, when Docker was still unreachable in this environment, so nothing ran it — a correct
+tool check was added to a script that could not get to it. That is the same two-week pattern this
+task exists to close, and it is the second time the count was fixed without the harness being run.
+
+Upstream's additions to `tests/test_t016_container_config.py` (`'"score"'`, `assert "exactly 10
+tools" not in source`, `assert "tools=10" not in source`) merged cleanly and are retained alongside
+this branch's updated witness strings.

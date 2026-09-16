@@ -68,6 +68,7 @@ def test_container_verifier_is_valid_shell_and_checks_the_real_mcp_surface() -> 
     for witness in (
         "tools/list",
         "tools/call",
+        '"score"',
         "write_report",
         "id -u",
         "touch /workspace/NOPE",
@@ -81,6 +82,8 @@ def test_container_verifier_is_valid_shell_and_checks_the_real_mcp_surface() -> 
         "no response received for request id",
     ):
         assert witness in source
+    assert "exactly 10 tools" not in source
+    assert "tools=10" not in source
 
 
 def test_build_context_excludes_development_and_repository_state() -> None:
