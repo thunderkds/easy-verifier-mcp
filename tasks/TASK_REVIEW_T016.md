@@ -204,3 +204,52 @@ that moment relative to how many requests were queued after the point where
 the pipe closed. Calling this "nondeterministic" in the earlier handback
 undersold how reliably it reproduces — it is not random which id drops, it
 is always the tail of whatever hadn't been flushed yet.
+
+## Stage 5 verification (Supervisor, 2026-09-16)
+
+**Verdict: PASS.** Driven at the container surface — the guide's exact command, plus adversarial
+probes against a detached container and a live MCP exchange into the containerized server.
+
+| # | Probe | Result |
+|---|---|---|
+| 1 | `docker compose build && bash scripts/verify_container.sh` | `PASS: uid=10001, tools=11, root=read-only, reports=writable, network=none, ports=none, caps=none`, exit 0 |
+| 2 | **Sabotaged copy, only the id-4 request line deleted** | `FAIL: timed out waiting for response(s) to request id(s): 4`, exit 1 — names only the missing id and still fires at the deadline |
+| 3 | `id -u` / `id -un` | `10001` / `easy-verifier` — not root |
+| 4 | `touch /workspace/src/EVIL` | `Read-only file system` |
+| 5 | `touch /workspace/reports/ok` | allowed — the one intended write path |
+| 6 | `touch /EVIL` | `Read-only file system` — rootfs, not just the mount |
+| 7 | chmod +x a script in `/tmp` and run it | `Permission denied` — the tmpfs `noexec` flag holds; writable ≠ executable |
+| 8 | `socket.create_connection(('1.1.1.1', 53))` inside | `OSError` — `network_mode: none` is real, not merely declared |
+| 9 | **`score` called over stdio into the containerized server** | `isError: False`, seven dimensions, `overall 64` from 1 contributor with 6 abstentions (correct for the throwaway target) |
+| 10 | **FR-021c on the `score` payload** | **0 occurrences of `/workspace`, no absolute paths at all** |
+
+Probe 2 is the acceptance test for this task: the harness now fails when a response is genuinely
+missing. Step 1 alone would not have established that — the old harness also "passed".
+
+Probes 9 and 10 are new ground. The `score` operation (T022) had never been exercised inside the
+container, and FR-021c path scrubbing had only ever been proven for **reports**. Both hold.
+
+Probe 7 exercises a defense `compose.yaml` declares but nothing previously tested.
+
+**The durable lesson**: the container was correct on 2026-09-02 and is correct now. What was broken
+was the script asserting it, in a way that could not fail — so "static tests pass" sat on the board
+for two weeks while meaning nothing about the container. A verification harness is code, and it
+needs the same both-extremes pinning as the code it checks.
+
+**Accepted residue**: `wait "$run_pid" || true` discards the container's exit status, so a server
+that crashed after emitting all four responses would still pass. The payload assertions cover the
+practical failure surface.
+
+**Stage 4 security review**: 0 HIGH / 0 MEDIUM. The built-in `security-review` skill **could not
+run** — it resolves the diff via `origin/HEAD` and this repo's remote is named `github` (the sixth
+task blocked by this; T005, T008 and T013 recorded it before). Diff surface reviewed directly:
+`git diff aa9ced1..HEAD -- Dockerfile compose.yaml src/` is **empty**, so the image's posture is
+untouched; the script adds only `mkfifo` and an `exec 3>` redirect, both inside the `mktemp -d`
+directory the existing `EXIT` trap removes; every expansion is quoted and no `$(...)` interpolates
+untrusted input.
+
+| UI / Design Evidence row | Result |
+|---|---|
+| Visual regression | ☐ N/A — pure-backend task, no UI component |
+| Design-system compliance | ☐ N/A — pure-backend task, no UI component |
+| Responsiveness | ☐ N/A — pure-backend task, no UI component |
