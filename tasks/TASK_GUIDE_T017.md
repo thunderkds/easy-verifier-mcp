@@ -27,7 +27,7 @@ The Supervisor must record the user's decision before this task is spawned:
 > documentation of every host/container difference. Whichever is chosen, `PRD.md` FR-022 and the KPI
 > row must be updated to agree with each other — that mismatch is the actual defect here.
 
-| Decision | **A — byte-equal after a defined normalization.** Recorded by the user on 2026-09-16 as **DDR-0005** (`docs/ddr/0005-adapter-parity-is-byte-equality-after-declared-normalization.md`); `PRD.md` FR-022, the KPI row, and open item #15 are updated to agree. **This gate is closed and T017 is spawnable.** The normalization is a closed list of exactly three rules — paths repo-relative, timestamps replaced by a fixed token, report filename excluded from comparison — and every other field is compared byte-for-byte with no tolerance. If you find a difference outside those three rules, **stop and report to the Supervisor**: widening the list is a spec change, not a test fix. |
+| Decision | **A — byte-equal after a defined normalization.** Recorded by the user on 2026-09-16 as **DDR-0005** (`memory/decisions.md#ddr-0005--adapter-parity-is-byte-equality-after-a-declared-normalization-2026-09-16`); `PRD.md` FR-022, the KPI row, and open item #15 are updated to agree. **This gate is closed and T017 is spawnable.** The normalization is a closed list of exactly three rules — paths repo-relative, timestamps replaced by a fixed token, report filename excluded from comparison — and every other field is compared byte-for-byte with no tolerance. If you find a difference outside those three rules, **stop and report to the Supervisor**: widening the list is a spec change, not a test fix. |
 |---|---|
 
 ---
