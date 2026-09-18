@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-12
+**Last updated**: 2026-09-18
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -31,11 +31,11 @@ _(T014 and T015 complete; T016 implementation merged but live Docker verificatio
 _(T020, T021 and T022 all merged and Stage 5-verified; Wave 7 is complete.)_
 
 **Wave 5 — Verification (QA-owned)**
-- [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof | qa-expert | C2 | Risk: High | P0 | **HITL gate CLOSED 2026-09-16** — the user chose option A, recorded as **DDR-0005**: parity is byte-equality after a declared normalization (paths repo-relative, timestamps a fixed token, report filename excluded), with every other field compared byte-for-byte and no tolerance. `PRD.md` FR-022, the KPI row and open item #15 now agree; `PROJECT_SPEC.md` drops the risk from Med to Low. **Spawnable.** Note for the implementer: widening the normalization list is a spec change, not a test fix — stop and report instead.
+_(T017 moved to In Progress on 2026-09-18.)_
 
 ### In Progress
 
-_(empty)_
+- [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof | qa-expert | C2 | Risk: High | P0 | Started: 2026-09-18 | HITL gate closed by DDR-0005. Parity is byte-equality after exactly three normalizations: paths repo-relative, timestamps replaced by one fixed token, and report filename excluded. Every other field is compared byte-for-byte; any fourth difference is a spec issue and must be reported, not normalized.
 
 ### Ready for Review
 
