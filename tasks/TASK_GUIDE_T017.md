@@ -70,11 +70,11 @@ both entry points, without leaking a secret.
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] HITL gate above answered; `PRD.md` FR-022 and the KPI row updated to agree
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] HITL gate above answered; `PRD.md` FR-022 and the KPI row updated to agree (DDR-0005, 2026-09-16)
+- [x] Restated intent confirmed to match the user's request (Supervisor, 2026-09-18)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary (Supervisor, 2026-09-18)
+- [x] Every Acceptance Criterion below traces to a line in the Requirement (Supervisor, 2026-09-18)
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above (Supervisor, 2026-09-18)
 
 ---
 
