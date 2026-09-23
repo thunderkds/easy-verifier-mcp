@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-18
+**Last updated**: 2026-09-23
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -33,6 +33,9 @@ _(T020, T021 and T022 all merged and Stage 5-verified; Wave 7 is complete.)_
 **Wave 5 — Verification (QA-owned)**
 _(T017 moved to In Progress on 2026-09-18.)_
 
+**Wave 8 — Final release verification (added 2026-09-23)**
+- [ ] **T023** — final v1 release verification + README/release-guide truth pass at published host, MCP-stdio, and Docker boundaries | qa-expert | C2 | Risk: High | P0 | Started: 2026-09-23 | Depends on T017 and T016; release wrapper must exit 0 with every KPI `PASS` and docs must match the observed verdict.
+
 ### In Progress
 
 - [ ] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof | qa-expert | C2 | Risk: High | P0 | Started: 2026-09-18 | HITL gate closed by DDR-0005. Parity is byte-equality after exactly three normalizations: paths repo-relative, timestamps replaced by one fixed token, and report filename excluded. Every other field is compared byte-for-byte; any fourth difference is a spec issue and must be reported, not normalized.
@@ -65,7 +68,7 @@ _(empty)_
 - [x] **T003** — `scope.py`: task/changes/worktree/project scope resolution | C1 | Risk: Low | Completed: 2026-08-16 | 32 tests · code-review P0 0/**P1 1 (fixed)**/P2 2 (1 fixed, 1 waived)/P3 1 (not taken) · security-review ☐ N/A (Low risk; subprocess surface covered by code-review's security reviewer) · `verify` run by Supervisor end-to-end across all four scopes · merged to `develop`. **P1 was a REPEAT defect**: `_walk_files` followed symlinked directories out of the repo — the same escape T002 already fixed in `context.py:_walk`. `scope.py` reimplemented the walk from scratch and reintroduced it; fixed with a containment check on entry, pinned by 2 regression tests. **Waived**: the guide's predicted edits to `models.py`/`pipeline.py`/`cli.py` were skipped — all 9 ACs pass without them and `run_dimension()`'s contract stays fixed. Cost: `resolve_scope` is unreachable until T005 lands.
 - [x] **T002** — `context.py`: kit detection, kit-aware/standalone modes | C2 | Completed: 2026-08-16 | 35 tests · code-review P2×1 fixed · security-review 0 findings · `verify` run by Supervisor on the real CLI in both modes · merged to `develop` (`89046c8`). **Integration defect caught and fixed at Stage 5**: T002 moved path validation into `detect_context`, silently dropping T004's redaction of the `RepoPathError` message. Neither branch's tests caught it — each passed alone; the defect existed only in the combination. Restored in `context.py:_resolve_repo_path`.
 
-> Post-merge state on `develop`: **570 tests pass**, `ruff` clean. **20 of 22 tasks done.** Only **T017** remains, and its HITL gate closed on 2026-09-16 (DDR-0005), so it is spawnable.
+> Post-merge state on `develop`: **570 tests pass**, `ruff` clean. **20 of 23 tasks done.** T017 and T023 remain in progress; T023 is the final release-verification gate.
 
 ---
 

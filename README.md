@@ -157,6 +157,21 @@ network isolation, capabilities, ports, and container-path scrubbing in one pass
 docker compose build && bash scripts/verify_container.sh
 ```
 
+### Final release gate
+
+Run the repository's fail-closed release gate from a clean, published candidate:
+
+```console
+bash scripts/verify_release_gate.sh
+```
+
+The command runs the host integration suite, requires the container integration tests, runs the
+container verifier, and emits the KPI summary only after those checks pass. A zero exit status is
+required for release. Docker, MCP stdio, or another required boundary that is unavailable is
+reported as `NOT VERIFIED` and causes a non-zero exit; skipped or historical output is not release
+evidence. Record the exact commit, environment, command output, and any unavailable proof in
+`tasks/TASK_REVIEW_T023.md`.
+
 ## Where reports go
 
 Reports are written into the **evaluated repository's** `reports/` directory, never into this

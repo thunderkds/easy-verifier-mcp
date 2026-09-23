@@ -8,22 +8,35 @@ from pathlib import Path
 
 from easy_verifier.dimensions import dimension_names
 
-from .conftest import REPO_ROOT, cli_json, mcp_call, require_docker
+from .conftest import (
+    REPO_ROOT,
+    cli_json,
+    mcp_call,
+    require_docker,
+)
 
 
-def normalize(value: object, *, field: str = "") -> object:
+def normalize(
+    value: object, *, field: str = "", repo_root: Path | None = None
+) -> object:
     """DDR-0005's closed normalization: only paths, timestamps, filenames."""
     if isinstance(value, dict):
         return {
-            key: normalize(item, field=key)
+            key: normalize(item, field=key, repo_root=repo_root)
             for key, item in value.items()
             if not (key == "report_filename" or key == "filename")
         }
     if isinstance(value, list):
-        return [normalize(item, field=field) for item in value]
+        return [normalize(item, field=field, repo_root=repo_root) for item in value]
     if isinstance(value, str):
-        if field in {"path", "absolute_path"}:
-            return Path(value).name if field == "absolute_path" else value
+        if field == "path":
+            return value
+        if field == "absolute_path" and repo_root is not None:
+            root = str(repo_root.resolve())
+            if value == root:
+                return "."
+            if value.startswith(root + "/"):
+                return value[len(root) + 1 :]
         if "timestamp" in field or field in {"generated", "created_at"}:
             return "<TIMESTAMP>"
     return value
@@ -66,9 +79,19 @@ def test_combined_score_and_discovery_match_across_adapters() -> None:
 
 
 def test_normalization_is_field_limited_and_can_fail() -> None:
-    left = {"path": "/repo/src/a.py", "detail": "/repo/src/a.py"}
-    right = {"path": "/other/src/a.py", "detail": "/other/src/a.py"}
-    assert normalize(left) != normalize(right)
+    root = Path("/repo")
+    left = {"absolute_path": "/repo/src/a.py", "detail": "/repo/src/a.py"}
+    right = {"absolute_path": "/other/src/a.py", "detail": "/other/src/a.py"}
+    assert normalize(left, repo_root=root) != normalize(right, repo_root=root)
+    assert normalize({"absolute_path": "/repoevil/src/a.py"}, repo_root=root) != {
+        "absolute_path": "src/a.py"
+    }
+    assert normalize({"path": "/repo/src/a.py"}, repo_root=root) == {
+        "path": "/repo/src/a.py"
+    }
+    assert normalize({"detail": "/repo/src/a.py"}, repo_root=root) == {
+        "detail": "/repo/src/a.py"
+    }
     assert normalize({"timestamp": "one"}) == normalize({"timestamp": "two"})
 
 

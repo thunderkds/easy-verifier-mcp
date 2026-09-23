@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -53,6 +54,11 @@ def test_mcp_pack_contains_fingerprints_but_no_raw_secret(tmp_path: Path) -> Non
     assert all(secret not in serialized for secret in secrets)
     assert payload["had_redactions"] is True
     assert payload["redactions"]
+    expected = {
+        f"{secret[:4]}…****:{hashlib.sha256(secret.encode()).hexdigest()[:12]}"
+        for secret in secrets
+    }
+    assert {hit["fingerprint"] for hit in payload["redactions"]} >= expected
 
 
 def test_container_redaction_proof_is_not_silent_when_docker_is_missing() -> None:
