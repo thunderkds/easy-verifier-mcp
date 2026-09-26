@@ -27,6 +27,7 @@ import re
 import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
@@ -37,6 +38,11 @@ from .redact import redact
 
 CONFIG_FILENAME = ".easy-verifier.toml"
 MAX_CONFIG_BYTES = 64 * 1024
+
+MAX_CONFIG_GLOBSTARS = 2
+MAX_CONFIG_STARS = 4
+"""Bounds on one ``.easy-verifier.toml`` glob. The file comes from the
+repository under evaluation, which is untrusted input (NFR-013)."""
 
 MAX_ROLE_FILES = 50
 """Files kept per role (from rules and config), in sorted path order. Hitting
@@ -385,7 +391,7 @@ def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
         else:
             valid = []
             for index, glob in enumerate(globs):
-                problem = _relative_path_problem(glob)
+                problem = _config_glob_problem(glob)
                 if problem:
                     errors.append(f"{field}[{index}] {_quote(glob)}: {problem}")
                 else:
@@ -463,6 +469,22 @@ def _relative_path_problem(value: object) -> str | None:
         return "absolute or non-POSIX path; must be repository-relative"
     if ".." in pure.parts:
         return "'..' escapes the repository"
+    return None
+
+
+def _config_glob_problem(value: object) -> str | None:
+    """Reject config globs that are unbounded in shape, not only in place."""
+    problem = _relative_path_problem(value)
+    if problem:
+        return problem
+    segments = str(value).split("/")
+    if any("**" in segment and segment != "**" for segment in segments):
+        return "'**' must be a whole path segment (e.g. 'docs/**/*.md')"
+    if segments.count("**") > MAX_CONFIG_GLOBSTARS:
+        return f"at most {MAX_CONFIG_GLOBSTARS} '**' segments are allowed"
+    stars = sum(segment.count("*") for segment in segments if segment != "**")
+    if stars > MAX_CONFIG_STARS:
+        return f"at most {MAX_CONFIG_STARS} '*' wildcards are allowed"
     return None
 
 
@@ -562,7 +584,9 @@ def resolve(
         )
         rules_match = _matcher(rule_patterns)
         config_patterns = tuple(config.get(item.name, ()))
-        config_match = _matcher(config_patterns) if config_patterns else None
+        # Config globs are untrusted: matched segment-wise with a bounded
+        # matcher, never compiled into the combined backtracking regex.
+        config_match = _config_matcher(config_patterns) if config_patterns else None
 
         matched: dict[str, str] = {}
         for path in walked:
@@ -647,6 +671,50 @@ def unfilled_reason(resolution: RoleResolution, name: str) -> str | None:
 def _matcher(patterns: tuple[str, ...]):
     compiled = re.compile("|".join(f"(?:{_translate(p)})" for p in patterns))
     return lambda path: compiled.fullmatch(path) is not None
+
+
+@lru_cache(maxsize=512)
+def _config_matcher(patterns: tuple[str, ...]):
+    """Match untrusted globs with the same semantics as :func:`_translate`,
+    in O(pattern segments x path segments) time.
+
+    ``**`` (a whole segment, enforced by validation) spans zero or more path
+    segments, or one or more when it ends the glob; any other segment is
+    matched against exactly one path segment by ``fnmatchcase``, with ``[``
+    escaped so it stays literal as in the built-in translation.
+    """
+    parsed = tuple(
+        tuple(segment.replace("[", "[[]") for segment in pattern.split("/"))
+        for pattern in patterns
+    )
+    return lambda path: any(
+        _segments_match(pattern, tuple(path.split("/"))) for pattern in parsed
+    )
+
+
+def _segments_match(pattern: tuple[str, ...], parts: tuple[str, ...]) -> bool:
+    memo: dict[tuple[int, int], bool] = {}
+
+    def match(i: int, j: int) -> bool:
+        key = (i, j)
+        if key not in memo:
+            if i == len(pattern):
+                result = j == len(parts)
+            elif pattern[i] == "**":
+                if i == len(pattern) - 1:
+                    result = j < len(parts)
+                else:
+                    result = match(i + 1, j) or (j < len(parts) and match(i, j + 1))
+            else:
+                result = (
+                    j < len(parts)
+                    and fnmatchcase(parts[j], pattern[i])
+                    and match(i + 1, j + 1)
+                )
+            memo[key] = result
+        return memo[key]
+
+    return match(0, 0)
 
 
 def _translate(pattern: str) -> str:

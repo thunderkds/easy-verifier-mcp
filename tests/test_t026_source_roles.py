@@ -714,3 +714,90 @@ def test_role_resolution_is_deterministic(elixir_repo: Path) -> None:
     assert first == second
     for paths in first.files.values():
         assert list(paths) == sorted(paths)
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 P1 — config globs come from an untrusted repository (NFR-013)
+# ---------------------------------------------------------------------------
+
+HOSTILE_GLOB = "**a**a**a**a**a**a**a**a**a**a**a**b"
+
+
+def test_a_backtracking_config_glob_is_rejected_quickly_at_the_cli(
+    tmp_path: Path,
+) -> None:
+    repo = _write(tmp_path / "hostile", {"deep/" + "a" * 60: "x\n"})
+    _config(repo, f'[roles]\nspec-doc = ["{HOSTILE_GLOB}"]\n')
+    completed = subprocess.run(
+        [sys.executable, "-m", "easy_verifier.adapters.cli", "score"],
+        cwd=repo,
+        input="",
+        capture_output=True,
+        text=True,
+        timeout=5,
+        env={**os.environ, "PYTHONPATH": str(Path(cli.__file__).parents[2])},
+        check=False,
+    )
+    assert completed.returncode == cli.VALIDATION_EXIT
+    assert "roles.spec-doc[0]" in completed.stderr
+    assert "whole path segment" in completed.stderr
+
+
+@pytest.mark.parametrize(
+    ("glob", "reason"),
+    [
+        ("a**b", "whole path segment"),
+        ("docs/**a", "whole path segment"),
+        ("**/x/**/y/**/z", "at most 2 '**'"),
+        ("*a*b*c*d*e", "at most 4 '*'"),
+    ],
+)
+def test_config_glob_wildcards_are_bounded(
+    tmp_path: Path, glob: str, reason: str
+) -> None:
+    repo = _write(tmp_path / "bad", {"README.md": "# r\n"})
+    _config(repo, f'[roles]\nspec-doc = ["{glob}"]\n')
+    with pytest.raises(ValidationError) as caught:
+        load_repo_config(repo)
+    assert "roles.spec-doc[0]" in str(caught.value)
+    assert reason in str(caught.value)
+
+
+def test_config_matcher_agrees_with_the_builtin_translation() -> None:
+    """The bounded config matcher changes *how* a glob is matched, never
+    *what* it matches: same answers as the trusted-pattern regex."""
+    patterns = (
+        "notes/*.md",
+        "config/*.pem",
+        "docs/**",
+        "**/*.lock",
+        "**/specs/**/*.md",
+        "**/test_*",
+        "README*",
+        "a?c.txt",
+        "lit[1].md",
+    )
+    paths = (
+        "notes/wants.md",
+        "notes/sub/wants.md",
+        "config/lint.pem",
+        "docs/x/y.md",
+        "docs",
+        "a.lock",
+        "deep/er/b.lock",
+        "docs/specs/r.md",
+        "specs/r.md",
+        "x/specs/a/b/r.md",
+        "tests/test_a.py",
+        "README.md",
+        "src/README.md",
+        "abc.txt",
+        "ac.txt",
+        "lit[1].md",
+        "lit1.md",
+    )
+    for pattern in patterns:
+        builtin = roles_module._matcher((pattern,))
+        bounded = roles_module._config_matcher((pattern,))
+        for path in paths:
+            assert bounded(path) == builtin(path), (pattern, path)
