@@ -505,3 +505,19 @@ fixed patterns may keep the fast combined regex. Fixed in `8e699b8`.
   `PYTHONPATH=src <main-checkout>/.venv/bin/python -m pytest -q` from a worktree.
 - **`docs/` is gitignored** (only three guides are force-tracked), so DDRs are absent in
   worktrees — spawn prompts must point at the main checkout's absolute `docs/ddr/` path.
+
+## 2026-09-26 — T027: any new file read must re-check containment itself
+
+**What happened.** T027's candidate-heading reader walked with `_walk(contained_only=False)`
+(a T026 option meant only for *reporting* escaping symlinks) and opened `root / path` directly,
+bypassing `RepoContext.read_source`. A repo symlink to a host file leaked that file's first line
+to the calling agent. Tests were green; found by a Stage 4 adversarial probe. Fixed `b106862`.
+
+**Rule.** Every code path that opens a target-repo file must either go through
+`RepoContext.read_source` or re-resolve and check: inside resolved root, regular file,
+not secret-bearing by given *or* resolved name. `contained_only=False` is for listing, never reading.
+
+**Also (cost):** candidate payloads must not repeat the same file per role — group roles sharing
+a pool (bryony 8.3 KB → 2.1 KB). Measure `needs_input` bytes on real repos at every review.
+Kanban hygiene: a hook appears to append duplicate Todo rows for new TASK_GUIDEs; grep for
+duplicate `**Txxx**` rows before moving a task.

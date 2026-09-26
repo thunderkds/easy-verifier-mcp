@@ -225,7 +225,7 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 - [T012 budget recommendation: per-dimension, not pooled](decisions.md) — a total budget split across dimensions makes each pack's contents depend on what else was requested, breaking reproducibility. Decision to be recorded when T012 is picked up.
 - ▶ **[The verifier now emits a quality *rating*; FR-013 amended](decisions.md)** — engine-computed numbers are allowed when produced by **declared rules over measured metrics** (never a model, NFR-001 intact). Three words, never interchangeable: `coverage_score` = what we READ, **rating** = what our RULES compute, **assessment** = what the AGENT concluded, **divergence** = the gap, reported never reconciled. **Below a declared coverage floor the engine emits NO number** — a structured abstention, never `0`/`None`/a low rating → see DDR-0003. Wave 7 = T019–T022; T022 must follow T014/T015.
 
-- 🔒 **[DDR-0006: any-language source roles; calling agent contributes only at MCP hard gates](decisions.md)** (2026-09-26) — coverage = roles filled/declared, no language exemptions; generic patterns + Python/JS-TS/Rust/Java tables + add-only `.easy-verifier.toml`; MCP-only `needs_input` detect (picks) and evaluate (abstain or ±10% of threshold) gates; capped blend `w=0.5·c`, agent-rated where rules abstain, parts always shown; agent input replayable via CLI `--agent-input`. T026 merged; T027/T028 queued; T029 = redact.py false positive on ordinary filenames.
+- 🔒 **[DDR-0006: any-language source roles; calling agent contributes only at MCP hard gates](decisions.md)** (2026-09-26) — coverage = roles filled/declared, no language exemptions; generic patterns + Python/JS-TS/Rust/Java tables + add-only `.easy-verifier.toml`; MCP-only `needs_input` detect (picks) and evaluate (abstain or ±10% of threshold) gates; capped blend `w=0.5·c`, agent-rated where rules abstain, parts always shown; agent input replayable via CLI `--agent-input`. T026 + T027 merged (grouped `needs_input.picks.groups`, MCP-only via `detect_gates=True`); T028 queued; T029 = redact.py false positive on ordinary filenames.
 
 ### Gotchas (see [learnings.md](learnings.md))
 
@@ -239,6 +239,8 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 
 - ⚠️ **[Target-repo globs are untrusted input — never compile them into a backtracking regex](learnings.md)** (T026 Stage 4 P1, 2026-09-26) — validate shape + segment-wise memoized matcher.
 - ⚠️ **[Supervisor tooling gotchas, T026 session](learnings.md)** — built-in `security-review` needs `origin/HEAD` (absent here → manual pass); merge gate scans the whole command, so Kanban-move and merge must be separate Bash calls; worktree tests need `PYTHONPATH=src <main>/.venv/bin/python`; `docs/ddr` is gitignored → give agents the main checkout's absolute path.
+
+- ⚠️ **[Every target-file read re-checks containment; `contained_only=False` is list-only](learnings.md)** (T027 Stage 4 P1, 2026-09-26) — symlink leaked a host file's heading; also group `needs_input` candidates, measure bytes on real repos.
 
 ### Learning Records
 
