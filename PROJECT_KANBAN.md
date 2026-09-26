@@ -16,7 +16,7 @@
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
-- [ ] **T027** — MCP detect gate: `needs_input.picks` (≤20 redacted candidates/role, one round) | backend-developer | C2 | Risk: Med | P1 — depends on T026
+_(empty)_
 - [ ] **T028** — MCP evaluate gate: ±10%/abstain triggers, validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | backend-developer | C3 | Risk: High | P1 — depends on T026, T027
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
@@ -51,6 +51,8 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 _(empty)_
 
 ### Done
+
+- [x] **T027** — MCP detect gate: `needs_input.picks.groups` (grouped, ≤20 redacted candidates/group, one round, MCP-only) | ✅ Done 2026-09-26 — Stage 4 P1 symlink escape fixed `b106862`; candidates grouped (bryony 8.3→2.1 KB); 674 passed/2 skipped; live Docker MCP round trip: ai-training 7/7 rated after picks. Evidence: `tasks/TASK_REVIEW_T027.md`
 
 - [x] **T026** — Any-language source roles, add-only `.easy-verifier.toml`, role-based coverage in all 7 dimensions, `agent_input.picks` replay, source provenance | ✅ Done 2026-09-26 — Stage 4 P1 (config-glob ReDoS) fixed `8e699b8`; 658 passed/2 skipped; Docker score kitchd 7/7, bryony 5/7, ai-training 6/7 rated (was 5/2/3). Evidence: `tasks/TASK_REVIEW_T026.md`
 
