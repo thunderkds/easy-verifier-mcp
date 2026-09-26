@@ -17,7 +17,7 @@
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
-- [ ] **T026** — Any-language source roles (generic + Python/JS-TS/Rust/Java tables), add-only `.easy-verifier.toml`, role-based coverage in all 7 dimensions, `agent_input.picks` replay (MCP arg + CLI `--agent-input`), source provenance | backend-developer | C3 | Risk: High | P1
+_(empty)_
 - [ ] **T027** — MCP detect gate: `needs_input.picks` (≤20 redacted candidates/role, one round) | backend-developer | C2 | Risk: Med | P1 — depends on T026
 - [ ] **T028** — MCP evaluate gate: ±10%/abstain triggers, validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | backend-developer | C3 | Risk: High | P1 — depends on T026, T027
 
@@ -53,6 +53,8 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 _(empty)_
 
 ### Done
+
+- [x] **T026** — Any-language source roles, add-only `.easy-verifier.toml`, role-based coverage in all 7 dimensions, `agent_input.picks` replay, source provenance | ✅ Done 2026-09-26 — Stage 4 P1 (config-glob ReDoS) fixed `8e699b8`; 658 passed/2 skipped; Docker score kitchd 7/7, bryony 5/7, ai-training 6/7 rated (was 5/2/3). Evidence: `tasks/TASK_REVIEW_T026.md`
 
 - [x] **T024** — MCP client setup guides: `docs/DOCKER_MCP_GUIDE.md` (hardened container: raw `docker run`, `claude mcp add`, JSON clients, Compose) + `docs/LOCAL_MCP_GUIDE.md` (host-direct entry point); README §MCP/§Docker trimmed to summaries that link to them | C0 | Risk: Low | P2 | Completed: 2026-09-24 | 8 new doc-truth tests pin every documented `docker run` to `compose.yaml`'s hardening, forbid TTY allocation, pin the local guide to the real `easy-verifier-mcp` entry point and `--http` flag, and require both README links; sabotage probe fails each of 7 mutations; live stdio handshake passed through the exact documented `docker run`, the Compose variant, and host-direct; full suite `596 passed, 2 skipped`; ruff clean. `/docs/` is gitignored — guides must be `git add -f`'d like `RELEASE_GUIDE.md`. Evidence in `tasks/TASK_REVIEW_T024.md`.
 - [x] **T023** — final v1 release verification + README/release-guide truth pass at published host, MCP-stdio, and Docker boundaries | C2 | Risk: High | P0 | Completed: 2026-09-23 | Published commit `475c501`; final wrapper returned `RESULT integration=0 container=0 release=0`; all KPI rows `PASS`; README and `docs/RELEASE_GUIDE.md` aligned with fail-closed semantics.
