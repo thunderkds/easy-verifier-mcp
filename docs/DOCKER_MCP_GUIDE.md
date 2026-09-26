@@ -111,8 +111,17 @@ It cannot remove roles or change floors.
 The `score` and `write_report` tools accept an optional `agent_input` argument,
 `{"picks": {"<role>": ["<path relative to /workspace>", ...]}}`, to add files a role's patterns missed. The
 CLI replays the same document with `--agent-input PATH`, and both adapters return identical output
-for it. Every `score` result carries a per-dimension `provenance` entry (`rules`,
-`rules + config`, `rules + agent picks (N files)`).
+for it. Every `score` result carries a per-dimension `provenance` entry: `sources` (`rules`,
+`rules + config`, `rules + agent picks (N files)`) and `rating` (`rules`, `blended (w …)`,
+`agent-rated`, `abstained`).
+
+A `score` response may carry `needs_input`. `needs_input.picks` asks for files, and
+`needs_input.gate_evaluations` names the dimensions whose rules abstained or sit within ±10% of a
+threshold, with the evidence refs to read. To answer, call `score` again with the same
+`agent_input` plus `"gate_evaluations": {"<dimension>": {"score": 0-100, "confidence": 0-1,
+"evidence_refs": ["<ref>"]}}`. Each answer blends in with `w = 0.5 × confidence`, or stands alone
+as `agent-rated` where the rules abstained. The result is always shown with its parts, for example
+`74 = rules 68 + agent 88 (w 0.30)`. A call that carries `gate_evaluations` asks nothing further.
 
 ## 4. Check the connection
 

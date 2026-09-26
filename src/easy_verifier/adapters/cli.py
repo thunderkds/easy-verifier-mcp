@@ -182,6 +182,7 @@ def _run_combined(args: argparse.Namespace) -> int:
 
 def _run_report(args: argparse.Namespace) -> int:
     findings = _read_findings(args.findings)
+    agent_input = _read_agent_input(args.agent_input)
     packs = combined_pack(
         _parse_dimensions(args.dimensions) if args.dimensions else dimension_names(),
         repo_path=args.repo,
@@ -189,9 +190,9 @@ def _run_report(args: argparse.Namespace) -> int:
         budget_bytes=args.budget_bytes,
         ref=args.ref,
         task_id=args.task_id,
-        agent_input=_read_agent_input(args.agent_input),
+        agent_input=agent_input,
     )
-    result = core_write_report(findings, packs, args.repo)
+    result = core_write_report(findings, packs, args.repo, agent_input=agent_input)
     return _emit({"path": result.path, "advisory": result.advisory})
 
 

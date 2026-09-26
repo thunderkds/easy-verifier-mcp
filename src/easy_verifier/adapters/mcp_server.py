@@ -101,7 +101,14 @@ def gather_combined(
         "no matching file but the repository holds candidates: for the "
         "roles you choose to fill, call score again with "
         'agent_input={"picks": {role: [path, ...]}} to raise their coverage. '
-        "Otherwise use the response as-is."
+        "If it carries needs_input.gate_evaluations, those dimensions' rules "
+        "abstained or sit within 10% of a threshold: read the listed "
+        "evidence_refs and call score again with the same agent_input plus "
+        '"gate_evaluations": {dimension: {"score": 0-100, "confidence": 0-1, '
+        '"evidence_refs": [ref, ...]}}. Each evaluation blends in as '
+        "rules x (1 - w) + agent x w with w = 0.5 x confidence, or stands "
+        "alone as agent-rated where the rules abstained; parts are always "
+        "shown. Otherwise use the response as-is."
     ),
     structured_output=True,
 )
@@ -119,7 +126,8 @@ def score(
     ``needs_input`` (FR-035) is MCP-only: the shared core can compute it, but
     only this adapter asks for it and puts it on the wire (FR-021, FR-034,
     FR-040) — the CLI payload never carries the key, and never pays for the
-    extra walk that produces it.
+    extra walk that produces it. At most one of ``picks`` (T027) and
+    ``gate_evaluations`` (T028) is asked per response.
     """
     result = score_repository(
         repo,
@@ -134,6 +142,8 @@ def score(
     payload = result.to_dict()
     if result.needs_input is not None:
         payload["needs_input"] = {"picks": result.needs_input}
+    elif result.gate_requests is not None:
+        payload["needs_input"] = {"gate_evaluations": list(result.gate_requests)}
     return payload
 
 
@@ -162,7 +172,7 @@ def render_report(
         task_id=task_id,
         agent_input=agent_input,
     )
-    result = core_write_report(findings, packs, repo)
+    result = core_write_report(findings, packs, repo, agent_input=agent_input)
     return {"path": result.path, "advisory": result.advisory}
 
 

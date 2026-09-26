@@ -1,4 +1,4 @@
-"""MCP-only detect gate: candidate files for unfilled source roles (T027).
+"""MCP-only hard gates: detect (T027) and evaluate (T028).
 
 Pure functions, no state. ``detect_pick_gates`` decides, from one repository
 walk, which declared source roles the rules left unfilled *and* which
@@ -8,16 +8,32 @@ it, the CLI never does — FR-021, FR-034, FR-040).
 
 A candidate is only ever ``{path, heading}``: a repository-relative path and a
 short, redacted first heading or line. Nothing here calls a model (NFR-001).
+
+The evaluate gate (FR-036 to FR-038) names the dimensions whose rules
+abstained or sit within the declared band of a threshold, and applies the
+caller's validated gate evaluations as :class:`GatedRating` values. The
+agent input is untrusted: every field is type-checked, and every cited ref
+must resolve in that dimension's own pack (FR-015a).
 """
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from ..dimensions import _doc_extract
 from .context import _is_secret_bearing, _resolved_repo, _walk
+from .judge import (
+    BORDERLINE_BAND,
+    COVERAGE_FLOORS,
+    GatedRating,
+    Rating,
+    RatingAbstention,
+    within_band,
+)
 from .redact import redact
-from .roles import GENERIC_PATTERNS, resolve, role
+from .roles import GENERIC_PATTERNS, RoleInputError, resolve, role
 
 MAX_CANDIDATES_PER_ROLE = 20
 """FR-035, NFR-009: bounded payload; overflow is disclosed, never silent."""
@@ -184,4 +200,179 @@ def _heading(root: Path, relative_path: str) -> str:
     return redact(heading[:_MAX_HEADING_LENGTH])
 
 
-__all__ = ["MAX_CANDIDATES_PER_ROLE", "detect_pick_gates"]
+# ---------------------------------------------------------------------------
+# evaluate gate
+
+
+MAX_EVIDENCE_REFS_PER_GATE = 20
+"""Refs offered per gated dimension; overflow is counted, never silent. Any
+ref in the pack still resolves — the list is a starting point, not a cap
+on what may be cited."""
+
+_EVALUATION_FIELDS = frozenset({"score", "confidence", "evidence_refs", "rationale"})
+
+
+def detect_evaluate_gates(
+    ratings: Sequence[Rating | RatingAbstention],
+) -> dict[str, str]:
+    """Dimension -> gate reason, in canonical order (FR-036, AC1).
+
+    ``abstained`` when the rules abstained; ``borderline: <metric>, ...``
+    when any rule input's value lies within the declared band of its
+    threshold. Every other dimension is absent: outside a gate the agent
+    never changes a number.
+    """
+    gates: dict[str, str] = {}
+    for item in ratings:
+        if type(item) is RatingAbstention:
+            gates[item.dimension] = "abstained"
+        elif type(item) is Rating:
+            near = [
+                entry.metric_name
+                for entry in item.inputs
+                if within_band(entry.metric_value, entry.threshold)
+            ]
+            if near:
+                gates[item.dimension] = "borderline: " + ", ".join(near)
+    return gates
+
+
+def gate_requests(
+    gates: Mapping[str, str], packs: Mapping[str, object]
+) -> list[dict] | None:
+    """The ``needs_input.gate_evaluations`` entries: refs only, never excerpt
+    text, capped per dimension. A gated dimension with nothing to cite is
+    left out — FR-037 requires a resolving ref, so asking would be a round
+    trip no answer could satisfy. ``None`` when nothing is left to ask."""
+    requests = []
+    for dimension, reason in gates.items():
+        refs = _pack_refs(packs.get(dimension))
+        if not refs:
+            continue
+        requests.append(
+            {
+                "dimension": dimension,
+                "reason": reason,
+                "evidence_refs": refs[:MAX_EVIDENCE_REFS_PER_GATE],
+                "omitted": max(0, len(refs) - MAX_EVIDENCE_REFS_PER_GATE),
+            }
+        )
+    return requests or None
+
+
+def apply_gate_evaluations(
+    document: object,
+    ratings: Sequence[Rating | RatingAbstention],
+    packs: Mapping[str, object],
+) -> tuple[Rating | RatingAbstention | GatedRating, ...]:
+    """Validate ``gate_evaluations`` and return ``ratings`` with each gated,
+    evaluated dimension replaced by its :class:`GatedRating`.
+
+    Raises :class:`RoleInputError` naming every offending field at once and
+    applies nothing if any evaluation is invalid. ``rationale`` is checked
+    for shape and then dropped: it never reaches a payload or report.
+    """
+    errors: list[str] = []
+    if not isinstance(document, dict):
+        raise RoleInputError(
+            "agent input",
+            [
+                "gate_evaluations: must be an object mapping a dimension to "
+                "an evaluation"
+            ],
+        )
+    gates = detect_evaluate_gates(ratings)
+    accepted: dict[str, tuple[int | float, int | float, tuple[str, ...]]] = {}
+    for name, entry in document.items():
+        field = f"gate_evaluations.{redact(str(name))}"
+        if name not in COVERAGE_FLOORS:
+            errors.append(f"{field}: unknown dimension")
+            continue
+        if name not in gates:
+            errors.append(
+                f"{field}: not at a hard gate on this call (the rules rated it "
+                f"with no input within {BORDERLINE_BAND * 100:.0f}% of a "
+                "threshold); outside a gate the agent never changes a number"
+            )
+            continue
+        problems = _evaluation_problems(field, entry, packs.get(name))
+        if problems:
+            errors.extend(problems)
+            continue
+        accepted[name] = (
+            entry["score"],
+            entry["confidence"],
+            tuple(entry["evidence_refs"]),
+        )
+    if errors:
+        raise RoleInputError("agent input", errors)
+    return tuple(
+        GatedRating(item, *accepted[item.dimension])
+        if item.dimension in accepted
+        else item
+        for item in ratings
+    )
+
+
+def _evaluation_problems(field: str, entry: object, pack: object) -> list[str]:
+    if not isinstance(entry, dict):
+        return [f"{field}: must be an object with score, confidence, evidence_refs"]
+    problems = [
+        f"{field}.{redact(str(key))}: unknown field"
+        for key in entry
+        if key not in _EVALUATION_FIELDS
+    ]
+    if not _is_number_in(entry.get("score"), 0, 100):
+        problems.append(f"{field}.score: must be a number from 0 through 100")
+    if not _is_number_in(entry.get("confidence"), 0, 1):
+        problems.append(f"{field}.confidence: must be a number from 0 through 1")
+    if "rationale" in entry and not isinstance(entry["rationale"], str):
+        problems.append(f"{field}.rationale: must be a string when present")
+    refs = entry.get("evidence_refs")
+    if not isinstance(refs, list) or not refs:
+        problems.append(f"{field}.evidence_refs: at least one evidence ref required")
+        return problems
+    if len(refs) > MAX_EVIDENCE_REFS_PER_GATE:
+        problems.append(
+            f"{field}.evidence_refs: {len(refs)} refs; at most "
+            f"{MAX_EVIDENCE_REFS_PER_GATE} are accepted"
+        )
+        return problems
+    available = set(_pack_refs(pack))
+    truncated = bool(getattr(pack, "truncated", False))
+    for index, ref in enumerate(refs):
+        label = f"{field}.evidence_refs[{index}]"
+        if not isinstance(ref, str) or not ref:
+            problems.append(f"{label}: must be a non-empty string")
+        elif ref not in available:
+            reason = f"{label} '{redact(ref)}': not found in the dimension's pack"
+            if truncated:
+                reason += (
+                    " — the pack was truncated by the evidence budget; re-cite "
+                    "a surviving excerpt instead"
+                )
+            problems.append(reason)
+    return problems
+
+
+def _is_number_in(value: object, low: int, high: int) -> bool:
+    """A finite int or float within [low, high]; ``bool`` and strings never."""
+    if type(value) not in (int, float) or not math.isfinite(value):
+        return False
+    return low <= value <= high
+
+
+def _pack_refs(pack: object) -> list[str]:
+    if pack is None:
+        return []
+    return list(dict.fromkeys(excerpt.ref for excerpt in pack.excerpts))
+
+
+__all__ = [
+    "MAX_CANDIDATES_PER_ROLE",
+    "MAX_EVIDENCE_REFS_PER_GATE",
+    "apply_gate_evaluations",
+    "detect_evaluate_gates",
+    "detect_pick_gates",
+    "gate_requests",
+]

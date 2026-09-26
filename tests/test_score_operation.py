@@ -90,9 +90,11 @@ def test_cli_and_mcp_score_payloads_match(tmp_path: Path) -> None:
     completed = _run("score", "--repo", str(target), "--scope", "project")
 
     assert completed.returncode == 0, completed.stderr
-    assert json.loads(completed.stdout) == _mcp_score(
-        {"repo": str(target), "scope": "project"}
-    )
+    # `needs_input` is MCP-only (T027/T028, FR-034/FR-040), the same
+    # test-declared exclusion the adapter parity oracle makes.
+    mcp_payload = _mcp_score({"repo": str(target), "scope": "project"})
+    mcp_payload.pop("needs_input", None)
+    assert json.loads(completed.stdout) == mcp_payload
 
 
 def test_optional_findings_add_assessments_and_divergences(tmp_path: Path) -> None:

@@ -128,7 +128,9 @@ role with its glob patterns. Roles are filled in this order:
    `--agent-input PATH` on `score` and `write-report`, and MCP takes it as the `agent_input`
    argument. Picks only add files. A pick that is absolute, escapes the repository, does not exist,
    is secret-bearing, sits under a vendor or build directory, or names an unknown role is rejected
-   with a named error. `gate_evaluations` is not yet supported.
+   with a named error. The same document may carry `gate_evaluations`
+   (`{"<dimension>": {"score": 0-100, "confidence": 0-1, "evidence_refs": ["path:1-9"]}}`),
+   accepted only for a dimension at a hard gate (below).
 
    ```console
    easy-verifier score --repo /path/to/repo --agent-input agent-input.json
@@ -140,6 +142,26 @@ was actually read, and every role counts in every repository. Files under `node_
 and HTML report carries a sources provenance line: `rules`, `rules + config`, or
 `rules + agent picks (N files)`. Coverage and ratings are not comparable with v0.1.0, which counted
 exact filenames.
+
+**Hard gates (MCP `score` only).** The CLI never asks. Over MCP, `score` may return `needs_input`
+with at most one question per response, and at most two extra rounds:
+
+1. `needs_input.picks`: some roles are unfilled but the repository has candidate files.
+2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
+   asked on the call that carries picks, or on the first call when nothing needs picking. A
+   dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
+   within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
+   borderline). Only reference ids are listed, at most 20 per dimension.
+
+A valid evaluation cites at least one ref from that dimension's pack. It blends into the rules
+rating R with `w = 0.5 × confidence`, so `final = R·(1−w) + A·w`, rounded half up. If the rules
+abstained, the agent's score stands alone, labelled `agent-rated`, and the abstention record is
+kept beside it. The number is always shown with its parts, for example
+`74 = rules 68 + agent 88 (w 0.30)`. The overall discloses how many dimensions were rule-rated,
+blended, or agent-rated, and which abstained. An evaluation for an ungated dimension is rejected.
+Outside a gate the agent changes no number. Findings assessments are never blended. `rationale`
+may be sent but is never written to any output. Save the final `agent_input` and replay it with
+`--agent-input` to reproduce the same result from the CLI.
 
 `write-report` accepts findings from `--findings PATH`, or from stdin when the flag is omitted.
 The named file takes precedence when both are supplied:
