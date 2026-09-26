@@ -95,7 +95,14 @@ def gather_combined(
 
 @mcp.tool(
     name="score",
-    description="Rate all seven dimensions and optionally assess findings.",
+    description=(
+        "Rate all seven dimensions and optionally assess findings. If the "
+        "response carries needs_input.picks, some source roles have no "
+        "matching file but the repository holds candidates: choose files "
+        'per role and call score again with agent_input={"picks": '
+        '{role: [path, ...]}} to raise their coverage. Otherwise use the '
+        "response as-is."
+    ),
     structured_output=True,
 )
 def score(
@@ -107,8 +114,13 @@ def score(
     findings: list[dict[str, Any]] | None = None,
     agent_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Delegate the complete rating operation to the shared score core."""
-    return score_repository(
+    """Delegate the complete rating operation to the shared score core.
+
+    ``needs_input`` (FR-035) is MCP-only: the shared core computes it, but
+    only this adapter puts it on the wire (FR-021, FR-034, FR-040) — the CLI
+    payload never carries the key.
+    """
+    result = score_repository(
         repo,
         scope=scope,
         budget_bytes=budget_bytes,
@@ -116,7 +128,11 @@ def score(
         task_id=task_id,
         findings=findings,
         agent_input=agent_input,
-    ).to_dict()
+    )
+    payload = result.to_dict()
+    if result.needs_input is not None:
+        payload["needs_input"] = {"picks": result.needs_input}
+    return payload
 
 
 @mcp.tool(
