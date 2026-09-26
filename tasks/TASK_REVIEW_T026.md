@@ -33,8 +33,27 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer at worktree HEAD `b031e2d`, before any T026 implementation
+commit). Fixture: an Elixir-shaped repo (no ecosystem table) built in the session scratchpad —
+`README.md`, `CONTRIBUTING.md`, `docs/specs/{requirements,architecture}.md`, `.formatter.exs`,
+`mix.exs`, `mix.lock`, `lib/app/greeter.ex`, `test/{greeter_test,test_helper}.exs`,
+`.github/workflows/ci.yml`, `Dockerfile`, one git commit.
+
+```
+$ git log --oneline -1 && date -u
+b031e2d plan(T026-T028): add task review files from template
+Sat Sep 26 03:11:11 PM UTC 2026
+$ PYTHONPATH=src <main>/.venv/bin/python -m easy_verifier.adapters.cli score --repo $S/elixir_demo \
+    | python3 -c "...print(dimension, value, reason_code, achieved_coverage)...;print(overall.disclosure)"
+architecture None below_coverage_floor 0.2
+blast-radius None below_coverage_floor 0.125
+code-quality 64
+requirement-fidelity None below_coverage_floor 0.0
+security None below_coverage_floor 0.18181818181818182
+solution-fit None below_coverage_floor 0.0
+test-strategy None below_coverage_floor 0.1111111111111111
+1 of 7 dimensions contributed; ratings average contributors only, so abstention can raise the overall; abstained: architecture (below_coverage_floor: achieved coverage is below the declared floor), solution-fit (below_coverage_floor: achieved coverage is below the declared floor), requirement-fidelity (below_coverage_floor: achieved coverage is below the declared floor), security (below_coverage_floor: achieved coverage is below the declared floor), test-strategy (below_coverage_floor: achieved coverage is below the declared floor), blast-radius (below_coverage_floor: achieved coverage is below the declared floor)
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
