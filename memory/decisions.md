@@ -702,3 +702,10 @@ ask the agent LLM at hard gates to detect and evaluate", agent as a contributor 
 
 Same-day reversal on record: the user first chose "agent supplies files only", then widened to
 "detect and evaluate". DDR-0003 partially superseded; FR-029a amended. ADR-eligible (3/3); user kept DDR tier. → see DDR-0006
+
+## 2026-09-26 — Coverage floors stay as declared after the role switch (user)
+
+After T026 moved coverage to roles (3,2,3,3,7,4,4 roles per dimension), the user chose to keep
+`judge.COVERAGE_FLOORS` unchanged ("keep the thresholds as is"), despite structural caps
+(security max 5/7 roles, test-strategy 3/4, blast-radius project-scope 2/4). Also: threshold 0 is
+never borderline for the evaluate gate (Supervisor decision at T028 Stage 4; FR-036 amended).

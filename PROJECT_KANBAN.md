@@ -15,6 +15,7 @@
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
+_(complete — T026, T027, T028 merged to `feat/any-language-discovery`)_
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 
@@ -41,13 +42,15 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 
 ### In Progress
 
-- [ ] **T028** — MCP evaluate gate: ±10%/abstain triggers, validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | backend-developer | C3 | Risk: High | P1 — 🔄 started 2026-09-26, worktree `../easy-verifier-mcp-T028` (branch `feat/T028-evaluate-gate`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+
+- [x] **T028** — MCP evaluate gate: abstain/±10% triggers (threshold 0 never borderline), validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | ✅ Done 2026-09-26 — Stage 4 P1 threshold-0 over-gating + P2 unbounded refs fixed `38c4b3f`; 740 passed/2 skipped; live Docker MCP 3-call flow: kitchd, bryony, ai-training all 7/7. Evidence: `tasks/TASK_REVIEW_T028.md`
 
 - [x] **T027** — MCP detect gate: `needs_input.picks.groups` (grouped, ≤20 redacted candidates/group, one round, MCP-only) | ✅ Done 2026-09-26 — Stage 4 P1 symlink escape fixed `b106862`; candidates grouped (bryony 8.3→2.1 KB); 674 passed/2 skipped; live Docker MCP round trip: ai-training 7/7 rated after picks. Evidence: `tasks/TASK_REVIEW_T027.md`
 
