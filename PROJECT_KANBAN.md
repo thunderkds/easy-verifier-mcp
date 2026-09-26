@@ -13,7 +13,6 @@
 ### Todo
 - [ ] **T028** — MCP evaluate gate — gate evaluations, capped blend, rating provenance | backend-developer | C3 | Risk: High | P1
 - [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive rewrites ordinary repo paths (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths), making citations to them unresolvable. Found by T026; guide not yet written (run `bugfix` skill) | backend-developer | C2 | Risk: High | P1
-- [ ] **T027** — MCP detect gate — `needs_input.picks` candidates for unfilled roles | backend-developer | C2 | Risk: Medium | P1
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
@@ -45,7 +44,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 
 ### In Progress
 
-_(empty)_
+- [ ] **T027** — MCP detect gate: `needs_input.picks` (≤20 redacted candidates/role, one round) | backend-developer | C2 | Risk: Med | P1 — 🔄 started 2026-09-26, worktree `../easy-verifier-mcp-T027` (branch `feat/T027-detect-gate`)
 
 ### Ready for Review
 
