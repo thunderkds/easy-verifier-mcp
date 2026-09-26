@@ -31,12 +31,19 @@ class ScoreResult:
     metrics: MetricSet
     assessments: AssessmentSet | None = None
     comparisons: ComparisonSet | None = None
+    provenance: tuple[tuple[str, str], ...] = ()
+    """Per dimension, in canonical order: where its sources came from
+    (FR-039, sources half)."""
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "ratings": [item.to_dict() for item in self.ratings],
             "overall": self.overall.to_dict(),
             "metrics": json.loads(self.metrics.serialize()),
+            "provenance": [
+                {"dimension": dimension, "sources": sources}
+                for dimension, sources in self.provenance
+            ],
         }
         if self.assessments is not None and self.comparisons is not None:
             payload["assessments"] = [
@@ -61,8 +68,13 @@ def score_repository(
     ref: str | None = None,
     task_id: str | None = None,
     findings: list[dict[str, Any]] | str | bytes | None = None,
+    agent_input: dict[str, Any] | str | bytes | None = None,
 ) -> ScoreResult:
-    """Gather all seven dimensions and return one complete score result."""
+    """Gather all seven dimensions and return one complete score result.
+
+    ``agent_input`` is the caller's optional agent-input document (FR-034);
+    only its ``picks`` are accepted until T028.
+    """
     packs = combined_pack(
         dimension_names(),
         repo_path=repo_path,
@@ -70,6 +82,7 @@ def score_repository(
         budget_bytes=budget_bytes,
         ref=ref,
         task_id=task_id,
+        agent_input=agent_input,
     )
     by_dimension: Mapping[str, Sequence[Finding]] | None = None
     if findings is not None:
@@ -102,7 +115,18 @@ def score_packs(
     if findings_by_dimension is not None:
         assessments = assess(findings_by_dimension)
         comparisons = compare(ratings, assessments)
-    return ScoreResult(ratings, overall, metrics, assessments, comparisons)
+    provenance = tuple(
+        (
+            slot.dimension,
+            slot.pack.source_provenance
+            if slot.pack is not None
+            else "unavailable: the dimension failed and produced no pack",
+        )
+        for slot in packs.slots
+    )
+    return ScoreResult(
+        ratings, overall, metrics, assessments, comparisons, provenance
+    )
 
 
 def _pack_map(packs: CombinedPack) -> dict[str, EvidencePack]:

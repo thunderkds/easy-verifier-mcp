@@ -14,7 +14,7 @@ not the quality of the target repository.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -91,9 +91,28 @@ class DimensionContext(Protocol):
     scope: str
     resolved_scope: object | None
 
+    role_files: Mapping[str, tuple[str, ...]]
+    """Resolved files per source role, sorted (T026). Set by ``run_dimension``;
+    empty for a context built without role resolution."""
+
     def read_source(self, relative_path: str) -> str | None: ...
 
     def request_secret_source(self, relative_path: str) -> str | None: ...
+
+
+@dataclass(frozen=True)
+class SourceRole:
+    """A named kind of source a dimension seeks, with the globs that fill it.
+
+    ``patterns`` are repository-relative globs (``*`` within one path segment,
+    ``**/`` across any number of them), matched case-sensitively. A role with
+    **no** patterns is a pseudo-role: it names a body of evidence rather than a
+    file (git history, a correspondence result), and only the dimension itself
+    can credit it. Every role counts in every repository (DDR-0006).
+    """
+
+    name: str
+    patterns: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -103,6 +122,10 @@ class DimensionDescriptor:
     name: str
     purpose: str
     sources_sought: tuple[str, ...]
+    """When ``roles`` are declared (T026) this must be exactly the tuple of role
+    names, so the miss list, discovery and coverage shapes are unchanged. A
+    descriptor with no roles keeps a literal checklist of paths."""
+
     collect: Callable[[DimensionContext], Iterable[Excerpt]]
     """Returns an ``Iterable[Excerpt]``, consumed lazily by the pipeline.
 
@@ -110,6 +133,16 @@ class DimensionDescriptor:
     ``list`` forces full materialisation on exactly the monorepo size that most
     needs budgeting.
     """
+
+    roles: tuple[SourceRole, ...] = ()
+    """The source roles this dimension seeks (FR-031). Coverage is counted over
+    these, never over individual files."""
+
+    def __post_init__(self) -> None:
+        if self.roles and self.sources_sought != tuple(r.name for r in self.roles):
+            raise ValueError(
+                f"dimension {self.name!r}: sources_sought must equal its role names"
+            )
 
 
 @dataclass(frozen=True)
@@ -190,6 +223,11 @@ class EvidencePack:
 
     Empty for existing callers and every other dimension.
     """
+
+    source_provenance: str = field(default="rules")
+    """Where this pack's role sources came from (FR-039, sources half):
+    ``rules``, then ``+ config`` when ``.easy-verifier.toml`` contributed a file
+    and ``+ agent picks (N files)`` when picks did. Never agent text."""
 
 
 @dataclass(frozen=True)

@@ -130,6 +130,8 @@ _EXCLUDED_DIRS = frozenset(
         "site-packages",
         "dist",
         "build",
+        "target",
+        "vendor",
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
@@ -211,6 +213,7 @@ class RepoContext:
             warnings = (LIMITED_CONTEXT_WARNING, *warnings)
         self.warnings = warnings
         self.resolved_scope: object | None = None
+        self.role_files: dict[str, tuple[str, ...]] = {}
         self.files_read: list[str] = []
         self.sources_found: list[str] = []
         self.sources_missing: list[SourceMiss] = []
@@ -581,7 +584,8 @@ def _walk(
     directory: Path,
     repo: Path,
     *,
-    extensions: frozenset[str] = _DOC_EXTENSIONS,
+    extensions: frozenset[str] | None = _DOC_EXTENSIONS,
+    contained_only: bool = True,
     _visited: set[Path] | None = None,
 ) -> Iterator[str]:
     """Yield matching files under the directory, depth-first and sorted.
@@ -595,11 +599,19 @@ def _walk(
     applied here so the two cannot disagree.
 
     Resolved directories are visited once, so in-repo symlink cycles terminate
-    without relying on the outer discovery bound.
+    without relying on the outer discovery bound. ``extensions=None`` yields
+    every regular file (source-role resolution, T026). ``contained_only=False``
+    also yields a *file* symlink resolving outside the repository — never a
+    directory — so role resolution can let ``read_source`` state the true
+    reason ("resolves outside the repository") instead of "not found".
     """
     # Checked on entry rather than at the recursive call, so it covers the roots
     # `_candidate_docs` passes in too: `docs/` itself can be the escaping link.
-    if not directory.is_dir() or directory.name in _EXCLUDED_DIRS:
+    # The repository root itself is never excluded by name: a checkout that
+    # happens to be called `build` or `vendor` is still the target.
+    if not directory.is_dir() or (
+        directory != repo and directory.name in _EXCLUDED_DIRS
+    ):
         return
     try:
         resolved = directory.resolve()
@@ -619,11 +631,17 @@ def _walk(
     for entry in _sorted_entries(directory):
         if entry.is_dir():
             if entry.name not in _EXCLUDED_DIRS:
-                yield from _walk(entry, repo, extensions=extensions, _visited=_visited)
+                yield from _walk(
+                    entry,
+                    repo,
+                    extensions=extensions,
+                    contained_only=contained_only,
+                    _visited=_visited,
+                )
         elif (
             entry.is_file()
-            and entry.suffix.lower() in extensions
-            and _is_contained(entry, repo)
+            and (extensions is None or entry.suffix.lower() in extensions)
+            and (not contained_only or _is_contained(entry, repo))
         ):
             yield entry.relative_to(repo).as_posix()
 

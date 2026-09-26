@@ -29,7 +29,14 @@ from collections.abc import Iterator
 from pathlib import PurePosixPath
 
 from ..core.context import MAX_LINE_CHARS, whole_file_excerpt
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt, SourceMiss
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceMiss,
+    SourceRole,
+)
+from ..core.roles import role
 
 NAME = "test-strategy"
 
@@ -46,17 +53,18 @@ PURPOSE = (
 #: dimension's pseudo-source: the reason states why it can never be "found".
 CORRESPONDENCE_SOURCE = "source-to-test correspondence for files in the active scope"
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    "pytest.ini",
-    "tox.ini",
-    "setup.cfg",
-    "pyproject.toml",
-    "conftest.py",
-    "package.json",
-    "jest.config.js",
-    ".github/workflows/ci.yml",
-    CORRESPONDENCE_SOURCE,
+TEST_FILE_ROLE = "test-file"
+
+ROLES: tuple[SourceRole, ...] = (
+    role("test-config"),
+    role(TEST_FILE_ROLE),
+    role("ci-workflow"),
+    SourceRole(name=CORRESPONDENCE_SOURCE, patterns=()),
 )
+"""Source roles (T026). Configuration roles are probed up front; test files
+are read by the ranked sweep, which the ``test-file`` role's files join."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MAX_TEST_SOURCES = 200
 """Upper bound on files read while sweeping the scope for test evidence.
@@ -236,24 +244,19 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     whole_repo = resolved_scope is None or scope_kind == "project"
     reader = _Reader(context)
 
-    # Declared sources are probed explicitly, before anything else. Without this
-    # the miss list is guesswork: an absent `jest.config.js` is
-    # indistinguishable from one no sweep ever looked at.
-    #
-    # A bare declared name (no directory component) is a convention, not a
-    # promise it lives at the repo root — `conftest.py` is root-level in a flat
-    # layout and `tests/conftest.py` in the layout this repo itself uses. It is
-    # resolved against the already-computed scope file list (the full repo walk
-    # in `project` scope, the narrow set otherwise) rather than a second probe,
-    # so the same containment the scope already enforced still applies. A
-    # declared name that already includes a directory, like
-    # `.github/workflows/ci.yml`, names a convention-fixed location and is
-    # never resolved this way.
+    # Role files are probed explicitly, before anything else. Without this the
+    # miss list is guesswork: an absent test configuration is indistinguishable
+    # from one no sweep ever looked at. Each role's files come from the
+    # pipeline's role resolution (T026), which finds `tests/conftest.py` and
+    # `packages/app/vitest.config.ts` wherever they sit; a narrow scope still
+    # may not reach outside its own file set.
+    scope_set = frozenset(scope_files)
     for source in SOURCES_SOUGHT:
         if source == CORRESPONDENCE_SOURCE:
             continue
-        resolved_path = _resolve_declared_source(source, scope_files)
-        if not whole_repo and resolved_path not in scope_files:
+        paths = context.role_files.get(source, ())
+        in_bounds = paths if whole_repo else [p for p in paths if p in scope_set]
+        if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(
                     source=source,
@@ -261,21 +264,15 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
                 )
             )
             continue
-        text = reader.read(resolved_path)
-        if text is None:
-            continue
-        if resolved_path != source:
-            # `read_source` already recorded the concrete path in `files_read`
-            # / `context.sources_found`, which is what makes the citation
-            # honest. The pipeline's checklist match (`core/pipeline.py`) is a
-            # literal string comparison against the *declared* name, though,
-            # so the declared name is credited here too — the declared name
-            # and the concrete path are two labels for the one file that was
-            # actually read, and neither may end up in `sources_missing`.
-            context.sources_found.append(source)
-        excerpt = _config_excerpt(resolved_path, text)
-        if excerpt is not None:
-            yield excerpt
+        if source == TEST_FILE_ROLE:
+            continue  # read by the ranked sweep below, relevance first
+        for path in in_bounds:
+            text = reader.read(path)
+            if text is None:
+                continue
+            excerpt = _config_excerpt(path, text)
+            if excerpt is not None:
+                yield excerpt
 
     if resolved_scope is None:
         context.sources_missing.append(
@@ -317,7 +314,10 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             NARROW_SCOPE_WARNING.format(count=len(scope_files), scope=scope_kind),
         )
 
-    tests = tuple(path for path in scope_files if _is_test_file(path))
+    role_tests = frozenset(context.role_files.get(TEST_FILE_ROLE, ()))
+    tests = tuple(
+        path for path in scope_files if _is_test_file(path) or path in role_tests
+    )
     matched, unmatched = _correspondence(scope_files, tests)
     context.sources_missing.append(
         SourceMiss(
@@ -340,27 +340,6 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         )
         if excerpt is not None:
             yield excerpt
-
-
-def _resolve_declared_source(source: str, scope_files: tuple[str, ...]) -> str:
-    """Where a bare declared source name actually lives, if the scope says so.
-
-    ``source`` with a directory component (``.github/workflows/ci.yml``) names
-    a convention-fixed location and is returned unchanged. A bare basename
-    (``conftest.py``) is returned unchanged too when it sits at the root — the
-    common case, and the one every prior probe already covered — but is
-    remapped to a matching file elsewhere in ``scope_files`` when that is the
-    only place it exists, so a source actually read and cited is never also
-    reported missing. Several matches resolve to the shallowest, then
-    alphabetically first, for a deterministic pick.
-    """
-    if "/" in source or source in scope_files:
-        return source
-    matches = sorted(
-        (path for path in scope_files if PurePosixPath(path).name == source),
-        key=lambda path: (path.count("/"), path),
-    )
-    return matches[0] if matches else source
 
 
 class _Reader:
@@ -741,4 +720,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )

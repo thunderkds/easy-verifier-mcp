@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceRole,
+)
+from ..core.roles import role
 from . import _doc_extract
 
 NAME = "solution-fit"
@@ -20,10 +26,13 @@ PURPOSE = (
     "behind that choice."
 )
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    "PRD.md",
-    "BRAINSTORMING_LOG.md",
+ROLES: tuple[SourceRole, ...] = (
+    role("requirements-doc"),
+    role("decision-record"),
 )
+"""Source roles (T026): filled by any matching file in any language."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MARKERS: tuple[str, ...] = (
     "user stor",
@@ -46,4 +55,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )

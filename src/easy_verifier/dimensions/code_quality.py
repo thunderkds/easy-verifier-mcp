@@ -22,7 +22,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceRole,
+)
+from ..core.roles import role
 from . import _doc_extract
 
 NAME = "code-quality"
@@ -34,14 +40,14 @@ PURPOSE = (
     "or emits a quality assessment of its own."
 )
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    "CONTRIBUTING.md",
-    "pyproject.toml",
-    "ruff.toml",
-    ".flake8",
-    "setup.cfg",
-    ".editorconfig",
+ROLES: tuple[SourceRole, ...] = (
+    role("contributing-guide"),
+    role("lint-config"),
+    role("format-config"),
 )
+"""Source roles (T026): filled by any matching file in any language."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MARKERS: tuple[str, ...] = (
     "convention",
@@ -67,4 +73,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )
