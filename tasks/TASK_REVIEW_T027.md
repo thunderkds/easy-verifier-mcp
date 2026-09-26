@@ -15,14 +15,14 @@
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t027_detect_gate.py` (AC1–6, 8, 9 partly, round-trip, CLI never emits); `tests/integration/test_adapter_parity.py::test_combined_score_and_discovery_match_across_adapters` (AC7, updated to declare the `needs_input` exclusion) |
-| Verification command run | ☑ pass | `PYTHONPATH=src <main>/.venv/bin/python -m pytest -q` → `668 passed, 2 skipped in 23.93s`; `... -m ruff check src tests` → `All checks passed!` |
+| Verification command run | ☑ pass | `PYTHONPATH=src <main>/.venv/bin/python -m pytest -q` → `674 passed, 2 skipped` (Supervisor re-run after `b106862`; first pass `668 passed, 2 skipped`) in 23.93s`; `... -m ruff check src tests` → `All checks passed!` |
 | Negative cases hold | ☑ pass | Fully-resolved fixture → no `needs_input` (`test_fully_resolved_repo_yields_no_needs_input`); no-candidate repo → `None` (`test_no_needs_input_when_no_candidate_exists`); vendor/secret/binary all excluded (`test_candidates_exclude_vendor_secret_and_binary`) |
-| verify | ☐ pass / ☐ fail / ☐ N/A | Not run by the implementer — user-invocation-only per `memory/MEMORY.md`; Stage 4/5 reviewer to run `Skill({ skill: "verify" })` |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Touched only `core/gate.py` (new), `core/score.py` (added field + one call site), `adapters/mcp_server.py` (`score` tool only), plus the parity test's `needs_input` exclusion. `adapters/cli.py`, `core/judge.py`, `core/redact.py`, `core/budget.py`, `Dockerfile`, `compose.yaml` untouched, matching the guide's Files-Must-NOT-Touch table |
-| Full smoke suite still green (no regression) | ☑ pass | Same `668 passed, 2 skipped` run above includes the full pre-existing suite, including T026's tests and the adapter-parity integration tests |
-| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend/MCP task, no UI component |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend/MCP task, no UI component |
-| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend/MCP task, no UI component |
+| verify | ☑ pass | Supervisor Stage 5, 2026-09-26: rebuilt image `easy-verifier-mcp:t027`, real MCP stdio session over `docker run -i` (read-only, `--network none`, `--cap-drop ALL`). ai-training: call 1 → `needs_input` 1549 B, 1 doc group (contributing-guide, decision-record, requirements-doc); call 2 with `picks.requirements-doc` (3 files) → solution-fit None→**64**, 7/7 rated, no `needs_input`, provenance `rules + agent picks (3 files)`. bryony: call 1 → 2158 B, 20 candidates + `omitted: 16`; call 2 → solution-fit None→50, provenance recorded. kitchd: no `needs_input` (0 extra bytes). Feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/gate.py`, `core/score.py`, `adapters/mcp_server.py`, parity test change. Stage 4 found **P1** symlink escape (outside-file heading `HOST-ONLY SECRET PLAN codename bluebird` leaked; fixed `b106862`, re-probed: not present), **P2** duplicated candidates (bryony 8289 B/80 entries → 2147 B grouped; ai-training 4246 B → 1538 B), **P2** CLI paid for the walk (now `detect_gates=False` default). Manual security pass (built-in skill needs `origin/HEAD`): containment, secret exclusion, redaction, bounded 4 KB heading reads — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Supervisor re-run `674 passed, 2 skipped` (after Stage 4 fixes) above includes the full pre-existing suite, including T026's tests and the adapter-parity integration tests |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend/MCP task — no UI component |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend/MCP task — no UI component |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend/MCP task — no UI component |
 
 ---
 
@@ -95,3 +95,13 @@ repo with genuinely nothing eligible, spends zero extra tokens (no `needs_input`
 **WITNESS**: backend-developer (implementing agent), both BEFORE and AFTER captures run in this
 session, 2026-09-26, `feat/T027-detect-gate` worktree at
 `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T027`.
+
+**AFTER (Stage 4 re-capture, grouped shape actually shipping — Supervisor, 2026-09-26, live MCP stdio via Docker on ai-training)**:
+```
+call1 {'architecture': 82, 'blast-radius': 50, 'code-quality': 64, 'requirement-fidelity': 82, 'security': 60, 'solution-fit': None, 'test-strategy': 60} overall 66 | needs_input bytes 1549
+group roles ['contributing-guide', 'decision-record', 'requirements-doc']
+picks {'requirements-doc': ['src/docs/agents/fitness-subgraph.md', 'src/docs/agents/planning-subgraph.md', 'src/docs/multi-agent-implementation-plan.md']}
+call2 {..., 'solution-fit': 64, ...} overall 66 | needs_input present: False
+provenance [requirement-fidelity: 'rules + agent picks (3 files)', solution-fit: 'rules + agent picks (3 files)']
+```
+
