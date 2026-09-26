@@ -320,6 +320,10 @@ def role(name: str) -> SourceRole:
     return SourceRole(name=name, patterns=GENERIC_PATTERNS[name])
 
 
+MAX_ERROR_LINES = 20
+"""Error lines kept in one :class:`RoleInputError`; the rest are counted."""
+
+
 class RoleInputError(ValidationError):
     """A rejected ``.easy-verifier.toml`` or agent-input document.
 
@@ -328,6 +332,12 @@ class RoleInputError(ValidationError):
     """
 
     def __init__(self, source: str, errors: Sequence[str]) -> None:
+        # Bounded: the message goes back to an untrusted caller, so a hostile
+        # document cannot inflate it without limit (T028 Stage 4 P2).
+        errors = list(errors)
+        if len(errors) > MAX_ERROR_LINES:
+            extra = len(errors) - MAX_ERROR_LINES
+            errors = errors[:MAX_ERROR_LINES] + [f"…and {extra} more"]
         self.errors = tuple(errors)
         Exception.__init__(
             self,

@@ -150,8 +150,8 @@ with at most one question per response, and at most two extra rounds:
 2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
    asked on the call that carries picks, or on the first call when nothing needs picking. A
    dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
-   within ±10% of its threshold (`borderline: <metric>`; for a threshold of 0 only an exact 0
-   counts). Only reference ids are listed, at most 20 per dimension.
+   within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
+   borderline). Only reference ids are listed, at most 20 per dimension.
 
 A valid evaluation cites at least one ref from that dimension's pack. It blends into the rules
 rating R with `w = 0.5 × confidence`, so `final = R·(1−w) + A·w`, rounded half up. If the rules

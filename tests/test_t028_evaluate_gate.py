@@ -109,7 +109,7 @@ def _rating_68(dimension: str) -> Rating:
         "test_to_source_ratio": 5.0,
         "source_files_without_covering_test": 0,
         "assertion_density_per_test": 5.0,
-        "assertions_observed": 9,
+        "assertions_observed": 1,  # exactly on threshold 1.0 → borderline
         "redaction_hits_observed": 0,
         "redacted_file_share": 0.0,
     }
@@ -163,7 +163,8 @@ def _ev(score=88, confidence=0.6, refs=(REF,), **extra) -> dict:
         (0.899, 1.0, False),
         (0.66, 0.60, True),
         (0.6606, 0.60, False),
-        (0, 0.0, True),  # threshold 0 → exact equality only
+        (0, 0.0, False),  # threshold 0 → never borderline (Stage 4)
+        (0.0, 0, False),
         (0.0001, 0.0, False),
         (-0.0001, 0.0, False),
     ],
@@ -186,12 +187,20 @@ def test_detect_gates_abstained_and_borderline_only() -> None:
 
 def test_detect_gates_names_every_borderline_metric() -> None:
     rating = _rating(
-        "security", {"test_to_source_ratio": 0.95, "redaction_hits_observed": 0}
+        "security", {"test_to_source_ratio": 0.95, "assertion_density_per_test": 1.08}
     )
     gates = detect_evaluate_gates(_ratings(security=rating))
     assert gates == {
-        "security": "borderline: test_to_source_ratio, redaction_hits_observed"
+        "security": "borderline: test_to_source_ratio, assertion_density_per_test"
     }
+
+
+def test_threshold_zero_rules_at_zero_never_gate() -> None:
+    """Stage 4 decision: every at_most-0 rule at its best value (0) is not
+    borderline, so a dimension clean on them is not asked about."""
+    zeros = {name: 0 for name, rule in RATING_RULES.items() if rule.threshold == 0}
+    assert zeros  # the at_most-0 rules exist, so this pins something
+    assert detect_evaluate_gates(_ratings(security=_rating("security", zeros))) == {}
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +285,27 @@ def test_unknown_dimension_is_rejected() -> None:
 
 def test_gate_evaluations_must_be_an_object() -> None:
     assert "gate_evaluations" in _reject([_ev()])
+
+
+def test_too_many_refs_is_one_named_error() -> None:
+    refs = tuple(f"bogus{i}.py:1-2" for i in range(100_000))
+    message = _reject({"architecture": _ev(refs=refs)})
+    assert "gate_evaluations.architecture.evidence_refs: 100000 refs" in message
+    assert "bogus" not in message
+    assert len(message) < 500
+
+
+def test_error_lines_are_bounded() -> None:
+    from easy_verifier.core.roles import MAX_ERROR_LINES
+
+    document = {f"dim{i}": _ev() for i in range(MAX_ERROR_LINES + 30)}
+    with pytest.raises(ValidationError) as caught:
+        apply_gate_evaluations(
+            document, _ratings(architecture=_abstention("architecture")), _packs()
+        )
+    assert len(caught.value.errors) == MAX_ERROR_LINES + 1
+    assert caught.value.errors[-1] == "…and 30 more"
+    assert "dim49" not in str(caught.value)
 
 
 def test_every_error_is_reported_at_once() -> None:

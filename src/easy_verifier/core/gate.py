@@ -332,6 +332,12 @@ def _evaluation_problems(field: str, entry: object, pack: object) -> list[str]:
     if not isinstance(refs, list) or not refs:
         problems.append(f"{field}.evidence_refs: at least one evidence ref required")
         return problems
+    if len(refs) > MAX_EVIDENCE_REFS_PER_GATE:
+        problems.append(
+            f"{field}.evidence_refs: {len(refs)} refs; at most "
+            f"{MAX_EVIDENCE_REFS_PER_GATE} are accepted"
+        )
+        return problems
     available = set(_pack_refs(pack))
     truncated = bool(getattr(pack, "truncated", False))
     for index, ref in enumerate(refs):

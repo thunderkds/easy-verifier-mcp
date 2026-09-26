@@ -477,7 +477,11 @@ def rate(metrics: MetricSet, coverage: CoverageSummary) -> Rating | RatingAbsten
 def within_band(value: float | int, threshold: float | int) -> bool:
     """True if ``value`` lies within ``BORDERLINE_BAND`` of ``threshold``,
     inclusive (FR-036). Decimal over the shortest float text, so ``1.1`` is
-    exactly 10% from ``1.0`` rather than a binary hair beyond it."""
+    exactly 10% from ``1.0`` rather than a binary hair beyond it. A threshold
+    of 0 is never borderline: its band has zero width, and a value of 0 there
+    is the rule's best outcome, not uncertainty (Supervisor, T028 Stage 4)."""
+    if _decimal(threshold) == 0:
+        return False
     gap = abs(_decimal(value) - _decimal(threshold))
     return gap <= BORDERLINE_BAND * abs(_decimal(threshold))
 

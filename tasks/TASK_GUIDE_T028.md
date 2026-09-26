@@ -69,7 +69,7 @@ make the score more correctly"; chose the **capped blend** `w = 0.5 × confidenc
 
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
-| 1 | A dimension is at an evaluate gate iff its rules abstain **or** any rule input's metric value lies within ±10% of its declared threshold (band as declared data; threshold 0 → exact equality only). Tested at band edges (9.9%, 10%, 10.1%). | FR-036 |
+| 1 | A dimension is at an evaluate gate iff its rules abstain **or** any rule input's metric value lies within ±10% of its declared threshold (band as declared data; threshold 0 → never borderline (Supervisor decision 2026-09-26, Stage 4)). Tested at band edges (9.9%, 10%, 10.1%). | FR-036 |
 | 2 | MCP `score` emits `needs_input.gate_evaluations` for each gated dimension: dimension, gate reason (`abstained` / `borderline: <metric>`), and the evidence refs available to cite. Not emitted when the call already carries `gate_evaluations`; never emitted by the CLI. If picks are also pending, picks are asked first and gates computed after picks are applied (max two rounds). | FR-036, FR-040 |
 | 3 | A gate evaluation `{score, confidence, evidence_refs[, rationale]}` is rejected, naming the field, when: score ∉ [0,100] or non-numeric; confidence ∉ [0,1]; no evidence_ref; an evidence_ref not in that dimension's pack (FR-015a); the dimension is not currently gated. `rationale` is accepted but never written to the report (FR-039). | FR-037 |
 | 4 | Blend: `w = 0.5 × c`; `final = R·(1−w) + A·w` rounded half-up via `Decimal` and clamped 0–100. Worked cases asserted: R=68, A=88, c=0.6 → w=0.30 → 74; R=50, A=51, c=1 → 50.5 → **51** (not banker's 50); c=0 → final=R. | FR-038, Edge 7 |
