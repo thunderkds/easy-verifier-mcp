@@ -307,6 +307,7 @@ def test_blended_rating_shows_its_parts() -> None:
     assert payload["value"] == 74
     assert payload["parts"] == "74 = rules 68 + agent 88 (w 0.30)"
     assert payload["rated_by"] == "blended (w 0.30)"
+    assert payload["agent"]["weight"] == "0.30"
     assert payload["rules"] == rules.to_dict()
     assert "secret reasoning" not in json.dumps(payload)
     # every other dimension is untouched (AC8)
@@ -324,6 +325,7 @@ def test_agent_rated_keeps_abstention_record() -> None:
     assert gated.rated_by == "agent-rated"
     payload = gated.to_dict()
     assert payload["kind"] == "agent_rated"
+    assert payload["agent"]["weight"] is None
     assert payload["rules"] == abstained.to_dict()
     assert payload["rules"]["coverage_floor"] == abstained.coverage_floor
     assert payload["rules"]["sources_missing"]

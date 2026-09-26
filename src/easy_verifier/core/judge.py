@@ -298,7 +298,10 @@ class GatedRating:
             "agent": {
                 "score": self.agent_score,
                 "confidence": self.confidence,
-                "weight": _decimal_text(self.weight),
+                # no weight is applied where the rules abstained: final = A
+                "weight": None
+                if self.is_agent_rated
+                else _decimal_text(self.weight),
                 "evidence_refs": list(self.evidence_refs),
             },
             "rules": self.rules.to_dict(),
