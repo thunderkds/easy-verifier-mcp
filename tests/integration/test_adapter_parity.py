@@ -76,7 +76,13 @@ def test_combined_score_and_discovery_match_across_adapters() -> None:
 
     cli_score = cli_json("score", "--repo", str(REPO_ROOT), "--scope", "worktree")
     mcp_score = mcp_call("score", {"repo": str(REPO_ROOT), "scope": "worktree"})
-    assert normalize(cli_score) == normalize(mcp_score)
+    # `needs_input` is a declared MCP-only field (T027, FR-034/FR-040): the
+    # core computes it but only the MCP adapter puts it on the wire, so the
+    # CLI payload never carries the key. This is a test-declared exclusion,
+    # not a widening of DDR-0005's closed normalization list.
+    assert "needs_input" not in cli_score
+    mcp_score_for_parity = {k: v for k, v in mcp_score.items() if k != "needs_input"}
+    assert normalize(cli_score) == normalize(mcp_score_for_parity)
 
 
 def test_score_with_the_same_picks_matches_across_adapters(tmp_path: Path) -> None:

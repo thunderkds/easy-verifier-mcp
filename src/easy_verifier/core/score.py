@@ -6,6 +6,7 @@ T020, and T021 contracts so both adapters expose one deterministic operation.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -15,10 +16,12 @@ from typing import Any
 from ..dimensions import dimension_names
 from .assessment import AssessmentSet, ComparisonSet, assess, compare
 from .findings import Finding, validate_findings
+from .gate import detect_pick_gates
 from .judge import OverallRating, Rating, RatingAbstention, rate, rate_overall
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
+from .roles import load_repo_config
 from .synthesis import combined_pack
 
 
@@ -34,6 +37,13 @@ class ScoreResult:
     provenance: tuple[tuple[str, str], ...] = ()
     """Per dimension, in canonical order: where its sources came from
     (FR-039, sources half)."""
+    needs_input: dict[str, dict[str, Any]] | None = None
+    """MCP-only detect gate (T027, FR-035): role -> {candidates, omitted}, or
+    ``None`` when nothing qualifies. Computed here so the arithmetic stays
+    shared (FR-021), but deliberately **not** part of :meth:`to_dict` — an
+    adapter that wants to expose it merges it into the payload itself. The
+    CLI never does (FR-034, FR-040); the parity test compares the two
+    payloads with this field excluded from the MCP side."""
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -69,11 +79,16 @@ def score_repository(
     task_id: str | None = None,
     findings: list[dict[str, Any]] | str | bytes | None = None,
     agent_input: dict[str, Any] | str | bytes | None = None,
+    detect_gates: bool = False,
 ) -> ScoreResult:
     """Gather all seven dimensions and return one complete score result.
 
     ``agent_input`` is the caller's optional agent-input document (FR-034);
-    only its ``picks`` are accepted until T028.
+    only its ``picks`` are accepted until T028. ``detect_gates`` runs the
+    detect-gate walk (T027, FR-035); it defaults to ``False`` because the
+    result is MCP-only (FR-021, FR-034, FR-040) and computing it for the CLI
+    path would be a discarded repository walk on every call. Only the MCP
+    ``score`` tool passes ``True`` — the core stays shared either way.
     """
     packs = combined_pack(
         dimension_names(),
@@ -87,7 +102,15 @@ def score_repository(
     by_dimension: Mapping[str, Sequence[Finding]] | None = None
     if findings is not None:
         by_dimension = validate_findings(findings, _pack_map(packs)).by_dimension
-    return score_packs(packs, by_dimension)
+    result = score_packs(packs, by_dimension)
+
+    # One round: a caller that already supplied picks gets no detect gate,
+    # stateless and unconditional (DDR-0006 §7). No repository walk happens
+    # at all in that case, so a picks round costs nothing extra either.
+    needs_input = None
+    if detect_gates and agent_input is None:
+        needs_input = detect_pick_gates(repo_path, load_repo_config(repo_path))
+    return dataclasses.replace(result, needs_input=needs_input)
 
 
 def score_packs(
