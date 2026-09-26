@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceRole,
+)
+from ..core.roles import role
 from . import _doc_extract
 
 NAME = "architecture"
@@ -19,13 +25,14 @@ PURPOSE = (
     "so the calling agent can judge the architecture from cited evidence."
 )
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    "PROJECT_SPEC.md",
-    "BRAINSTORMING_LOG.md",
-    "ARCHITECTURE.md",
-    "docs/architecture.md",
-    "README.md",
+ROLES: tuple[SourceRole, ...] = (
+    role("architecture-doc"),
+    role("decision-record"),
+    role("readme"),
 )
+"""Source roles (T026): filled by any matching file in any language."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MARKERS: tuple[str, ...] = ()
 """Empty on purpose (behaviour-preserving refactor, AC #8): the pre-T007
@@ -50,4 +57,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )

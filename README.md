@@ -101,6 +101,46 @@ python -m easy_verifier.adapters.cli score --repo . --scope project
 Pass optional findings through `--findings PATH` or stdin to add the caller-derived assessments and
 rating-to-assessment divergences to the same JSON output.
 
+#### Source roles — any language, no configuration required
+
+Each dimension seeks **source roles** rather than exact filenames: a `lockfile`, a
+`requirements-doc`, a `ci-workflow`, a `test-file`, and so on. `list-dimensions` prints every
+role with its glob patterns. Roles are filled in this order:
+
+1. **Generic patterns**, which work in any language (`**/*.lock`, `**/test/**`, `**/*_test.*`,
+   `.github/workflows/*.yml`, `docs/**/*requirement*.md`, …).
+2. **Ecosystem pattern sets** for Python, JS/TS, Rust, and Java. Each is switched on when its
+   manifest is present (`pyproject.toml`, `package.json`, `Cargo.toml`, `pom.xml`/`build.gradle*`)
+   and can only add patterns. It never adds, removes, or exempts a role.
+3. An optional **`.easy-verifier.toml`** in the target repository, which may only add globs to
+   existing roles:
+
+   ```toml
+   [roles]
+   requirements-doc = ["docs/specs/*.md"]
+   lint-config = ["tools/lint/*.json"]
+   ```
+
+   Any other key, an unknown role, a wrong type, an empty list, or an attempt to set a floor is a
+   validation error that names the key (exit 2). Without the file, output is unchanged.
+4. **Agent-input picks**, a JSON document of the form
+   `{"picks": {"requirements-doc": ["notes/wants.md"]}}`. The CLI replays it with
+   `--agent-input PATH` on `score` and `write-report`, and MCP takes it as the `agent_input`
+   argument. Picks only add files. A pick that is absolute, escapes the repository, does not exist,
+   is secret-bearing, sits under a vendor or build directory, or names an unknown role is rejected
+   with a named error. `gate_evaluations` is not yet supported.
+
+   ```console
+   easy-verifier score --repo /path/to/repo --agent-input agent-input.json
+   ```
+
+Coverage is *roles filled ÷ roles declared*. A role counts as filled only when one of its files
+was actually read, and every role counts in every repository. Files under `node_modules`,
+`target`, `dist`, `build`, `.venv`, `vendor`, and `.git` never fill a role. Each dimension's output
+and HTML report carries a sources provenance line: `rules`, `rules + config`, or
+`rules + agent picks (N files)`. Coverage and ratings are not comparable with v0.1.0, which counted
+exact filenames.
+
 `write-report` accepts findings from `--findings PATH`, or from stdin when the flag is omitted.
 The named file takes precedence when both are supplied:
 

@@ -105,6 +105,7 @@ def score(
     ref: str | None = None,
     task_id: str | None = None,
     findings: list[dict[str, Any]] | None = None,
+    agent_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Delegate the complete rating operation to the shared score core."""
     return score_repository(
@@ -114,6 +115,7 @@ def score(
         ref=ref,
         task_id=task_id,
         findings=findings,
+        agent_input=agent_input,
     ).to_dict()
 
 
@@ -130,6 +132,7 @@ def render_report(
     budget_bytes: int = DEFAULT_BUDGET_BYTES,
     ref: str | None = None,
     task_id: str | None = None,
+    agent_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Gather the cited dimensions, validate findings, and write the report."""
     packs = combined_pack(
@@ -139,6 +142,7 @@ def render_report(
         budget_bytes=budget_bytes,
         ref=ref,
         task_id=task_id,
+        agent_input=agent_input,
     )
     result = core_write_report(findings, packs, repo)
     return {"path": result.path, "advisory": result.advisory}

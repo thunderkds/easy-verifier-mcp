@@ -80,6 +80,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="findings JSON file; takes precedence over piped stdin",
     )
+    _add_agent_input_argument(report)
 
     score = commands.add_parser(
         _SCORE,
@@ -91,7 +92,16 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="optional findings JSON file; takes precedence over piped stdin",
     )
+    _add_agent_input_argument(score)
     return parser
+
+
+def _add_agent_input_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--agent-input",
+        metavar="PATH",
+        help='agent-input JSON to replay, e.g. {"picks": {"lockfile": ["x.lock"]}}',
+    )
 
 
 def _add_target_arguments(parser: argparse.ArgumentParser) -> None:
@@ -179,6 +189,7 @@ def _run_report(args: argparse.Namespace) -> int:
         budget_bytes=args.budget_bytes,
         ref=args.ref,
         task_id=args.task_id,
+        agent_input=_read_agent_input(args.agent_input),
     )
     result = core_write_report(findings, packs, args.repo)
     return _emit({"path": result.path, "advisory": result.advisory})
@@ -192,13 +203,25 @@ def _run_score(args: argparse.Namespace) -> int:
         ref=args.ref,
         task_id=args.task_id,
         findings=_read_findings(args.findings, required=False),
+        agent_input=_read_agent_input(args.agent_input),
     )
     return _emit(result.to_dict())
 
 
+def _read_agent_input(path: str | None) -> bytes | None:
+    """The CLI never asks and never calls a model: it only replays a saved
+    agent-input document (FR-034, FR-040)."""
+    return _read_caller_file(path) if path is not None else None
+
+
+def _read_caller_file(path: str) -> bytes:
+    """The adapter's one read: a file the caller named, never target content."""
+    return Path(path).read_bytes()
+
+
 def _read_findings(path: str | None, *, required: bool = True) -> bytes | None:
     if path is not None:
-        return Path(path).read_bytes()
+        return _read_caller_file(path)
     if sys.stdin.isatty():
         if required:
             raise ValueError(

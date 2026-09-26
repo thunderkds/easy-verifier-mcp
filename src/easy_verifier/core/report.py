@@ -751,6 +751,7 @@ def _render_pack_meta(ctx: _Ctx, pack: EvidencePack) -> str:
         '<div class="pack-meta">'
         f"<p>Mode: <code>{ctx.esc(pack.mode)}</code> · Scope: "
         f"<code>{ctx.esc(pack.scope)}</code></p>"
+        f'<p class="provenance">Sources: {ctx.esc(pack.source_provenance)}</p>'
         f'<p class="{truncation_css}">{truncation}</p>'
         f"{redaction}{files_block}</div>"
     )

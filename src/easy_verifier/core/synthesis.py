@@ -26,6 +26,7 @@ from pathlib import Path
 from ..dimensions import DIMENSIONS
 from ..dimensions import dimension_names as available_dimension_names
 from . import redact as redact_module
+from .findings import ValidationError
 from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
     DEFAULT_BUDGET_BYTES,
@@ -33,6 +34,7 @@ from .pipeline import (
     RepoPathError,
     run_dimension,
 )
+from .roles import validate_agent_input
 
 BUDGET_MODEL = "per-dimension"
 
@@ -57,6 +59,7 @@ def combined_pack(
     *,
     ref: str | None = None,
     task_id: str | None = None,
+    agent_input: object | None = None,
 ) -> CombinedPack:
     """Run each named dimension and return their packs plus aggregate coverage.
 
@@ -83,6 +86,14 @@ def combined_pack(
             f"valid dimensions: {', '.join(available_names)}"
         )
 
+    # Agent input is validated once, before any dimension runs, so a rejected
+    # document is one validation error rather than seven failed slots (T026).
+    picks = (
+        validate_agent_input(agent_input, repo_path)
+        if agent_input is not None
+        else None
+    )
+
     # Canonical, deterministic order regardless of the order requested (AC #10).
     ordered_names = tuple(name for name in available_names if name in requested)
 
@@ -96,14 +107,16 @@ def combined_pack(
                 budget_bytes=budget_bytes,
                 ref=ref,
                 task_id=task_id,
+                picks=picks,
             )
-        except RepoPathError:
+        except (RepoPathError, ValidationError):
             # NOT isolated. AC #6's robustness is about one *dimension* failing
             # while the others still return; an unusable repository path is a
             # precondition of the whole call, and every dimension would fail
             # identically. Swallowing it per-slot turned "this repo does not
             # exist" into a successful call full of error slots, and gave the
-            # CLI exit 0 where the single-dimension path exits 2 (FR-022).
+            # CLI exit 0 where the single-dimension path exits 2 (FR-022). An
+            # invalid `.easy-verifier.toml` is the same kind of precondition.
             raise
         except Exception as exc:  # noqa: BLE001 - isolated per dimension, never re-raised
             # Redacted like any other engine-surfaced message (NFR-010): an

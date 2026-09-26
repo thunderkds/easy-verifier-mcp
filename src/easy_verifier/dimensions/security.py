@@ -11,8 +11,15 @@ from fnmatch import fnmatchcase
 from pathlib import PurePosixPath
 
 from ..core.context import SECRET_BEARING_PATTERNS, whole_file_excerpt
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt, SourceMiss
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceMiss,
+    SourceRole,
+)
 from ..core.redact import scan
+from ..core.roles import role
 
 NAME = "security"
 
@@ -22,19 +29,22 @@ PURPOSE = (
     "configuration without judging whether any evidence is a vulnerability."
 )
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    "requirements.txt",
-    "pyproject.toml",
-    "package.json",
-    "package-lock.json",
-    "poetry.lock",
-    "src/auth.py",
-    "Dockerfile",
-    "compose.yaml",
-    ".github/workflows/ci.yml",
-    ".env",
-    "git history (out of scope for v1)",
+GIT_HISTORY_SOURCE = "git history (out of scope for v1)"
+
+ROLES: tuple[SourceRole, ...] = (
+    role("package-manifest"),
+    role("lockfile"),
+    role("auth-code"),
+    role("container-config"),
+    role("ci-workflow"),
+    role("credential-file"),
+    SourceRole(name=GIT_HISTORY_SOURCE, patterns=()),
 )
+"""Source roles (T026). ``credential-file`` is matched only by secret-bearing
+files, so it fills only through T008's per-file operator approval; otherwise it
+is reported ``excluded: secret-bearing`` (DDR-0002)."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MAX_SECURITY_SOURCES = 200
 
@@ -42,7 +52,7 @@ MAX_SECURITY_SOURCES = 200
 #: Probing them as paths would report a truthful-looking "not found" for
 #: something that was never a file, so each states its own reason instead.
 PSEUDO_SOURCES: dict[str, str] = {
-    "git history (out of scope for v1)": (
+    GIT_HISTORY_SOURCE: (
         "out of scope for v1: git history is not searched by this dimension"
     ),
 }
@@ -179,10 +189,10 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
 
     probed: set[str] = set()
 
-    # Declared sources are probed explicitly, before anything else. Without this
-    # the miss list is guesswork: an absent `package.json` is indistinguishable
-    # from one the budget never reached, and coverage counts only the declared
-    # names that happen to collide with a scope entry.
+    # Role files are probed explicitly, before anything else. Without this the
+    # miss list is guesswork: an absent lockfile is indistinguishable from one
+    # the budget never reached. Each role's files come from the pipeline's role
+    # resolution (T026); the pipeline credits the role when one was read.
     for source in SOURCES_SOUGHT:
         pseudo_reason = PSEUDO_SOURCES.get(source)
         if pseudo_reason is not None:
@@ -191,7 +201,9 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             )
             continue
 
-        if not whole_repo and source not in scope_files:
+        paths = context.role_files.get(source, ())
+        in_bounds = paths if whole_repo else [p for p in paths if p in scope_files]
+        if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(
                     source=source,
@@ -200,13 +212,16 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             )
             continue
 
-        probed.add(source)
-        text = context.request_secret_source(source)
-        if text is None:
-            continue
-        excerpt = whole_file_excerpt(source, text)
-        if excerpt is not None:
-            yield excerpt
+        for path in in_bounds:
+            if path in probed:
+                continue
+            probed.add(path)
+            text = context.request_secret_source(path)
+            if text is None:
+                continue
+            excerpt = whole_file_excerpt(path, text)
+            if excerpt is not None:
+                yield excerpt
 
     if resolved_scope is None:
         return
@@ -311,4 +326,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )

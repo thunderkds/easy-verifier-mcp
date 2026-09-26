@@ -54,6 +54,20 @@ Claude Code starts the server in your project directory, so the default usually 
 clients may start it somewhere else. There, pass `repo` as an **absolute path** in the tool call.
 Reports are written to `<repo>/reports/`, which must be writable by your user.
 
+## Source roles and agent input
+
+Each dimension seeks **source roles**, such as `lockfile`, `requirements-doc`, or `test-file`,
+filled by language-agnostic patterns and extended by Python, JS/TS, Rust, and Java pattern sets.
+`list_dimensions` returns every role with its patterns. The target repository may add globs to
+existing roles in an optional `.easy-verifier.toml` (`[roles] requirements-doc = ["docs/specs/*.md"]`).
+It cannot remove roles or change floors.
+
+The `score` and `write_report` tools accept an optional `agent_input` argument,
+`{"picks": {"<role>": ["<repo-relative path>", ...]}}`, to add files a role's patterns missed. The
+CLI replays the same document with `--agent-input PATH`, and both adapters return identical output
+for it. Every `score` result carries a per-dimension `provenance` entry (`rules`,
+`rules + config`, `rules + agent picks (N files)`).
+
 ## 4. Check the connection
 
 - Claude Code: `claude mcp list`, or `/mcp` inside a session.

@@ -1,6 +1,6 @@
 {
   "approval_requests": [],
-  "coverage_score": 0.6,
+  "coverage_score": 1.0,
   "dimension": "architecture",
   "excerpts": [
     {
@@ -32,27 +32,17 @@
   "omitted_count": 0,
   "redactions": [],
   "scope": "project",
+  "source_provenance": "rules",
   "sources_found": [
-    "PROJECT_SPEC.md",
-    "BRAINSTORMING_LOG.md",
-    "README.md"
+    "architecture-doc",
+    "decision-record",
+    "readme"
   ],
-  "sources_missing": [
-    {
-      "reason": "not found in the target repository",
-      "source": "ARCHITECTURE.md"
-    },
-    {
-      "reason": "not found in the target repository",
-      "source": "docs/architecture.md"
-    }
-  ],
+  "sources_missing": [],
   "sources_sought": [
-    "PROJECT_SPEC.md",
-    "BRAINSTORMING_LOG.md",
-    "ARCHITECTURE.md",
-    "docs/architecture.md",
-    "README.md"
+    "architecture-doc",
+    "decision-record",
+    "readme"
   ],
   "truncated": false,
   "truncation": {

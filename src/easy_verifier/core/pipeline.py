@@ -10,6 +10,7 @@ contract is a broad, cross-cutting rewrite — treat it accordingly.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 
@@ -22,6 +23,13 @@ from .models import (
     EvidencePack,
     RedactionHit,
     SourceMiss,
+)
+from .roles import (
+    load_repo_config,
+    resolution_warnings,
+    resolve,
+    source_provenance,
+    unfilled_reason,
 )
 from .scope import ScopeError, resolve_scope
 
@@ -44,11 +52,13 @@ def run_dimension(
     *,
     ref: str | None = None,
     task_id: str | None = None,
+    picks: Mapping[str, Sequence[str]] | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
     Works on any directory; git is not required for ``project`` scope (only
-    ``changes`` will need it, in T003).
+    ``changes`` will need it, in T003). ``picks`` are agent-input picks already
+    validated by :func:`easy_verifier.core.roles.validate_agent_input`.
     """
     # Path validation lives in `detect_context` (T002), which raises
     # `RepoPathError` for a path that is absent or is not a directory. T004's
@@ -56,6 +66,20 @@ def run_dimension(
     # directory or file name can carry a secret, and an exception message is one
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
+
+    # Source roles resolve once, before `collect`, so every dimension -- the
+    # bespoke three included -- reads from the same role -> files map, and the
+    # coverage below can be counted by role (FR-016 amended, DDR-0006). A bad
+    # `.easy-verifier.toml` raises here, before anything is read.
+    resolution = None
+    if descriptor.roles:
+        resolution = resolve(
+            context.repo_path,
+            descriptor.roles,
+            config=load_repo_config(context.repo_path),
+            picks=picks,
+        )
+        context.role_files = dict(resolution.files)
 
     # Scope resolution remains centralized; narrow scopes receive only the
     # explicit selector their resolver requires and never widen on failure.
@@ -87,14 +111,33 @@ def run_dimension(
     hits = result.redactions
 
     sought = tuple(descriptor.sources_sought)
-    # Clamped to the declared checklist. `context.sources_found` is the raw read
-    # record and may include files the dimension read without declaring; counting
-    # those would let a dimension inflate its own coverage above 1.0, which FR-016
-    # does not admit. The undeclared reads stay visible in `files_read`, because
-    # they genuinely were read.
-    found = tuple(source for source in sought if source in context.sources_found)
-    missing = _missing_sources(sought, found, context.sources_missing, truncated)
+    # Clamped to the declared checklist. A file-backed role is filled only when
+    # one of its resolved files was actually read -- a match that was never
+    # read (budget, secret-bearing, unreadable) fills nothing. A pseudo-role,
+    # or an entry of a role-less checklist, is filled when the dimension
+    # recorded it found. Undeclared reads stay visible in `files_read`.
+    read = frozenset(context.files_read)
+    role_files = context.role_files
+    found = tuple(
+        source
+        for source in sought
+        if (
+            any(path in read for path in role_files[source])
+            if source in role_files
+            else source in context.sources_found
+        )
+    )
+    missing = _missing_sources(
+        sought,
+        found,
+        context.sources_missing,
+        truncated,
+        _role_reasons(resolution, sought, found, context.sources_missing),
+    )
     coverage_score = (len(found) / len(sought)) if sought else None
+    warnings = context.warnings
+    if resolution is not None:
+        warnings = (*warnings, *resolution_warnings(resolution))
 
     # Paths are redacted too, and with the same function, so `found` stays an
     # exact subset of `sought` and the partition in `_missing_sources` holds.
@@ -128,8 +171,11 @@ def run_dimension(
         # Unconditional: the pack is the only way evidence leaves the engine, so
         # copying the context's warnings here is what makes FR-004 hold for
         # every response and every report without any adapter opting in.
-        warnings=context.warnings,
+        warnings=warnings,
         approval_requests=tuple(context.approval_requests),
+        source_provenance=(
+            source_provenance(resolution) if resolution is not None else "rules"
+        ),
     )
 
 
@@ -149,11 +195,61 @@ def _redact_paths(paths) -> tuple[tuple[str, ...], tuple[RedactionHit, ...]]:
     return tuple(safe), tuple(hits)
 
 
+def _role_reasons(
+    resolution,
+    sought: tuple[str, ...],
+    found: tuple[str, ...],
+    attempted_misses: list[SourceMiss],
+) -> dict[str, str]:
+    """Why each unfilled file-backed role is unfilled, from resolution + reads.
+
+    A role with no match, or matched only by secret-bearing files, says so. A
+    role whose matches were tried and failed carries the first failure. A role
+    whose matches were never tried gets no entry here and falls through to
+    *not examined*.
+    """
+    if resolution is None:
+        return {}
+    file_misses: dict[str, str] = {}
+    for miss in attempted_misses:
+        file_misses.setdefault(miss.source, miss.reason)
+    reasons: dict[str, str] = {}
+    for source in sought:
+        if source in found or source not in resolution.files:
+            continue
+        # What reading established is the most specific account; resolution
+        # alone (no match, secret-bearing by name) covers what was never tried.
+        reason = None
+        paths = resolution.files[source]
+        failed = [path for path in paths if path in file_misses]
+        if failed:
+            distinct = {file_misses[path] for path in failed}
+            if (
+                len(failed) == len(paths)
+                and len(distinct) == 1
+                and file_misses[failed[0]].startswith("excluded: secret-bearing")
+            ):
+                # Every match is (or resolves to) a secret-bearing file: the
+                # role is excluded, exactly as DDR-0002 words it.
+                reason = file_misses[failed[0]]
+            else:
+                reason = (
+                    f"matched file could not be used: {failed[0]}: "
+                    f"{file_misses[failed[0]]}"
+                )
+        if reason is None:
+            reason = unfilled_reason(resolution, source)
+        if reason is not None:
+            reasons[source] = reason
+    return reasons
+
+
 def _missing_sources(
     sought: tuple[str, ...],
     found: tuple[str, ...],
     attempted_misses: list[SourceMiss],
     truncated: bool,
+    derived: Mapping[str, str] | None = None,
 ) -> tuple[SourceMiss, ...]:
     """Every declared source that produced no evidence, with a stated reason.
 
@@ -169,9 +265,13 @@ def _missing_sources(
       probed. Reporting them as absent would be a claim the engine did not
       check, so they are reported as *not examined*.
     """
-    reasons = {
-        miss.source: miss.reason for miss in attempted_misses if miss.source in sought
-    }
+    # A reason the dimension recorded against the role itself (unresolved
+    # scope, out-of-scope, pseudo-source) is the most specific; then what role
+    # resolution and reading established; only then "not examined".
+    reasons = {**(derived or {})}
+    reasons.update(
+        {miss.source: miss.reason for miss in attempted_misses if miss.source in sought}
+    )
     unexamined = (
         "not examined: the byte budget was reached before this source was read"
         if truncated
