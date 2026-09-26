@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-23
+**Last updated**: 2026-09-24
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,6 +11,7 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 
@@ -45,6 +46,7 @@ _(empty)_
 
 ### Done
 
+- [x] **T024** — MCP client setup guides: `docs/DOCKER_MCP_GUIDE.md` (hardened container: raw `docker run`, `claude mcp add`, JSON clients, Compose) + `docs/LOCAL_MCP_GUIDE.md` (host-direct entry point); README §MCP/§Docker trimmed to summaries that link to them | C0 | Risk: Low | P2 | Completed: 2026-09-24 | 8 new doc-truth tests pin every documented `docker run` to `compose.yaml`'s hardening, forbid TTY allocation, pin the local guide to the real `easy-verifier-mcp` entry point and `--http` flag, and require both README links; sabotage probe fails each of 7 mutations; live stdio handshake passed through the exact documented `docker run`, the Compose variant, and host-direct; full suite `596 passed, 2 skipped`; ruff clean. `/docs/` is gitignored — guides must be `git add -f`'d like `RELEASE_GUIDE.md`. Evidence in `tasks/TASK_REVIEW_T024.md`.
 - [x] **T023** — final v1 release verification + README/release-guide truth pass at published host, MCP-stdio, and Docker boundaries | C2 | Risk: High | P0 | Completed: 2026-09-23 | Published commit `475c501`; final wrapper returned `RESULT integration=0 container=0 release=0`; all KPI rows `PASS`; README and `docs/RELEASE_GUIDE.md` aligned with fail-closed semantics.
 
 - [x] **T017** — Verification suite: two-mode integration, FR-022 parity, NFR-010 redaction proof | qa-expert | C2 | Risk: High | P0 | Completed: 2026-09-23 | Final Docker-capable gate passed: `19 passed, 1 skipped`; container checks and KPI summary passed with all rows `PASS`. Parity remains byte-equality after exactly three normalizations: paths repo-relative, timestamps replaced by one fixed token, and report filename excluded.
@@ -71,7 +73,7 @@ _(empty)_
 - [x] **T003** — `scope.py`: task/changes/worktree/project scope resolution | C1 | Risk: Low | Completed: 2026-08-16 | 32 tests · code-review P0 0/**P1 1 (fixed)**/P2 2 (1 fixed, 1 waived)/P3 1 (not taken) · security-review ☐ N/A (Low risk; subprocess surface covered by code-review's security reviewer) · `verify` run by Supervisor end-to-end across all four scopes · merged to `develop`. **P1 was a REPEAT defect**: `_walk_files` followed symlinked directories out of the repo — the same escape T002 already fixed in `context.py:_walk`. `scope.py` reimplemented the walk from scratch and reintroduced it; fixed with a containment check on entry, pinned by 2 regression tests. **Waived**: the guide's predicted edits to `models.py`/`pipeline.py`/`cli.py` were skipped — all 9 ACs pass without them and `run_dimension()`'s contract stays fixed. Cost: `resolve_scope` is unreachable until T005 lands.
 - [x] **T002** — `context.py`: kit detection, kit-aware/standalone modes | C2 | Completed: 2026-08-16 | 35 tests · code-review P2×1 fixed · security-review 0 findings · `verify` run by Supervisor on the real CLI in both modes · merged to `develop` (`89046c8`). **Integration defect caught and fixed at Stage 5**: T002 moved path validation into `detect_context`, silently dropping T004's redaction of the `RepoPathError` message. Neither branch's tests caught it — each passed alone; the defect existed only in the combination. Restored in `context.py:_resolve_repo_path`.
 
-> Post-merge state on `develop`: **586 tests pass**, `ruff` clean. **23 of 23 tasks done.** T017 and T023 completed the final release gate on 2026-09-23.
+> Post-merge state on `develop`: **586 tests pass**, `ruff` clean. **24 of 24 tasks done.** T017 and T023 completed the final release gate on 2026-09-23; T024 (docs) added 2026-09-24 → **596 tests pass**.
 
 ---
 
@@ -84,6 +86,7 @@ _(empty)_
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | ~~T016~~ | **Docker block CLOSED 2026-09-16** — the daemon is reachable, the image builds, and the container passes every hardening check on a live run. The task stays open only for two **script-side** defects the first complete run exposed (stale tool count; a harness that drops the final response, so its last assertion could never have passed) — in progress on `fix/t016-verifier`. | — |
 | ~~T017~~ | **CLOSED 2026-09-16.** The user chose byte-equality after a declared normalization (**DDR-0005**); FR-022 and the KPI row were contradicting each other, and both are now updated. **T017 is unblocked.** | — |
+| T025 | **Docker Hub namespace not chosen.** Guide uses `<NS>` placeholder; user will supply it (2026-09-24). No spawn until it is filled into `tasks/TASK_GUIDE_T025.md` and the Fidelity Gate is signed. T024 dependency satisfied (committed `edbf482`). | user |
 
 > Both are gates at pickup time, not blockers on planning — the guides are written and the tasks are
 > spawnable the moment the decision is recorded.
