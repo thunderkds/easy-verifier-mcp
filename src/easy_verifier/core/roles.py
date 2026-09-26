@@ -79,6 +79,10 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     "readme": ("README*", "Readme*", "readme*"),
     "architecture-doc": ("PROJECT_SPEC.md", *_docs("architecture", "design")),
     "decision-record": (
+        # Exact name, deliberately not `BRAINSTORMING_LOG*.md`: redact.py's
+        # high_entropy_string detector fingerprints names such as
+        # `BRAINSTORMING_LOG_source-discovery.md`, which breaks the citation.
+        # Temporary narrowing; widen once the separate redaction bugfix lands.
         "BRAINSTORMING_LOG.md",
         "**/adr/**",
         "**/adrs/**",
@@ -375,7 +379,9 @@ def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
         elif not isinstance(globs, list):
             errors.append(f"{field}: must be a list of path globs")
         elif not globs:
-            errors.append(f"{field}: empty list; roles cannot be removed, only extended")
+            errors.append(
+                f"{field}: empty list; roles cannot be removed, only extended"
+            )
         else:
             valid = []
             for index, glob in enumerate(globs):
@@ -593,7 +599,9 @@ def source_provenance(resolution: RoleResolution) -> str:
     if config:
         parts.append("config")
     if picked:
-        parts.append(f"agent picks ({len(picked)} file{'' if len(picked) == 1 else 's'})")
+        parts.append(
+            f"agent picks ({len(picked)} file{'' if len(picked) == 1 else 's'})"
+        )
     return " + ".join(parts)
 
 

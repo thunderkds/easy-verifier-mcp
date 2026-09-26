@@ -124,9 +124,7 @@ def score_packs(
         )
         for slot in packs.slots
     )
-    return ScoreResult(
-        ratings, overall, metrics, assessments, comparisons, provenance
-    )
+    return ScoreResult(ratings, overall, metrics, assessments, comparisons, provenance)
 
 
 def _pack_map(packs: CombinedPack) -> dict[str, EvidencePack]:

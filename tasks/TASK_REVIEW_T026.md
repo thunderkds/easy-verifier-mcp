@@ -55,9 +55,29 @@ test-strategy None below_coverage_floor 0.1111111111111111
 1 of 7 dimensions contributed; ratings average contributors only, so abstention can raise the overall; abstained: architecture (below_coverage_floor: achieved coverage is below the declared floor), solution-fit (below_coverage_floor: achieved coverage is below the declared floor), requirement-fidelity (below_coverage_floor: achieved coverage is below the declared floor), security (below_coverage_floor: achieved coverage is below the declared floor), test-strategy (below_coverage_floor: achieved coverage is below the declared floor), blast-radius (below_coverage_floor: achieved coverage is below the declared floor)
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (backend-developer, same fixture, same command; HEAD `9f12a06` plus uncommitted
+formatting/comment/test/doc edits, with no logic change since that commit; one extra line printing the
+new `provenance` field):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ git log --oneline -1 && date -u
+9f12a06 feat(T026): WIP source roles, .easy-verifier.toml, agent-input picks
+Sat Sep 26 03:34:51 PM UTC 2026
+$ PYTHONPATH=src <main>/.venv/bin/python -m easy_verifier.adapters.cli score --repo $S/elixir_demo | python3 -c "..."
+architecture 82
+blast-radius 64
+code-quality 82
+requirement-fidelity 82
+security 64
+solution-fit 64
+test-strategy 82
+7 of 7 dimensions contributed; ratings average contributors only, so abstention can raise the overall; none abstained
+['rules', 'rules', 'rules', 'rules', 'rules', 'rules', 'rules']
+```
+
+**DELTA**: An Elixir repository with no ecosystem table goes from 1 of 7 dimensions rated (6
+abstaining below their coverage floor) to 7 of 7 rated. Its roles are filled by language-agnostic
+patterns, and each dimension says where its sources came from.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]

@@ -69,7 +69,11 @@ def test_cli_score_needs_no_findings_and_returns_disclosed_ratings(
     assert completed.returncode == 0, completed.stderr
     payload = json.loads(completed.stdout)
     assert tuple(item["dimension"] for item in payload["ratings"]) == dimension_names()
-    assert set(payload) == {"ratings", "overall", "metrics"}
+    # T026 (FR-039, AC #10) adds per-dimension source provenance to the payload.
+    assert set(payload) == {"ratings", "overall", "metrics", "provenance"}
+    assert [item["dimension"] for item in payload["provenance"]] == list(
+        dimension_names()
+    )
     assert payload["overall"]["kind"] in {"overall_rating", "rating_abstention"}
     if payload["overall"]["kind"] == "overall_rating":
         assert payload["overall"]["disclosure"]
@@ -119,10 +123,12 @@ def test_optional_findings_add_assessments_and_divergences(tmp_path: Path) -> No
 
     assert completed.returncode == 0, completed.stderr
     payload = json.loads(completed.stdout)
+    # T026 (FR-039, AC #10) adds per-dimension source provenance to the payload.
     assert set(payload) == {
         "ratings",
         "overall",
         "metrics",
+        "provenance",
         "assessments",
         "divergences",
     }

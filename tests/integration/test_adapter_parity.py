@@ -101,7 +101,9 @@ def test_score_with_the_same_picks_matches_across_adapters(tmp_path: Path) -> No
         {"repo": str(REPO_ROOT), "scope": "worktree", "agent_input": agent_input},
     )
     assert normalize(cli_score) == normalize(mcp_score)
-    provenance = {item["dimension"]: item["sources"] for item in cli_score["provenance"]}
+    provenance = {
+        item["dimension"]: item["sources"] for item in cli_score["provenance"]
+    }
     assert provenance["security"] == "rules + agent picks (1 file)"
     assert provenance["test-strategy"] == "rules + agent picks (1 file)"
 

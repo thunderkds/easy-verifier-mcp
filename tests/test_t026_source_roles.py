@@ -253,7 +253,9 @@ def test_js_ts_pnpm_monorepo_fills_roles_via_the_js_table(tmp_path: Path) -> Non
     assert "packages/app/src/sum.test.ts" in resolution.files["test-file"]
     assert "packages/app/package.json" in resolution.files["package-manifest"]
 
-    assert "lint-config" in run_dimension(DIMENSIONS["code-quality"], repo).sources_found
+    assert (
+        "lint-config" in run_dimension(DIMENSIONS["code-quality"], repo).sources_found
+    )
     assert "lockfile" in run_dimension(DIMENSIONS["security"], repo).sources_found
     found = run_dimension(DIMENSIONS["test-strategy"], repo).sources_found
     assert {"test-config", "test-file"} <= set(found)
@@ -427,10 +429,10 @@ def test_an_absent_config_changes_nothing(elixir_repo: Path) -> None:
         ('[roles]\nlockfile = "x.lock"\n', "roles.lockfile"),
         ("[roles]\nlockfile = []\n", "roles.lockfile"),
         ("[roles.lockfile]\nexclude = true\n", "roles.lockfile"),
-        ('[roles]\nlockfile = [1]\n', "roles.lockfile[0]"),
+        ("[roles]\nlockfile = [1]\n", "roles.lockfile[0]"),
         ('[roles]\nlockfile = ["/abs/x.lock"]\n', "roles.lockfile[0]"),
         ('[roles]\nlockfile = ["../x.lock"]\n', "roles.lockfile[0]"),
-        ('[floors]\nsecurity = 0.1\n', "floors"),
+        ("[floors]\nsecurity = 0.1\n", "floors"),
         ('[roles]\n"git history (out of scope for v1)" = ["x"]\n', "git history"),
         ("roles = [\n", ".easy-verifier.toml"),
     ],
@@ -566,7 +568,10 @@ def test_invalid_picks_are_all_rejected_by_name(tmp_path: Path) -> None:
         ({"picks": {"lockfile": "x.lock"}}, "picks.lockfile"),
         (["picks"], "agent input"),
         ("{not json", "agent input"),
-        ({"picks": {"git history (out of scope for v1)": ["README.md"]}}, "git history"),
+        (
+            {"picks": {"git history (out of scope for v1)": ["README.md"]}},
+            "git history",
+        ),
     ],
 )
 def test_malformed_agent_input_is_rejected_naming_it(
@@ -589,7 +594,9 @@ def test_cli_replays_agent_input_from_a_file(tmp_path: Path, capsys) -> None:
     repo = _write(tmp_path / "repo", {"notes/wants.md": "# Wants\n"})
     doc = tmp_path / "agent-input.json"
     doc.write_text(json.dumps({"picks": {"requirements-doc": ["notes/wants.md"]}}))
-    code, out, err = _cli(capsys, "score", "--repo", str(repo), "--agent-input", str(doc))
+    code, out, err = _cli(
+        capsys, "score", "--repo", str(repo), "--agent-input", str(doc)
+    )
     assert code == 0, err
     provenance = {i["dimension"]: i["sources"] for i in json.loads(out)["provenance"]}
     assert provenance["solution-fit"] == "rules + agent picks (1 file)"
@@ -650,7 +657,9 @@ def test_a_role_matched_only_by_a_secret_file_is_not_filled(tmp_path: Path) -> N
 
 
 def test_report_renders_one_provenance_line_per_dimension(tmp_path: Path) -> None:
-    repo = _write(tmp_path / "rep", {"notes/wants.md": "# Wants\n", "README.md": "# r\n"})
+    repo = _write(
+        tmp_path / "rep", {"notes/wants.md": "# Wants\n", "README.md": "# r\n"}
+    )
     packs = combined_pack(
         dimension_names(),
         repo_path=repo,
@@ -684,12 +693,11 @@ def test_role_files_are_sorted_and_capped_with_explicit_truncation(
     assert any("test-file" in w and str(cap) in w for w in pack.warnings)
 
 
-def test_a_bounded_walk_says_so_in_the_miss_reason(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_a_bounded_walk_says_so_in_the_miss_reason(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(roles_module, "MAX_ROLE_WALK_FILES", 3)
     repo = _write(
-        tmp_path / "walk", {f"a{index}.txt": "x\n" for index in range(5)} | {"z.lock": "l\n"}
+        tmp_path / "walk",
+        {f"a{index}.txt": "x\n" for index in range(5)} | {"z.lock": "l\n"},
     )
     resolution = _resolve_all(repo)
     assert resolution.walk_truncated is True
