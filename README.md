@@ -113,49 +113,26 @@ result is written to stdout.
 
 ### MCP — stdio by default
 
-Run the local server directly with no arguments; stdout is reserved for the MCP protocol:
-
-```console
-easy-verifier-mcp
-```
-
 The MCP adapter exposes the same dimensions, discovery, combined pack, `score`, and `write_report`
-as MCP tools. The default and required transport is **stdio**, spoken across the container boundary
-— no port, no bind address, no server lifecycle to manage. An HTTP/SSE transport may be offered as
-an opt-in convenience flag; when enabled it binds to `127.0.0.1` only and never to a routable
-address, including inside a container.
+as MCP tools. The default transport is **stdio**, so there is no port and no server lifecycle to
+manage: your MCP client starts the server on demand. An HTTP/SSE opt-in exists, and it binds to
+`127.0.0.1` only.
+
+Setup for Claude Code, Claude Desktop, Cursor, and other clients:
+[`docs/LOCAL_MCP_GUIDE.md`](docs/LOCAL_MCP_GUIDE.md).
 
 ### Docker — read-only target, writable reports only
 
-The Compose service uses pinned Python and MCP versions, runs as UID/GID `10001`, drops all
-capabilities, has no runtime network, publishes no ports, and mounts the target repository
-read-only. Prepare a dedicated reports directory owned by that fixed non-root identity:
-
-```console
-mkdir -p /path/to/repo/reports
-sudo chown 10001:10001 /path/to/repo/reports
-```
-
-Build and start one stdio session with host paths supplied only through environment variables:
+The container runs with pinned Python and MCP versions as UID/GID `10001`. It drops all
+capabilities, has no network, publishes no ports, and mounts the target repository read-only.
+Only `reports/` is writable. The target needs no package or executable installed.
 
 ```console
 docker compose build
-EASY_VERIFIER_REPO=/path/to/repo \
-EASY_VERIFIER_REPORTS=/path/to/repo/reports \
-docker compose run --rm --no-tty verifier
 ```
 
-The loopback-only HTTP/SSE opt-in is deliberately not published by Compose; use stdio across the
-container boundary. The target needs no package or executable installed. On SELinux hosts, add an
-appropriate `:z`/`:Z` label to equivalent bind mounts. macOS and Windows Docker Desktop translate
-bind-mount ownership differently, so confirm the reports directory is writable by UID `10001`.
-
-To exercise the real MCP handshake, non-root UID, read-only root, writable reports overlay, Git,
-network isolation, capabilities, ports, and container-path scrubbing in one pass:
-
-```console
-docker compose build && bash scripts/verify_container.sh
-```
+Registering the container with an MCP client, preparing `reports/`, and troubleshooting:
+[`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md).
 
 ### Final release gate
 
