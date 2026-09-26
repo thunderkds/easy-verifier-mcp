@@ -66,7 +66,7 @@ src/easy_verifier/
 |---|---|
 | **Evidence pack** | The structured return value of one dimension: files actually read, citable excerpts with path + line refs, `sources_sought` misses, coverage score, truncation field. Contains no verdict. |
 | **Dimension** | One evaluation axis (7 in v1). Implemented as static descriptor data + a `collect` callable, executed by `run_dimension()`. Never a class, never registered. |
-| **Coverage score** | Unweighted `found / sought` over a dimension's declared source checklist. Never rendered without the named miss list (FR-016a). |
+| **Coverage score** | Unweighted `roles filled / roles declared` over a dimension's declared **source roles** (amended 2026-09-26, DDR-0006; was exact filenames). Never rendered without the named miss list (FR-016a). |
 | **Rating** | A 0–100 quality number the engine computes itself, by **declared rules over measured metrics**. Inspectable and repeatable: no LLM, no inference. Never rendered without the metric values it was computed from. Distinct from *coverage score* (which measures what was read, not what was found) and from *assessment* (which is an agent's judgment). |
 | **Assessment** | A 0–100 quality number derived from the calling agent's submitted findings, weighted by their severity and confidence. Present only when findings were submitted; the engine performs the arithmetic, never the judgment (FR-026). |
 | **Divergence** | The gap between a dimension's *rating* and its *assessment* when both exist. Reported as its own signal: rules and agent disagreeing is information, not an error to reconcile. |
@@ -77,6 +77,13 @@ src/easy_verifier/
 | **Finding** | A caller-produced claim. Must carry an evidence reference *and* a confidence value; may carry an optional suggested improvement. |
 | **Fingerprint** | The non-reversible replacement for a detected secret: masked prefix + hash prefix. Applied at the evidence layer, before anything leaves the engine. |
 | **Excerpt** | A single citable unit: file path, line range, text. `collect` yields these lazily as `Iterable[Excerpt]`. |
+| **Source role** | A named kind of source a dimension seeks (e.g. *lockfile*, *requirements doc*, *CI workflow*), declared as static data with the glob patterns that fill it. Filled by any matching file in any language. Every role counts in every repository (DDR-0006). |
+| **Ecosystem pattern set** | Extra patterns for existing roles (v1: Python, JS/TS, Rust, Java), auto-activated by manifest files. Data, never a boundary: it may add patterns, never add, remove, or exempt a role. |
+| **Agent input** | The caller's optional input document to `score`: `picks` (role → files) and `gate_evaluations`. Part of the input for parity (FR-022); replayable via CLI `--agent-input`. |
+| **Hard gate** | A point where rules cannot settle the answer and MCP `score` asks the calling agent via `needs_input`: *detect* (an unfilled role has candidate files) or *evaluate* (rules abstain, or a metric is within ±10% of its threshold). |
+| **Gate evaluation** | The agent's answer at an evaluate gate: score 0–100, confidence 0–1, ≥1 resolving evidence ref. Accepted only for a gated dimension. |
+| **Capped blend** | `w = 0.5 × confidence`, `final = rating·(1−w) + agent·w`. Always shown with its parts. |
+| **Agent-rated** | A dimension whose rules abstained but which has a valid gate evaluation; its number is the agent's, labelled as such, with the abstention detail kept beside it. |
 
 ---
 
@@ -135,6 +142,9 @@ Authoritative task state lives in `PROJECT_KANBAN.md`. This table is the plannin
 | ID | Title | Status | Assigned Agent | Complexity | Risk | Priority |
 |----|-------|--------|---------------|-----------|------|----------|
 | — | Generated at Stage 2 Step 2 (`to-issues`) | — | — | — | — | — |
+| T026 | Any-language source roles, `.easy-verifier.toml`, agent-input picks replay | Todo | backend-developer | C3 | High | P1 |
+| T027 | MCP detect gate — `needs_input.picks` candidates | Todo | backend-developer | C2 | Medium | P1 |
+| T028 | MCP evaluate gate — gate evaluations, capped blend, rating provenance | Todo | backend-developer | C3 | High | P1 |
 
 ---
 

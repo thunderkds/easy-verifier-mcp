@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-24
+**Last updated**: 2026-09-26
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,7 +11,15 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T028** — MCP evaluate gate — gate evaluations, capped blend, rating provenance | backend-developer | C3 | Risk: High | P1
+- [ ] **T027** — MCP detect gate — `needs_input.picks` candidates for unfilled roles | backend-developer | C2 | Risk: Medium | P1
+- [ ] **T026** — Any-language source roles, `.easy-verifier.toml`, and agent-input picks replay | backend-developer | C3 | Risk: High | P1
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
+
+**Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
+- [ ] **T026** — Any-language source roles (generic + Python/JS-TS/Rust/Java tables), add-only `.easy-verifier.toml`, role-based coverage in all 7 dimensions, `agent_input.picks` replay (MCP arg + CLI `--agent-input`), source provenance | backend-developer | C3 | Risk: High | P1
+- [ ] **T027** — MCP detect gate: `needs_input.picks` (≤20 redacted candidates/role, one round) | backend-developer | C2 | Risk: Med | P1 — depends on T026
+- [ ] **T028** — MCP evaluate gate: ±10%/abstain triggers, validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | backend-developer | C3 | Risk: High | P1 — depends on T026, T027
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 

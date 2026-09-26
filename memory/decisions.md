@@ -681,3 +681,24 @@ that finds a difference outside the three rules stops and reports.
 reopens this DDR rather than extending it with a fourth rule.
 
 Full text: `docs/ddr/0005-adapter-parity-is-byte-equality-after-declared-normalization.md`.
+
+## DDR-0006 — Any-language discovery by role; calling agent contributes only at hard gates (2026-09-26)
+
+**Decided by the user** during Stage 0.5 requirement grilling for T026/T027, after v0.1.0 runs
+against kitchd / bryony / ai-training abstained on 2–5 of 7 dimensions because sought sources were
+fixed Python-/kit-specific filenames. User direction: "evaluate any language with no boundary, and
+ask the agent LLM at hard gates to detect and evaluate", agent as a contributor to score correctness.
+
+- **Coverage = roles filled / roles declared**; every role counts everywhere (no exemptions).
+- **No language boundary**: generic patterns first; Python/JS/TS/Rust/Java sets are extra data;
+  `.easy-verifier.toml` may only add paths.
+- **Hard gate — detect** (MCP): unfilled role with candidates → agent picks from ≤20 (path + heading).
+- **Hard gate — evaluate** (MCP): rules abstain, or a metric within ±10% of threshold (user-accepted default,
+  item #22) → agent gives score + confidence + evidence refs.
+- **Capped blend**: `w = 0.5·c`, `final = R(1−w) + A·w`; rules abstained → `final = A`, labelled
+  agent-rated; parts always shown. Outside a gate the agent changes no number.
+- Agent input (picks + gate evaluations) replayable via CLI `--agent-input` → FR-022 parity holds.
+  Engine never calls a model (NFR-001).
+
+Same-day reversal on record: the user first chose "agent supplies files only", then widened to
+"detect and evaluate". DDR-0003 partially superseded; FR-029a amended. ADR-eligible (3/3); user kept DDR tier. → see DDR-0006
