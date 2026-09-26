@@ -97,11 +97,11 @@ def gather_combined(
     name="score",
     description=(
         "Rate all seven dimensions and optionally assess findings. If the "
-        "response carries needs_input.picks, some source roles have no "
-        "matching file but the repository holds candidates: choose files "
-        'per role and call score again with agent_input={"picks": '
-        '{role: [path, ...]}} to raise their coverage. Otherwise use the '
-        "response as-is."
+        "response carries needs_input.picks.groups, some source roles have "
+        "no matching file but the repository holds candidates: for the "
+        "roles you choose to fill, call score again with "
+        'agent_input={"picks": {role: [path, ...]}} to raise their coverage. '
+        "Otherwise use the response as-is."
     ),
     structured_output=True,
 )
@@ -116,9 +116,10 @@ def score(
 ) -> dict[str, Any]:
     """Delegate the complete rating operation to the shared score core.
 
-    ``needs_input`` (FR-035) is MCP-only: the shared core computes it, but
-    only this adapter puts it on the wire (FR-021, FR-034, FR-040) — the CLI
-    payload never carries the key.
+    ``needs_input`` (FR-035) is MCP-only: the shared core can compute it, but
+    only this adapter asks for it and puts it on the wire (FR-021, FR-034,
+    FR-040) — the CLI payload never carries the key, and never pays for the
+    extra walk that produces it.
     """
     result = score_repository(
         repo,
@@ -128,6 +129,7 @@ def score(
         task_id=task_id,
         findings=findings,
         agent_input=agent_input,
+        detect_gates=True,
     )
     payload = result.to_dict()
     if result.needs_input is not None:

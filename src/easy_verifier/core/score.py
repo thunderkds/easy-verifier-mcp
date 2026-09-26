@@ -79,11 +79,16 @@ def score_repository(
     task_id: str | None = None,
     findings: list[dict[str, Any]] | str | bytes | None = None,
     agent_input: dict[str, Any] | str | bytes | None = None,
+    detect_gates: bool = False,
 ) -> ScoreResult:
     """Gather all seven dimensions and return one complete score result.
 
     ``agent_input`` is the caller's optional agent-input document (FR-034);
-    only its ``picks`` are accepted until T028.
+    only its ``picks`` are accepted until T028. ``detect_gates`` runs the
+    detect-gate walk (T027, FR-035); it defaults to ``False`` because the
+    result is MCP-only (FR-021, FR-034, FR-040) and computing it for the CLI
+    path would be a discarded repository walk on every call. Only the MCP
+    ``score`` tool passes ``True`` — the core stays shared either way.
     """
     packs = combined_pack(
         dimension_names(),
@@ -103,7 +108,7 @@ def score_repository(
     # stateless and unconditional (DDR-0006 §7). No repository walk happens
     # at all in that case, so a picks round costs nothing extra either.
     needs_input = None
-    if agent_input is None:
+    if detect_gates and agent_input is None:
         needs_input = detect_pick_gates(repo_path, load_repo_config(repo_path))
     return dataclasses.replace(result, needs_input=needs_input)
 
