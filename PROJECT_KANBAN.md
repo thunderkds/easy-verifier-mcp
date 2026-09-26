@@ -11,12 +11,10 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T028** — MCP evaluate gate — gate evaluations, capped blend, rating provenance | backend-developer | C3 | Risk: High | P1
 - [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive rewrites ordinary repo paths (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths), making citations to them unresolvable. Found by T026; guide not yet written (run `bugfix` skill) | backend-developer | C2 | Risk: High | P1
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
-_(empty)_
 - [ ] **T028** — MCP evaluate gate: ±10%/abstain triggers, validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | backend-developer | C3 | Risk: High | P1 — depends on T026, T027
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
@@ -44,7 +42,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 
 ### In Progress
 
-- [ ] **T027** — MCP detect gate: `needs_input.picks` (≤20 redacted candidates/role, one round) | backend-developer | C2 | Risk: Med | P1 — 🔄 started 2026-09-26, worktree `../easy-verifier-mcp-T027` (branch `feat/T027-detect-gate`)
+_(empty)_
 
 ### Ready for Review
 
