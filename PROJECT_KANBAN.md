@@ -11,6 +11,7 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 
@@ -85,6 +86,7 @@ _(empty)_
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | ~~T016~~ | **Docker block CLOSED 2026-09-16** — the daemon is reachable, the image builds, and the container passes every hardening check on a live run. The task stays open only for two **script-side** defects the first complete run exposed (stale tool count; a harness that drops the final response, so its last assertion could never have passed) — in progress on `fix/t016-verifier`. | — |
 | ~~T017~~ | **CLOSED 2026-09-16.** The user chose byte-equality after a declared normalization (**DDR-0005**); FR-022 and the KPI row were contradicting each other, and both are now updated. **T017 is unblocked.** | — |
+| T025 | **Docker Hub namespace not chosen.** Guide uses `<NS>` placeholder; user will supply it (2026-09-24). No spawn until it is filled into `tasks/TASK_GUIDE_T025.md` and the Fidelity Gate is signed. T024 dependency satisfied (committed `edbf482`). | user |
 
 > Both are gates at pickup time, not blockers on planning — the guides are written and the tasks are
 > spawnable the moment the decision is recorded.
