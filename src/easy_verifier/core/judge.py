@@ -17,6 +17,7 @@ import json
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from decimal import ROUND_HALF_UP, Decimal
 
 from .metrics import Metric, MetricAbstention, MetricSet
 from .models import CoverageSummary, SourceMiss
@@ -81,6 +82,17 @@ RATING_RULES: dict[str, RatingRule] = {
     "mean_excerpt_lines": RatingRule("mean_excerpt_lines", 5, 1.0, "at_least"),
     "source_file_share": RatingRule("source_file_share", 10, 0.10, "at_least"),
 }
+
+
+# Hard gate — evaluate (FR-036, DDR-0006): a rule input whose metric value lies
+# within this fraction of its threshold, inclusive, puts its dimension at a
+# gate. A threshold of 0 has no relative band, so only exact equality counts.
+# Tuning the band is a value change here, never a code change (FR-028).
+BORDERLINE_BAND = Decimal("0.10")
+
+# Capped blend (FR-038): w = AGENT_WEIGHT_CAP x confidence, so a gate
+# evaluation can move a rules rating at most half of the gap.
+AGENT_WEIGHT_CAP = Decimal("0.5")
 
 
 class RatingAbstained(LookupError):
@@ -217,6 +229,86 @@ class RatingAbstention:
 
 
 @dataclass(frozen=True)
+class GatedRating:
+    """A dimension the calling agent contributed to at a hard gate (FR-038).
+
+    Holds the rules result unchanged beside the agent's validated score and
+    confidence, so the parts are never separable from the number: blended
+    when the rules rated, agent-rated when they abstained. The agent's
+    rationale is never stored (FR-039).
+    """
+
+    rules: Rating | RatingAbstention
+    agent_score: int | float
+    confidence: int | float
+    evidence_refs: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _validate_gated_rating(self)
+
+    @property
+    def dimension(self) -> str:
+        return self.rules.dimension
+
+    @property
+    def is_agent_rated(self) -> bool:
+        return type(self.rules) is RatingAbstention
+
+    @property
+    def weight(self) -> Decimal:
+        return AGENT_WEIGHT_CAP * _decimal(self.confidence)
+
+    @property
+    def value(self) -> int:
+        if self.is_agent_rated:
+            return _round_half_up(_decimal(self.agent_score))
+        return blend(self.rules.value, self.agent_score, self.confidence)[0]
+
+    @property
+    def numeric_value(self) -> int:
+        return self.value
+
+    @property
+    def rated_by(self) -> str:
+        if self.is_agent_rated:
+            return "agent-rated"
+        return f"blended (w {_decimal_text(self.weight)})"
+
+    @property
+    def parts(self) -> str:
+        agent = str(_decimal(self.agent_score))
+        if self.is_agent_rated:
+            return (
+                f"{self.value} = agent {agent} (confidence "
+                f"{_decimal(self.confidence)}; rules abstained: "
+                f"{self.rules.reason_code})"
+            )
+        return (
+            f"{self.value} = rules {self.rules.value} + agent {agent} "
+            f"(w {_decimal_text(self.weight)})"
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "kind": "agent_rated" if self.is_agent_rated else "blended_rating",
+            "dimension": self.dimension,
+            "value": self.value,
+            "parts": self.parts,
+            "rated_by": self.rated_by,
+            "agent": {
+                "score": self.agent_score,
+                "confidence": self.confidence,
+                "weight": _decimal_text(self.weight),
+                "evidence_refs": list(self.evidence_refs),
+            },
+            "rules": self.rules.to_dict(),
+        }
+
+    def serialize(self) -> str:
+        return _serialize(self.to_dict())
+
+
+@dataclass(frozen=True)
 class OverallRating:
     """The contributor-only mean together with its complete boundary."""
 
@@ -227,6 +319,8 @@ class OverallRating:
     abstentions: tuple[RatingAbstention, ...]
     contributor_values: tuple[tuple[str, int], ...] = field(default=())
     method: str = _OVERALL_RATING_METHOD
+    rated_by: tuple[tuple[str, str], ...] = field(default=())
+    """Per contributor: ``rules``, ``blended (w …)`` or ``agent-rated``."""
 
     def __post_init__(self) -> None:
         _validate_overall_rating(self)
@@ -242,9 +336,14 @@ class OverallRating:
             for item in self.abstentions
         )
         suffix = f"; abstained: {abstained}" if abstained else "; none abstained"
+        labels = [label for _name, label in self.rated_by]
+        rules = labels.count("rules")
+        agent = labels.count("agent-rated")
+        blended = len(labels) - rules - agent
         return (
             f"{self.contributor_count} of {self.total_dimension_count} dimensions "
-            "contributed; ratings average contributors only, so abstention can "
+            f"contributed ({rules} rule-rated, {blended} blended, {agent} "
+            "agent-rated); ratings average contributors only, so abstention can "
             f"raise the overall{suffix}"
         )
 
@@ -256,6 +355,7 @@ class OverallRating:
             "total_dimension_count": self.total_dimension_count,
             "contributors": list(self.contributors),
             "contributor_values": [list(item) for item in self.contributor_values],
+            "rated_by": [list(item) for item in self.rated_by],
             "abstentions": [item.to_dict() for item in self.abstentions],
             "method": self.method,
             "disclosure": self.disclosure,
@@ -371,10 +471,71 @@ def rate(metrics: MetricSet, coverage: CoverageSummary) -> Rating | RatingAbsten
     )
 
 
+def within_band(value: float | int, threshold: float | int) -> bool:
+    """True if ``value`` lies within ``BORDERLINE_BAND`` of ``threshold``,
+    inclusive (FR-036). Decimal over the shortest float text, so ``1.1`` is
+    exactly 10% from ``1.0`` rather than a binary hair beyond it."""
+    gap = abs(_decimal(value) - _decimal(threshold))
+    return gap <= BORDERLINE_BAND * abs(_decimal(threshold))
+
+
+def blend(
+    rules: int, agent: int | float, confidence: int | float
+) -> tuple[int, Decimal]:
+    """Capped blend (FR-038): ``(final, w)`` with ``w = 0.5 x confidence`` and
+    ``final = R(1-w) + Aw`` rounded half up once and clamped to 0-100."""
+    weight = AGENT_WEIGHT_CAP * _decimal(confidence)
+    final = _decimal(rules) * (1 - weight) + _decimal(agent) * weight
+    return _round_half_up(final), weight
+
+
+def _decimal(value: float | int) -> Decimal:
+    return Decimal(str(value))
+
+
+def _round_half_up(value: Decimal) -> int:
+    return min(100, max(0, int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))))
+
+
+def _decimal_text(value: Decimal) -> str:
+    """Two places for the common case (``0.30``), exact digits otherwise, so a
+    displayed weight is never a rounded stand-in for the one applied."""
+    hundredths = value.quantize(Decimal("0.01"))
+    return format(hundredths if hundredths == value else value.normalize(), "f")
+
+
+def _validate_gated_rating(value: GatedRating) -> None:
+    if type(value.rules) is Rating:
+        _revalidate_rating(value.rules)
+    elif type(value.rules) is RatingAbstention:
+        _revalidate_abstention(value.rules)
+        if value.rules.reason_code == "no_dimension_rated":
+            raise ValueError("a gated rating cannot wrap the overall abstention")
+    else:
+        raise ValueError("gated rating rules must be a Rating or RatingAbstention")
+    _validate_finite_number(value.agent_score, "gated rating agent_score")
+    if not 0 <= value.agent_score <= 100:
+        raise ValueError("gated rating agent_score must be between 0 and 100")
+    _validate_unit_number(value.confidence, "gated rating confidence")
+    if (
+        type(value.evidence_refs) is not tuple
+        or not value.evidence_refs
+        or any(type(ref) is not str or not ref for ref in value.evidence_refs)
+    ):
+        raise ValueError("gated rating evidence_refs must be non-empty strings")
+
+
+def _rated_by(item: Rating | GatedRating) -> str:
+    return item.rated_by if type(item) is GatedRating else "rules"
+
+
 def rate_overall(
-    ratings: Sequence[Rating | RatingAbstention],
+    ratings: Sequence[Rating | RatingAbstention | GatedRating],
 ) -> OverallRating | RatingAbstention:
-    """Average exactly seven unique dimension results, raters only."""
+    """Average exactly seven unique dimension results, raters only.
+
+    A :class:`GatedRating` contributes its blended or agent-rated value; the
+    disclosure counts each kind (FR-038)."""
     _validate_declared_data()
     expected = tuple(COVERAGE_FLOORS)
     if len(ratings) != len(expected):
@@ -383,17 +544,19 @@ def rate_overall(
     invalid_types = tuple(
         index
         for index, item in enumerate(ratings)
-        if type(item) not in (Rating, RatingAbstention)
+        if type(item) not in (Rating, RatingAbstention, GatedRating)
     )
     if invalid_types:
         raise ValueError(
-            "rate_overall accepts exactly Rating or RatingAbstention values; "
-            f"invalid item index(es): {', '.join(map(str, invalid_types))}"
+            "rate_overall accepts exactly Rating, RatingAbstention or GatedRating "
+            f"values; invalid item index(es): {', '.join(map(str, invalid_types))}"
         )
 
     for item in ratings:
         if type(item) is Rating:
             _revalidate_rating(item)
+        elif type(item) is GatedRating:
+            _validate_gated_rating(item)
         else:
             _revalidate_abstention(item)
 
@@ -409,8 +572,10 @@ def rate_overall(
 
     by_dimension = {item.dimension: item for item in ratings}
     ordered = tuple(by_dimension[name] for name in expected)
-    contributors = tuple(item for item in ordered if isinstance(item, Rating))
-    abstentions = tuple(item for item in ordered if isinstance(item, RatingAbstention))
+    contributors = tuple(
+        item for item in ordered if type(item) in (Rating, GatedRating)
+    )
+    abstentions = tuple(item for item in ordered if type(item) is RatingAbstention)
     if not contributors:
         return RatingAbstention(
             dimension="overall",
@@ -425,6 +590,7 @@ def rate_overall(
         contributors=tuple(item.dimension for item in contributors),
         abstentions=abstentions,
         contributor_values=tuple((item.dimension, item.value) for item in contributors),
+        rated_by=tuple((item.dimension, _rated_by(item)) for item in contributors),
     )
 
 
@@ -825,6 +991,21 @@ def _validate_overall_rating(value: OverallRating) -> None:
     value_names = tuple(name for name, _rating in value.contributor_values)
     if value.contributors != value_names:
         raise ValueError("overall contributors do not match contributor_values")
+    if (
+        type(value.rated_by) is not tuple
+        or tuple(entry[0] for entry in value.rated_by) != value_names
+        or any(
+            type(label) is not str
+            or not (
+                label in ("rules", "agent-rated") or label.startswith("blended (w ")
+            )
+            for _name, label in value.rated_by
+        )
+    ):
+        raise ValueError(
+            "overall rated_by must label every contributor rules, blended, "
+            "or agent-rated"
+        )
     if type(value.abstentions) is not tuple:
         raise ValueError("overall abstentions must be a tuple")
     for item in value.abstentions:

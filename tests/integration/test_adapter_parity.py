@@ -106,6 +106,10 @@ def test_score_with_the_same_picks_matches_across_adapters(tmp_path: Path) -> No
         "score",
         {"repo": str(REPO_ROOT), "scope": "worktree", "agent_input": agent_input},
     )
+    # T028: a picks round may now ask for gate evaluations; `needs_input` is
+    # the same test-declared MCP-only exclusion as above, not a DDR-0005 rule.
+    assert "needs_input" not in cli_score
+    mcp_score = {k: v for k, v in mcp_score.items() if k != "needs_input"}
     assert normalize(cli_score) == normalize(mcp_score)
     provenance = {
         item["dimension"]: item["sources"] for item in cli_score["provenance"]

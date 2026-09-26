@@ -402,14 +402,8 @@ def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
     return dict(sorted(result.items()))
 
 
-def validate_agent_input(
-    document: object, repo: str | Path
-) -> dict[str, tuple[str, ...]]:
-    """Validate an agent-input document; return its picks, role → paths.
-
-    Accepts a parsed object or its JSON text. Only ``picks`` is supported in
-    T026; ``gate_evaluations`` is rejected as not yet supported (T028).
-    """
+def parse_agent_input(document: object) -> dict:
+    """The agent-input document as a dict, from a parsed object or JSON text."""
     if isinstance(document, bytes | str):
         try:
             document = json.loads(document)
@@ -417,14 +411,32 @@ def validate_agent_input(
             raise RoleInputError("agent input", ["not valid JSON"]) from None
     if not isinstance(document, dict):
         raise RoleInputError("agent input", ["must be a JSON object"])
+    return document
+
+
+def validate_agent_input(
+    document: object, repo: str | Path
+) -> dict[str, tuple[str, ...]]:
+    """Validate an agent-input document; return its picks, role → paths.
+
+    Accepts a parsed object or its JSON text. ``gate_evaluations`` is only
+    shape-checked here: whether each one is valid depends on this call's
+    ratings and packs, so ``gate.apply_gate_evaluations`` validates it (T028).
+    """
+    document = parse_agent_input(document)
 
     root = _resolved_repo(repo)
     errors: list[str] = []
     for key in document:
-        if key == "gate_evaluations":
-            errors.append("gate_evaluations: not yet supported (arrives with T028)")
-        elif key != "picks":
-            errors.append(f"{redact(str(key))}: unknown key; only picks is accepted")
+        if key not in ("picks", "gate_evaluations"):
+            errors.append(
+                f"{redact(str(key))}: unknown key; only picks and "
+                "gate_evaluations are accepted"
+            )
+    if not isinstance(document.get("gate_evaluations", {}), dict):
+        errors.append(
+            "gate_evaluations: must be an object mapping a dimension to an evaluation"
+        )
     picks = document.get("picks", {})
     if not isinstance(picks, dict):
         errors.append("picks: must be an object mapping a role to a list of paths")
@@ -755,5 +767,6 @@ __all__ = [
     "role",
     "source_provenance",
     "unfilled_reason",
+    "parse_agent_input",
     "validate_agent_input",
 ]

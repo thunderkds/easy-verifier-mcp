@@ -508,7 +508,9 @@ def test_overall_rejects_unsupported_objects_before_reading_them():
 
     forged = tuple(Forged(name) for name in DIMENSIONS[:-1])
     valid = _rating_with_value(DIMENSIONS[-1], 70)
-    with pytest.raises(ValueError, match="exactly Rating or RatingAbstention"):
+    with pytest.raises(
+        ValueError, match="exactly Rating, RatingAbstention or GatedRating"
+    ):
         rate_overall(forged + (valid,))
 
 
@@ -813,6 +815,7 @@ def test_judge_is_structurally_arithmetic_only():
         "math",
         "collections.abc",
         "dataclasses",
+        "decimal",
         ".metrics",
         ".models",
     }

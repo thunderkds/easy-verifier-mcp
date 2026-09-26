@@ -41,7 +41,12 @@ from easy_verifier.core.assessment import (
 )
 from easy_verifier.core.context import RepoPathError, _resolved_repo
 from easy_verifier.core.findings import Finding, validate_findings
-from easy_verifier.core.judge import OverallRating, Rating, RatingAbstention
+from easy_verifier.core.judge import (
+    GatedRating,
+    OverallRating,
+    Rating,
+    RatingAbstention,
+)
 from easy_verifier.core.models import (
     CombinedPack,
     CoverageSummary,
@@ -50,6 +55,7 @@ from easy_verifier.core.models import (
     SourceMiss,
 )
 from easy_verifier.core.redact import redact
+from easy_verifier.core.roles import parse_agent_input
 from easy_verifier.core.score import ScoreResult, score_packs
 from easy_verifier.dimensions import dimension_names
 
@@ -83,6 +89,8 @@ def write_report(
     findings: list[dict[str, Any]] | str | bytes,
     packs: CombinedPack,
     target_repo: str | Path,
+    *,
+    agent_input: object | None = None,
 ) -> ReportResult:
     """Validate `findings` against `packs`, then render one HTML report into
     ``<target_repo>/reports/``.
@@ -104,13 +112,21 @@ def write_report(
     # Gate first. Nothing below this line may run for a rejected submission —
     # validate_findings raises, so AC #9 holds by control flow, not by a check.
     validated = validate_findings(findings, pack_map)
+    # T028: the same agent input that shaped `packs` also carries any gate
+    # evaluations; they are validated by `score_packs` before anything is
+    # written, and their rationale never reaches the document.
+    document_input = (
+        parse_agent_input(agent_input) if agent_input is not None else {}
+    )
 
     reports_dir = repo / REPORTS_DIRNAME
     first_write = not _has_existing_reports(reports_dir)
 
     ctx = _Ctx(repo=repo)
     score = (
-        score_packs(packs, validated.by_dimension)
+        score_packs(
+            packs, validated.by_dimension, document_input.get("gate_evaluations")
+        )
         if tuple(slot.dimension for slot in packs.slots) == dimension_names()
         else None
     )
@@ -444,6 +460,8 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
     return (
         '<section class="score-panel"><h2>Quality score</h2>'
         '<p class="method">Ratings are declared arithmetic over the cited metrics. '
+        "At a hard gate a cited agent evaluation may blend in (w = 0.5 x "
+        "confidence) or stand alone as agent-rated, always shown with its parts. "
         "An assessment appears only when caller findings were submitted; divergence "
         "is shown separately and never blended.</p>"
         f'{overall_html}<div class="score-grid">{cards}</div></section>'
@@ -452,10 +470,26 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
 
 def _render_score_card(
     ctx: _Ctx,
-    rating: Rating | RatingAbstention,
+    rating: Rating | RatingAbstention | GatedRating,
     assessment: Assessment | AssessmentAbsence | None,
     divergence: Divergence | DivergenceAbsence | None,
 ) -> str:
+    gated = ""
+    if type(rating) is GatedRating:
+        # FR-038: the number never appears without its parts; the rules
+        # result (rating or abstention record) is rendered in full below it.
+        refs = "".join(
+            f"<li><code>{_render_ref(ctx, ref)}</code></li>"
+            for ref in rating.evidence_refs
+        )
+        gated = (
+            f'<p class="rating-value">Rating {ctx.esc(rating.parts)}</p>'
+            f'<p class="rating-method">Rating: {ctx.esc(rating.rated_by)}. '
+            "Agent evidence cited:</p>"
+            f'<ul class="rating-agent-refs">{refs}</ul>'
+        )
+        rating = rating.rules
+    label = "Rules rating" if gated else "Rating"
     if type(rating) is Rating:
         inputs = "".join(_render_rating_input(ctx, item) for item in rating.inputs)
         unavailable = "".join(
@@ -469,7 +503,7 @@ def _render_score_card(
             else ""
         )
         rating_html = (
-            f'<p class="rating-value">Rating {ctx.esc(rating.value)}/100</p>'
+            f'<p class="rating-value">{label} {ctx.esc(rating.value)}/100</p>'
             f'<p class="rating-method">{ctx.esc(rating.method)}</p>'
             f'<ol class="rating-inputs">{inputs}</ol>{unavailable_block}'
         )
@@ -493,7 +527,7 @@ def _render_score_card(
             else ""
         )
         rating_html = (
-            '<p class="rating-withheld">Rating withheld</p>'
+            f'<p class="rating-withheld">{label} withheld</p>'
             f"<p>{ctx.esc(rating.reason_code)} — {ctx.esc(rating.reason)}</p>"
             f'{coverage}{failure}<ul class="miss-list">{misses}</ul>'
         )
@@ -501,7 +535,7 @@ def _render_score_card(
 
     return (
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
-        f"{rating_html}{_render_assessment(ctx, assessment)}"
+        f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
         f"{_render_divergence(ctx, divergence)}</article>"
     )
 

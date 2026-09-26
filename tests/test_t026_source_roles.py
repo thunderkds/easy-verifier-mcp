@@ -562,7 +562,7 @@ def test_invalid_picks_are_all_rejected_by_name(tmp_path: Path) -> None:
     ("doc", "named"),
     [
         ({"picks": {"lockfile": ["../etc/passwd"]}}, "../etc/passwd"),
-        ({"gate_evaluations": {}}, "gate_evaluations"),
+        ({"gate_evaluations": []}, "gate_evaluations"),
         ({"picks": {}, "extra": 1}, "extra"),
         ({"picks": ["x"]}, "picks"),
         ({"picks": {"lockfile": "x.lock"}}, "picks.lockfile"),
@@ -583,11 +583,13 @@ def test_malformed_agent_input_is_rejected_naming_it(
     assert named in str(caught.value)
 
 
-def test_gate_evaluations_are_not_yet_supported(tmp_path: Path) -> None:
+def test_gate_evaluations_key_is_accepted_since_t028(tmp_path: Path) -> None:
+    """T028 lifted T026's "not yet supported" rejection; an empty evaluation
+    set is accepted and changes no number (test_t028_evaluate_gate.py)."""
     repo = _write(tmp_path / "repo", {"README.md": "# r\n"})
-    with pytest.raises(ValidationError) as caught:
-        score_repository(repo, agent_input={"picks": {}, "gate_evaluations": {}})
-    assert "not yet supported" in str(caught.value)
+    plain = score_repository(repo, agent_input={"picks": {}})
+    gated = score_repository(repo, agent_input={"picks": {}, "gate_evaluations": {}})
+    assert gated.serialize() == plain.serialize()
 
 
 def test_cli_replays_agent_input_from_a_file(tmp_path: Path, capsys) -> None:
@@ -621,7 +623,10 @@ def test_mcp_score_takes_agent_input_as_an_argument(tmp_path: Path) -> None:
     provenance = {i["dimension"]: i["sources"] for i in result["provenance"]}
     assert provenance["solution-fit"] == "rules + agent picks (1 file)"
     with pytest.raises(ToolError) as caught:
-        _mcp("score", {"repo": str(repo), "agent_input": {"gate_evaluations": {}}})
+        _mcp(
+            "score",
+            {"repo": str(repo), "agent_input": {"gate_evaluations": {"vibes": {}}}},
+        )
     assert "gate_evaluations" in str(caught.value)
 
 
