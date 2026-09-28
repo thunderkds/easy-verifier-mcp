@@ -567,3 +567,9 @@ duplicate `**Txxx**` rows before moving a task.
 - metric_tables.curated_metric_tables() is the one compiled table set; metrics.py stays pure (tables passed in).
 - Vendored snapshots (Linguist d0921d10, ASVS v5.0.0, CWE 4.20) live in registry/vendored/; ASVS has one canonical URL for all requirements, cite by requirement id.
 - Merged branch after T031+T032: 954 passed, 2 skipped.
+
+## 2026-09-28 — T033: metrics need the evidence to exist in that dimension's pack
+
+- T033 CCN/cycle metrics were correct but abstained on code-quality/architecture packs, which hold no code. Before writing rules over a metric, confirm the dimension's pack actually carries the evidence at the real surface. Follow-up T050 added (blocks T035).
+- Carry-forward P2s: blast-radius scan cap not reported as truncation (fan-in silent lower bound); Go imports matched by stem; JS class methods, generic-return Java/C# methods, Ruby blocks not detected as functions; ternary, ?? and Kotlin when not counted.
+- tokens: function end by indentation for all languages; syntax table keyed by file extension (curated_metric_tables().syntax['.py']).
