@@ -143,7 +143,9 @@ def test_word_only_identifier_is_unchanged(identifier: str) -> None:
         ("test_quick_brown_fox_jumpsOver_lazy_dog", "mixed-case piece"),
         ("test_quick_brown_fox_wqzkxvbnmjhgfdsaplokiujyhtgrfedcv", "piece length"),
         ("test-quick-brown-fox-jumps-over-lazy-dog", "joiner is _ only"),
-        ("content=PACK_MY_BOX_WITH_FIVE_DOZEN_LIQUOR_JUGS", "whole token only"),
+        # Was `content=PACK_…`; T053 AC 3 exempts `key=UPPER_SNAKE_CONSTANT`, so
+        # the whole-token guard is pinned with a joiner that is not `=`.
+        ("content+PACK_MY_BOX_WITH_FIVE_DOZEN_LIQUOR_JUGS", "whole token only"),
     ],
 )
 def test_each_identifier_guard_keeps_its_twin_fingerprinted(
