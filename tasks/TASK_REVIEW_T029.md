@@ -33,8 +33,13 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer on pre-fix commit `4750b37`, before any implementation commit:
+
+```
+$ cd /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T029 && date -u && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('BRAINSTORMING_LOG_source-discovery.md'))"
+Mon Sep 28 04:56:31 AM UTC 2026
+BRAI…****:54e5675171d4.md
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
