@@ -549,7 +549,7 @@ def _render_rating_input(ctx: _Ctx, item) -> str:
         f"<code>{ctx.esc(item.metric_name)}</code> = {ctx.esc(item.metric_value)}; "
         f"{ctx.esc(item.comparison)} {ctx.esc(item.threshold)}; weight "
         f"{ctx.esc(item.weight)}; earned {ctx.esc(item.earned_weight)}"
-        f'<p class="rating-citation">Metric: '
+        '<p class="rating-citation">Metric: '
         + ", ".join(_render_citation(ctx, c) for c in item.metric_citation)
         + "; threshold: "
         + _render_citation(ctx, item.threshold_citation)

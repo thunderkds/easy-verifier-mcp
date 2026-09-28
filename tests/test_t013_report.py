@@ -205,7 +205,15 @@ def _freeze_clock(monkeypatch, moment: datetime) -> None:
 
 
 class _ExternalReferenceScanner(HTMLParser):
-    """Collects everything the browser would fetch: URL attributes and CSS."""
+    """Collects everything the browser would fetch: URL attributes and CSS.
+
+    One exemption (T035, Supervisor ruling): a navigational ``<a>`` whose
+    ``href`` is ``https://`` and whose ``rel`` includes ``noreferrer`` is a
+    link the reader may click, never a resource load, so a cited source may be
+    clickable. Any other external URL attribute -- on link, script, img,
+    iframe, any ``src``, an ``<a>`` over http or without ``rel=noreferrer`` --
+    and any CSS ``url()``/``@import`` stays an offender.
+    """
 
     URL_ATTRS = frozenset(
         {"src", "href", "srcset", "poster", "data", "action", "background"}
@@ -223,8 +231,17 @@ class _ExternalReferenceScanner(HTMLParser):
             self.script_tags.append(tag)
         if tag == "style":
             self._in_style = True
+        navigational = tag == "a" and "noreferrer" in (
+            dict(attrs).get("rel") or ""
+        ).split()
         for name, value in attrs:
             if value is None:
+                continue
+            if (
+                navigational
+                and name == "href"
+                and value.strip().startswith("https://")
+            ):
                 continue
             if name in self.URL_ATTRS:
                 self.urls.append(value)
@@ -333,6 +350,45 @@ def test_the_self_containment_scanner_can_actually_fail():
         "<html><head><style>@import url('https://x/y.css');</style></head></html>"
     ) == ["css:@import", "css-url:https://x/y.css"]
     assert _external_references('<script src="x.js"></script>') == ["tag:script"]
+    # T035: only a navigational https anchor with rel=noreferrer is exempt.
+    assert _external_references(
+        '<a href="https://www.iso.org/x" rel="noreferrer">ISO</a>'
+    ) == []
+    assert _external_references('<a href="https://www.iso.org/x">ISO</a>') == [
+        "url:https://www.iso.org/x"
+    ]
+    assert _external_references(
+        '<a href="http://www.iso.org/x" rel="noreferrer">ISO</a>'
+    ) == ["url:http://www.iso.org/x"]
+    assert _external_references(
+        '<img src="https://x/y.png" rel="noreferrer">'
+        '<link href="https://x/y.css" rel="noreferrer">'
+        '<iframe src="https://x/"></iframe>'
+    ) == ["url:https://x/y.png", "url:https://x/y.css", "url:https://x/"]
+
+
+def test_full_score_panel_with_cited_links_loads_nothing(tmp_path: Path):
+    """T035: a real seven-dimension report, rated through the rules, carries
+    clickable citation links and still requests nothing from the network."""
+    from easy_verifier.core.synthesis import combined_pack
+    from easy_verifier.dimensions import dimension_names
+
+    target = tmp_path / "target"
+    (target / "docs/adr").mkdir(parents=True)
+    (target / "src").mkdir()
+    (target / "README.md").write_text("# Target\n", encoding="utf-8")
+    (target / "PROJECT_SPEC.md").write_text("# Architecture\n", encoding="utf-8")
+    (target / "docs/adr/0001-use-python.md").write_text("# ADR\n", encoding="utf-8")
+    (target / "src/app.py").write_text("import os\n\n\ndef main():\n    return os\n")
+    packs = combined_pack(dimension_names(), repo_path=str(target), scope="project")
+
+    _, document = _write(target, [], packs)
+
+    assert '<ol class="rating-inputs">' in document  # a rules rating rendered
+    assert '<a href="https://www.iso.org/standard/74393.html" rel="noreferrer">' in (
+        document
+    )
+    assert _external_references(document) == []
 
 
 # ---------------------------------------------------------------------------
