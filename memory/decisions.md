@@ -709,3 +709,145 @@ After T026 moved coverage to roles (3,2,3,3,7,4,4 roles per dimension), the user
 `judge.COVERAGE_FLOORS` unchanged ("keep the thresholds as is"), despite structural caps
 (security max 5/7 roles, test-strategy 3/4, blast-radius project-scope 2/4). Also: threshold 0 is
 never borderline for the evaluate gate (Supervisor decision at T028 Stage 4; FR-036 amended).
+
+## 2026-09-28 — PROPOSED: cited reference registry as the scoring source of truth (user, pre-Stage 0.5)
+
+**Status: proposed, not locked.** Direction agreed in conversation with the user and carried into
+Stage 0.5 (`grill-with-docs mode=requirement` → `brainstorming`). Becomes a DDR + PRD amendment
+only after grilling locks it. Not yet a task.
+
+**Trigger.** User asked which methodology/standard the score rests on ("like Pythagoras for the
+number"). Answer on record: **none**. `judge.RATING_RULES` (11 binary threshold rules, weights sum
+100) and `judge.COVERAGE_FLOORS` are our own declared choices; `PRD.md`, `PROJECT_SPEC.md`,
+`memory/decisions.md` and `docs/` cite no external standard (grep for ISO 25010/5055, OWASP, CWE,
+SQALE, CISQ, McCabe: zero hits). Scores are reproducible and auditable but not validated. The
+method most resembles GQM + an OpenSSF-Scorecard-style weighted checklist, uncited.
+Also noted: the same 11 rules apply to all seven dimensions — dimensions differ only by coverage
+floor and gathered evidence, so the rating mostly measures test discipline, secret hygiene and
+evidence volume, not dimension-specific quality.
+
+**Candidate standards per dimension (discussed, not chosen):**
+architecture → ISO/IEC/IEEE 42010 + Martin package metrics (instability, abstractness, distance,
+cycles); solution-fit → ISO/IEC 25010 functional suitability; requirement-fidelity → ISO/IEC/IEEE
+29148 + bidirectional traceability (AC → code + test); code-quality → ISO/IEC 5055 (CISQ), McCabe
+≤10 (NIST SP 500-235), cognitive complexity, SQALE; security → OWASP ASVS, CWE Top 25, ISO 5055
+security measures; test-strategy → ISO/IEC/IEEE 29119, test pyramid, assertion density
+(Kudrjavets et al. 2006); blast-radius → change impact analysis (Bohner & Arnold), fan-in/fan-out
+(Henry & Kafura), relative churn (Nagappan & Ball 2005). ISO 5055 is the strongest single anchor
+(built for automated static measurement). Line/branch coverage and mutation testing are
+**infeasible** — they need target-code execution, which is forbidden.
+
+**Language-pattern inconsistency found (code read, not yet reproduced by a run):** three
+separate tables disagree — `core/roles.py` ECOSYSTEM_PATTERNS (Python, JS/TS, Rust, Java + generic),
+`core/metrics.py` `_SOURCE_SUFFIXES` (12 extensions), and `metrics.py` test-name / test-declaration /
+assertion regexes (partial Py/Go/JS/Java/Rust/Ruby/C#). Concrete gaps:
+- Kotlin, PHP counted as source but `_candidate_test_names` returns `()` → every source file
+  "without covering test" → the 15-weight rule fails even in a well-tested repo.
+- Idiomatic Go (`t.Errorf`, no `assert`) → 0 assertions → assertion-density rule fails
+  (testify is fine).
+- RSpec `it "x" do` (no paren) and C# `[Fact]`/`[Test]` not matched as test declarations.
+- C/C++/Swift/Scala/Elixir/Dart not in `_SOURCE_SUFFIXES` → test ratio abstains.
+- security dimension = secret/redaction only; no injection/CWE patterns in any language.
+
+**Agreed direction (user):**
+1. **One reference registry** — per language/tech, every pattern in one place (manifests, source
+   extensions, test naming, test declaration, assertion syntax, lint/format config), each field
+   with a citation. Every rule cites a standard.
+2. **Pre-evaluate hard gate (MCP-only), a third gate beside detect/evaluate.** The **engine**
+   detects the stack deterministically (e.g. `package.json` → Node.js) — the LLM does NOT detect,
+   or the same repo could get a different stack per run. Engine checks the registry; missing fields
+   → `needs_input` before scoring. The calling LLM supplies them from official docs or its own
+   research session (engine has no network), submitted as cited, `agent-proposed` entries, saved
+   add-only (like `.easy-verifier.toml`), replayable via CLI `--agent-input`. Engine still computes
+   the score; the LLM supplies reference data only. NFR-001 holds.
+3. **Token discipline (user: "do not overwhelm the research, it will waste the token").** Request
+   only fields the existing rules consume; only the ones missing (never "research Node.js");
+   capped fields per request (like detect's ≤20 picks); filled once and reused across runs/repos.
+4. **No RAG.** User proposed RAG / an online database; Supervisor pushed back: lookups are exact-key,
+   not semantic; a vector DB or live DB breaks "no outbound network" and "no model in the engine".
+   Instead **vendor structured sources offline at build time, version-pinned**: GitHub Linguist
+   `languages.yml` (extensions/filenames — closes Kotlin/C++/Swift gaps with zero LLM research),
+   OWASP ASVS JSON, MITRE CWE XML, Semgrep rules (LGPL — licence check), OpenSSF Scorecard checks.
+   The LLM may research online only for what these do not cover.
+5. **Guardrails against invented standards/thresholds.** Agent-proposed entries must carry a
+   citation and `agent-proposed` provenance; until human-approved their rules get capped weight or
+   abstain-only; the curated registry always wins (agent adds, never overrides).
+6. **Do not overwhelm the tech stacks (user).** Scope the registry to the languages already in play
+   (Python, JS/TS/Node, Rust, Java, plus those the metrics table already names: Go, Kotlin, C#, Ruby,
+   PHP). No "support 500 languages" goal — Linguist is a data source, not a support promise.
+   Anything else stays on generic patterns + the pre-evaluate gate.
+
+Open for Stage 0.5: registry file format and location; which standard per dimension actually
+changes a rule vs. is a citation only; whether rules become per-dimension (vs. today's shared 11);
+approval workflow for agent-proposed entries; vendoring script + licence review; interaction with
+unchanged COVERAGE_FLOORS (2026-09-26 decision); T029 redact.py false positive is a prerequisite.
+
+### 2026-09-28 — Stage 0.5 grilling, locked answers (registry proposal)
+
+- **G1 Scope: complete design now.** User: "currently, we are implementation, not using this for
+  now. So I think we should complete all the idea for now." → registry **and** per-dimension
+  standard-backed rules in one design; no backward-compatibility constraint on scores (no users yet).
+- **G2 Storage: inside the verifier.** User: "create the folder in the local verifier."
+  `registry/curated/` (shipped with the verifier, changes only on a release) + `registry/local/`
+  (LLM-researched on this machine, git-ignored, reused across all repos → research once).
+  Implications to carry into PRD: README "never write into this repo" gains one exception for
+  `registry/local/` (NFR-007 on the target repo unchanged); Docker needs a volume for
+  `registry/local/` or research is lost per run; each report embeds the registry entries it used so
+  `--agent-input` replay reproduces the score on another machine.
+- **G3 No manual copy/promotion.** User rejected "copy by hand to curated". Replaced by a **user
+  review gate**: LLM shows the researched entry → user answers *good* (→ approved) / *needs
+  improvement* (→ LLM re-researches with the comment, asks again) / *reject* (→ entry deleted, its
+  rules abstain). Asked once per entry; answer remembered.
+- **G4 Pending entries score immediately.** User: "just scored by your research first, and we can
+  use the flag, tag or anything to show that score depend on any resource." → no abstention while
+  pending; every rule input carries a **source tag**: `curated` / `agent-researched (unreviewed)` /
+  `agent-researched (user-approved)`, plus its citation, visible in `score` output and the report.
+  Supersedes the earlier "capped weight until approved" guardrail idea.
+- **G5 Curated standards per dimension (user chose the recommended set).** code-quality: ISO/IEC
+  5055 + McCabe ≤10 (NIST SP 500-235); security: OWASP ASVS + CWE Top 25; test-strategy: ISO/IEC/IEEE
+  29119 + assertion density; architecture: ISO/IEC/IEEE 42010 + Martin package metrics;
+  requirement-fidelity: ISO/IEC/IEEE 29148 traceability (AC → code + test); solution-fit: ISO/IEC
+  25010 functional suitability; blast-radius: fan-in/fan-out (Henry & Kafura) + relative churn
+  (Nagappan & Ball). Selection criterion: measurable by reading code only (no execution).
+- **G6 Curated languages at ship time (user chose recommended): 9** — Python, JS/TS (Node), Rust,
+  Java, Go, Kotlin, C#, Ruby, PHP (every language the code already half-supports). Linguist data
+  only supplies file extensions for others — data, not a support promise. Others: generic patterns +
+  on-demand LLM research.
+- **G7 Granularity: language + framework (user chose over the recommended language-only).** Separate
+  entries for frameworks (React, Django, Spring…). Overwhelm risk noted by Supervisor: entries and
+  research multiply — bounding rule to be settled in G8.
+- **G8 Frameworks on demand only (user chose recommended).** Curated ships the 9 languages only. A
+  framework entry exists only when the engine detects the framework in a repo manifest (e.g.
+  `"react"` in `package.json` dependencies) → researched once, missing fields only, reused after.
+  A framework entry only **adds** to its language entry, never replaces it.
+- **G9 Research is bounded; fall back to asking the user (user).** User: "we should have limitation
+  about researching, don't prefer the search to take long time to complete; if can not search, ask
+  the users to identify what they are working on. Like the grill skill." → per score call at most
+  **20 missing fields**, language fields before framework fields, with a short effort/time bound;
+  anything left waits for the next call (generic patterns meanwhile, labelled). If the LLM cannot
+  find a field quickly, it stops researching and asks the user **one question at a time**,
+  grill-style, with a recommended answer; the user's answer becomes the entry, tagged
+  `user-supplied`. Exact time/effort bound → brainstorming.
+
+### 2026-09-28 — Stage 0.5 brainstorming, locked (registry proposal) → BRAINSTORMING_LOG_reference-registry.md
+
+- **B1 Structure measured by registry-driven tokens** (user chose A over lizard / tree-sitter): each
+  language entry declares branch keywords, comment/string delimiters, function-start and import
+  syntax; engine computes lizard-style approximate CCN and import-based fan-in. No new dependency.
+- **B2 Research bound: ≤2 lookups per field**, official docs first, else ask the user. User: "please
+  note that we will refer to the link to evaluate, look like the clear source" → every field cites a
+  clear https link to the primary source, shown beside the rule; engine validates presence +
+  well-formed URL only (no network, cannot fetch).
+- **B3 Vendored sources: Linguist (MIT), OWASP ASVS (CC BY-SA 4.0), MITRE CWE.** No Semgrep
+  (2023 licence restricts reuse; unverified detail, rejected on risk). Per-language sink patterns
+  are ours, each citing CWE/ASVS.
+- **B4 Local registry at `~/.easy-verifier-sot/`** (override `EASY_VERIFIER_SOT`). User: "easy-verifier-sot
+  for the right purpose." Reason: site-packages not writable, image `read_only` + `network_mode: none`.
+  Docker bind-mounts the same host folder → CLI and MCP share research. **Supersedes G2's
+  `registry/local/` path** and removes the need for a README "never write into this repo" exception.
+  `registry/curated/` stays in the package, read-only.
+- **B5 Per-dimension rule table approved as proposed** (log section "Proposed per-dimension rules").
+  Metric citation and threshold citation are separate; thresholds no standard publishes are tagged
+  `project-default`. solution-fit has no rule → abstains by design → FR-036 evaluate gate.
+  Martin abstractness/distance dropped (not reliable with tokens).
+- Path chosen: **Option A — data registry (TOML) + token metrics.** Prerequisite: T029.
