@@ -1,0 +1,41 @@
+# Ruby — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["Gemfile"]
+citation_url = "https://bundler.io/guides/gemfile.html"
+source_tag = "curated"
+
+[[manifests]]
+value = ["*.gemspec"]
+citation_url = "https://guides.rubygems.org/specification-reference/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Gemfile"]
+citation_url = "https://bundler.io/guides/gemfile.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/*.gemspec"]
+citation_url = "https://guides.rubygems.org/specification-reference/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.rubocop.yml", "**/.rubocop_todo.yml"]
+citation_url = "https://docs.rubocop.org/rubocop/configuration.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.standard.yml"]
+citation_url = "https://github.com/standardrb/standard"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/.rspec", "**/spec_helper.rb", "**/rails_helper.rb"]
+citation_url = "https://rspec.info/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/test_helper.rb"]
+citation_url = "https://guides.rubyonrails.org/testing.html"
+source_tag = "curated"

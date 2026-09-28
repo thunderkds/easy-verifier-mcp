@@ -2,14 +2,15 @@
 
 A dimension seeks **roles** (a lockfile, a requirements doc, a CI workflow), not
 filenames. This module is the whole mechanism, as plain data plus three
-functions — no base class, no registry, no detection classes:
+functions — no base class, no detection classes:
 
 * :data:`GENERIC_PATTERNS` — the language-agnostic globs for every file-backed
   role. Its keys are the complete set of roles a config file or an agent pick
   may name.
-* :data:`ECOSYSTEM_PATTERNS` — extra globs for existing roles (Python, JS/TS,
-  Rust, Java), switched on when one of the table's manifests is present. A
-  table may only *extend* a role; that it cannot add one is checked at import.
+* the reference registry (:mod:`.registry`) — cited extra globs for existing
+  roles per language, switched on when one of the language's manifests is
+  present. An entry may only *extend* a role; the loader rejects one that
+  names any other.
 * :func:`load_repo_config` / :func:`validate_agent_input` — the two caller
   inputs, both add-only, both validated with every error reported at once.
 * :func:`resolve` — one bounded, sorted walk that turns roles into files and
@@ -35,6 +36,7 @@ from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
 from .models import SourceRole
 from .redact import redact
+from .registry import Registry, load_registry
 
 CONFIG_FILENAME = ".easy-verifier.toml"
 MAX_CONFIG_BYTES = 64 * 1024
@@ -210,105 +212,16 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
 Directory and naming conventions shared across ecosystems. A repository in a
 language with no ecosystem table is evaluated by these alone."""
 
-ECOSYSTEM_PATTERNS: dict[str, dict] = {
-    "python": {
-        "manifests": (
-            "pyproject.toml",
-            "setup.py",
-            "setup.cfg",
-            "requirements.txt",
-            "Pipfile",
-        ),
-        "roles": {
-            "package-manifest": (
-                "**/pyproject.toml",
-                "**/setup.py",
-                "**/setup.cfg",
-                "**/requirements*.txt",
-                "**/Pipfile",
-            ),
-            "lint-config": (
-                "**/ruff.toml",
-                "**/.ruff.toml",
-                "**/.flake8",
-                "**/pylintrc",
-                "**/mypy.ini",
-                "**/pyproject.toml",
-                "**/setup.cfg",
-            ),
-            "test-config": (
-                "**/pytest.ini",
-                "**/tox.ini",
-                "**/conftest.py",
-                "**/noxfile.py",
-                "**/pyproject.toml",
-                "**/setup.cfg",
-            ),
-        },
-    },
-    "js-ts": {
-        "manifests": ("package.json",),
-        "roles": {
-            "package-manifest": ("**/package.json", "**/pnpm-workspace.yaml"),
-            "lint-config": (
-                "**/eslint.config.*",
-                "**/.eslintrc*",
-                "**/biome.json",
-                "**/biome.jsonc",
-            ),
-            "format-config": (
-                "**/.prettierrc*",
-                "**/prettier.config.*",
-                "**/biome.json",
-            ),
-            "lockfile": ("**/npm-shrinkwrap.json",),
-            "test-config": (
-                "**/jest.config.*",
-                "**/vitest.config.*",
-                "**/vitest.workspace.*",
-                "**/playwright.config.*",
-                "**/cypress.config.*",
-                "**/karma.conf.*",
-                "**/.mocharc*",
-                "package.json",
-            ),
-        },
-    },
-    "rust": {
-        "manifests": ("Cargo.toml",),
-        "roles": {
-            "package-manifest": ("**/Cargo.toml",),
-            "lint-config": ("**/clippy.toml", "**/.clippy.toml"),
-            "format-config": ("**/rustfmt.toml", "**/.rustfmt.toml"),
-            "test-config": ("**/Cargo.toml", "**/.config/nextest.toml"),
-        },
-    },
-    "java": {
-        "manifests": ("pom.xml", "build.gradle", "build.gradle.kts"),
-        "roles": {
-            "package-manifest": (
-                "**/pom.xml",
-                "**/build.gradle",
-                "**/build.gradle.kts",
-                "**/settings.gradle",
-                "**/settings.gradle.kts",
-            ),
-            "lint-config": ("**/checkstyle*.xml", "**/pmd*.xml", "**/spotbugs*.xml"),
-            "test-config": ("**/pom.xml", "**/build.gradle", "**/build.gradle.kts"),
-            "test-file": ("**/src/test/**",),
-        },
-    },
-}
-"""Extra patterns for existing roles, active when a listed manifest exists
-anywhere outside an excluded directory (FR-032). Data, never a boundary."""
 
-for _ecosystem, _table in ECOSYSTEM_PATTERNS.items():
-    _extra = set(_table["roles"]) - set(GENERIC_PATTERNS)
-    if _extra:
-        raise RuntimeError(
-            f"ecosystem table {_ecosystem!r} names roles that do not exist: "
-            f"{sorted(_extra)}; a table may extend a role, never add one"
-        )
+@lru_cache(maxsize=1)
+def _registry() -> Registry:
+    """The curated reference registry (DDR-0007), loaded once per process.
+
+    It holds each language's manifests and extra role globs; a language is
+    active when one of its manifests exists (FR-032). Data, never a boundary:
+    an entry naming a role outside :data:`GENERIC_PATTERNS` is rejected.
+    """
+    return load_registry(known_roles=GENERIC_PATTERNS)
 
 
 def role(name: str) -> SourceRole:
@@ -582,11 +495,9 @@ def resolve(
             break
         walked.append(path)
 
-    names = {PurePosixPath(path).name for path in walked}
-    ecosystems = tuple(
-        ecosystem
-        for ecosystem, table in ECOSYSTEM_PATTERNS.items()
-        if names & set(table["manifests"])
+    registry = _registry()
+    ecosystems = registry.active_languages(
+        {PurePosixPath(path).name for path in walked}
     )
 
     files: dict[str, tuple[str, ...]] = {}
@@ -595,11 +506,7 @@ def resolve(
     for item in roles:
         if not item.patterns:
             continue
-        rule_patterns = item.patterns + tuple(
-            pattern
-            for ecosystem in ecosystems
-            for pattern in ECOSYSTEM_PATTERNS[ecosystem]["roles"].get(item.name, ())
-        )
+        rule_patterns = item.patterns + registry.patterns_for(item.name, ecosystems)
         rules_match = _matcher(rule_patterns)
         config_patterns = tuple(config.get(item.name, ()))
         # Config globs are untrusted: matched segment-wise with a bounded
@@ -654,6 +561,9 @@ def resolution_warnings(resolution: RoleResolution) -> tuple[str, ...]:
         f"first {MAX_ROLE_FILES} in sorted path order were considered."
         for name in resolution.truncated_roles
     ]
+    warnings.extend(
+        f"Reference registry: {warning}" for warning in _registry().warnings
+    )
     if resolution.walk_truncated:
         warnings.append(
             f"Source-role resolution was bounded at {MAX_ROLE_WALK_FILES} walked "
@@ -761,7 +671,6 @@ def _translate(pattern: str) -> str:
 
 __all__ = [
     "CONFIG_FILENAME",
-    "ECOSYSTEM_PATTERNS",
     "GENERIC_PATTERNS",
     "MAX_ROLE_FILES",
     "MAX_ROLE_WALK_FILES",
