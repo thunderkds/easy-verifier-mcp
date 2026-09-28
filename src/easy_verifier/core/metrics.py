@@ -772,17 +772,17 @@ def _ac_traced_share(kind: str) -> Callable[[_PackView], _Computed]:
                 ),
                 omitted_lower_bound=len(dropped),
             )
-        lines = [
-            e
-            for e in view.pack.excerpts
-            if code_kind(e.path, view.tables) == kind
-        ]
+        pattern = trace_key_pattern(k for c in search.criteria for k in c.keys)
+        first_line: dict[str, str] = {}
+        for excerpt in view.pack.excerpts:
+            if code_kind(excerpt.path, view.tables) == kind:
+                for key in pattern.findall(excerpt.text):
+                    first_line.setdefault(key, excerpt.ref)
         traced: list[str] = []
         untraced: list[str] = []
         used: set[str] = set()
         for criterion in search.criteria:
-            pattern = trace_key_pattern(criterion.keys)
-            hits = [e.ref for e in lines if pattern.search(e.text)]
+            hits = [first_line[key] for key in criterion.keys if key in first_line]
             (traced if hits else untraced).append(criterion.id)
             used.update(hits[:1])
         refs = {c.ref for c in search.criteria} | used

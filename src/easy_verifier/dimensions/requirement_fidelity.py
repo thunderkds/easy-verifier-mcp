@@ -69,7 +69,11 @@ MAX_TASK_GUIDES = 500
 """Task guides read for acceptance criteria; more marks the search incomplete."""
 
 MAX_TRACE_SCAN_FILES = 2000
-"""Code files opened by the trace search; more marks the search incomplete."""
+"""Code files walked by the trace search; more marks the search incomplete."""
+
+MAX_CRITERIA = 5000
+"""Criteria extracted; more marks the search incomplete (keeps the pack and
+the metric's work bounded on a hostile or enormous kit)."""
 
 MAX_QUOTED_LINE_CHARS = 240
 _LINE_CLIP = " …[line clipped]"
@@ -112,6 +116,8 @@ def _trace_evidence(context: DimensionContext) -> tuple[Excerpt, ...]:
     rows, guides, guides_capped = _task_guide_rows(context)
     definitions = _fr_definitions(context)
     found = rows + definitions
+    too_many = len(found) > MAX_CRITERIA
+    found = found[:MAX_CRITERIA]
     criteria = tuple(
         AcceptanceCriterion(id=ident, keys=keys, ref=_safe_ref(excerpt))
         for ident, keys, excerpt in found
@@ -119,7 +125,9 @@ def _trace_evidence(context: DimensionContext) -> tuple[Excerpt, ...]:
     traces, searched, scan_capped = _search_traces(context, criteria)
 
     incomplete = None
-    if guides_capped:
+    if too_many:
+        incomplete = f"more than {MAX_CRITERIA} criteria; only the first were kept"
+    elif guides_capped:
         incomplete = (
             f"more than {MAX_TASK_GUIDES} task guides; only the first were read"
         )
@@ -241,14 +249,16 @@ def _search_traces(
     untraced = {kind: set(range(len(criteria))) for kind in ("source", "test")}
     traces: list[Excerpt] = []
     searched = 0
-    for candidate in context.iter_code_sources(limit=MAX_TRACE_SCAN_FILES + 1):
+    for walked, candidate in enumerate(
+        context.iter_code_sources(limit=MAX_TRACE_SCAN_FILES + 1), start=1
+    ):
         if not untraced["source"] and not untraced["test"]:
             break
+        if walked > MAX_TRACE_SCAN_FILES:
+            return traces, searched, True
         kind = code_kind(candidate, tables)
         if kind is None or not untraced[kind]:
             continue
-        if searched >= MAX_TRACE_SCAN_FILES:
-            return traces, searched, True
         searched += 1
         text = context.read_source(candidate)
         if text is None:

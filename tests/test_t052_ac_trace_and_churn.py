@@ -187,6 +187,20 @@ def test_a_trace_search_that_hits_its_file_ceiling_abstains(
     assert _metric(_rf(tmp_path), CODE).outcome == 0.75
 
 
+def test_more_criteria_than_the_ceiling_abstains(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # Sabotage pair: only the criteria ceiling differs (4 criteria).
+    _kit_repo(tmp_path)
+    monkeypatch.setattr(requirement_fidelity, "MAX_CRITERIA", 3)
+    capped = _rf(tmp_path)
+    assert len(capped.trace_search.criteria) == 3
+    assert "more than 3 criteria" in _metric(capped, CODE).abstention.reason
+
+    monkeypatch.setattr(requirement_fidelity, "MAX_CRITERIA", 4)
+    assert _metric(_rf(tmp_path), CODE).outcome == 0.75
+
+
 def test_trace_metrics_are_deterministic_across_runs(tmp_path: Path):
     _kit_repo(tmp_path)
     tables = curated_metric_tables()
