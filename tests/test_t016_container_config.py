@@ -39,6 +39,7 @@ def test_compose_applies_kernel_level_runtime_boundaries(
             "PATH": str(Path(shutil.which("docker")).parent),
             "EASY_VERIFIER_REPO": str(target),
             "EASY_VERIFIER_REPORTS": str(reports),
+            "EASY_VERIFIER_SOT": str(tmp_path / "sot"),
         },
         capture_output=True,
         text=True,
@@ -55,6 +56,10 @@ def test_compose_applies_kernel_level_runtime_boundaries(
     volumes = {volume["target"]: volume for volume in service["volumes"]}
     assert volumes["/workspace"]["read_only"] is True
     assert volumes["/workspace/reports"].get("read_only", False) is False
+    # T036: the local registry layer is mounted read-write at /sot.
+    assert volumes["/sot"]["source"] == str(tmp_path / "sot")
+    assert volumes["/sot"].get("read_only", False) is False
+    assert service["environment"]["EASY_VERIFIER_SOT"] == "/sot"
 
 
 def test_container_verifier_is_valid_shell_and_checks_the_real_mcp_surface() -> None:

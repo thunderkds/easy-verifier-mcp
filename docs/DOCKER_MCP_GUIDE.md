@@ -27,6 +27,25 @@ sudo chown 10001:10001 /path/to/repo/reports
 
 Use absolute host paths everywhere below — MCP clients do not expand `~` or relative paths.
 
+### Local reference registry (optional, read-write)
+
+Registry fields your agent researches (`agent_input.registry_entries`) are saved to a local layer so
+they are researched once per machine. The host CLI uses `~/.easy-verifier-sot/` (override with
+`EASY_VERIFIER_SOT`); the container reads and writes the same directory mounted at `/sot`.
+`compose.yaml` bind-mounts `${EASY_VERIFIER_SOT:-~/.easy-verifier-sot}` read-write. It must be
+writable by UID `10001`:
+
+```console
+mkdir -p ~/.easy-verifier-sot
+sudo chown 10001:10001 ~/.easy-verifier-sot   # or: chmod o+rwx, if you share it with the host CLI
+```
+
+For a raw `docker run`, add `-e EASY_VERIFIER_SOT=/sot -v /home/you/.easy-verifier-sot:/sot`.
+Without the mount, or with a directory the container cannot write, scoring still works on the
+curated registry only, and the `score` response carries a `registry_notes` line saying research
+cannot be saved. A symlinked directory is refused, and the directory must never sit inside the
+repository being evaluated.
+
 ## 3. Register the server with your MCP client
 
 The command every client runs is the same. Its flags mirror the hardening in `compose.yaml`:
