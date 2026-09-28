@@ -304,13 +304,15 @@ def test_role_missing_metric_abstains_where_the_role_is_not_declared():
     assert "does not declare" in lint.abstention.reason
 
 
-def test_ac_trace_metrics_always_abstain_with_a_stated_reason():
+def test_ac_trace_metrics_abstain_with_a_stated_reason_without_a_trace_search():
+    # T052: the shares compute from a kit-aware pack's trace search; a pack
+    # without one (standalone mode) still abstains, saying why.
     pack = _pack("requirement-fidelity", {"PRD.md": "- AC1\n"}, sought=("x",))
     metrics = compute_metrics(pack, curated_metric_tables())
     result = rate(metrics, _full_coverage("requirement-fidelity"))
     assert isinstance(result, RatingAbstention)
     assert result.reason_code == "all_metrics_abstained"
-    assert all("not derivable" in reason for _n, reason in result.unavailable_metrics)
+    assert all("never inferred" in reason for _n, reason in result.unavailable_metrics)
 
 
 # ---------------------------------------------------------------------------

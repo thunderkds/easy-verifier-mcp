@@ -335,7 +335,11 @@ def test_the_last_relevance_pass_is_abandoned_and_reads_stay_bounded(
 
     assert result.truncation.truncated is True
     assert collect.drained[-1] is False
-    assert len(set(context.files_read)) <= blast_radius.MAX_SCAN_FILES
+    # T052: the changed files themselves are read too (churn share cites
+    # them), bounded by MAX_SCOPE_FILES on top of the sweep's own ceiling.
+    assert len(set(context.files_read)) <= (
+        blast_radius.MAX_SCAN_FILES + blast_radius.MAX_SCOPE_FILES
+    )
     assert len(set(context.files_read)) < 500
 
 

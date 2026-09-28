@@ -741,9 +741,10 @@ def _ac_traced_share(kind: str) -> Callable[[_PackView], _Computed]:
                 )
             else:
                 why = (
-                    f"{view.pack.mode} mode reads no task guide or PRD as ground "
-                    "truth, and criteria are never inferred, so there is no "
-                    "criterion to trace"
+                    "no acceptance-criteria search was run for this pack: only "
+                    "kit-aware mode reads task guides and requirements documents "
+                    f"as ground truth (this pack is {view.pack.mode}), and "
+                    "criteria are never inferred, so there is no criterion to trace"
                 )
             return MetricAbstention(reason=why)
         if search.incomplete:
