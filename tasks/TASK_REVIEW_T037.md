@@ -1,4 +1,4 @@
-# TASK_REVIEW — T037: [Short Title]
+# TASK_REVIEW — T037: MCP reference gate: framework detection + needs_input for missing fields only
 
 > Sibling of `tasks/TASK_GUIDE_T037.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t037_reference_gate.py` — detection (dependency sections only for package.json/composer.json, whole-token text match elsewhere, nested workspaces, bounded walk, deep-JSON RecursionError guard), required fields derived from RATING_RULES × FIELD_METRICS/ROLE_METRICS minus OPTIONAL_FIELDS, framework ∩ FRAMEWORK_FIELDS, ≤20 cap languages first + omitted, fixed instructions, round-2 answers close the gate and feed scoring, CLI never carries reference, optional-field reality test with required-field control. 14 sabotage cases each caught. Supervisor re-run `1237 passed, 2 skipped in 55.59s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 13:19 UTC: pytest `1237 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Curated-language repos without frameworks (package.json, pyproject, go.mod, pom.xml, Cargo.toml, Gemfile) → no gate; this repo worktree → `reference` None (Supervisor); CLI payload never contains needs_input/reference (Supervisor, express repo) |
+| verify | ☑ pass | Supervisor on a fresh express repo: CLI `score` → `detected_stack` {languages [js-ts], frameworks [express]}, no needs_input; MCP path (`score_repository(detect_gates=True)`, as `mcp_server.score` calls it) → reference requests exactly express test_name_patterns/test_declarations/assertions/security_sinks, omitted 0, 1380 bytes, fixed ≤2-lookup instructions. Agent real stdio MCP AFTER (13:17Z): 4 requests 1344 B, round 2 closes gate; real repos kitchd/bryony/ai-training 4 requests ~1.34 KB each, this repo 0; container run at f9854eb (pre-ruling, logic-only change since) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/registry.py` (frameworks field, detection_keys, applied), `core/gate.py` (detect_stack, required_fields, OPTIONAL_FIELDS/FRAMEWORK_FIELDS, reference_requests, REFERENCE_INSTRUCTIONS), `core/score.py`, `core/metric_tables.py`, `adapters/mcp_server.py`, docs. Round 1 rulings (token discipline): R1 optional fields never gate; R2 frameworks asked only framework-addable fields (static list overrides guide wording); R3 extends on framework requests + detected_stack in shared payload accepted; R4 framework entries merged into scoring + replay accepted. P2 carried: text-match false positive on descriptions in TOML/XML manifests; merged framework citations labelled by language; manifest read without O_NOFOLLOW (same window as existing _heading). Security inline (Med): bounded walk, containment + secret-name checks, recursion guard |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1237 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -157,10 +157,9 @@ reference bytes: 2887
 exit=0
 ```
 
-**DELTA**: Over MCP a caller now sees the detected stack (languages + manifest-detected frameworks)
+**DELTA**: Over MCP the verifier now detects the repo's frameworks and asks the calling LLM only for the few missing, framework-addable registry fields, with a 2-lookup limit and a fall-back to asking the user.
 and a capped, ordered list of exactly the registry fields the rules read that the stack lacks, with
 fixed bounded-research instructions — and answering them via `registry_entries` closes the gate
 and feeds the framework's fields into the rules; the CLI shows the stack but never the gate.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T037.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff, the CLI surface and the MCP-path core call on a fresh express repo and on this repo on 2026-09-28 (13:19 UTC), independent of the implementing agent.
