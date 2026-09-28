@@ -62,7 +62,7 @@ test: word-joined names carrying digit runs (version/release labels) inside an
 (:data:`_LICENSE_VALUE`). It also closes a named-detector gap:
 ``credential_assignment`` now matches ``API_TOKEN``/``db_password`` (a leading
 ``_`` no longer hides the word). Residual risk added, stated plainly: a password
-made of word pieces and digit runs (``Summer-2024-Pw``) written as a URL *path*
+made of word pieces and digit runs (``summer-2024-pw``, any case) written as a URL *path*
 segment or directly before ``.ext`` (URL userinfo and query strings get no
 exemption); a 40-hex secret right after the word ``commit``, after ``pinned:``,
 or in a ``/blob/``/``/tree/`` path; a 64/128-hex secret at line start followed by
@@ -208,7 +208,7 @@ Exempt only when all three hold: the token is directly followed by a file suffix
 material fails the last test almost surely: a base64url token mixes case inside
 a piece (`xQzRtWvB`) and nearly always carries a digit. T053 admits one
 more piece shape — a run of at most 8 digits (`5`, `2024`, `01`), so version and
-release labels (`…_Verification_Standard_5.0.0_en.json`) read as names. A digit
+release labels (`…_Standard_5.0.0_en.json`) read as names. A digit
 *inside* a piece still disqualifies it, so `build/app-<key>.min.js` and
 hash-named build artefacts (`main-3f9a2b1c.js`) behave exactly as before. T053
 also applies this shape test, with the same anchors, to the per-segment rule;
@@ -220,7 +220,7 @@ that breaks citations.
 
 Residue, stated plainly: a secret made only of single-case letter runs and short
 digit runs joined by `_`/`-`/`/` and written directly before a `.ext` suffix
-(`kqzvxm-4821-hjtybn.txt`, `Summer-2024-Pw.txt`) is no longer caught by this
+(`kqzvxm-4821-hjtybn.txt`, `summer-2024-pw.txt` in any case) is no longer caught by this
 rule or by the per-segment rule. Generated keys are alphanumeric and mixed case, so
 this is not the shape credentials take; it is the price of readable paths.
 """
@@ -264,15 +264,15 @@ text, not key material. The span deliberately stops short of the places a URL
 carries credentials:
 
 - **userinfo** — the host class admits ``@``, and a URL whose host run contains
-  ``@`` (``https://svc:Summer-2024-Pw@db/…``) is dropped entirely, so its
+  ``@`` (``https://svc:<password>@db/…``) is dropped entirely, so its
   password is judged exactly as before;
 - **query and fragment** — the path stops at ``?`` and ``#``, so
-  ``?pass=Summer-2024-Pw`` is judged as before.
+  ``?pass=<password>`` is judged as before.
 
 Random tokens in a path (a Slack webhook segment ``aB3xK9mQ…``) fail the piece
 shape, so they are caught as before; named detectors never consult the span.
 Residue, stated plainly: a password built from word pieces and digit runs
-(``Summer-2024-Pw``) written as a URL *path* segment is no longer caught."""
+(``summer-2024-pw``, any case) written as a URL *path* segment is no longer caught."""
 
 _CONSTANT_ASSIGNMENT = re.compile(
     rf"_?{_WORD_PIECE}(?:_{_WORD_PIECE}){{0,30}}=_?[A-Z]{{1,30}}(?:_[A-Z]{{1,30}}){{1,30}}"
@@ -285,7 +285,7 @@ never saw these. Skipped by the long-token rule only, and only when the *whole*
 candidate is a word-shaped key, ``=``, and at least two ``_``-joined all-upper
 letter pieces. The two-piece floor is what keeps a base32 secret out (base32 has
 no ``_``); a digit, a lower-case letter or a quote in the value keeps the old
-behaviour. A secret-named key (``PASSWORD=SOME_CONSTANT``) is still caught by
+behaviour. A secret-named key with a constant value is still caught by
 ``credential_assignment``, which never consults this. Residue, stated plainly: a
 random value made only of upper-case letter runs joined by ``_`` under a
 non-secret key."""
@@ -295,12 +295,12 @@ _LICENSE_VALUE = re.compile(
     r"(?P<id>[A-Za-z0-9.+-]{1,64})(?=[\"']?[ \t]*(?:[,;)}\]\r\n]|$))",
     re.MULTILINE,
 )
-"""The value of a ``license`` key — where SPDX identifiers (``BSD-3-Clause``) live.
+"""The value of a ``license`` key — where SPDX identifiers live.
 
-``BSD-3-Clause`` mixes case and digits, so the per-segment rule fingerprinted
-it. A segment is skipped only when it lies inside this value *and* is a
+A BSD-n-Clause identifier mixes case and digits, so the per-segment rule
+fingerprinted it. A segment is skipped only when it lies inside this value *and* is a
 word-joined name (:data:`_WORD_JOINED_NAME`), so random material under a
-``license`` key (``aB3x-K9mQ-7rT2``) is caught as before, and ``license_key`` is
+``license`` key (mixed-case pieces) is caught as before, and ``license_key`` is
 not a ``license`` key."""
 
 _SECRET_KEY_WORD = re.compile(
