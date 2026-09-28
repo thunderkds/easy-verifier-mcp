@@ -264,7 +264,10 @@ class TraceSearch:
     traced_to_code: int
     traced_to_test: int
     trace_lines: int
-    """Trace excerpts the search yielded (one code-file line each)."""
+    """Trace lines quoted in the pack (one code-file line each)."""
+
+    trace_lines_omitted: int
+    """Trace lines found beyond the quoted ones (counted, not quoted)."""
 
     untraced_code: tuple[AcceptanceCriterion, ...]
     untraced_code_omitted: int

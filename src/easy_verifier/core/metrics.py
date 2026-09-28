@@ -804,6 +804,8 @@ def _ac_traced_share(kind: str) -> Callable[[_PackView], _Computed]:
             + (", ".join(c.id for c in listed[:15]) or "none")
             + (f", and {untraced - min(15, len(listed))} more" if untraced > 15 else "")
             + f" (the first {len(listed)} are cited, {omitted} counted only); "
+            + f"{search.trace_lines} trace line(s) quoted, "
+            + f"{search.trace_lines_omitted} more found and counted only; "
             + _TRACE_METHOD,
         )
 

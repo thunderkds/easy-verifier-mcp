@@ -397,3 +397,19 @@ def test_a_colocated_spec_under_src_traces_to_a_test(tmp_path: Path):
     _kit_repo(plain, t004_in="src/app.controller.ts")
     assert _metric(_rf(spec), TEST).outcome == 0.5
     assert _metric(_rf(plain), TEST).outcome == 0.25
+
+
+def test_quoted_trace_lines_are_capped_and_the_rest_counted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # src/app.py has two tracing lines (T001/T002, then T003); cap code at 1.
+    _kit_repo(tmp_path)
+    monkeypatch.setattr(requirement_fidelity, "MAX_TRACE_LINES_CITED", 1)
+    pack = _rf(tmp_path)
+    assert (pack.trace_search.trace_lines, pack.trace_search.trace_lines_omitted) == (
+        2,
+        1,
+    )
+    quoted = {(e.path, e.start_line) for e in pack.excerpts}
+    assert ("src/app.py", 1) in quoted and ("src/app.py", 2) not in quoted
+    assert _metric(pack, CODE).outcome == 0.75  # counted over the full search
