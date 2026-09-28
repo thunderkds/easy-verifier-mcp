@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t030_registry.py` — 54 tests: AC1 9 curated files, every field `{value, https citation_url, source_tag=curated}`; AC2 bad field/URL/tag/key/size/encoding/TOML rejected per entry with warning, never a crash; AC3 verbatim snapshot of removed ECOSYSTEM_PATTERNS equals registry + mixed-repo resolution parity; AC4 Go/Kotlin/C#/Ruby/PHP fixtures fill roles (withheld-entry control); AC5 add-only deterministic framework merge. 7 sabotage breakages each turned suite red. Two structural T026 tests repointed from the removed symbol to the registry (Supervisor ruling: AC3 intent = behaviour preserved; all behavioural fixture tests untouched) |
+| Verification command run | ☑ pass | Supervisor 2026-09-28: `python -m pytest -q` → `812 passed, 2 skipped in 24.58s` (exit 0); `python -m ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Field without citation_url, http:// URL, wrong tag, unknown role, `..`/absolute value, empty/oversized/non-UTF-8/bad-TOML file each rejected with a named warning (tests); case-sensitive globs preserved (`latest.json`, `Detekt.YML`) |
+| verify | ☑ pass | Real CLI surface 2026-09-28 05:16 UTC on a fresh Go repo (`go.mod`, `.golangci.yml`, `a.go`): `cli code-quality --scope project` → files_read `['.golangci.yml']` (lint-config filled via registry go.toml; unfilled before T030 per BEFORE capture) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/registry.py` (new, loader + lookups), `core/roles.py` (table removed, `_registry()` lru_cache once per process), 9 curated TOML, pyproject package data, 2 repointed T026 tests. Code review: P0 0, P1 0; P2 carried to T036: (a) `_registry()` is cached per process — local-layer writes must invalidate it or a long-running MCP server won't see new entries; (b) loader accepts only `curated` tag and lacks glob-shape limits — T036 must widen tag and add `.easy-verifier.toml`-style glob limits before accepting user files. P3: PROJECT_SPEC glossary 'Ecosystem pattern set' stale (fixed by Supervisor). Citation URLs are official docs roots/pages, not fetched (no network) — spot-check list in agent report. Security inline (Med): no network, no target writes, warnings pass through redact |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 812 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -62,9 +62,17 @@ $ ls src/easy_verifier/registry
 ls: cannot access 'src/easy_verifier/registry': No such file or directory
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured by Supervisor on `0cf1d2a` (fresh Go repo: `go.mod`, `.golangci.yml`, `a.go`):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ date -u && PYTHONPATH=src python -m easy_verifier.adapters.cli code-quality --repo <gorepo> --scope project
+Mon Sep 28 05:16:39 AM UTC 2026
+files_read: ['.golangci.yml']
+coverage: 0.3333333333333333
+missing: contributing-guide, format-config
+```
+Implementing agent's AFTER run (05:14:03Z): Go fills `go.mod` / `.golangci.yml` / `go.mod`; Kotlin fills `build.gradle.kts` / `detekt.yml` / `build.gradle.kts`; C# fills `App/App.csproj` / `stylecop.json` / `tests.runsettings`; `ECOSYSTEM_PATTERNS` absent from `core/roles.py`.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T030.jsonl`, never the
-implementing agent alone]
+**DELTA**: Go, Kotlin, C#, Ruby and PHP repos now fill manifest/lint/test roles from one cited registry, and every language pattern carries an https citation and a `curated` source tag.
+
+**WITNESS**: Supervisor re-ran suite, ruff and the CLI on a fresh Go repo on 2026-09-28 (05:16 UTC), independent of the implementing agent.
