@@ -62,13 +62,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 
 ### In Progress
 - [~] **T051** — Redaction false positives: content hashes, long identifiers, git-ignored files (T035 sign-off follow-up) | backend-developer | C2 | Risk: High | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T051)
-- [~] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T036)
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1157 passed; intake probes + Docker verify pass)
 - [x] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1127 passed; user signed off 4-repo table; follow-ups T051, T052)
 - [x] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1084 passed; CLI Node sink verify pass)
 - [x] **T050** — Code-quality and architecture packs gather code evidence (source excerpts, import lines); added at T033 Stage 4, blocks T035 | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1022 passed; CLI CCN 11 / cycles 1 verify pass)
