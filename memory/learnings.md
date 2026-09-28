@@ -521,3 +521,15 @@ not secret-bearing by given *or* resolved name. `contained_only=False` is for li
 a pool (bryony 8.3 KB → 2.1 KB). Measure `needs_input` bytes on real repos at every review.
 Kanban hygiene: a hook appears to append duplicate Todo rows for new TASK_GUIDEs; grep for
 duplicate `**Txxx**` rows before moving a task.
+
+## 2026-09-26 — T028: a zero-width band is not "borderline"; bound every caller-sized list
+
+- **Spec error caught at review**: AC1 said "threshold 0 → exact equality". For `at_most 0`
+  rules a clean repo sits at exactly 0 — the rule's best outcome — so the evaluate gate fired on
+  clean dimensions (3 of 4 gates on ai-training), spending agent tokens where rules had decided.
+  Threshold 0 is now never borderline (FR-036 amended). Lesson: when writing a band rule, test it
+  against a *clean* real repo, not only synthetic edges.
+- **Caller-sized inputs need caps on both sides**: 100k bogus `evidence_refs` produced a 9 MB error
+  returned over MCP. Cap list lengths (20 refs) and error lines (`roles.MAX_ERROR_LINES` = 20).
+- **`docker compose build` retags `easy-verifier-mcp:0.1.0`** with whatever branch is checked out —
+  after verifying an unreleased branch, the local `0.1.0` image is no longer the release.
