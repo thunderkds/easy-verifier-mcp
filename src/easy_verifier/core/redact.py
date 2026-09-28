@@ -62,9 +62,9 @@ test: word-joined names carrying digit runs (version/release labels) inside an
 (:data:`_LICENSE_VALUE`). It also closes a named-detector gap:
 ``credential_assignment`` now matches ``API_TOKEN``/``db_password`` (a leading
 ``_`` no longer hides the word). Residual risk added, stated plainly: a password
-made of word pieces and digit runs (``summer-2024-pw``, any case) written as a URL *path*
-segment or directly before ``.ext`` (URL userinfo and query strings get no
-exemption); a 40-hex secret right after the word ``commit``, after ``pinned:``,
+made of word pieces and digit runs (``summer-2024-pw``, any case) written as a
+URL *path* segment or directly before ``.ext`` (URL userinfo and query strings
+get no exemption); a 40-hex secret right after the word ``commit``, after ``pinned:``,
 or in a ``/blob/``/``/tree/`` path; a 64/128-hex secret at line start followed by
 two spaces and a word; an upper-case ``_``-joined random value under a
 non-secret key; a word-shaped value under a ``license`` key.
