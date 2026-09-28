@@ -62,13 +62,15 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T051** — Redaction false positives: content hashes, long identifiers, git-ignored files (T035 sign-off follow-up) | backend-developer | C2 | Risk: High | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T051)
+
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T051** — Redaction false positives: content hashes, long identifiers, git-ignored files (T035 sign-off follow-up) | backend-developer | C2 | Risk: High | P0 | ✅ Done 2026-09-28 (Stage 4 P0 safe-git fixed; 1175 passed; Docker verify pass; follow-up T053)
 - [x] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1157 passed; intake probes + Docker verify pass)
 - [x] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1127 passed; user signed off 4-repo table; follow-ups T051, T052)
 - [x] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1084 passed; CLI Node sink verify pass)
