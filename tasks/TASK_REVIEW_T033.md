@@ -33,8 +33,30 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer on the worktree at `2b7ae8c` (no T033 commit yet).
+Scratch repo: `src/app/{alpha,beta,gamma}.py` (alpha<->beta import each other, gamma imports beta,
+`classify` has if/and/elif/for plus `if while for` inside a string and a comment), `tests/test_alpha.py`,
+`pyproject.toml`; alpha.py and beta.py modified in the worktree.
+
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-28T05:51:33Z
+$ PYTHONPATH=src ../easy-verifier-mcp/.venv/bin/python -m easy_verifier.adapters.cli score --repo $S/repo --scope worktree < /dev/null > $S/before.json
+exit=0
+$ python names.py before.json        # lists every metric name in the score payload
+metric names: ['assertion_density_per_test', 'assertions_observed', 'declared_source_coverage', 'evidence_lines_observed', 'excerpts_observed', 'mean_excerpt_lines', 'redacted_file_share', 'redaction_hits_observed', 'source_file_share', 'source_files_without_covering_test', 'test_to_source_ratio']
+approximate_ccn ABSENT
+functions_over_ccn_10_share ABSENT
+max_function_ccn ABSENT
+top_level_import_cycles ABSENT
+max_fan_in_changed ABSENT
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-28T05:51:42Z
+$ PYTHONPATH=src python -c "from easy_verifier.core.tokens import approximate_ccn"
+ModuleNotFoundError: No module named 'easy_verifier.core.tokens'
+$ PYTHONPATH=src python -c "import easy_verifier.core.metrics as m; print(hasattr(m,'approximate_ccn'))"
+False
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
