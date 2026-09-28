@@ -36,6 +36,9 @@
 - [ ] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2
 - [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2
 - [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
+
+**Deferred ideas (revisit after T029–T049 are done — no guide yet, not pickable)**
+- 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev".
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**

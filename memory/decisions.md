@@ -867,3 +867,25 @@ auth/PHI/observability/deps/Terraform drift).
   New dimensions need their own coverage floors (2026-09-26 "keep floors" covers the existing 7 only).
 - **E3 Unverifiable (X) areas: "documentation present/missing" (user chose recommended).** One shared
   rule type, cited file when present, **never a quality score**; kept visible so all 32 labels show.
+
+## 2026-09-28 — DEFERRED: TypeSafe AI "Jev" (System One model) — investigate after Waves 10–11
+
+User asked to evaluate integrating Jev (https://typesafe.ai/blog/introducing-system-one-models-and-jev)
+to make source-of-truth research faster. Findings (from the announcement only, unverified):
+cloud API, early access (console.typesafe.ai); text-described state in → typed choice + calibrated
+probability out; claims 70–500 ms, $0.042/MTok input, output free; **cannot generate strings**;
+choice cardinality ≤255; vendor admits its eval gains are "higher end of real world".
+
+**Not adopted into the engine**: breaks NFR-001 (no model call) and no-network container; cannot
+produce registry values or citation links, so it cannot do SOT research; ships repo content to a
+third party (PHI risk with the healthcare pack).
+
+**Possible fit (agent side only, optional tool for the calling agent)**: detect-gate picks (≤20
+candidates), optional-pack selection, pre-screening whether a researched citation link looks like
+an official source before the user review gate; its calibrated confidence maps to FR-037
+`confidence`.
+
+**Revisit trigger (user, 2026-09-28): after all current tasks (T029–T049) are done.** Plan then: with
+early access, run a small agent-side experiment comparing Jev vs the LLM on detect-gate picks
+(accuracy + latency on kitchd/bryony/ai-training); adopt only as a documented optional agent tool if
+it clearly wins. No engine change either way.
