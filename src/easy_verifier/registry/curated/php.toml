@@ -161,3 +161,17 @@ cwe = "CWE-89"
 value = ["->query ( .", "->exec ( .", "mysqli_query ( $* , ."]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" $"]
+citation_url = "https://www.php.net/manual/en/language.types.string.php#language.types.string.parsing"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = ["->query ( <INTERP>", "mysqli_query ( $* , <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

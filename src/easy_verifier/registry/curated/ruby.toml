@@ -141,3 +141,17 @@ cwe = "CWE-89"
 value = [".where ( +", ".execute ( +", ".find_by_sql ( +"]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" #{"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/literals_rdoc.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".where ( <INTERP>", ".execute ( <INTERP>", ".find_by_sql ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

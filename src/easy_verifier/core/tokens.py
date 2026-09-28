@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 MAX_LINE_CHARS = 500
 """Longer lines are treated as generated/minified and ignored."""
@@ -38,7 +38,13 @@ MAX_LINE_CHARS = 500
 MAX_IMPORT_LINES = 100
 """An import statement spanning more lines than this is cut off."""
 
+INTERPOLATION_MARK = "\x00"
+"""Left by ``strip(..., mark_interpolation=True)`` in place of the first
+character of a string literal that interpolates (T034). One fixed character,
+so the stripped text keeps its length; registry tokens name it ``<INTERP>``."""
+
 _BLANK = re.compile(r"[^\n]")
+_NAME_START = re.compile(r"[A-Za-z_{]")
 _CONTINUES = frozenset(")]}{")
 
 
@@ -54,6 +60,9 @@ class Delimiter:
     opener: str
     string: bool
     end: re.Pattern[str]
+    interpolation: tuple[str, ...] = ()
+    """Openers of an embedded expression, e.g. ``${`` (T034); empty when the
+    literal never interpolates."""
 
     @classmethod
     def parse(cls, value: str, *, string: bool) -> Delimiter:
@@ -88,11 +97,24 @@ def language_syntax(
     branch: re.Pattern[str],
     function_start: re.Pattern[str],
     imports: re.Pattern[str],
+    interpolations: Sequence[str] = (),
 ) -> LanguageSyntax:
-    """Build a :class:`LanguageSyntax`; delimiters are escaped, never regex."""
+    """Build a :class:`LanguageSyntax`; delimiters are escaped, never regex.
+
+    ``interpolations`` holds ``"X Y"`` values: a string literal opened by
+    ``X`` embeds an expression where ``Y`` occurs in it (T034).
+    """
+    embedded: dict[str, list[str]] = {}
+    for value in interpolations:
+        opener, _, inner = value.partition(" ")
+        if inner:
+            embedded.setdefault(opener, []).append(inner)
     delimiters: dict[str, Delimiter] = {}
     for value in strings:
         delimiter = Delimiter.parse(value, string=True)
+        delimiter = replace(
+            delimiter, interpolation=tuple(embedded.get(delimiter.opener, ()))
+        )
         delimiters.setdefault(delimiter.opener, delimiter)
     for value in comments:
         delimiter = Delimiter.parse(value, string=False)
@@ -108,12 +130,20 @@ def language_syntax(
     )
 
 
-def strip(text: str, syntax: LanguageSyntax, *, keep_strings: bool = False) -> str:
+def strip(
+    text: str,
+    syntax: LanguageSyntax,
+    *,
+    keep_strings: bool = False,
+    mark_interpolation: bool = False,
+) -> str:
     """``text`` with comments (and strings, unless ``keep_strings``) blanked.
 
     The result has the same length and the same newlines as ``text``. An
     unterminated literal runs to the end of the text (a single-line string:
-    to the end of its line).
+    to the end of its line). With ``mark_interpolation``, a blanked string
+    literal that embeds an expression starts with :data:`INTERPOLATION_MARK`
+    instead of a space; one without an embedded expression stays all blank.
     """
     parts: list[str] = []
     position = 0
@@ -127,11 +157,28 @@ def strip(text: str, syntax: LanguageSyntax, *, keep_strings: bool = False) -> s
         parts.append(text[position : match.start()])
         if delimiter.string and keep_strings:
             parts.append(literal)
+        elif mark_interpolation and _interpolates(literal, delimiter):
+            parts.append(INTERPOLATION_MARK + _BLANK.sub(" ", literal[1:]))
         else:
             parts.append(_BLANK.sub(" ", literal))
         position = end
     parts.append(text[position:])
     return "".join(parts)
+
+
+def _interpolates(literal: str, delimiter: Delimiter) -> bool:
+    """Whether ``literal`` embeds an expression: an unescaped opener, and an
+    opener ending in ``$`` only before a name or ``{`` (``"$5"`` is text)."""
+    body = literal[len(delimiter.opener) :]
+    for opener in delimiter.interpolation:
+        index = body.find(opener)
+        while index != -1:
+            after = body[index + len(opener) : index + len(opener) + 1]
+            escaped = index > 0 and body[index - 1] == "\\"
+            if not escaped and (not opener.endswith("$") or _NAME_START.match(after)):
+                return True
+            index = body.find(opener, index + 1)
+    return False
 
 
 def _literal_end(text: str, index: int, delimiter: Delimiter) -> int:
@@ -232,6 +279,7 @@ def _depth(code: str) -> int:
 
 
 __all__ = [
+    "INTERPOLATION_MARK",
     "MAX_IMPORT_LINES",
     "MAX_LINE_CHARS",
     "Delimiter",

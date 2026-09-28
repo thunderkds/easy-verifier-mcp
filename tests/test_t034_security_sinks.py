@@ -145,6 +145,72 @@ PAIRS = [
     ),
 ]
 
+# Interpolated strings (Supervisor ruling on AC1 vs AC3): the literal is still
+# blanked, but one that embeds an expression leaves a mark <INTERP> matches.
+INTERP_PAIRS = [
+    (
+        "a.js",
+        "db.query(`SELECT * FROM u WHERE id = ${id}`);",
+        "db.query(`SELECT * FROM u WHERE id = 1`);",
+        "CWE-89",
+    ),
+    (
+        "a.ts",
+        "await conn.execute(`DELETE FROM u WHERE id = ${id}`);",
+        "await conn.execute(sql`DELETE FROM u WHERE id = ${id}`);",
+        "CWE-89",
+    ),
+    (
+        "a.kt",
+        'db.rawQuery("SELECT * FROM u WHERE id = $id", null)',
+        'db.rawQuery("SELECT * FROM u WHERE price = $5", null)',
+        "CWE-89",
+    ),
+    (
+        "a.kt",
+        'db.execSQL("DELETE FROM u WHERE id = ${user.id}")',
+        'db.execSQL("DELETE FROM u WHERE id = ?", arrayOf(id))',
+        "CWE-89",
+    ),
+    (
+        "a.kt",
+        'stmt.executeQuery("""SELECT * FROM u WHERE id = $id""")',
+        'stmt.executeQuery("""SELECT * FROM u""")',
+        "CWE-89",
+    ),
+    (
+        "a.rb",
+        "User.where(\"name = '#{name}'\")",
+        "User.where('name = #{name}')",
+        "CWE-89",
+    ),
+    (
+        "a.rb",
+        'conn.execute("DELETE FROM u WHERE id = #{id}")',
+        'conn.execute("DELETE FROM u WHERE id = ?", id)',
+        "CWE-89",
+    ),
+    (
+        "a.rb",
+        'User.find_by_sql("SELECT * FROM u WHERE id = #{id}")',
+        'User.find_by_sql(["SELECT * FROM u WHERE id = ?", id])',
+        "CWE-89",
+    ),
+    (
+        "a.php",
+        '$pdo->query("SELECT * FROM u WHERE id = $id");',
+        "$pdo->query('SELECT * FROM u WHERE id = $id');",
+        "CWE-89",
+    ),
+    (
+        "a.php",
+        'mysqli_query($conn, "SELECT * FROM u WHERE id = {$id}");',
+        'mysqli_query($conn, "SELECT * FROM u WHERE id = 1");',
+        "CWE-89",
+    ),
+]
+PAIRS += INTERP_PAIRS
+
 
 def tables():
     return curated_metric_tables()
@@ -456,3 +522,61 @@ def test_cli_score_reports_sink_hits_for_the_security_dimension(tmp_path):
     assert found["outcome"] == {"abstained": False, "value": 2}
     assert "app/db.py:5 CWE-89" in found["derivation"]
     assert "app/db.py:9 CWE-78" in found["derivation"]
+
+
+# --- Interpolation mark (Supervisor ruling) --------------------------------
+
+
+def test_an_escaped_opener_does_not_interpolate():
+    assert sink_hits("a.js", "db.query(`SELECT \\${id}`);\n", tables()) == ()
+
+
+def test_a_multi_line_template_hits_at_the_call_line():
+    text = "db.query(`\nSELECT * FROM u\nWHERE id = ${id}\n`);\n"
+    assert [(h.line, h.cwe) for h in sink_hits("a.js", text, tables())] == [
+        (1, "CWE-89")
+    ]
+
+
+@pytest.mark.parametrize(("path", "unsafe", "_safe", "_cwe"), INTERP_PAIRS)
+def test_sabotage_without_the_mark_interpolated_twins_stop_hitting(
+    monkeypatch, path, unsafe, _safe, _cwe
+):
+    real = metrics_module.strip
+
+    def unmarked(text, syntax, **kwargs):
+        return real(text, syntax, **{**kwargs, "mark_interpolation": False})
+
+    monkeypatch.setattr(metrics_module, "strip", unmarked)
+    assert sink_hits(path, f"x = 1\n{unsafe}\n", tables()) == ()
+
+
+def test_the_mark_keeps_length_and_is_absent_from_default_strip():
+    from easy_verifier.core.tokens import INTERPOLATION_MARK, strip
+
+    syntax = tables().syntax[".js"]
+    text = "a(`x ${y}`); b(`z`); // `${c}`\n"
+    marked = strip(text, syntax, mark_interpolation=True)
+    assert len(marked) == len(text)
+    assert marked.count(INTERPOLATION_MARK) == 1
+    assert marked.index(INTERPOLATION_MARK) == text.index("`")
+    assert INTERPOLATION_MARK not in strip(text, syntax)  # T033 callers
+
+
+def test_interp_token_compiles_to_the_fixed_mark_only():
+    from easy_verifier.core.tokens import INTERPOLATION_MARK
+
+    assert token_regex("( <INTERP>") == r"\(\s*" + re.escape(INTERPOLATION_MARK)
+    assert token_regex("<A-Z>") == "[A-Z]"
+
+
+def test_an_interpolating_value_must_name_both_openers(tmp_path):
+    (tmp_path / "x.toml").write_text(
+        '[[manifests]]\nvalue = ["x.mod"]\ncitation_url = "https://e.org/"\n'
+        'source_tag = "curated"\n\n[[interpolating_strings]]\nvalue = ["`"]\n'
+        'citation_url = "https://e.org/"\nsource_tag = "curated"\n',
+        encoding="utf-8",
+    )
+    loaded = load_registry(tmp_path, known_roles=GENERIC_PATTERNS)
+    assert "x" not in loaded.languages
+    assert any("interpolation opener" in warning for warning in loaded.warnings)

@@ -24,9 +24,10 @@ from functools import lru_cache
 from .metrics import LanguageTables, SinkPattern
 from .registry import Registry, RegistryEntry
 from .roles import _registry
-from .tokens import LanguageSyntax, language_syntax
+from .tokens import INTERPOLATION_MARK, LanguageSyntax, language_syntax
 
 _NEVER = re.compile(r"(?!)")
+_INTERP = "<INTERP>"
 _CLASS = re.compile(r"<((?:[A-Za-z0-9]-[A-Za-z0-9]|[A-Za-z0-9_])+)>")
 _RANGE = re.compile(r"([A-Za-z0-9])-([A-Za-z0-9])")
 
@@ -106,6 +107,7 @@ def _syntax(entry: RegistryEntry) -> LanguageSyntax | None:
         branch=_alternation(_values(entry, "branch_keywords")),
         function_start=_alternation(_values(entry, "function_start")),
         imports=_alternation(_values(entry, "import_syntax")),
+        interpolations=_values(entry, "interpolating_strings"),
     )
 
 
@@ -144,12 +146,17 @@ def token_regex(token: str) -> str:
     """Translate one registry code token (syntax in ``core/registry.py``).
 
     Only ``\\w*``, ``\\w``, a character class, ``\\s*``/``\\s+``, escaped
-    literals and word boundaries can come out, so a token cannot inject regex.
+    literals, word boundaries and the fixed interpolation mark (``<INTERP>``)
+    can come out, so a token cannot inject regex.
     """
     parts: list[str] = []
     index = 0
     while index < len(token):
         char = token[index]
+        if token.startswith(_INTERP, index):
+            parts.append(re.escape(INTERPOLATION_MARK))
+            index += len(_INTERP)
+            continue
         klass = _CLASS.match(token, index) if char == "<" else None
         if klass and all(a <= b for a, b in _RANGE.findall(klass[1])):
             parts.append(f"[{klass[1]}]")

@@ -201,3 +201,17 @@ cwe = "CWE-89"
 value = [".query ( +", ".execute ( +"]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["` ${"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".query ( <INTERP>", ".execute ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

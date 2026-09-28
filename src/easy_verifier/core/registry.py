@@ -51,7 +51,13 @@ The security field (T034) is read by ``core/metric_tables.py``:
   shows only as whitespace (``execute( f`` is an f-string passed to
   ``execute``; ``execute( +`` a literal concatenated there). A token starting
   with an identifier character does not match right after ``.``, ``>`` or
-  ``$`` (a method of some other object, or a variable).
+  ``$`` (a method of some other object, or a variable). ``<INTERP>`` in a
+  token matches a string literal that embeds an expression (below);
+* ``interpolating_strings`` — ``"X Y"``: a string literal opened by the
+  ``string_delimiters`` opener ``X`` embeds an expression where ``Y`` occurs
+  in it, e.g. ``"` ${"``. Such a literal is still blanked, but leaves one
+  mark at its start; a ``Y`` ending in ``$`` counts only before a name or
+  ``{``.
 
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
@@ -95,12 +101,15 @@ ENTRY_FIELDS = (
     "function_start",
     "import_syntax",
     "security_sinks",
+    "interpolating_strings",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
 _DELIMITER = re.compile(r"^[^\s\\]{1,4}( [^\s\\]{1,4})?$")
 
-_DELIMITER_FIELDS = frozenset({"comment_delimiters", "string_delimiters"})
+_DELIMITER_FIELDS = frozenset(
+    {"comment_delimiters", "string_delimiters", "interpolating_strings"}
+)
 """Code punctuation such as ``//``, not paths: exempt from the path checks."""
 
 _VALUE_SHAPES = {
@@ -115,6 +124,10 @@ _VALUE_SHAPES = {
     ),
     "comment_delimiters": (_DELIMITER, "a delimiter X or an open/close pair X Y"),
     "string_delimiters": (_DELIMITER, "a delimiter X or an open/close pair X Y"),
+    "interpolating_strings": (
+        re.compile(r"^[^\s\\]{1,4} [^\s\\]{1,4}$"),
+        "a string opener X and an interpolation opener Y, as X Y",
+    ),
 }
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
 

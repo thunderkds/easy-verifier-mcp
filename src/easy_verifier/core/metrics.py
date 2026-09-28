@@ -292,7 +292,8 @@ def sink_hits(path: str, text: str, tables: LanguageTables) -> tuple[SinkHit, ..
     """Every registry sink token matching ``text`` (the contents of ``path``).
 
     Tokens match code only: comments and strings are blanked first
-    (``core/tokens.py``), so a sink named in a comment or a string is no hit.
+    (``core/tokens.py``), so a sink named in a comment or a string is no hit;
+    a string that interpolates leaves one mark, which ``<INTERP>`` matches.
     A match starting on a line longer than ``MAX_LINE_CHARS`` (generated or
     minified code) is ignored. One hit per starting line and CWE, by line.
     """
@@ -301,7 +302,7 @@ def sink_hits(path: str, text: str, tables: LanguageTables) -> tuple[SinkHit, ..
     patterns = tables.sinks.get(suffix, ())
     if syntax is None or not patterns:
         return ()
-    code = strip(text, syntax)
+    code = strip(text, syntax, mark_interpolation=True)
     lines = code.split("\n")
     found: dict[tuple[int, str], SinkHit] = {}
     for pattern in patterns:
