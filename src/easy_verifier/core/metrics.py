@@ -618,6 +618,95 @@ def _sink_hits_observed(view: _PackView) -> _Computed:
     )
 
 
+def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
+    if not view.source_files:
+        return MetricAbstention(
+            reason=(
+                "no file in this pack classifies as source, so the share has a "
+                "zero denominator; that is not the same as a share of 0. "
+                + _CLASSIFIED_BY
+            )
+        )
+    _matched, unmatched = _correspondence(view.files, view.test_files, view.tables)
+    return (
+        len(unmatched) / len(view.source_files),
+        tuple(sorted(view.source_files)),
+        f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
+        "conventionally named test file in the same project inside this pack: "
+        + (", ".join(sorted(unmatched)) or "(none)")
+        + "; "
+        + _CLASSIFIED_BY,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Role-missing metrics (T035): a source role this dimension declares is
+# filled only when one of its files was actually read (core/pipeline.py), so
+# a filled role is a fact. An unfilled role on a truncated pack may be a file
+# the budget never read, so there it abstains instead of reporting 1. The
+# metric counts the missing role (1) against an at-most-0 rule rather than
+# presence against at-least-1: a threshold of 0 is never borderline (FR-036),
+# so a filled role does not put its dimension at the evaluate gate.
+# ---------------------------------------------------------------------------
+
+
+def _role_presence(*roles: str) -> Callable[[_PackView], _Computed]:
+    named = " or ".join(repr(role) for role in roles)
+
+    def compute(view: _PackView) -> _Computed:
+        sought = [role for role in roles if role in view.pack.sources_sought]
+        if not sought:
+            return MetricAbstention(
+                reason=(
+                    f"this {view.pack.dimension!r} pack does not declare the "
+                    f"{named} source role, so its presence was never sought here"
+                )
+            )
+        filled = [role for role in sought if role in view.pack.sources_found]
+        if not filled and view.pack.truncated:
+            return MetricAbstention(
+                reason=(
+                    f"no {named} role file was read, but the byte budget "
+                    "truncated this pack, so the role file may be one the "
+                    "budget never read; that is not the same as absent"
+                )
+            )
+        if not view.files:
+            return _no_files()
+        return (
+            0 if filled else 1,
+            tuple(sorted(view.files)),
+            f"source role {named} is "
+            + (f"filled ({', '.join(filled)})" if filled else "not filled")
+            + " in this pack's sources_found: 0 when a file matching the role "
+            "was read, else 1 (missing); role matching is by the registry's "
+            "glob patterns (list-dimensions prints them), over the files listed "
+            "here",
+        )
+
+    return compute
+
+
+_NOT_DERIVABLE = (
+    "{what} is not derivable from a read-only evidence pack: {why}; no number "
+    "is invented, so this rule's metric abstains"
+)
+
+
+def _not_derivable(what: str, why: str) -> Callable[[_PackView], _Computed]:
+    def compute(_view: _PackView) -> _Computed:
+        return MetricAbstention(reason=_NOT_DERIVABLE.format(what=what, why=why))
+
+    return compute
+
+
+_AC_TRACE_WHY = (
+    "acceptance criteria are not extracted from requirement documents and no "
+    "criterion-to-{target} trace exists in standalone mode (no task, ticket or "
+    "trace matrix is read)"
+)
+
+
 # ---------------------------------------------------------------------------
 # Structure metrics (T033): registry-driven tokens over the pack's excerpts,
 # never over a file the pack did not quote (core/tokens.py).
@@ -961,6 +1050,81 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_SECURITY_SURFACE,
         EVIDENCE_LOCAL,
         _sink_hits_observed,
+    ),
+    MetricDefinition(
+        "source_files_without_covering_test_share",
+        FAMILY_TEST_STRENGTH,
+        WHOLE_SET,
+        _source_files_without_covering_test_share,
+    ),
+    MetricDefinition(
+        "lint_config_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("lint-config"),
+    ),
+    MetricDefinition(
+        "format_config_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("format-config"),
+    ),
+    MetricDefinition(
+        "lockfile_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("lockfile"),
+    ),
+    MetricDefinition(
+        "test_config_and_ci_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("test-config", "ci-workflow"),
+    ),
+    MetricDefinition(
+        "architecture_description_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("architecture-doc"),
+    ),
+    MetricDefinition(
+        "decision_records_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("decision-record"),
+    ),
+    MetricDefinition(
+        "acceptance_criteria_traced_to_code_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        # never computed, so its own reason must show even on a truncated pack
+        EVIDENCE_LOCAL,
+        _not_derivable(
+            "the share of acceptance criteria traced to code",
+            _AC_TRACE_WHY.format(target="code"),
+        ),
+    ),
+    MetricDefinition(
+        "acceptance_criteria_traced_to_test_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        # never computed, so its own reason must show even on a truncated pack
+        EVIDENCE_LOCAL,
+        _not_derivable(
+            "the share of acceptance criteria traced to a test",
+            _AC_TRACE_WHY.format(target="test"),
+        ),
+    ),
+    MetricDefinition(
+        "changed_files_in_churn_hotspots_share",
+        FAMILY_CODE_SHAPE,
+        # never computed, so its own reason must show even on a truncated pack
+        EVIDENCE_LOCAL,
+        _not_derivable(
+            "the share of changed files in the top-10% churn hotspots",
+            "the blast-radius pack gathers repository hotspots only at project "
+            "scope, where every file is in scope so the share is 10% by "
+            "construction, and co-change history (not a hotspot ranking) at "
+            "narrower scopes",
+        ),
     ),
 )
 

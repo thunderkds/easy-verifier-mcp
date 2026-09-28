@@ -48,9 +48,9 @@ REF = "README.md:1-3"
 # ---------------------------------------------------------------------------
 
 
-def _far(name: str) -> float:
+def _far(dimension: str, name: str) -> float:
     """A value clearly outside the ±10% band of the rule's threshold."""
-    rule = RATING_RULES[name]
+    rule = RATING_RULES[dimension][name]
     if rule.comparison == "at_least":
         return rule.threshold + 10
     return rule.threshold + 5  # fails an at_most-0 rule, far from 0
@@ -64,13 +64,13 @@ def _rating(dimension: str, values: dict[str, object] | None = None):
             family="fixture",
             kind=WHOLE_SET,
             dimension=dimension,
-            outcome=values.get(name, _far(name)),
+            outcome=values.get(name, _far(dimension, name)),
             computed_from=("src/app.py",)
             if not isinstance(values.get(name), MetricAbstention)
             else (),
             derivation="fixture",
         )
-        for name in RATING_RULES
+        for name in RATING_RULES[dimension]
     )
     coverage = CoverageSummary(
         per_dimension=((dimension, 1.0),),
@@ -97,31 +97,20 @@ def _floor(dimension: str) -> float:
     return COVERAGE_FLOORS[dimension].value
 
 
-def _rating_68(dimension: str) -> Rating:
-    """R = round(100 * 65 / 95) = 68: one 5-weight metric unavailable."""
-    failing = {
-        "excerpts_observed": 0,
-        "declared_source_coverage": 0.1,
-        "evidence_lines_observed": 0,
-        "source_file_share": 0.0,
-    }
-    passing = {
-        "test_to_source_ratio": 5.0,
-        "source_files_without_covering_test": 0,
-        "assertion_density_per_test": 5.0,
-        "assertions_observed": 1,  # exactly on threshold 1.0 → borderline
-        "redaction_hits_observed": 0,
-        "redacted_file_share": 0.0,
-    }
+def _rating_60(dimension: str = "code-quality") -> Rating:
+    """R = 60 on code-quality: CCN share and max CCN pass (40 + 20), lint and
+    format config missing (0 + 0); max CCN sits exactly on 15 → borderline."""
+    assert dimension == "code-quality"
     rating = _rating(
         dimension,
         {
-            **failing,
-            **passing,
-            "mean_excerpt_lines": MetricAbstention("no excerpts"),
+            "functions_over_ccn_10_share": 0.0,
+            "max_function_ccn": 15,
+            "lint_config_missing": 1,
+            "format_config_missing": 1,
         },
     )
-    assert type(rating) is Rating and rating.value == 68
+    assert type(rating) is Rating and rating.value == 60
     return rating
 
 
@@ -174,33 +163,45 @@ def test_borderline_band_edges(value, threshold, expected) -> None:
 
 
 def test_detect_gates_abstained_and_borderline_only() -> None:
-    borderline = _rating("code-quality", {"test_to_source_ratio": 1.05})
+    borderline = _rating("code-quality", {"max_function_ccn": 15.5})
     ratings = _ratings(
         architecture=_abstention("architecture"), **{"code-quality": borderline}
     )
     gates = detect_evaluate_gates(ratings)
     assert gates == {
         "architecture": "abstained",
-        "code-quality": "borderline: test_to_source_ratio",
+        "code-quality": "borderline: max_function_ccn",
+        "solution-fit": "abstained",
     }
 
 
 def test_detect_gates_names_every_borderline_metric() -> None:
     rating = _rating(
-        "security", {"test_to_source_ratio": 0.95, "assertion_density_per_test": 1.08}
+        "test-strategy",
+        {
+            "source_files_without_covering_test_share": 0.21,
+            "assertion_density_per_test": 1.08,
+        },
     )
-    gates = detect_evaluate_gates(_ratings(security=rating))
+    gates = detect_evaluate_gates(_ratings(**{"test-strategy": rating}))
     assert gates == {
-        "security": "borderline: test_to_source_ratio, assertion_density_per_test"
+        "solution-fit": "abstained",
+        "test-strategy": "borderline: source_files_without_covering_test_share, "
+        "assertion_density_per_test",
     }
 
 
 def test_threshold_zero_rules_at_zero_never_gate() -> None:
     """Stage 4 decision: every at_most-0 rule at its best value (0) is not
     borderline, so a dimension clean on them is not asked about."""
-    zeros = {name: 0 for name, rule in RATING_RULES.items() if rule.threshold == 0}
-    assert zeros  # the at_most-0 rules exist, so this pins something
-    assert detect_evaluate_gates(_ratings(security=_rating("security", zeros))) == {}
+    rules = RATING_RULES["security"]
+    zeros = {name: 0 for name, rule in rules.items() if rule.threshold == 0}
+    assert len(zeros) == len(RATING_RULES["security"])  # every security rule
+    rated = _rating("security", zeros)
+    assert rated.value == 100
+    assert detect_evaluate_gates(_ratings(security=rated)) == {
+        "solution-fit": "abstained"
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +322,7 @@ def test_every_error_is_reported_at_once() -> None:
 
 
 def test_blended_rating_shows_its_parts() -> None:
-    rules = _rating_68("code-quality")
+    rules = _rating_60("code-quality")
     ratings = _ratings(**{"code-quality": rules})
     applied = apply_gate_evaluations(
         {"code-quality": _ev(88, 0.6, rationale="secret reasoning")},
@@ -330,12 +331,12 @@ def test_blended_rating_shows_its_parts() -> None:
     )
     gated = applied[DIMENSIONS.index("code-quality")]
     assert type(gated) is GatedRating
-    assert gated.value == 74
-    assert gated.parts == "74 = rules 68 + agent 88 (w 0.30)"
+    assert gated.value == 68
+    assert gated.parts == "68 = rules 60 + agent 88 (w 0.30)"
     payload = gated.to_dict()
     assert payload["kind"] == "blended_rating"
-    assert payload["value"] == 74
-    assert payload["parts"] == "74 = rules 68 + agent 88 (w 0.30)"
+    assert payload["value"] == 68
+    assert payload["parts"] == "68 = rules 60 + agent 88 (w 0.30)"
     assert payload["rated_by"] == "blended (w 0.30)"
     assert payload["agent"]["weight"] == "0.30"
     assert payload["rules"] == rules.to_dict()
@@ -374,18 +375,20 @@ def test_overall_discloses_each_rating_kind() -> None:
     ratings = _ratings(
         architecture=_abstention("architecture"),
         security=_abstention("security"),
-        **{"code-quality": _rating_68("code-quality")},
+        **{"code-quality": _rating_60("code-quality")},
     )
     applied = apply_gate_evaluations(
         {"security": _ev(70, 0.8), "code-quality": _ev(88, 0.6)}, ratings, _packs()
     )
     overall = rate_overall(applied)
-    assert overall.contributor_count == 6
+    # solution-fit declares no rule (no_static_rule) and was not evaluated here
+    assert overall.contributor_count == 5
     assert "security" in overall.contributors
     assert "architecture" not in overall.contributors
-    assert "(4 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
+    assert "solution-fit" not in overall.contributors
+    assert "(3 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
     assert "abstained: architecture (below_coverage_floor" in overall.disclosure
-    assert dict(overall.contributor_values)["code-quality"] == 74
+    assert dict(overall.contributor_values)["code-quality"] == 68
     assert dict(overall.rated_by) == {
         **{name: "rules" for name in overall.contributors},
         "code-quality": "blended (w 0.30)",
@@ -398,14 +401,15 @@ def test_overall_never_averages_abstained_dimension_without_evaluation() -> None
     ratings = _ratings(architecture=_abstention("architecture"))
     overall = rate_overall(ratings)
     assert "architecture" not in overall.contributors
-    assert "(6 rule-rated, 0 blended, 0 agent-rated)" in overall.disclosure
+    assert "solution-fit" not in overall.contributors  # no_static_rule
+    assert "(5 rule-rated, 0 blended, 0 agent-rated)" in overall.disclosure
 
 
 def test_ratings_without_agent_input_equal_ratings_with_empty_evaluations() -> None:
     """AC8 property: for every ungated dimension, agent input changes nothing."""
     ratings = _ratings(
         architecture=_abstention("architecture"),
-        **{"code-quality": _rating_68("code-quality")},
+        **{"code-quality": _rating_60("code-quality")},
     )
     applied = apply_gate_evaluations({"architecture": _ev(1, 1)}, ratings, _packs())
     gates = detect_evaluate_gates(ratings)

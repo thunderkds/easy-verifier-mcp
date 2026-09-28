@@ -303,8 +303,27 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
             assert "40" in metric.abstention.reason
             assert "lower bound" in metric.abstention.reason
 
+    # T035: the role-missing metrics abstain because this fixture pack does not
+    # declare their roles, and the AC-trace / churn-share metrics are never
+    # derivable; neither reason depends on truncation, so it is the same both ways.
+    not_applicable = {
+        "lint_config_missing",
+        "format_config_missing",
+        "lockfile_missing",
+        "test_config_and_ci_missing",
+        "architecture_description_missing",
+        "decision_records_missing",
+        "acceptance_criteria_traced_to_code_share",
+        "acceptance_criteria_traced_to_test_share",
+        "changed_files_in_churn_hotspots_share",
+    }
+
     # AC #5: unaffected by truncation, both ways.
     for metric in local:
+        if metric.name in not_applicable:
+            assert metric.abstained, metric.name
+            assert "budget" not in metric.abstention.reason, metric.name
+            continue
         assert not metric.abstained, metric.name
         assert metric.numeric_value is not None
 

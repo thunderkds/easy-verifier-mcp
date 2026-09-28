@@ -549,7 +549,22 @@ def _render_rating_input(ctx: _Ctx, item) -> str:
         f"<code>{ctx.esc(item.metric_name)}</code> = {ctx.esc(item.metric_value)}; "
         f"{ctx.esc(item.comparison)} {ctx.esc(item.threshold)}; weight "
         f"{ctx.esc(item.weight)}; earned {ctx.esc(item.earned_weight)}"
+        f'<p class="rating-citation">Metric: '
+        + ", ".join(_render_citation(ctx, c) for c in item.metric_citation)
+        + "; threshold: "
+        + _render_citation(ctx, item.threshold_citation)
+        + f"; source: {ctx.esc(item.source_tag)}</p>"
         f"<ul>{refs}</ul></li>"
+    )
+
+
+def _render_citation(ctx: _Ctx, citation) -> str:
+    """A cited source as a link (FR-048); ``project-default`` stays text."""
+    if isinstance(citation, str):
+        return ctx.esc(citation)
+    return (
+        f'<a href="{html.escape(citation.url, quote=True)}" rel="noreferrer">'
+        f"{ctx.esc(citation.label)}</a>"
     )
 
 
