@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t053_redaction_noise.py` — 72 tests: detector fix twins (API_TOKEN/api_token/SERVICE_API_KEY/db_password caught; mytoken=, API_TOKEN_URL=, passwords = 3 not), versioned URL paths vs Slack webhook / ?token= / JWT / userinfo password / no-scheme / 9-digit twins, commit/blob/tree/raw SHAs + sha256sum lines vs hex under secret-named key, UPPER_SNAKE constants vs base32 secret, SPDX under license only; vendored asvs.json/NOTICE/CHECKSUMS pinned at 0. 24/24 guards sabotage-caught (PYTHONDONTWRITEBYTECODE=1). One T051 twin changed (Supervisor ruling 2). Supervisor re-run `1277 passed, 2 skipped in 52.81s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28: pytest `1277 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Supervisor probes: `API_TOKEN = "…"` → fingerprinted (was missed by the named detector); `db_password:` → fingerprinted; Slack webhook token segment, `?token=`, `user:Pa55w0rd@host`, hex under `token =` → fingerprinted; random base32 `KZ7Q…` fingerprinted before and after; repetitive `JBSWY3DP…` uncaught both before and after (low entropy, pre-existing, not a regression) |
+| verify | ☑ pass | Real CLI 4-repo `redaction_hits_observed` (agent AFTER): easy-verifier 19→16, kitchd 59→62, bryony 14→10, ai-training 31→28 (rises = real hard-coded credentials now caught: POSTGRES_PASSWORD, JWT_SECRET, langfuse/openai keys); ratings unchanged; tracked-file sweep 529→194 (vendored asvs.json 346→0). Supervisor probe set confirms ASVS versioned URL, prose commit SHA and UPPER_SNAKE constant unchanged — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/redact.py` diff (credential_assignment left boundary, version-label/URL-path exemption with userinfo/query exclusions, commit/checksum hash-context marks, constant and SPDX exemptions, residual-risk docstring) and new tests. Code review P0 0, P1 0. Rulings: AC5 partial accepted (remaining task-ID/CamelCase/phase0 classes would weaken password detection; security first); T051 twin change accepted; no empty-tree-SHA allowlist. Security review inline (High): no entropy bar moved, named detectors never consult exemptions, 200 KB adversarial inputs ≤0.024 s |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1277 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -430,7 +430,6 @@ Named detector after:
 2026-09-28T13:19:08Z
 ```
 
-**DELTA**: A security score no longer fingerprints version-labelled URLs, commit SHAs, checksum lines, `key=CONSTANT` and SPDX ids (vendored `asvs.json` 346 → 0 hits), and `API_TOKEN = …` / `db_password: …` style hard-coded credentials are now caught by name.
+**DELTA**: Versioned URLs, commit SHAs, checksum lines and constants no longer count as secrets, while underscore-joined credential names like `API_TOKEN` are now caught by the named detector.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T053.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and a before/after redaction probe set on 2026-09-28, independent of the implementing agent.
