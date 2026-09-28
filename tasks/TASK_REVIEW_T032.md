@@ -1,4 +1,4 @@
-# TASK_REVIEW — T032: [Short Title]
+# TASK_REVIEW — T032: Build-time vendoring of Linguist, OWASP ASVS and MITRE CWE (version-pinned)
 
 > Sibling of `tasks/TASK_GUIDE_T032.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t032_vendor_sources.py` — 16 tests covering AC1 (script + filtered snapshot fields), AC2 (per-file source URL/version/commit/retrieval/licence/attribution), AC3 (AST scan of every file under `src/` for `socket`/`http.client`/`urllib.request`; no module under `src/` imports the script), AC4 (total-size budget, `--check` pass/tamper-fail sabotage test) |
-| Verification command run | ☑ pass | `python -m pytest -q` → `828 passed, 2 skipped in 27.82s`. `python -m ruff check src tests scripts` → `All checks passed!`. `python scripts/vendor_sources.py --check` → `OK: 4 vendored file(s) match recorded checksums` |
-| Negative cases hold | ☑ pass | Sabotage test `test_check_fails_on_tampered_snapshot` copies the vendored tree, corrupts `cwe.json`'s bytes, and confirms `--check` returns exit code 1; also manually verified interactively (appended a byte to `cwe.json`, ran `--check`, got `FAIL: ... checksum mismatch`, exit 1) before writing the test |
-| verify | ☑ pass | `python scripts/vendor_sources.py` run live against the real network (Linguist raw GitHub commit `d0921d10bb68a1249fc9eac64e472759f36e2fd8`, OWASP ASVS tag `v5.0.0_release` flat JSON, MITRE CWE `cwec_v4.20.xml.zip`) — surface actually driven, not just unit-tested; produced 4 files, 423062 bytes (428 KB on disk), `--check` re-run and passed — pass |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Touched only `scripts/vendor_sources.py` (new), `src/easy_verifier/registry/vendored/*` (new), `pyproject.toml` (one line, package-data), `tests/test_t032_vendor_sources.py` (new). No file under `Files Must NOT Touch` (`src/easy_verifier/core/*`) was edited |
-| Full smoke suite still green (no regression) | ☑ pass | Full suite: 828 passed, 2 skipped (pre-existing skips, unrelated to T032) |
-| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | pure backend/infra task, no UI component (guide's UI AC section already marked N/A) |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | same as above |
-| **UI: Responsiveness at target viewports** | ☑ N/A | same as above |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t032_vendor_sources.py` — checksum/`--check` tests incl. tampered-snapshot sabotage (exit 1), AST no-network-import scan of `src/`, no `src/` reference to the script, and 14 `TestValidatorsFailLoudlyOnFormatDrift` tests (degraded Linguist/ASVS/CWE inputs raise `UpstreamFormatError` before any write). Supervisor re-run: `840 passed, 2 skipped in 25.86s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 05:31 UTC: pytest `840 passed, 2 skipped` (exit 0); `ruff check src tests scripts` → `All checks passed!` (exit 0); `python scripts/vendor_sources.py --check` → `OK: 4 vendored file(s) match recorded checksums` (exit 0) |
+| Negative cases hold | ☑ pass | Tampered snapshot → `--check` exit 1 naming the file; degraded upstream (≤10 ASVS items, CWE missing 89, reformatted languages.yml) → `UpstreamFormatError`; `grep` for socket/urllib.request/http.client imports under `src/` → none |
+| verify | ☑ pass | Maintainer surface driven by Supervisor: `--check` pass; vendored content spot-checked — Linguist commit d0921d10 (830 langs; Kotlin .kt/.kts, C++ .cpp, Swift, Dart, Elixir, Scala present), ASVS v5.0.0_release (345 reqs, CC-BY-SA-4.0 meta), CWE 4.20 (78/89/95/798 with per-id URLs); total 423,062 bytes < 500 KB — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `scripts/vendor_sources.py`, `registry/vendored/*` (meta/licence/NOTICE/checksums), pyproject package data, new tests. Code review: P1 1 fixed in round 2 (Linguist parser degraded quietly on upstream format drift; guide requires fail-loud → validators added, commit 7f8146b). P3 noted: ASVS export has no per-requirement anchors, so every requirement shares one canonical URL — T035 cites ASVS by requirement id + that URL. Security N/A (Low risk); no runtime network confirmed |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 840 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -62,9 +62,9 @@ $ python scripts/vendor_sources.py --check
 OK: 4 vendored file(s) match recorded checksums
 ```
 
-**DELTA**: A maintainer can run `python scripts/vendor_sources.py` to pull pinned, filtered
+**DELTA**: Linguist, OWASP ASVS and MITRE CWE are available offline inside the package as pinned, licensed snapshots, refreshable by one maintainer script that refuses to write drifted data.
 snapshots of Linguist/ASVS/CWE into the package (428 KB, under the 500 KB target), and CI or any
 offline environment can run `--check` to confirm the committed snapshots still match their recorded
 checksums with zero network access — neither existed before this task.
 
-**WITNESS**: common-infrastructure agent, T032 worktree, 2026-09-28.
+**WITNESS**: Supervisor re-ran suite, ruff, `--check`, the network-import grep and content spot-checks on 2026-09-28 (05:31 UTC), independent of the implementing agent.
