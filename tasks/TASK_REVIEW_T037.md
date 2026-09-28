@@ -53,10 +53,11 @@ exit=0
 No `detected_stack` / framework detection anywhere in the payload, and `needs_input` carries only
 `gate_evaluations` — no `needs_input.reference`.
 
-**AFTER**: captured 2026-09-28T13:07:12Z on HEAD `f9854eb` by backend-developer — same driver,
-same scratch repo, same arguments, fresh empty temp `EASY_VERIFIER_SOT`:
+**AFTER** (post Stage 4 rulings R1/R2, HEAD `adc5f02`, backend-developer) — same driver, same
+scratch repo, same arguments, fresh empty temp `EASY_VERIFIER_SOT`:
 
 ```
+captured: 2026-09-28T13:17:11Z  HEAD=adc5f02
 payload keys: ['detected_stack', 'metrics', 'needs_input', 'overall', 'provenance', 'ratings']
 detected_stack: {"languages": ["js-ts"], "frameworks": [{"name": "express", "language": "js-ts"}]}
 needs_input keys: ['gate_evaluations', 'reference']
@@ -65,20 +66,8 @@ needs_input.reference: {
   {
    "framework": "express",
    "extends": "js-ts",
-   "field": "source_extensions",
-   "why": "rules: architecture.top_level_import_cycles, blast-radius.max_fan_in_changed, code-quality.functions_over_ccn_10_share, code-quality.max_function_ccn, security.sink_hits_observed, test-strategy.source_files_without_covering_test_share"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
    "field": "test_name_patterns",
    "why": "rules: test-strategy.assertion_density_per_test, test-strategy.source_files_without_covering_test_share"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
-   "field": "test_candidates",
-   "why": "rules: test-strategy.source_files_without_covering_test_share"
   },
   {
    "framework": "express",
@@ -95,59 +84,24 @@ needs_input.reference: {
   {
    "framework": "express",
    "extends": "js-ts",
-   "field": "branch_keywords",
-   "why": "rules: code-quality.functions_over_ccn_10_share, code-quality.max_function_ccn"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
-   "field": "comment_delimiters",
-   "why": "rules: architecture.top_level_import_cycles, blast-radius.max_fan_in_changed, code-quality.functions_over_ccn_10_share, code-quality.max_function_ccn, security.sink_hits_observed"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
-   "field": "string_delimiters",
-   "why": "rules: architecture.top_level_import_cycles, blast-radius.max_fan_in_changed, code-quality.functions_over_ccn_10_share, code-quality.max_function_ccn, security.sink_hits_observed"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
-   "field": "function_start",
-   "why": "rules: code-quality.functions_over_ccn_10_share, code-quality.max_function_ccn"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
-   "field": "import_syntax",
-   "why": "rules: architecture.top_level_import_cycles, blast-radius.max_fan_in_changed"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
    "field": "security_sinks",
-   "why": "rules: security.sink_hits_observed"
-  },
-  {
-   "framework": "express",
-   "extends": "js-ts",
-   "field": "interpolating_strings",
    "why": "rules: security.sink_hits_observed"
   }
  ],
  "omitted": 0,
  "instructions": "Each request names a registry field the rating rules read that this language or framework lacks. For each, in order: do at most 2 lookups, official documentation first. If found, send it on the next score call as an agent_input.registry_entries item: {language or framework (with extends), field, value: [...], citation_url: a clear https link to the primary source, source_tag: \"agent-researched\"}. If 2 lookups do not find it, ask the user, one question at a time, giving your recommended answer, and send their answer with source_tag \"user-supplied\" and the https link they confirm. Until answered, every listed field and the omitted count of further missing fields are scored with generic patterns only; omitted fields are listed once these are answered."
 }
-reference bytes: 2887
-needs_input bytes: 3486
+reference bytes: 1344
+needs_input bytes: 1943
 overall: {"kind": "overall_rating", "value": 46, "contributor_count": 1, "total_dimension_count": 7, "contributors": ["test-strategy"], "contributor_values": [["test-str
 exit=0
 ```
 
-Round 2 (13:07:26Z): same call plus `agent_input.registry_entries` = the 12 express fields
-(`source_tag: "user-supplied"`, https citation) — saved to the temp layer (`express.toml`), gate closes:
+Round 2: same call plus `agent_input.registry_entries` = the 4 requested express fields
+(`source_tag: "user-supplied"`, https citation) — saved to the temp layer, gate closes:
 
 ```
+round2 captured: 2026-09-28T13:17:25Z
 payload keys: ['detected_stack', 'metrics', 'needs_input', 'overall', 'provenance', 'ratings', 'registry_entries']
 detected_stack: {"languages": ["js-ts"], "frameworks": [{"name": "express", "language": "js-ts"}]}
 needs_input keys: ['gate_evaluations']
@@ -157,7 +111,33 @@ overall: {"kind": "overall_rating", "value": 46, "contributor_count": 1, "total_
 exit=0
 ```
 
-CLI, same repo (`easy-verifier score --repo <scratch>/node-express --scope project </dev/null`, exit 0):
+This repo (curated Python, no framework), real MCP stdio, `--scope worktree` — no reference request (R1):
+
+```
+self captured: 2026-09-28T13:17:26Z
+payload keys: ['detected_stack', 'metrics', 'needs_input', 'overall', 'provenance', 'ratings']
+detected_stack: {"languages": ["python"], "frameworks": []}
+needs_input keys: ['picks']
+needs_input.reference: None
+needs_input bytes: 4043
+overall: {"kind": "overall_rating", "value": 75, "contributor_count": 2, "total_dimension_count": 7, "contributors": ["architecture", "code-quality"], "contributor_value
+exit=0
+```
+
+Reference payload bytes after R1/R2 (compact JSON, empty local layer, shared core):
+
+```
+kitchd [{"name": "react", "language": "js-ts"}] requests=4 bytes=1336 [('react', 'test_name_patterns'), ('react', 'test_declarations'), ('react', 'assertions'), ('react', 'security_sinks')]
+bryony [{"name": "express", "language": "js-ts"}] requests=4 bytes=1344 [('express', 'test_name_patterns'), ('express', 'test_declarations'), ('express', 'assertions'), ('express', 'security_sinks')]
+ai-training [{"name": "django", "language": "python"}] requests=4 bytes=1344 [('django', 'test_name_patterns'), ('django', 'test_declarations'), ('django', 'assertions'), ('django', 'security_sinks')]
+easy-verifier-mcp [] requests=0 bytes=0
+```
+
+Before the rulings (HEAD `f9854eb`) the same four were 2863 / 2887 / 2984 / 903 bytes (12 / 12 / 13 / 1
+requests).
+
+CLI, same scratch repo (HEAD `f9854eb`; the CLI path is unchanged by R1/R2), `easy-verifier score
+--repo <scratch>/node-express --scope project </dev/null`, exit 0:
 
 ```
 cli keys: ['detected_stack', 'metrics', 'overall', 'provenance', 'ratings']
@@ -165,8 +145,9 @@ detected_stack: {'languages': ['js-ts'], 'frameworks': [{'name': 'express', 'lan
 needs_input in stdout: False | "reference" in stdout: False
 ```
 
-Container (`docker compose build` + MCP stdio into `docker compose run verifier`, repo bind-mounted
-at `/workspace`, temp SOT mount, 13:09:31Z):
+Container (HEAD `f9854eb`, pre-rulings; shows the gate reaching the containerized MCP surface —
+`docker compose build` + MCP stdio into `docker compose run verifier`, repo bind-mounted at
+`/workspace`, temp SOT mount, 13:09:31Z):
 
 ```
 detected_stack: {"languages": ["js-ts"], "frameworks": [{"name": "express", "language": "js-ts"}]}
@@ -175,23 +156,6 @@ reference requests: [('express', 'source_extensions'), ('express', 'test_name_pa
 reference bytes: 2887
 exit=0
 ```
-
-Real repo, MCP stdio, kitchd `--scope worktree` (13:07:58Z; request list elided):
-
-```
-payload keys: ['detected_stack', 'metrics', 'needs_input', 'overall', 'provenance', 'ratings']
-detected_stack: {"languages": ["js-ts"], "frameworks": [{"name": "react", "language": "js-ts"}]}
-needs_input keys: ['gate_evaluations', 'reference']
-needs_input.reference: {
-reference bytes: 2863
-needs_input bytes: 5229
-overall: {"kind": "overall_rating", "value": 56, "contributor_count": 5, "total_dimension_count": 7, "contributors": ["architecture", "code-quality", "security", "test-s
-exit=0
-```
-
-Payload bytes (`needs_input.reference`, compact JSON, empty local layer): scratch express 2887;
-kitchd (react) 2863; bryony (express) 2887; ai-training (python+django, 13 requests) 2984;
-easy-verifier itself (python, 1 request: `python.interpolating_strings`) 903.
 
 **DELTA**: Over MCP a caller now sees the detected stack (languages + manifest-detected frameworks)
 and a capped, ordered list of exactly the registry fields the rules read that the stack lacks, with
