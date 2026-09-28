@@ -85,11 +85,7 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     "readme": ("README*", "Readme*", "readme*"),
     "architecture-doc": ("PROJECT_SPEC.md", *_docs("architecture", "design")),
     "decision-record": (
-        # Exact name, deliberately not `BRAINSTORMING_LOG*.md`: redact.py's
-        # high_entropy_string detector fingerprints names such as
-        # `BRAINSTORMING_LOG_source-discovery.md`, which breaks the citation.
-        # Temporary narrowing; widen once the separate redaction bugfix lands.
-        "BRAINSTORMING_LOG.md",
+        "BRAINSTORMING_LOG*.md",
         "**/adr/**",
         "**/adrs/**",
         "**/ADR/**",

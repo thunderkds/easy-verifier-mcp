@@ -154,6 +154,35 @@ the token in a webhook URL path, and the password inside a
 `postgres://user:pw@host` URI are each caught on their own.
 """
 
+_WORD_PIECE = r"(?:[A-Z]{1,30}|[A-Z]?[a-z]{1,30})"
+_WORD_JOINED_NAME = re.compile(rf"{_WORD_PIECE}(?:[/_-]{_WORD_PIECE}){{1,30}}")
+_FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}(?![A-Za-z0-9+/=_-])")
+"""A long token that is plainly an ordinary file name — `LOG_source-discovery.md`.
+
+Applies to the *long-token* entropy rule only, beside :data:`_PATHISH` and for the
+same reason: T029 (found by T026) — `BRAINSTORMING_LOG_source-discovery.md` came
+back fingerprinted, so a citation to it could not resolve. Mixed-case words
+joined by `_`, `-` or `/` clear the 4.0-bit bar as one token because upper and
+lower case double the alphabet, not because the name is random.
+
+Exempt only when all three hold: the token is directly followed by a file suffix
+(`.md`, `.json`); it has at least two pieces; and every piece is a *word shape*
+— letters only, and all upper case, all lower case, or Capitalized. Random
+material fails the last test almost surely: a base64url token mixes case inside
+a piece (`xQzRtWvB`) and nearly always carries a digit. A token with a digit is
+never exempt, so `build/app-<key>.min.js` and hash-named build artefacts behave
+exactly as before; the hex and per-segment rules are untouched.
+
+A bare identifier with no suffix (`BRAINSTORMING_LOG_source-discovery` in prose)
+is judged as before — over-redaction stays the direction outside the one shape
+that breaks citations.
+
+Residue, stated plainly: a secret made only of single-case letter runs joined by
+`_`/`-`/`/` and written directly before a `.ext` suffix (`kqzvxm-hjtybn.txt`) is
+no longer caught by this rule. Generated keys are alphanumeric and mixed case, so
+this is not the shape credentials take; it is the price of readable paths.
+"""
+
 _KEY_MATERIAL_CANDIDATE = re.compile(r"[A-Za-z0-9_-]{12,512}")
 """A word-ish run, scanned per segment — the rule that makes paths and URIs safe.
 
@@ -255,6 +284,10 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
     """Yield the catch-all entropy candidates — the deliberately noisy layer."""
     for match in _ENTROPY_CANDIDATE.finditer(text):
         if _PATHISH.search(match.group()):
+            continue
+        if _WORD_JOINED_NAME.fullmatch(match.group()) and _FILE_SUFFIX.match(
+            text, match.end()
+        ):
             continue
         if _shannon_entropy(match.group()) >= _MIN_ENTROPY_BITS:
             yield match.start(), match.end(), "high_entropy_string"
