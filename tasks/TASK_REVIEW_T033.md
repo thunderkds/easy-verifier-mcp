@@ -58,9 +58,41 @@ $ PYTHONPATH=src python -c "import easy_verifier.core.metrics as m; print(hasatt
 False
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: same scratch repo, same command, on the T033 implementation (backend-developer).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-28T06:10:21Z
+$ PYTHONPATH=src ../easy-verifier-mcp/.venv/bin/python -m easy_verifier.adapters.cli score --repo $S/repo --scope worktree < /dev/null > $S/after.json
+exit=0
+functions_over_ccn_10_share present
+max_function_ccn present
+top_level_import_cycles present
+max_fan_in_changed present
+architecture functions_over_ccn_10_share 0.0 ['src/app/alpha.py:1-12', 'src/app/beta.py:1-8', 'src/app/gamma.py:1-5']
+architecture max_function_ccn 5 ['src/app/alpha.py:1-12']
+architecture top_level_import_cycles 1 ['src/app/alpha.py:1-12', 'src/app/beta.py:1-8']
+architecture max_fan_in_changed ABSTAIN: only the blast-radius pack says which files changed: ...
+blast-radius max_fan_in_changed 2 ['src/app/alpha.py', 'src/app/alpha.py:1-1', 'src/app/beta.py', 'src/app/beta.py:1-1', 'src/app/gamma.py:1-1', 'tests/test_alpha.py:1-1']
+code-quality functions_over_ccn_10_share ABSTAIN: no source-file excerpt in this pack contains a function start ...
+code-quality max_function_ccn ABSTAIN: no source-file excerpt in this pack contains a function start ...
+$ python -c "...approximate_ccn(open('src/app/alpha.py').read(), curated_metric_tables().syntax['.py'])"
+(FunctionCcn(line=4, end_line=11, ccn=5),)
+existing metrics unchanged: True 77 105        # all 77 pre-T033 (dimension, metric) outcomes byte-equal
+overall before/after: 62 62
+```
+
+Hand check: `classify` has if, and, elif, for = 4 decision points -> CCN 5; the `if while for` inside
+the string and the comment are not counted. alpha<->beta is the one cycle. alpha (imported by beta,
+test_alpha) and beta (imported by alpha, gamma) tie at fan-in 2.
+
+Known gap at the real surface: code-quality packs carry no source excerpts, and on this repository's
+own project scope the architecture pack carries 0 code excerpts of 7, so the CCN and cycle metrics
+abstain there (honestly, with reasons). See the completion report for the proposed dimension change.
+
+**DELTA**: `score` now reports approximate CCN per observed function (share over 10, max), top-level
+import cycles and the max fan-in of changed files, each cited to the excerpts it was computed from,
+for all 9 curated languages from registry data only.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T033.jsonl`, never the
 implementing agent alone]

@@ -57,3 +57,46 @@ source_tag = "curated"
 value = ["assert<A-Z>*"]
 citation_url = "https://kotlinlang.org/api/core/kotlin-test/kotlin.test/"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "for", "while"]
+citation_url = "https://kotlinlang.org/docs/control-flow.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://kotlinlang.org/docs/exceptions.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://kotlinlang.org/docs/booleans.html"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://kotlinlang.org/docs/basic-syntax.html#comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\"", "\""]
+citation_url = "https://kotlinlang.org/docs/strings.html"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["'"]
+citation_url = "https://kotlinlang.org/docs/characters.html"
+source_tag = "curated"
+
+[[function_start]]
+value = ["fun"]
+citation_url = "https://kotlinlang.org/docs/functions.html"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://kotlinlang.org/docs/packages.html#imports"
+source_tag = "curated"

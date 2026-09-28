@@ -91,3 +91,51 @@ source_tag = "curated"
 value = ["Assert.?*"]
 citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.assert"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "case"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/selection-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for", "foreach", "while"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/iteration-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/boolean-logical-operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/reference-types"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\""]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/raw-string"
+source_tag = "curated"
+
+[[function_start]]
+value = ["public * * (", "private * * (", "protected * * (", "internal * * (", "public static * * (", "private static * * (", "internal static * * (", "public override * * (", "protected override * * (", "public async * * (", "private async * * (", "static * * (", "void * ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/methods"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["using"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/using-directive"
+source_tag = "curated"

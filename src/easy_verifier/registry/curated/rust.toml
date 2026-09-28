@@ -56,3 +56,46 @@ source_tag = "curated"
 value = ["assert_?*"]
 citation_url = "https://doc.rust-lang.org/std/macro.assert_eq.html"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/if-expr.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for", "while"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/loop-expr.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["=>"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/match-expr.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/operator-expr.html#lazy-boolean-operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://doc.rust-lang.org/reference/comments.html"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\""]
+citation_url = "https://doc.rust-lang.org/reference/tokens.html#string-literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["fn"]
+citation_url = "https://doc.rust-lang.org/reference/items/functions.html"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["use"]
+citation_url = "https://doc.rust-lang.org/reference/items/use-declarations.html"
+source_tag = "curated"

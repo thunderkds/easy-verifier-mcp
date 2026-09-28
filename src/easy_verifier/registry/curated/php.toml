@@ -66,3 +66,76 @@ source_tag = "curated"
 value = ["assert<A-Z>*"]
 citation_url = "https://docs.phpunit.de/en/10.5/assertions.html"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://www.php.net/manual/en/control-structures.if.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["elseif"]
+citation_url = "https://www.php.net/manual/en/control-structures.elseif.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for"]
+citation_url = "https://www.php.net/manual/en/control-structures.for.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["foreach"]
+citation_url = "https://www.php.net/manual/en/control-structures.foreach.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["while"]
+citation_url = "https://www.php.net/manual/en/control-structures.while.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://www.php.net/manual/en/control-structures.switch.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://www.php.net/manual/en/language.exceptions.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||", "and", "or"]
+citation_url = "https://www.php.net/manual/en/language.operators.logical.php"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "#", "/* */"]
+citation_url = "https://www.php.net/manual/en/language.basic-syntax.comments.php"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://www.php.net/manual/en/language.types.string.php"
+source_tag = "curated"
+
+[[function_start]]
+value = ["function"]
+citation_url = "https://www.php.net/manual/en/functions.user-defined.php"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["use"]
+citation_url = "https://www.php.net/manual/en/language.namespaces.importing.php"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["require", "require_once"]
+citation_url = "https://www.php.net/manual/en/function.require.php"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["include", "include_once"]
+citation_url = "https://www.php.net/manual/en/function.include.php"
+source_tag = "curated"

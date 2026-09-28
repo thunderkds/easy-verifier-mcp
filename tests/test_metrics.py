@@ -161,6 +161,7 @@ def test_metrics_module_imports_nothing_that_reads_the_filesystem():
         "dataclasses",
         "pathlib",
         ".models",
+        ".tokens",  # T033: pure string tokenizer, whitelisted in test_t033
     }
     assert "Path" not in imported_names, "PurePosixPath is pure; Path is not"
     assert "RepoContext" not in imported_names
@@ -289,7 +290,13 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
     local = [m for m in metrics if m.kind == EVIDENCE_LOCAL]
     assert whole_set and local, "both kinds must exist or this test proves nothing"
 
+    # T033: these two need import statements / a blast-radius pack, which this
+    # fixture lacks, so they abstain for that reason here; their own truncation
+    # pair is in tests/test_t033_token_metrics.py.
+    needs_imports = {"top_level_import_cycles", "max_fan_in_changed"}
     for metric in whole_set:
+        if not truncated and metric.name in needs_imports:
+            continue
         assert metric.abstained is truncated, metric.name
         if truncated:
             assert metric.abstention.omitted_lower_bound == 40

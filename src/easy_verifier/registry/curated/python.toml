@@ -111,3 +111,36 @@ source_tag = "curated"
 value = ["assert_?*"]
 citation_url = "https://docs.python.org/3/library/unittest.mock.html#unittest.mock.Mock.assert_called"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "elif", "for", "while", "except"]
+citation_url = "https://docs.python.org/3/reference/compound_stmts.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["and", "or"]
+citation_url = "https://docs.python.org/3/reference/expressions.html#boolean-operations"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["#"]
+citation_url = "https://docs.python.org/3/reference/lexical_analysis.html#comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\"", "''' '''", "\"", "'"]
+citation_url = "https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["def"]
+citation_url = "https://docs.python.org/3/reference/compound_stmts.html#function-definitions"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import", "from"]
+citation_url = "https://docs.python.org/3/reference/simple_stmts.html#the-import-statement"
+source_tag = "curated"
