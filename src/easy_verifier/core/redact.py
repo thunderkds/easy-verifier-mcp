@@ -51,6 +51,24 @@ written right after ``.tgz#``/``.git#``; and a secret made only of single-case
 letter runs joined by ``_``. Each is a shape credentials are not issued in, and
 each is documented beside its pattern.
 
+T053 (T051 Stage 4 residue) adds four more under the same rules — entropy rules
+only, no bar moved, each guard paired with a still-caught twin and a sabotage
+test: word-joined names carrying digit runs (version/release labels) inside an
+``http(s)`` URL's host+path or before a file suffix (:data:`_URL`,
+:data:`_NAME_PIECE`); 40-hex commit SHAs named as commits and
+``sha256sum``/``sha512sum`` lines (:data:`_COMMIT_SHA`, :data:`_CHECKSUM_LINE`,
+``pinned`` in :data:`_HASH_KEY`); ``key=UPPER_SNAKE_CONSTANT``
+(:data:`_CONSTANT_ASSIGNMENT`); SPDX ids under a ``license`` key
+(:data:`_LICENSE_VALUE`). It also closes a named-detector gap:
+``credential_assignment`` now matches ``API_TOKEN``/``db_password`` (a leading
+``_`` no longer hides the word). Residual risk added, stated plainly: a password
+made of word pieces and digit runs (``Summer-2024-Pw``) written as a URL *path*
+segment or directly before ``.ext`` (URL userinfo and query strings get no
+exemption); a 40-hex secret right after the word ``commit``, after ``pinned:``,
+or in a ``/blob/``/``/tree/`` path; a 64/128-hex secret at line start followed by
+two spaces and a word; an upper-case ``_``-joined random value under a
+non-secret key; a word-shaped value under a ``license`` key.
+
 Every pattern below is linear — no nested or adjacent unbounded quantifiers, and
 every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 (ReDoS). This module reads attacker-influenceable content.
