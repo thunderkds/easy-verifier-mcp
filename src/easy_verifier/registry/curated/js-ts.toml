@@ -116,3 +116,66 @@ source_tag = "curated"
 value = ["assert"]
 citation_url = "https://nodejs.org/api/assert.html"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://tc39.es/ecma262/#sec-if-statement"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for", "while"]
+citation_url = "https://tc39.es/ecma262/#sec-iteration-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://tc39.es/ecma262/#sec-switch-statement"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://tc39.es/ecma262/#sec-try-statement"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://tc39.es/ecma262/#sec-binary-logical-operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://tc39.es/ecma262/#sec-comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://tc39.es/ecma262/#sec-literals-string-literals"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["` `"]
+citation_url = "https://tc39.es/ecma262/#sec-template-literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["function"]
+citation_url = "https://tc39.es/ecma262/#sec-function-definitions"
+source_tag = "curated"
+
+[[function_start]]
+value = ["const * = (", "const * = async ("]
+citation_url = "https://tc39.es/ecma262/#sec-arrow-function-definitions"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://tc39.es/ecma262/#sec-imports"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["require ("]
+citation_url = "https://nodejs.org/api/modules.html#requireid"
+source_tag = "curated"

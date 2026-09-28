@@ -81,3 +81,41 @@ source_tag = "curated"
 value = ["assert", "assert_?*"]
 citation_url = "https://docs.seattlerb.org/minitest/Minitest/Assertions.html"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "elsif", "unless", "while", "until", "for", "when"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/control_expressions_rdoc.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["rescue"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/exceptions_rdoc.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||", "and", "or"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/precedence_rdoc.html"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["#"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/comments_rdoc.html"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/literals_rdoc.html"
+source_tag = "curated"
+
+[[function_start]]
+value = ["def"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/methods_rdoc.html"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["require", "require_relative"]
+citation_url = "https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require"
+source_tag = "curated"

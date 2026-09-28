@@ -86,3 +86,71 @@ source_tag = "curated"
 value = ["assert<A-Z>*"]
 citation_url = "https://junit.org/junit5/docs/current/user-guide/#writing-tests-assertions"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html#jls-14.9"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html#jls-14.14"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["while"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html#jls-14.12"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html#jls-14.11"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-14.html#jls-14.20"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.23"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["||"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.24"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-3.html#jls-3.7"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\""]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-3.html#jls-3.10.5"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\""]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-3.html#jls-3.10.6"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["'"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-3.html#jls-3.10.4"
+source_tag = "curated"
+
+[[function_start]]
+value = ["public * * (", "private * * (", "protected * * (", "public static * * (", "private static * * (", "protected static * * (", "public final * * (", "private final * * (", "static * * (", "void * ("]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.4"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-7.html#jls-7.5"
+source_tag = "curated"

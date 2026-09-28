@@ -133,7 +133,9 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
 def test_rule_table_is_complete_static_data_over_existing_metric_names():
     from easy_verifier.core.metrics import METRIC_NAMES
 
-    assert tuple(RATING_RULES) == METRIC_NAMES
+    # T033 appended structure metrics that no rule reads yet (rules are T035's);
+    # the rule table still covers the pre-T033 metric names, in order.
+    assert tuple(RATING_RULES) == METRIC_NAMES[: len(RATING_RULES)]
     assert sum(rule.weight for rule in RATING_RULES.values()) == 100
     assert RATING_RULES == {
         "test_to_source_ratio": RatingRule("test_to_source_ratio", 15, 1.0, "at_least"),

@@ -32,6 +32,17 @@ The metric fields (T031) are read by ``core/metric_tables.py``:
   starting or ending in an identifier character only matches as a whole word.
   Declarations match at the start of a line; assertions anywhere.
 
+The structure fields (T033) are read by ``core/tokens.py`` through
+``core/metric_tables.py``:
+
+* ``comment_delimiters`` / ``string_delimiters`` — ``"X"`` runs to the end of
+  the line (comment) or the next ``X`` on the same line (string); ``"X Y"``
+  runs from ``X`` to the next ``Y`` across lines, e.g. ``"/* */"``;
+* ``branch_keywords`` — code tokens counted as decision points (approximate
+  CCN), e.g. ``"if"``, ``"&&"``;
+* ``function_start`` / ``import_syntax`` — code tokens marking a line that
+  starts a function / an import statement; matched anywhere in the line.
+
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
 """
@@ -68,8 +79,18 @@ ENTRY_FIELDS = (
     "test_candidates",
     "test_declarations",
     "assertions",
+    "branch_keywords",
+    "comment_delimiters",
+    "string_delimiters",
+    "function_start",
+    "import_syntax",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
+
+_DELIMITER = re.compile(r"^[^\s\\]{1,4}( [^\s\\]{1,4})?$")
+
+_DELIMITER_FIELDS = frozenset({"comment_delimiters", "string_delimiters"})
+"""Code punctuation such as ``//``, not paths: exempt from the path checks."""
 
 _VALUE_SHAPES = {
     "source_extensions": (
@@ -81,6 +102,8 @@ _VALUE_SHAPES = {
         re.compile(r"^(\./)?[^/]*\{stem\}[^/]*$"),
         "a base name containing {stem}, optionally prefixed ./",
     ),
+    "comment_delimiters": (_DELIMITER, "a delimiter X or an open/close pair X Y"),
+    "string_delimiters": (_DELIMITER, "a delimiter X or an open/close pair X Y"),
 }
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
 
@@ -340,7 +363,7 @@ def _cited_value_problem(item: object, field: str) -> str | None:
     if len(values) > MAX_VALUES_PER_FIELD:
         return f"value: at most {MAX_VALUES_PER_FIELD} entries"
     for value in values:
-        problem = _pattern_problem(value)
+        problem = _pattern_problem(value, path=field not in _DELIMITER_FIELDS)
         if problem:
             return f"value: {problem}"
         shape = _VALUE_SHAPES.get(field)
@@ -355,11 +378,13 @@ def _cited_value_problem(item: object, field: str) -> str | None:
     return None
 
 
-def _pattern_problem(value: object) -> str | None:
+def _pattern_problem(value: object, *, path: bool = True) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return "each entry must be a non-empty string"
     if len(value) > MAX_VALUE_CHARS:
         return f"each entry must be at most {MAX_VALUE_CHARS} characters"
+    if not path:
+        return None
     pure = PurePosixPath(value)
     if pure.is_absolute() or "\\" in value or ".." in pure.parts:
         return "each entry must be a repository-relative glob"

@@ -61,3 +61,51 @@ source_tag = "curated"
 value = ["t.Error", "t.Errorf", "t.Fatal", "t.Fatalf", "t.Fail", "t.FailNow"]
 citation_url = "https://pkg.go.dev/testing#T"
 source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://go.dev/ref/spec#If_statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for"]
+citation_url = "https://go.dev/ref/spec#For_statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://go.dev/ref/spec#Switch_statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://go.dev/ref/spec#Logical_operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://go.dev/ref/spec#Comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "` `"]
+citation_url = "https://go.dev/ref/spec#String_literals"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["'"]
+citation_url = "https://go.dev/ref/spec#Rune_literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["func"]
+citation_url = "https://go.dev/ref/spec#Function_declarations"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://go.dev/ref/spec#Import_declarations"
+source_tag = "curated"

@@ -9,9 +9,11 @@ this module deliberately does **not** do:
   ``RepoContext`` import, and nothing here reaches the filesystem, a
   subprocess or the network. That is structural, not a convention: the module
   imports only :mod:`dataclasses`, :mod:`json`, :mod:`re`,
-  :mod:`pathlib.PurePosixPath` (a pure string type that touches no disk) and
-  this package's own plain-data models. A metric that could read a file could
-  cite evidence the pack never gathered, which is the whole point of FR-027.
+  :mod:`pathlib.PurePosixPath` (a pure string type that touches no disk),
+  this package's own plain-data models and its pure tokenizer
+  (:mod:`~easy_verifier.core.tokens`, string work only). A metric that
+  could read a file could cite evidence the pack never gathered, which is
+  the whole point of FR-027.
   Language knowledge (which suffixes are code, how tests are named, declared
   and assert) is the reference registry's (DDR-0007, FR-041), and arrives as a
   :class:`LanguageTables` argument the caller built from the already-loaded
@@ -53,6 +55,7 @@ from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
 from .models import CombinedPack, EvidencePack, Excerpt
+from .tokens import LanguageSyntax, approximate_ccn, import_statements
 
 WHOLE_SET = "whole_set"
 """A ratio, density or aggregate share: it describes the whole set it was
@@ -249,6 +252,10 @@ class LanguageTables:
 
     assertions: re.Pattern[str]
     """One alternation; its non-overlapping matches are the assertions."""
+
+    syntax: Mapping[str, LanguageSyntax] = field(default_factory=dict)
+    """Source suffix -> the language's structure tokens (T033); a suffix
+    absent here gets no CCN or import evidence."""
 
 
 # ---------------------------------------------------------------------------
@@ -504,6 +511,257 @@ def _source_file_share(view: _PackView) -> _Computed:
     )
 
 
+# ---------------------------------------------------------------------------
+# Structure metrics (T033): registry-driven tokens over the pack's excerpts,
+# never over a file the pack did not quote (core/tokens.py).
+# ---------------------------------------------------------------------------
+
+CCN_THRESHOLD = 10
+"""``functions_over_ccn_10_share`` counts functions with CCN above this."""
+
+BLAST_RADIUS = "blast-radius"
+
+_CCN_METHOD = (
+    "approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch "
+    "keywords per function, counted after the registry's comment and string "
+    "delimiters are blanked; a function starts at a registry function-start "
+    "token and ends before the next non-blank line indented no deeper, and a "
+    "function whose excerpt ends first counts only the lines quoted; only "
+    "source-file excerpts of registry languages are read"
+)
+
+_IMPORT_METHOD = (
+    "import statements are the registry's import tokens, found textually in "
+    "excerpts of registry-language files; a statement names a file when it "
+    "contains the file's stem (a package's __init__-style file: its "
+    "directory) as a whole word -- a textual match, not a resolved import"
+)
+
+
+def _observed_functions(view: _PackView) -> list[tuple[Excerpt, int, int]]:
+    """``(excerpt, absolute line, ccn)`` per function, one per start line."""
+    best: dict[tuple[str, int], tuple[Excerpt, int, int]] = {}
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None or not _is_source_file(excerpt.path, view.tables):
+            continue
+        for function in approximate_ccn(excerpt.text, syntax):
+            line = excerpt.start_line + function.line - 1
+            key = (excerpt.path, line)
+            if key not in best or function.ccn > best[key][2]:
+                best[key] = (excerpt, line, function.ccn)
+    return [best[key] for key in sorted(best)]
+
+
+def _no_functions() -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            "no source-file excerpt in this pack contains a function start the "
+            "registry recognises, so no function was observed; that is not the "
+            "same as functions of low complexity. " + _CCN_METHOD
+        )
+    )
+
+
+def _functions_over_ccn_10_share(view: _PackView) -> _Computed:
+    functions = _observed_functions(view)
+    if not functions:
+        return _no_functions()
+    over = [(e.path, line, ccn) for e, line, ccn in functions if ccn > CCN_THRESHOLD]
+    return (
+        len(over) / len(functions),
+        tuple(sorted({e.ref for e, _line, _ccn in functions})),
+        f"{len(over)} of {len(functions)} observed function(s) have approximate "
+        f"CCN > {CCN_THRESHOLD}: "
+        + (", ".join(f"{path}:{line} ({ccn})" for path, line, ccn in over) or "none")
+        + "; "
+        + _CCN_METHOD,
+    )
+
+
+def _max_function_ccn(view: _PackView) -> _Computed:
+    functions = _observed_functions(view)
+    if not functions:
+        return _no_functions()
+    top = max(ccn for _e, _line, ccn in functions)
+    at = [(e, line) for e, line, ccn in functions if ccn == top]
+    return (
+        top,
+        tuple(sorted({e.ref for e, _line in at})),
+        f"the highest approximate CCN among {len(functions)} observed "
+        f"function(s) is {top}, at "
+        + ", ".join(f"{e.path}:{line}" for e, line in at)
+        + "; a lower bound on the repository; "
+        + _CCN_METHOD,
+    )
+
+
+def _statements(
+    view: _PackView, *, source_only: bool
+) -> list[tuple[Excerpt, str]]:
+    found = []
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None:
+            continue
+        if source_only and not _is_source_file(excerpt.path, view.tables):
+            continue
+        for _line, text in import_statements(excerpt.text, syntax):
+            found.append((excerpt, text))
+    return found
+
+
+def _no_imports(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            f"no import statement was found in this pack's {what} excerpts, so "
+            "there is no import graph to measure; that is not the same as a "
+            "graph without edges. " + _IMPORT_METHOD
+        )
+    )
+
+
+def _names_pattern(names: Sequence[str]) -> re.Pattern[str]:
+    ordered = sorted(set(names), key=lambda name: (-len(name), name))
+    return re.compile(r"\b(?:" + "|".join(re.escape(n) for n in ordered) + r")\b")
+
+
+def _file_name(path: str) -> str:
+    pure = PurePosixPath(path)
+    return pure.parent.name if pure.stem.startswith("__") else pure.stem
+
+
+def _max_fan_in_changed(view: _PackView) -> _Computed:
+    if view.pack.dimension != BLAST_RADIUS:
+        return MetricAbstention(
+            reason=(
+                "only the blast-radius pack says which files changed: its "
+                "reference search quotes only lines naming in-scope files, and "
+                f"this is the {view.pack.dimension!r} pack"
+            )
+        )
+    statements = _statements(view, source_only=False)
+    if not statements:
+        return _no_imports("code-file")
+    fan_in: dict[str, list[Excerpt]] = {}
+    for target in view.files:
+        name = _file_name(target)
+        if PurePosixPath(target).suffix not in view.tables.syntax or not name:
+            continue
+        pattern = _names_pattern([name])
+        importers: dict[str, Excerpt] = {}
+        for excerpt, text in statements:
+            if excerpt.path != target and pattern.search(text):
+                importers.setdefault(excerpt.path, excerpt)
+        if importers:
+            fan_in[target] = list(importers.values())
+    if not fan_in:
+        return (
+            0,
+            tuple(sorted({e.ref for e, _text in statements})),
+            f"none of the {len(statements)} import statement(s) quoted here "
+            "names a file read by this pack; " + _IMPORT_METHOD,
+        )
+    top = max(len(importers) for importers in fan_in.values())
+    targets = sorted(path for path, found in fan_in.items() if len(found) == top)
+    refs = {e.ref for path in targets for e in fan_in[path]} | set(targets)
+    return (
+        top,
+        tuple(sorted(refs)),
+        f"{', '.join(targets)} is named by import statements in {top} distinct "
+        "file(s); the files counted are those named by the import statements "
+        "this pack's reference search quoted, which quotes only lines naming "
+        "in-scope (changed) files; a lower bound, since the search is capped; "
+        + _IMPORT_METHOD,
+    )
+
+
+def _top_level_import_cycles(view: _PackView) -> _Computed:
+    statements = _statements(view, source_only=True)
+    if not statements:
+        return _no_imports("source-file")
+    files = sorted(
+        {
+            e.path
+            for e in view.pack.excerpts
+            if _is_source_file(e.path, view.tables)
+            and PurePosixPath(e.path).suffix in view.tables.syntax
+        }
+    )
+    prefix = _common_directory(files)
+
+    def module_of(path: str) -> str:
+        parts = PurePosixPath(path).parts[len(prefix) :]
+        return parts[0] if len(parts) > 1 else PurePosixPath(path).stem
+
+    modules = sorted({module_of(path) for path in files})
+    patterns = {module: _names_pattern([module]) for module in modules}
+    edges: dict[str, set[str]] = {module: set() for module in modules}
+    edge_refs: dict[tuple[str, str], set[str]] = {}
+    for excerpt, text in statements:
+        source = module_of(excerpt.path)
+        for module in modules:
+            if module != source and patterns[module].search(text):
+                edges[source].add(module)
+                edge_refs.setdefault((source, module), set()).add(excerpt.ref)
+
+    cycles = _cycles(edges)
+    refs = {
+        ref
+        for cycle in cycles
+        for (a, b), found in edge_refs.items()
+        if a in cycle and b in cycle
+        for ref in found
+    } or {e.ref for e, _text in statements}
+    where = "/".join(prefix) or "the repository root"
+    return (
+        len(cycles),
+        tuple(sorted(refs)),
+        f"{len(cycles)} import cycle(s) among {len(modules)} top-level module(s) "
+        f"under {where}: "
+        + ("; ".join(" <-> ".join(cycle) for cycle in cycles) or "none")
+        + f". A top-level module is the first directory under the deepest "
+        f"directory shared by the {len(files)} source file(s) quoted here (a file "
+        "directly there is its own module); a cycle is a set of two or more "
+        "modules each reaching the others, counted once; only the import "
+        "statements quoted in this pack are seen; " + _IMPORT_METHOD,
+    )
+
+
+def _common_directory(files: Sequence[str]) -> tuple[str, ...]:
+    parents = [PurePosixPath(path).parent.parts for path in files]
+    common: list[str] = []
+    for parts in zip(*parents, strict=False):
+        if len(set(parts)) != 1:
+            break
+        common.append(parts[0])
+    return tuple(common)
+
+
+def _cycles(edges: Mapping[str, set[str]]) -> list[list[str]]:
+    def reach(start: str) -> set[str]:
+        seen: set[str] = set()
+        stack = list(edges[start])
+        while stack:
+            node = stack.pop()
+            if node not in seen:
+                seen.add(node)
+                stack.extend(edges[node])
+        return seen
+
+    reachable = {node: reach(node) for node in edges}
+    cycles: list[list[str]] = []
+    assigned: set[str] = set()
+    for node in sorted(edges):
+        if node in assigned:
+            continue
+        component = {node} | {m for m in reachable[node] if node in reachable[m]}
+        assigned |= component
+        if len(component) > 1:
+            cycles.append(sorted(component))
+    return cycles
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -572,6 +830,24 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     ),
     MetricDefinition(
         "source_file_share", FAMILY_CODE_SHAPE, WHOLE_SET, _source_file_share
+    ),
+    MetricDefinition(
+        "functions_over_ccn_10_share",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _functions_over_ccn_10_share,
+    ),
+    MetricDefinition(
+        "max_function_ccn", FAMILY_CODE_SHAPE, EVIDENCE_LOCAL, _max_function_ccn
+    ),
+    MetricDefinition(
+        "top_level_import_cycles",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _top_level_import_cycles,
+    ),
+    MetricDefinition(
+        "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
     ),
 )
 

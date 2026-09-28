@@ -24,6 +24,7 @@ from functools import lru_cache
 from .metrics import LanguageTables
 from .registry import Registry, RegistryEntry
 from .roles import _registry
+from .tokens import LanguageSyntax, language_syntax
 
 _NEVER = re.compile(r"(?!)")
 _CLASS = re.compile(r"<((?:[A-Za-z0-9]-[A-Za-z0-9]|[A-Za-z0-9_])+)>")
@@ -41,8 +42,12 @@ def metric_tables(
     entries = [registry.languages[name] for name in sorted(registry.languages)]
     suffixes: dict[str, None] = dict.fromkeys(extra_source_extensions)
     candidates: dict[str, dict[str, None]] = {}
+    syntax: dict[str, LanguageSyntax] = {}
     for entry in entries:
         extensions = _values(entry, "source_extensions")
+        compiled = _syntax(entry)
+        for extension in extensions if compiled else ():
+            syntax.setdefault(extension, compiled)
         suffixes.update(dict.fromkeys(extensions))
         for extension in extensions:
             candidates.setdefault(extension, {}).update(
@@ -73,7 +78,37 @@ def metric_tables(
         )
         if assertions
         else _NEVER,
+        syntax=syntax,
     )
+
+
+_STRUCTURE_FIELDS = (
+    "branch_keywords",
+    "comment_delimiters",
+    "string_delimiters",
+    "function_start",
+    "import_syntax",
+)
+
+
+def _syntax(entry: RegistryEntry) -> LanguageSyntax | None:
+    """``entry``'s structure tokens (T033), or ``None`` if any field is absent:
+    a language missing one gets no structure metrics rather than wrong ones."""
+    if not all(_values(entry, field) for field in _STRUCTURE_FIELDS):
+        return None
+    return language_syntax(
+        entry.name,
+        comments=_values(entry, "comment_delimiters"),
+        strings=_values(entry, "string_delimiters"),
+        branch=_alternation(_values(entry, "branch_keywords")),
+        function_start=_alternation(_values(entry, "function_start")),
+        imports=_alternation(_values(entry, "import_syntax")),
+    )
+
+
+def _alternation(tokens: list[str]) -> re.Pattern[str]:
+    ordered = sorted(dict.fromkeys(tokens), key=len, reverse=True)
+    return re.compile("|".join(token_regex(token) for token in ordered))
 
 
 @lru_cache(maxsize=1)
