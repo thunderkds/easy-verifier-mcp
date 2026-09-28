@@ -66,13 +66,15 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T030)
+
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 812 passed; CLI Go verify pass)
 - [x] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive on ordinary filenames (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths) breaks citations; prerequisite for Wave 10 (guide written 2026-09-28) | backend-developer | C2 | Risk: High | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 758 passed; CLI verify pass)
 
 - [x] **T028** — MCP evaluate gate: abstain/±10% triggers (threshold 0 never borderline), validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | ✅ Done 2026-09-26 — Stage 4 P1 threshold-0 over-gating + P2 unbounded refs fixed `38c4b3f`; 740 passed/2 skipped; live Docker MCP 3-call flow: kitchd, bryony, ai-training all 7/7. Evidence: `tasks/TASK_REVIEW_T028.md`

@@ -78,7 +78,7 @@ src/easy_verifier/
 | **Fingerprint** | The non-reversible replacement for a detected secret: masked prefix + hash prefix. Applied at the evidence layer, before anything leaves the engine. |
 | **Excerpt** | A single citable unit: file path, line range, text. `collect` yields these lazily as `Iterable[Excerpt]`. |
 | **Source role** | A named kind of source a dimension seeks (e.g. *lockfile*, *requirements doc*, *CI workflow*), declared as static data with the glob patterns that fill it. Filled by any matching file in any language. Every role counts in every repository (DDR-0006). |
-| **Ecosystem pattern set** | Extra patterns for existing roles (v1: Python, JS/TS, Rust, Java), auto-activated by manifest files. Data, never a boundary: it may add patterns, never add, remove, or exempt a role. |
+| **Ecosystem pattern set** | Extra patterns for existing roles, now held in the reference registry (T030: Python, JS/TS, Rust, Java, Go, Kotlin, C#, Ruby, PHP), auto-activated by manifest files. Data, never a boundary: it may add patterns, never add, remove, or exempt a role. |
 | **Agent input** | The caller's optional input document to `score`: `picks` (role → files) and `gate_evaluations`. Part of the input for parity (FR-022); replayable via CLI `--agent-input`. |
 | **Hard gate** | A point where rules cannot settle the answer and MCP `score` asks the calling agent via `needs_input`: *detect* (an unfilled role has candidate files) or *evaluate* (rules abstain, or a metric is within ±10% of its threshold). |
 | **Gate evaluation** | The agent's answer at an evaluate gate: score 0–100, confidence 0–1, ≥1 resolving evidence ref. Accepted only for a gated dimension. |
