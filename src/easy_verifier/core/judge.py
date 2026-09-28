@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -62,6 +62,11 @@ PROJECT_DEFAULT = "project-default"
 
 CURATED = "curated"
 """Source tag of every rule shipped in this package (FR-048, curated half)."""
+
+LOCAL_TAGS = ("agent-researched (unreviewed)", "user-supplied")
+"""Tags a rating input may carry when built on local-layer registry data
+(T036). Equal to ``registry.LOCAL_TAGS`` (pinned by a test); spelled out so
+this module keeps its arithmetic-only imports."""
 
 
 @dataclass(frozen=True)
@@ -299,6 +304,11 @@ class RatingInput:
     metric_citation: tuple[Citation, ...]
     threshold_citation: Citation | str
     source_tag: str
+    """The rule's tag (``curated``) unless the metric was computed with
+    local-layer registry data for a language in the pack; then the least
+    reviewed local tag used (T036, FR-048)."""
+    registry_citations: tuple[Citation, ...] = ()
+    """The links behind that local registry data; empty when ``curated``."""
 
     def __post_init__(self) -> None:
         _validate_rating_input(self)
@@ -318,6 +328,11 @@ class RatingInput:
             if self.threshold_citation == PROJECT_DEFAULT
             else self.threshold_citation.to_dict(),
             "source_tag": self.source_tag,
+            **(
+                {"registry_citations": [c.to_dict() for c in self.registry_citations]}
+                if self.registry_citations
+                else {}
+            ),
         }
 
 
@@ -539,8 +554,19 @@ class OverallRating:
         return _serialize(self.to_dict())
 
 
-def rate(metrics: MetricSet, coverage: CoverageSummary) -> Rating | RatingAbstention:
-    """Rate exactly one dimension represented by ``metrics`` and ``coverage``."""
+def rate(
+    metrics: MetricSet,
+    coverage: CoverageSummary,
+    *,
+    registry_sources: Mapping[str, tuple[str, tuple[Citation, ...]]] | None = None,
+) -> Rating | RatingAbstention:
+    """Rate exactly one dimension represented by ``metrics`` and ``coverage``.
+
+    ``registry_sources`` maps a metric name to the local-layer tag and links
+    its computation used (``metric_tables.registry_sources``, T036); that
+    input then carries them instead of ``curated``.
+    """
+    registry_sources = registry_sources or {}
     _validate_declared_data()
     dimension = _dimension_of(metrics, coverage)
     _validate_single_dimension_coverage(coverage, dimension)
@@ -623,6 +649,7 @@ def rate(metrics: MetricSet, coverage: CoverageSummary) -> Rating | RatingAbsten
             continue
         _validate_finite_number(item.outcome, f"metric {name!r} outcome")
         passed = _passes(item.outcome, rule)
+        tag, local_citations = registry_sources.get(name, (rule.source_tag, ()))
         inputs.append(
             RatingInput(
                 metric_name=name,
@@ -635,7 +662,8 @@ def rate(metrics: MetricSet, coverage: CoverageSummary) -> Rating | RatingAbsten
                 computed_from=item.computed_from,
                 metric_citation=rule.metric_citation,
                 threshold_citation=rule.threshold_citation,
-                source_tag=rule.source_tag,
+                source_tag=tag,
+                registry_citations=local_citations,
             )
         )
 
@@ -1124,6 +1152,14 @@ def _validate_rating_input(value: RatingInput) -> None:
         raise ValueError(
             f"rating input for {value.metric_name!r} does not match its declared rule"
         )
+    if type(value.registry_citations) is not tuple:
+        raise ValueError("rating input registry_citations must be a tuple")
+    for citation in value.registry_citations:
+        _validate_citation(citation, "rating input registry_citations")
+    if value.source_tag in LOCAL_TAGS and not value.registry_citations:
+        raise ValueError("a local-layer source_tag needs its registry_citations")
+    if value.source_tag not in LOCAL_TAGS and value.registry_citations:
+        raise ValueError("registry_citations need a local-layer source_tag")
     if type(value.passed) is not bool:
         raise ValueError("rating input passed must be a boolean")
     expected_earned = value.weight if value.passed else 0
@@ -1155,7 +1191,9 @@ def _matches_rule(value: RatingInput, rule: RatingRule) -> bool:
         and value.comparison == rule.comparison
         and value.metric_citation == rule.metric_citation
         and value.threshold_citation == rule.threshold_citation
-        and value.source_tag == rule.source_tag
+        # The rule itself stays curated (validated with the rule data); an
+        # input may instead carry the local tag of the data it was built on.
+        and (value.source_tag == rule.source_tag or value.source_tag in LOCAL_TAGS)
     )
 
 

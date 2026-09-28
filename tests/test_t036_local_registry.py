@@ -495,6 +495,7 @@ def test_replay_from_report_is_byte_equal_on_empty_machine(tmp_path, kotlin_repo
     replay_input.write_text(html.unescape(embedded))
     assert len(json.loads(replay_input.read_text())["registry_entries"]) == 2
     assert "agent-researched (unreviewed)" in document and KOTEST in document
+    assert f'registry data: <a href="{KOTEST}" rel="noreferrer">' in document
 
     replayed = cli(
         "score", *common, "--agent-input", str(replay_input), sot_dir=machine_b
@@ -505,3 +506,116 @@ def test_replay_from_report_is_byte_equal_on_empty_machine(tmp_path, kotlin_repo
     # Machine B without the replay entries scores differently: the replay did it.
     bare = cli("score", *common, sot_dir=tmp_path / "c-sot")
     assert bare.stdout != original.stdout
+
+
+# --------------------------------------------------------------------------
+# AC 4: per rule input tag + link (field -> metric provenance)
+# --------------------------------------------------------------------------
+
+
+def rating_inputs(result, dimension: str) -> dict[str, dict]:
+    (rating,) = [r for r in result.to_dict()["ratings"] if r["dimension"] == dimension]
+    return {item["metric_name"]: item for item in rating["inputs"]}
+
+
+def test_input_built_on_local_assertion_is_tagged_with_link(sot, kotlin_repo):
+    result = score_repository(
+        kotlin_repo, scope="project", agent_input={"registry_entries": [entry()]}
+    )
+    inputs = rating_inputs(result, "test-strategy")
+    tagged = inputs["assertion_density_per_test"]
+    assert tagged["source_tag"] == "agent-researched (unreviewed)"
+    assert tagged["registry_citations"] == [
+        {"label": "kotlin.assertions", "url": KOTEST}
+    ]
+    # The rule's own citations are still shown beside the local data.
+    assert tagged["metric_citation"]
+    unrelated = inputs["test_config_and_ci_missing"]
+    assert unrelated["source_tag"] == "curated"
+    assert "registry_citations" not in unrelated
+
+
+def test_without_local_data_every_input_stays_curated(sot, kotlin_repo):
+    result = score_repository(kotlin_repo, scope="project")
+    tags = {
+        item["source_tag"]
+        for rating in result.to_dict()["ratings"]
+        for item in rating.get("inputs", ())
+    }
+    assert tags == {"curated"}
+
+
+def test_least_reviewed_tag_wins_and_all_links_listed(sot, kotlin_repo):
+    user_url = "https://kotest.io/docs/assertions/core-matchers.html"
+    items = [
+        entry(
+            value=["shouldContain"], source_tag="user-supplied", citation_url=user_url
+        ),
+        entry(),
+    ]
+    result = score_repository(
+        kotlin_repo, scope="project", agent_input={"registry_entries": items}
+    )
+    tagged = rating_inputs(result, "test-strategy")["assertion_density_per_test"]
+    assert tagged["source_tag"] == "agent-researched (unreviewed)"
+    assert [c["url"] for c in tagged["registry_citations"]] == sorted(
+        [KOTEST, user_url]
+    )
+    only_user = score_repository(
+        kotlin_repo, scope="project", agent_input={"registry_entries": items[:1]}
+    )
+    # machine A still holds the agent entry from the call above
+    assert (
+        rating_inputs(only_user, "test-strategy")["assertion_density_per_test"][
+            "source_tag"
+        ]
+        == "agent-researched (unreviewed)"
+    )
+
+
+def test_language_absent_from_pack_does_not_tag(sot, tmp_path):
+    repo = tmp_path / "pyrepo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "pyproject.toml").write_text("[project]\nname='x'\n")
+    (repo / "tests/test_a.py").write_text("def test_a():\n    assert 1\n")
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    result = score_repository(
+        repo, scope="project", agent_input={"registry_entries": [entry()]}
+    )
+    tagged = rating_inputs(result, "test-strategy")["assertion_density_per_test"]
+    assert tagged["source_tag"] == "curated"
+
+
+def test_provenance_map_covers_registry_fields_and_real_metrics():
+    from easy_verifier.core import judge
+    from easy_verifier.core.metric_tables import FIELD_METRICS, ROLE_METRICS
+    from easy_verifier.core.metrics import METRIC_NAMES
+
+    assert set(FIELD_METRICS) == set(reg.ENTRY_FIELDS) - {"manifests"}
+    named = {m for ms in (*FIELD_METRICS.values(), *ROLE_METRICS.values()) for m in ms}
+    assert named <= set(METRIC_NAMES)
+    assert set(ROLE_METRICS) <= set(GENERIC_PATTERNS)
+    assert judge.LOCAL_TAGS == reg.LOCAL_TAGS
+
+
+def test_judge_pins_tag_and_citations_together(sot, kotlin_repo):
+    import dataclasses
+
+    from easy_verifier.core.judge import Citation, RatingInput
+
+    result = score_repository(
+        kotlin_repo, scope="project", agent_input={"registry_entries": [entry()]}
+    )
+    (rating,) = [r for r in result.ratings if r.dimension == "test-strategy"]
+    tagged = next(i for i in rating.inputs if i.registry_citations)
+    assert type(tagged) is RatingInput
+    with pytest.raises(ValueError, match="needs its registry_citations"):
+        dataclasses.replace(tagged, registry_citations=())
+    with pytest.raises(ValueError, match="need a local-layer source_tag"):
+        dataclasses.replace(tagged, source_tag="curated")
+    with pytest.raises(ValueError, match="does not match its declared rule"):
+        dataclasses.replace(tagged, source_tag="made-up")
+    with pytest.raises(ValueError, match="https"):
+        dataclasses.replace(
+            tagged, registry_citations=(Citation("x", "http://kotest.io"),)
+        )

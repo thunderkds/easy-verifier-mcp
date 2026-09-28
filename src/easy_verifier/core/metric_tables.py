@@ -17,12 +17,15 @@ count as source without any language-specific test rule.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from fnmatch import translate
+from pathlib import PurePosixPath
 
+from .judge import Citation
 from .metrics import LanguageTables, SinkPattern
-from .registry import Registry, RegistryEntry
-from .roles import _registry
+from .models import CombinedPack
+from .registry import AGENT_RESEARCHED, CURATED, LOCAL_TAGS, Registry, RegistryEntry
+from .roles import _config_matcher, _registry
 from .tokens import INTERPOLATION_MARK, LanguageSyntax, language_syntax
 
 _NEVER = re.compile(r"(?!)")
@@ -151,6 +154,106 @@ def curated_metric_tables() -> LanguageTables:
 _compiled: tuple[Registry, LanguageTables] | None = None
 
 
+_TEST_MATCH = (
+    "test_to_source_ratio",
+    "source_files_without_covering_test",
+    "source_files_without_covering_test_share",
+    "source_file_share",
+)
+_ASSERTIONS = ("assertion_density_per_test", "assertions_observed")
+_CCN = ("functions_over_ccn_10_share", "max_function_ccn")
+_IMPORTS = ("top_level_import_cycles", "max_fan_in_changed")
+_SINKS = ("sink_hits_observed",)
+
+FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
+    "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS,
+    "test_name_patterns": _TEST_MATCH + _ASSERTIONS,
+    "test_candidates": _TEST_MATCH[1:3],
+    "test_declarations": _ASSERTIONS[:1],
+    "assertions": _ASSERTIONS,
+    "branch_keywords": _CCN,
+    "comment_delimiters": _CCN + _IMPORTS + _SINKS,
+    "string_delimiters": _CCN + _IMPORTS + _SINKS,
+    "interpolating_strings": _SINKS,
+    "function_start": _CCN,
+    "import_syntax": _IMPORTS,
+    "security_sinks": _SINKS,
+}
+"""Which metrics each registry field feeds (T036, FR-048): a metric computed
+over a pack holding a language whose field has local-layer values carries
+their tag and links. ``manifests`` feeds no metric directly; it activates a
+language's ``roles.*`` globs, which are tracked by :data:`ROLE_METRICS`."""
+
+ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
+    "lint-config": ("lint_config_missing",),
+    "format-config": ("format_config_missing",),
+    "lockfile": ("lockfile_missing",),
+    "test-config": ("test_config_and_ci_missing",),
+    "ci-workflow": ("test_config_and_ci_missing",),
+    "architecture-doc": ("architecture_description_missing",),
+    "decision-record": ("decision_records_missing",),
+}
+"""Role-presence metrics per role: a local ``roles.<role>`` glob matching a
+file in the pack tags them."""
+
+_TAG_ORDER = (AGENT_RESEARCHED, *(tag for tag in LOCAL_TAGS if tag != AGENT_RESEARCHED))
+"""Least reviewed first: an input built on several local tags shows this one."""
+
+
+def registry_sources(
+    packs: CombinedPack, registry: Registry
+) -> dict[str, dict[str, tuple[str, tuple[Citation, ...]]]]:
+    """Per dimension, per metric: the local tag and links it was built on.
+
+    A language counts as present in a pack when a file the pack read or
+    quoted has one of its source extensions; a local role glob counts when
+    it matches such a file. Metrics with no local data are absent (curated).
+    """
+    result: dict[str, dict[str, tuple[str, tuple[Citation, ...]]]] = {}
+    for slot in packs.slots:
+        if slot.pack is None:
+            continue
+        files = set(slot.pack.files_read) | {e.path for e in slot.pack.excerpts}
+        suffixes = {PurePosixPath(path).suffix for path in files}
+        # metric -> tag -> {(label, url)}
+        used: dict[str, dict[str, set[tuple[str, str]]]] = {}
+
+        def add(used, metrics: tuple[str, ...], cited, label: str) -> None:
+            for metric in metrics:
+                used.setdefault(metric, {}).setdefault(cited.source_tag, set()).add(
+                    (label, cited.citation_url)
+                )
+
+        for name, entry in registry.languages.items():
+            extensions = set(_values(entry, "source_extensions"))
+            present = bool(extensions & suffixes)
+            for field, cited_values in entry.fields.items():
+                for cited in cited_values:
+                    if present and cited.source_tag != CURATED:
+                        add(
+                            used, FIELD_METRICS.get(field, ()), cited, f"{name}.{field}"
+                        )
+            for role, cited_values in entry.roles.items():
+                for cited in cited_values:
+                    if cited.source_tag == CURATED or role not in ROLE_METRICS:
+                        continue
+                    match = _config_matcher(cited.value)
+                    if any(match(path) for path in files):
+                        add(used, ROLE_METRICS[role], cited, f"{name}.roles.{role}")
+        if used:
+            result[slot.dimension] = {
+                metric: (
+                    next(tag for tag in _TAG_ORDER if tag in tags),
+                    tuple(
+                        Citation(label=label, url=url)
+                        for label, url in sorted(set().union(*tags.values()))
+                    ),
+                )
+                for metric, tags in sorted(used.items())
+            }
+    return result
+
+
 def token_regex(token: str) -> str:
     """Translate one registry code token (syntax in ``core/registry.py``).
 
@@ -200,4 +303,11 @@ def _union(entries: list[RegistryEntry], field: str) -> list[str]:
     return list(dict.fromkeys(v for entry in entries for v in _values(entry, field)))
 
 
-__all__ = ["curated_metric_tables", "metric_tables", "token_regex"]
+__all__ = [
+    "FIELD_METRICS",
+    "ROLE_METRICS",
+    "curated_metric_tables",
+    "metric_tables",
+    "registry_sources",
+    "token_regex",
+]

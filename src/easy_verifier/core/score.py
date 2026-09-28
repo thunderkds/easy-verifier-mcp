@@ -30,7 +30,7 @@ from .judge import (
     rate,
     rate_overall,
 )
-from .metric_tables import curated_metric_tables
+from .metric_tables import curated_metric_tables, registry_sources
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
@@ -184,9 +184,15 @@ def score_packs(
             + (", ".join(actual) or "none")
         )
 
+    registry = _registry()
     metrics = compute_metrics(packs, curated_metric_tables())
+    sources = registry_sources(packs, registry)
     rules_ratings = tuple(
-        rate(_metrics_for(metrics, dimension), _coverage_for(packs, dimension))
+        rate(
+            _metrics_for(metrics, dimension),
+            _coverage_for(packs, dimension),
+            registry_sources=sources.get(dimension),
+        )
         for dimension in expected
     )
     ratings = (
@@ -217,7 +223,7 @@ def score_packs(
         assessments,
         comparisons,
         provenance,
-        registry_entries=_registry().local_entries(),
+        registry_entries=registry.local_entries(),
     )
 
 

@@ -585,7 +585,12 @@ def _render_rating_input(ctx: _Ctx, item) -> str:
         + ", ".join(_render_citation(ctx, c) for c in item.metric_citation)
         + "; threshold: "
         + _render_citation(ctx, item.threshold_citation)
-        + f"; source: {ctx.esc(item.source_tag)}</p>"
+        + f"; source: {ctx.esc(item.source_tag)}"
+        + "".join(
+            f"; registry data: {_render_citation(ctx, c)}"
+            for c in item.registry_citations
+        )
+        + "</p>"
         f"<ul>{refs}</ul></li>"
     )
 
