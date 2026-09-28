@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.adapters import mcp_server
-from easy_verifier.core import gate
+from easy_verifier.core import gate, metric_tables
 from easy_verifier.core import registry as reg
 from easy_verifier.core.roles import GENERIC_PATTERNS, _registry
 from easy_verifier.core.score import score_repository
@@ -234,8 +234,25 @@ def test_mcp_no_framework_no_reference(tmp_path):
 
 
 def test_optional_fields_are_never_required():
-    assert set(gate.OPTIONAL_FIELDS) == {"interpolating_strings", "test_candidates"}
+    assert set(gate.OPTIONAL_FIELDS) == {
+        "interpolating_strings",
+        "test_candidates",
+        "colocated_test_name_patterns",
+    }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
+
+
+def test_every_field_metric_is_curated_everywhere_or_declared_optional():
+    """A field the metric code reads must be either curated for all nine
+    languages or listed in OPTIONAL_FIELDS — otherwise a language missing it
+    silently trips the reference gate (T054)."""
+    languages = _registry().languages
+    assert len(languages) == 9
+    for field in metric_tables.FIELD_METRICS:
+        curated_everywhere = all(field in entry.fields for entry in languages.values())
+        assert curated_everywhere or field in gate.OPTIONAL_FIELDS, (
+            f"{field}: not curated for all languages and not in OPTIONAL_FIELDS"
+        )
 
 
 def _without(field: str):
@@ -266,6 +283,7 @@ def _numeric(result, metrics) -> int:
     [
         ("interpolating_strings", True),
         ("test_candidates", True),
+        ("colocated_test_name_patterns", True),
         ("function_start", False),
     ],
 )
@@ -274,12 +292,15 @@ def test_optional_fields_really_are_optional_in_metric_code(
 ):
     from easy_verifier.core import metric_tables, score
 
+    # The test file sits under a directory-evidenced ``test/`` root (not
+    # colocated with its source) so directory evidence alone classifies it,
+    # independent of colocated_test_name_patterns (T054).
     repo = _write(
         tmp_path,
         {
             "package.json": _package(),
             "src/app.js": "function f(a) {\n  if (a) { return eval(a); }\n}\n",
-            "src/app.test.js": "it('f', () => { expect(1).toBe(1); });\n",
+            "test/app.test.js": "it('f', () => { expect(1).toBe(1); });\n",
         },
     )
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
