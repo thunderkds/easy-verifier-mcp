@@ -1,4 +1,4 @@
-# TASK_REVIEW — T031: [Short Title]
+# TASK_REVIEW — T031: Metrics read test naming, declarations and assertions from the registry
 
 > Sibling of `tasks/TASK_GUIDE_T031.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,26 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer on the pre-implementation commit (`ee5b2ac`), driving
+`core.metrics.compute_metrics` over hand-built packs per language
+(script: one pack per fixture, printing three test-strength metrics):
+
+```text
+$ date -u; git rev-parse --short HEAD; PYTHONPATH=src python demo_t031.py
+2026-09-28T05:26:14Z
+ee5b2ac
+Kotlin Foo.kt + src/test/kotlin/FooTest.kt: {'source_files_without_covering_test': 1, 'assertions_observed': 1, 'assertion_density_per_test': 1.0}
+PHP src/Foo.php + tests/FooTest.php: {'source_files_without_covering_test': 1, 'assertions_observed': 1, 'assertion_density_per_test': 'ABSTAINED'}
+Go calc.go + calc_test.go (t.Errorf): {'source_files_without_covering_test': 0, 'assertions_observed': 0, 'assertion_density_per_test': 0.0}
+RSpec spec/calc_spec.rb (it "x" do): {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 'ABSTAINED'}
+C# tests/CalcTests.cs ([Fact]): {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 'ABSTAINED'}
+exit=0
+```
+
+Gaps visible above: Kotlin `Foo.kt` reported uncovered (1) although `src/test/kotlin/FooTest.kt`
+exists; PHP `src/Foo.php` uncovered (1) and `public function testAdds` not a declaration
+(density abstains); Go `t.Errorf` counts 0 assertions (density 0.0); RSpec `it "adds" do` and
+C# `[Fact]` are not test declarations (density abstains).
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
