@@ -64,7 +64,6 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T032** — Build-time vendoring of Linguist, OWASP ASVS, MITRE CWE (version-pinned, no runtime network) | common-infrastructure | C1 | Risk: Low | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T032)
 - [~] **T031** — Metrics read test naming, declarations and assertions from the registry (Kotlin/PHP/Go/RSpec/C# gaps) | backend-developer | C2 | Risk: Med | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T031)
 
 ### Ready for Review
@@ -72,6 +71,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 _(empty)_
 
 ### Done
+- [x] **T032** — Build-time vendoring of Linguist, OWASP ASVS, MITRE CWE (version-pinned, no runtime network) | common-infrastructure | C1 | Risk: Low | P1 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 840 passed; --check pass)
 - [x] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 812 passed; CLI Go verify pass)
 - [x] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive on ordinary filenames (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths) breaks citations; prerequisite for Wave 10 (guide written 2026-09-28) | backend-developer | C2 | Risk: High | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 758 passed; CLI verify pass)
 
