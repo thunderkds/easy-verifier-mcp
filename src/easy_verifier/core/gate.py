@@ -507,7 +507,7 @@ def _declared(name: str, text: str, keys: Sequence[str]) -> set[str]:
     if name.endswith(".json"):
         try:
             data = json.loads(text)
-        except ValueError:
+        except (ValueError, RecursionError):  # hostile nesting too
             return set()
         if not isinstance(data, dict):
             return set()

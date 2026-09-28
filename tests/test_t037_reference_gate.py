@@ -369,3 +369,8 @@ def test_reference_never_enters_the_shared_payload(express_repo):
     assert result.reference is not None
     assert "needs_input" not in result.to_dict()
     assert '"instructions"' not in result.serialize()
+
+
+def test_hostile_json_manifest_never_crashes_detection(tmp_path):
+    repo = _write(tmp_path, {"package.json": "[" * 200_000})
+    assert gate.detect_stack(repo, _registry())["frameworks"] == []
