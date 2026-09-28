@@ -169,3 +169,14 @@ def test_no_git_subprocess_in_src_bypasses_the_runner() -> None:
             ) or re.search(r"""["']git["']\s*,""", code):
                 offenders.append(f"{path.relative_to(SRC)}:{number}: {line.strip()}")
     assert offenders == []
+
+
+def test_runner_environment_is_explicit_and_hardened() -> None:
+    # Defence in depth beside `core.hooksPath`: no index rewrite (so no index
+    # hook), no system config, never a prompt, and nothing inherited.
+    from easy_verifier.core.git import _SAFE_ENV
+
+    assert _SAFE_ENV["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert _SAFE_ENV["GIT_TERMINAL_PROMPT"] == "0"
+    assert _SAFE_ENV["GIT_OPTIONAL_LOCKS"] == "0"
+    assert "HOME" not in _SAFE_ENV

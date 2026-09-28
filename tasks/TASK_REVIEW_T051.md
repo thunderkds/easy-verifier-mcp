@@ -178,3 +178,39 @@ Runtime (bryony, same machine, back to back): pre-T051 `/tmp/claude-1000/-home-h
 **DELTA**: security's `redaction_hits_observed` no longer counts sha/integrity digests in lock files, `def test_…`/SCREAMING_CASE identifiers, or anything in git-ignored files, so the 40-weight rule now reflects secret-shaped content (4-repo total 784 → 125) while every existing secret test still passes.
 
 **WITNESS**: [reviewer — derive from `memory/event-trace/T051.jsonl`]
+
+### Stage 4 P0 follow-up — safe git runner (NFR-007), implementer evidence
+
+Every git subprocess in `src/` now runs through `src/easy_verifier/core/git.py` (`run_git` / `run_git_text`), used by `scope._run_git`, `context.git_ignore_filter` and `blast_radius._run_git`. The runner adds `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c diff.external= -c core.pager=cat -c protocol.allow=never`, blanks each configured `filter.<driver>.clean/smudge/process` (with `required=false`; driver names are read first with `git config --get-regexp`), puts `--no-ext-diff --no-textconv` on diff/log/show, and uses an explicit env (`GIT_CONFIG_NOSYSTEM=1`, `GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0`, `PATH=os.defpath`, no `HOME`). It runs with no shell, stdin closed and a 120 s timeout. The commands that run and their parsed output are unchanged.
+
+Tests (`tests/test_t051_safe_git.py`): an armed fixture repo (fsmonitor, diff.external, diff.<drv>.textconv/command, filter.<drv>.clean/smudge required, core.pager, index/checkout hooks → marker script outside the repo). A positive control shows plain `git status` fires the marker. The real CLI `score` for project, worktree and `changes --range HEAD` (all 7 dimensions, so blast-radius is included; `</dev/null`) must never create the marker. A command-shape pin, an env pin, and a grep test (no `subprocess`/`os.system`/`"git",` outside `core/git.py`). `tests/test_t010_blast_radius.py` structural test repointed: the one `subprocess.run` moved from `blast_radius.py` to `core/git.py`.
+
+Sabotage (each defence removed on a copy, `tests/test_t051_safe_git.py` re-run):
+```
+CAUGHT | fsmonitor override removed | 4 failed, 3 passed in 0.72s | ['test_cli_score_never_executes_repo_config_programs[scope_args0]', 'test_cli_score_never_executes_repo_config_programs[scope_args1]', 'test_cli_score_n
+CAUGHT | filter overrides removed | 1 failed, 6 passed in 0.60s | ['test_cli_score_never_executes_repo_config_programs[scope_args1]']
+CAUGHT | --no-ext-diff/--no-textconv removed | 2 failed, 5 passed in 0.68s | ['test_cli_score_never_executes_repo_config_programs[scope_args2]', 'test_runner_command_carries_every_defence']
+CAUGHT | diff.external override removed | 1 failed, 6 passed in 0.67s | ['test_runner_command_carries_every_defence']
+CAUGHT | GIT_OPTIONAL_LOCKS removed | 1 failed, 6 passed in 0.66s | ['test_runner_environment_is_explicit_and_hardened']
+CAUGHT | bypass: scope calls subprocess directly | 3 failed, 4 passed in 0.67s | ['test_cli_score_never_executes_repo_config_programs[scope_args1]', 'test_cli_score_never_executes_repo_config_programs[scope_args2]', 'tes
+```
+The CLI marker tests catch: fsmonitor (all 3 scopes), the filter blanking (worktree `status`, which re-hashes a same-size file with a new mtime), and `--no-textconv`/`--no-ext-diff` (changes-scope `diff`). `diff.external=`, `hooksPath` and `GIT_OPTIONAL_LOCKS` overlap with those as defence in depth, so only the shape/env pins catch their removal.
+
+Verification: `pytest -q` → `1175 passed, 2 skipped in 41.79s` (exit 0); `ruff check src tests` → All checks passed! (exit 0).
+
+4-repo sanity after the P0 fix (same CLI command, 2026-09-28T12:46Z):
+```
+2026-09-28T12:46:15Z start easy-verifier-mcp b6b67f0
+2026-09-28T12:46:16Z end easy-verifier-mcp exit=0
+2026-09-28T12:46:16Z start kitchd 872cc92
+2026-09-28T12:46:18Z end kitchd exit=0
+2026-09-28T12:46:18Z start bryony 8df7b986f
+2026-09-28T12:46:25Z end bryony exit=0
+2026-09-28T12:46:25Z start ai-training 86c98d5
+2026-09-28T12:46:26Z end ai-training exit=0
+easy-verifier-mcp {'redaction_hits_observed': 20} security rating: 50 overall: 75
+kitchd {'redaction_hits_observed': 59} security rating: 60 overall: 90
+bryony {'redaction_hits_observed': 14} security rating: 60 overall: 78
+ai-training {'redaction_hits_observed': 31} security rating: 60 overall: 70
+```
+kitchd, bryony and ai-training are identical to the AFTER capture above in every metric and rating. easy-verifier-mcp shows 21 → 20, but only because the main checkout moved (`3ff6dda` → `b6b67f0`). Pre-P0 source (`728a435`) on the same `b6b67f0` checkout also gives **20**.
