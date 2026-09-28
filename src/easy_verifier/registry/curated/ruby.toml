@@ -119,3 +119,39 @@ source_tag = "curated"
 value = ["require", "require_relative"]
 citation_url = "https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( ?", "eval ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["system ( ?", "IO.popen ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".where ( +", ".execute ( +", ".find_by_sql ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" #{"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/literals_rdoc.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".where ( <INTERP>", ".execute ( <INTERP>", ".find_by_sql ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

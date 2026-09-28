@@ -154,3 +154,25 @@ source_tag = "curated"
 value = ["import"]
 citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-7.html#jls-7.5"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = [".eval ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Runtime.getRuntime ( ) .exec ("]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".executeQuery ( +", ".executeUpdate ( +", ".execute ( +", ".prepareStatement ( +", ".executeQuery ( String.format ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

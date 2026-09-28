@@ -144,3 +144,25 @@ source_tag = "curated"
 value = ["import", "from"]
 citation_url = "https://docs.python.org/3/reference/simple_stmts.html#the-import-statement"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( ?", "exec ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["os.system ( ?", "os.system ( +", "os.popen ( ?", "shell = True"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".execute ( f", ".execute ( %", ".execute ( +", ".execute ( .format ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

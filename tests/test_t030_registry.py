@@ -116,7 +116,10 @@ def test_every_curated_field_carries_value_https_citation_and_curated_tag(
     fields = list(_cited_fields(data))
     assert fields, language
     for name, field in fields:
-        assert set(field) == {"value", "citation_url", "source_tag"}, (language, name)
+        keys = {"value", "citation_url", "source_tag"}
+        if name == "security_sinks":  # T034: a sink item also names its CWE
+            keys.add("cwe")
+        assert set(field) == keys, (language, name)
         assert field["value"] and all(isinstance(v, str) for v in field["value"])
         assert field["citation_url"].startswith("https://"), (language, name)
         assert field["source_tag"] == "curated", (language, name)

@@ -100,3 +100,39 @@ source_tag = "curated"
 value = ["import"]
 citation_url = "https://kotlinlang.org/docs/packages.html#imports"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = [".eval ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Runtime.getRuntime ( ) .exec ("]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".executeQuery ( +", ".rawQuery ( +", ".execSQL ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" $", "\"\"\" $"]
+citation_url = "https://kotlinlang.org/docs/strings.html#string-templates"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".rawQuery ( <INTERP>", ".execSQL ( <INTERP>", ".executeQuery ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

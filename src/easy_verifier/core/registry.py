@@ -43,6 +43,22 @@ The structure fields (T033) are read by ``core/tokens.py`` through
 * ``function_start`` / ``import_syntax`` — code tokens marking a line that
   starts a function / an import statement; matched anywhere in the line.
 
+The security field (T034) is read by ``core/metric_tables.py``:
+
+* ``security_sinks`` — code tokens marking a dangerous sink; each item also
+  carries ``cwe = "CWE-<n>"``, the weakness its tokens are a sink for. Tokens
+  are matched after comments and strings are blanked, so a string literal
+  shows only as whitespace (``execute( f`` is an f-string passed to
+  ``execute``; ``execute( +`` a literal concatenated there). A token starting
+  with an identifier character does not match right after ``.``, ``>`` or
+  ``$`` (a method of some other object, or a variable). ``<INTERP>`` in a
+  token matches a string literal that embeds an expression (below);
+* ``interpolating_strings`` — ``"X Y"``: a string literal opened by the
+  ``string_delimiters`` opener ``X`` embeds an expression where ``Y`` occurs
+  in it, e.g. ``"` ${"``. Such a literal is still blanked, but leaves one
+  mark at its start; a ``Y`` ending in ``$`` counts only before a name or
+  ``{``.
+
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
 """
@@ -84,12 +100,16 @@ ENTRY_FIELDS = (
     "string_delimiters",
     "function_start",
     "import_syntax",
+    "security_sinks",
+    "interpolating_strings",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
 _DELIMITER = re.compile(r"^[^\s\\]{1,4}( [^\s\\]{1,4})?$")
 
-_DELIMITER_FIELDS = frozenset({"comment_delimiters", "string_delimiters"})
+_DELIMITER_FIELDS = frozenset(
+    {"comment_delimiters", "string_delimiters", "interpolating_strings"}
+)
 """Code punctuation such as ``//``, not paths: exempt from the path checks."""
 
 _VALUE_SHAPES = {
@@ -104,10 +124,17 @@ _VALUE_SHAPES = {
     ),
     "comment_delimiters": (_DELIMITER, "a delimiter X or an open/close pair X Y"),
     "string_delimiters": (_DELIMITER, "a delimiter X or an open/close pair X Y"),
+    "interpolating_strings": (
+        re.compile(r"^[^\s\\]{1,4} [^\s\\]{1,4}$"),
+        "a string opener X and an interpolation opener Y, as X Y",
+    ),
 }
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
 
 _CITED_KEYS = {"value", "citation_url", "source_tag"}
+_CWE = re.compile(r"^CWE-[1-9][0-9]{0,5}$")
+_CWE_FIELDS = frozenset({"security_sinks"})
+"""Fields whose items also carry a ``cwe`` key (required there, nowhere else)."""
 _ENTRY_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
@@ -118,6 +145,8 @@ class CitedValue:
     value: tuple[str, ...]
     citation_url: str
     source_tag: str
+    cwe: str | None = None
+    """The weakness a ``security_sinks`` item's tokens are a sink for."""
 
 
 @dataclass(frozen=True)
@@ -342,6 +371,7 @@ def _cited_values(field: str, raw: object, errors: list[str]) -> tuple[CitedValu
                     value=tuple(item["value"]),
                     citation_url=item["citation_url"],
                     source_tag=item["source_tag"],
+                    cwe=item.get("cwe"),
                 )
             )
     return tuple(result)
@@ -350,12 +380,17 @@ def _cited_values(field: str, raw: object, errors: list[str]) -> tuple[CitedValu
 def _cited_value_problem(item: object, field: str) -> str | None:
     if not isinstance(item, dict):
         return "must be a table of value, citation_url, source_tag"
-    missing = sorted(_CITED_KEYS - set(item))
+    keys = _CITED_KEYS | {"cwe"} if field in _CWE_FIELDS else _CITED_KEYS
+    missing = sorted(keys - set(item))
     if missing:
         return f"missing {', '.join(missing)}"
-    extra = sorted(set(item) - _CITED_KEYS)
+    extra = sorted(set(item) - keys)
     if extra:
         return f"unknown key {', '.join(redact(key) for key in extra)}"
+    if "cwe" in keys and not (
+        isinstance(item["cwe"], str) and _CWE.fullmatch(item["cwe"])
+    ):
+        return "cwe: must be a CWE id such as CWE-89"
 
     values = item["value"]
     if not isinstance(values, list) or not values:
