@@ -62,13 +62,15 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T034)
+
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1084 passed; CLI Node sink verify pass)
 - [x] **T050** — Code-quality and architecture packs gather code evidence (source excerpts, import lines); added at T033 Stage 4, blocks T035 | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1022 passed; CLI CCN 11 / cycles 1 verify pass)
 - [x] **T033** — Registry-driven token metrics: approximate CCN, imports, fan-in, cycles | backend-developer | C3 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1008 passed; CCN spot-check pass; code evidence gap → T050)
 - [x] **T031** — Metrics read test naming, declarations and assertions from the registry (Kotlin/PHP/Go/RSpec/C# gaps) | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 926 passed; CLI Kotlin verify pass)
