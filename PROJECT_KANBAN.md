@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
-- [ ] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0
 - [ ] **T031** — Metrics read test naming, declarations and assertions from the registry (Kotlin/PHP/Go/RSpec/C# gaps) | backend-developer | C2 | Risk: Med | P0
 - [ ] **T032** — Build-time vendoring of Linguist, OWASP ASVS, MITRE CWE (version-pinned, no runtime network) | common-infrastructure | C1 | Risk: Low | P1
 - [ ] **T033** — Registry-driven token metrics: approximate CCN, imports, fan-in, cycles | backend-developer | C3 | Risk: Med | P0
@@ -67,8 +66,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-
-_(empty)_
+- [~] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T030)
 
 ### Ready for Review
 

@@ -533,3 +533,15 @@ duplicate `**Txxx**` rows before moving a task.
   returned over MCP. Cap list lengths (20 refs) and error lines (`roles.MAX_ERROR_LINES` = 20).
 - **`docker compose build` retags `easy-verifier-mcp:0.1.0`** with whatever branch is checked out —
   after verifying an unreleased branch, the local `0.1.0` image is no longer the release.
+
+## 2026-09-28 — T029: entropy exemptions tie to position + piece shape; merge hook needs Done first
+
+- **Exempt by where the token sits and what each piece looks like, never by lowering a bar**: the
+  long-token rule skips a candidate only if it is directly followed by a file suffix, has ≥2 pieces,
+  and every piece is a single-case/Capitalized letters-only word. Key-material and hex rules still
+  run on exempt tokens. Give each guard a sabotage test (forcing it open must fail a test).
+- Residual accepted: a letters-only single-case secret joined by `_`/`-`/`/` right before `.ext`.
+- Guide counts go stale fast (T029 guide said 156 paths / 4 hits; real 205 / 6) — sweep tests should
+  read `git ls-files` live, as T029's does.
+- **Pipeline gate**: `pre_bash` blocks `git merge` while the task shows In Progress on the KANBAN.
+  Order is: evidence ready → KANBAN Done commit → evidence commit → merge (T028 precedent).
