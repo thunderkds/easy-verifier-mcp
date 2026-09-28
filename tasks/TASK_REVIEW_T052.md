@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t052_ac_trace_and_churn.py` — AC extraction from TASK_GUIDE tables + PRD FR ids, whole-word traces (FR-027 ≠ FR-027a), docs never count, code/test via shared classifier, bounded TraceSearch summary (counts, ≤20 untraced per kind, ≤30 quoted trace lines), abstain when budget dropped a listed ref or a cap hit, standalone abstains, fan-in only changed targets + abstain when capped, repo-wide churn top-10% ranking, shallow/<20 commits abstain, colocated test names (`src/app.controller.spec.ts` → test, `dimensions/test_strategy.py` → source, Go/Java/Kotlin/C#/Ruby). 14 guards sabotage-caught. Intentional updates: architecture snapshot keys, T010 read bound, T035 abstain test, T031 two-path classification change. Supervisor re-run `1236 passed, 2 skipped in 53.00s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 13:33 UTC: pytest `1236 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Standalone mode keeps an honest abstention ('criteria are never inferred'); project-scope hotspot share abstains by design (10% by construction); prefix-style Python `test_*.py` inside src stays source |
+| verify | ☑ pass | Supervisor real CLI kitchd `score --scope project </dev/null`: requirement-fidelity rates 0 (code share 0.761, test share 0.631 vs threshold 0.80), 5/7 contributors, overall 65 (was 90 at 4/7 under T035 with requirement-fidelity abstaining). Agent AFTER: this repo requirement-fidelity 0 (0.714/0.750); changes scope blast-radius 100 with hotspot share 0.143 (this repo) / 0.0 (kitchd); pack JSON this repo 129→148 KB (+14.8%), kitchd 137→166 KB (+20.9%) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `dimensions/requirement_fidelity.py`, `dimensions/blast_radius.py`, `core/metrics.py`, `core/models.py`, `core/pipeline.py`, `core/context.py`, `core/registry.py` + `metric_tables.py` (colocated_test_name_patterns), `dimensions/test_strategy.py`, 6 curated TOML. Round 1 P1s fixed: unbounded trace_search/reach pack fields (→ compact summary) and colocated `*.spec.ts` counted as source (→ cited colocated patterns win over source dirs). Rulings: FR ids as criteria, drop backticked identifiers, EVIDENCE_LOCAL + completeness check, ≥20 commits, residual files_read growth (+15%/+21%) accepted as honest reads. Integration note: T037 gate must treat `colocated_test_name_patterns` as optional (Python/PHP/Rust omit it on purpose) — checked at merge. All git via core/git.py. Security inline (Med): bounded walks, no new execution paths |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1236 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -265,10 +265,9 @@ S9 FR boundary loosened: CAUGHT -- 1 failed, 30 passed in 1.33s
      test_fr_ids_are_criteria_and_trace_keys_with_exact_boundaries
 ```
 
-**DELTA**: In kit-aware mode requirement-fidelity now rates from cited acceptance-criterion evidence (counts
+**DELTA**: requirement-fidelity now measures how many acceptance criteria and FR ids are traced to code and tests, and blast-radius measures fan-in and repo-wide churn hotspots for changed files, so both dimensions rate instead of always abstaining.
 over every criterion, a bounded cited sample in the pack), and blast-radius at changes scope rates the
 changed files' share of repository-wide churn hotspots, instead of both always abstaining; colocated
 test files (`*.spec.ts`, `*_test.go`, ...) are now tests wherever they sit.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T052.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and the real CLI on kitchd on 2026-09-28 (13:33 UTC), independent of the implementing agent.
