@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.metrics import (
     EVIDENCE_LOCAL,
     FAMILIES,
@@ -31,8 +32,8 @@ from easy_verifier.core.metrics import (
     MetricCitationError,
     allowed_refs,
     check_citations,
-    compute_metrics,
 )
+from easy_verifier.core.metrics import compute_metrics as _compute_metrics
 from easy_verifier.core.models import (
     CombinedPack,
     CoverageSummary,
@@ -44,6 +45,12 @@ from easy_verifier.core.models import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def compute_metrics(pack):
+    """T031: language tables are handed in, built from the curated registry."""
+    return _compute_metrics(pack, curated_metric_tables())
+
 
 TEST_BODY = """
 def test_one():
@@ -435,6 +442,7 @@ def test_metrics_are_byte_identical_across_two_processes():
     script = (
         "import json;"
         "from easy_verifier.core.metrics import compute_metrics;"
+        "from easy_verifier.core.metric_tables import curated_metric_tables;"
         "from easy_verifier.core.models import EvidencePack, Excerpt, TruncationRecord;"
         "pack = EvidencePack(dimension='test-strategy', mode='kit-aware',"
         " scope='project', files_read=('src/widget.py','tests/test_widget.py'),"
@@ -443,7 +451,7 @@ def test_metrics_are_byte_identical_across_two_processes():
         " sources_sought=('a','b'), sources_found=('a',), sources_missing=(),"
         " coverage_score=0.5, truncated=False, omitted_count=0,"
         " truncation=TruncationRecord(False, 0));"
-        "print(compute_metrics(pack).serialize())"
+        "print(compute_metrics(pack, curated_metric_tables()).serialize())"
     )
     runs = [
         subprocess.run(

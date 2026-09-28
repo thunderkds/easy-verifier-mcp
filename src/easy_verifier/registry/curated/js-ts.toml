@@ -74,3 +74,45 @@ source_tag = "curated"
 value = ["package.json"]
 citation_url = "https://docs.npmjs.com/cli/using-npm/scripts"
 source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".js", ".jsx", ".ts", ".tsx"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*.test.js", "?*.spec.js", "?*.test.jsx", "?*.spec.jsx", "?*.test.ts", "?*.spec.ts", "?*.test.tsx", "?*.spec.tsx"]
+citation_url = "https://jestjs.io/docs/configuration#testmatch-arraystring"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}.test{ext}", "{stem}.spec{ext}"]
+citation_url = "https://jestjs.io/docs/configuration#testmatch-arraystring"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}_test{ext}"]
+citation_url = "https://nodejs.org/api/test.html#running-tests-from-the-command-line"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ['it ( "', "it ( '", "it ( `", 'test ( "', "test ( '", "test ( `"]
+citation_url = "https://jestjs.io/docs/api#testname-fn-timeout"
+source_tag = "curated"
+
+[[assertions]]
+value = ["expect ("]
+citation_url = "https://jestjs.io/docs/expect"
+source_tag = "curated"
+
+[[assertions]]
+value = [".should"]
+citation_url = "https://www.chaijs.com/api/bdd/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert"]
+citation_url = "https://nodejs.org/api/assert.html"
+source_tag = "curated"
