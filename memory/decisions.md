@@ -889,3 +889,7 @@ an official source before the user review gate; its calibrated confidence maps t
 early access, run a small agent-side experiment comparing Jev vs the LLM on detect-gate picks
 (accuracy + latency on kitchd/bryony/ai-training); adopt only as a documented optional agent tool if
 it clearly wins. No engine change either way.
+
+### 2026-09-28 — T035 sign-off (user)
+
+- User signed off the new per-dimension cited rules ('Merge + fix tasks') after seeing the 4-repo before/after table and three caveats (4/7 contributors, security noise, test-strategy presence-driven). Follow-ups T051 (redaction false positives, P0/High) and T052 (AC tracing + churn evidence, P1) added.

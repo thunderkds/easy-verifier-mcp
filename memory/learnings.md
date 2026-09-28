@@ -581,3 +581,10 @@ duplicate `**Txxx**` rows before moving a task.
 - T034: interpolating strings are blanked but leave a NUL placeholder (strip(mark_interpolation=True), sink matching only); registry tokens reference it as <INTERP>. P2 carried: require('child_process').exec / destructured exec, fully qualified calls, bracket-less Ruby calls not matched.
 - T050: code-quality carries whole functions (most complex first), architecture carries import lines; all-or-none 200-file cap, so large repos abstain at project scope (raise at T035 sign-off).
 - Merged branch after T033/T034/T050: 1098 passed, 2 skipped.
+
+## 2026-09-28 — T035 signed off by user; follow-ups T051/T052
+
+- User chose 'Merge + fix tasks'. 4-repo overall before→after: easy-verifier 60→75, kitchd 51→90, bryony 63→78, ai-training 61→70, all 4/7 contributors.
+- Overall rose mainly because solution-fit (by design), requirement-fidelity (no AC extraction) and blast-radius (project scope) abstain; T052 fixes the latter two.
+- Security redaction hits were mostly false positives (sha256 hashes in lock files, long test identifiers, git-ignored .claude/ scanned); T051 fixes before security scores can be trusted.
+- Rulings: X-present rules implemented as *_missing metrics with <=0 (a >=1 rule would sit on its threshold and always hit the evaluate gate); report citations are https anchors with rel=noreferrer, T013 oracle distinguishes navigation from resource loads.
