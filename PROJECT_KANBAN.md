@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-26
+**Last updated**: 2026-09-28
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,7 +11,31 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive rewrites ordinary repo paths (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths), making citations to them unresolvable. Found by T026; guide not yet written (run `bugfix` skill) | backend-developer | C2 | Risk: High | P1
+- [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive on ordinary filenames (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths) breaks citations; prerequisite for Wave 10 (guide written 2026-09-28) | backend-developer | C2 | Risk: High | P0
+
+**Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
+- [ ] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0
+- [ ] **T031** — Metrics read test naming, declarations and assertions from the registry (Kotlin/PHP/Go/RSpec/C# gaps) | backend-developer | C2 | Risk: Med | P0
+- [ ] **T032** — Build-time vendoring of Linguist, OWASP ASVS, MITRE CWE (version-pinned, no runtime network) | common-infrastructure | C1 | Risk: Low | P1
+- [ ] **T033** — Registry-driven token metrics: approximate CCN, imports, fan-in, cycles | backend-developer | C3 | Risk: Med | P0
+- [ ] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0
+- [ ] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0
+- [ ] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1
+- [ ] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1
+
+**Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
+- [ ] **T039** — Shared documentation-present rule, overall over N dimensions, area labels | backend-developer | C2 | Risk: Med | P1
+- [ ] **T040** — Area rule groups in existing dimensions (#5, #8, #16, #17, #27, #31) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T044** — New dimension: api (#7) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T045** — New dimension: data (#4) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2
+- [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2
+- [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
@@ -110,7 +134,7 @@ _(empty)_
 | 0.5 Brainstorming | ✅ Done |
 | 1 Environment Setup | ✅ Done |
 | 1.5 Sub-Agent Architecture | ✅ Done |
-| 2 Planning (/plan) | ✅ Done |
-| 3 Execution | 🔄 In Progress (17/22 done) |
+| 2 Planning (/plan) | ✅ Done (Waves 10–11 planned 2026-09-28) |
+| 3 Execution | 🔄 In Progress (20/22 original done; Waves 10–11: 0/21) |
 | 4 Review | 🔄 In Progress |
 | 5 Integration & Verify | 🔄 In Progress |
