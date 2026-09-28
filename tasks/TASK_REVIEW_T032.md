@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t032_vendor_sources.py` — 16 tests covering AC1 (script + filtered snapshot fields), AC2 (per-file source URL/version/commit/retrieval/licence/attribution), AC3 (AST scan of every file under `src/` for `socket`/`http.client`/`urllib.request`; no module under `src/` imports the script), AC4 (total-size budget, `--check` pass/tamper-fail sabotage test) |
+| Verification command run | ☑ pass | `python -m pytest -q` → `828 passed, 2 skipped in 27.82s`. `python -m ruff check src tests scripts` → `All checks passed!`. `python scripts/vendor_sources.py --check` → `OK: 4 vendored file(s) match recorded checksums` |
+| Negative cases hold | ☑ pass | Sabotage test `test_check_fails_on_tampered_snapshot` copies the vendored tree, corrupts `cwe.json`'s bytes, and confirms `--check` returns exit code 1; also manually verified interactively (appended a byte to `cwe.json`, ran `--check`, got `FAIL: ... checksum mismatch`, exit 1) before writing the test |
+| verify | ☑ pass | `python scripts/vendor_sources.py` run live against the real network (Linguist raw GitHub commit `d0921d10bb68a1249fc9eac64e472759f36e2fd8`, OWASP ASVS tag `v5.0.0_release` flat JSON, MITRE CWE `cwec_v4.20.xml.zip`) — surface actually driven, not just unit-tested; produced 4 files, 423062 bytes (428 KB on disk), `--check` re-run and passed — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Touched only `scripts/vendor_sources.py` (new), `src/easy_verifier/registry/vendored/*` (new), `pyproject.toml` (one line, package-data), `tests/test_t032_vendor_sources.py` (new). No file under `Files Must NOT Touch` (`src/easy_verifier/core/*`) was edited |
+| Full smoke suite still green (no regression) | ☑ pass | Full suite: 828 passed, 2 skipped (pre-existing skips, unrelated to T032) |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | pure backend/infra task, no UI component (guide's UI AC section already marked N/A) |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | same as above |
+| **UI: Responsiveness at target viewports** | ☑ N/A | same as above |
 
 ---
 
@@ -49,8 +49,22 @@ Traceback (most recent call last):
 ModuleNotFoundError: No module named 'scripts.vendor_sources'
 ```
 
-**AFTER**: [to be filled once the script and vendored snapshots exist — same commands, post-change]
+**AFTER**: (captured 2026-09-28T05:25:54Z, same worktree, after implementation)
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ ls scripts/vendor_sources.py
+scripts/vendor_sources.py
+$ ls src/easy_verifier/registry/vendored/
+asvs.json  CHECKSUMS.sha256  cwe.json  linguist.json  NOTICE
+$ du -sh src/easy_verifier/registry/vendored/
+428K    src/easy_verifier/registry/vendored/
+$ python scripts/vendor_sources.py --check
+OK: 4 vendored file(s) match recorded checksums
+```
+
+**DELTA**: A maintainer can run `python scripts/vendor_sources.py` to pull pinned, filtered
+snapshots of Linguist/ASVS/CWE into the package (428 KB, under the 500 KB target), and CI or any
+offline environment can run `--check` to confirm the committed snapshots still match their recorded
+checksums with zero network access — neither existed before this task.
 
 **WITNESS**: common-infrastructure agent, T032 worktree, 2026-09-28.

@@ -1,0 +1,22 @@
+This directory contains pinned, filtered snapshots of three external
+reference sources, vendored offline (no runtime network access — DDR-0007
+item 9). Refresh via `python scripts/vendor_sources.py`.
+
+## linguist.json
+Source:  https://raw.githubusercontent.com/github-linguist/linguist/d0921d10bb68a1249fc9eac64e472759f36e2fd8/lib/linguist/languages.yml
+Pinned:  commit d0921d10bb68a1249fc9eac64e472759f36e2fd8
+License: MIT
+Attribution: GitHub Linguist contributors (github-linguist/linguist)
+
+## asvs.json
+Source:  https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.flat.json
+Pinned:  v5.0.0_release (5cf9b032440be53ce345ab3c130fda46ba1ce7a2)
+License: CC-BY-SA-4.0 — https://creativecommons.org/licenses/by-sa/4.0/
+Attribution: OWASP Application Security Verification Standard (OWASP ASVS) 5.0.0. This project is not affiliated with or
+endorsed by OWASP.
+
+## cwe.json
+Source:  https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip
+Pinned:  version 4.20
+License: MITRE-CWE-Terms-of-Use
+Attribution: This product uses the Common Weakness Enumeration (CWE) and is not sponsored or endorsed by The MITRE Corporation. Copyright (c) MITRE.
