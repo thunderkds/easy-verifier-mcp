@@ -51,9 +51,40 @@ $ grep -rn "easy-verifier-sot\|EASY_VERIFIER_SOT" src | wc -l
 0
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured by backend-developer on commit `91f6dc8`, 2026-09-28T08:01:39Z. Same fixture repo;
+each run uses its own temp `EASY_VERIFIER_SOT` (the real `~/.easy-verifier-sot/` is never touched).
+`--scope project` is used because the fixture has no working-tree changes (worktree scope is empty).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+--- 1. valid entry, empty SOT (machine A)
+$ EASY_VERIFIER_SOT=$S/demo/sot PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score --repo $S/demo/repo --scope project --agent-input $S/demo/agent.json </dev/null > A.json
+exit=0
+registry_entries: [{"language": "kotlin", "field": "assertions", "value": ["shouldBe"], "citation_url": "https://kotest.io/docs/assertions/assertions.html", "source_tag": "agent-researched (unreviewed)"}]
+assertions_observed(test-strategy): [{'abstained': False, 'value': 1}] overall: 100
+$ cat $S/demo/sot/kotlin.toml
+# easy-verifier local reference registry entry (T036).
+
+[[assertions]]
+value = ["shouldBe"]
+citation_url = "https://kotest.io/docs/assertions/assertions.html"
+source_tag = "agent-researched (unreviewed)"
+    (same repo, empty SOT, agent input {}: assertions_observed value 0, overall 46)
+--- 2. invalid entries (http link + 3-wildcard token; '../etc' field)
+validation error: agent input: 2 error(s): registry_entries[0]: value: 'a*b*c*d': at most 2 '*' wildcards in a token; registry_entries[1]: field '../etc': unknown field; known: manifests, source_extensions, test_name_patterns, test_candidates, test_declarations, assertions, branch_keywords, comment_delimiters, string_delimiters, function_start, import_syntax, security_sinks, interpolating_strings, roles.<role>
+exit=2
+ls: cannot access '.../demo/sotB': No such file or directory      (nothing written)
+--- 3. replay A's embedded registry_entries on empty machine B
+exit=0
+A.json == B.json byte-equal            (cmp, no normalization applied)
+--- 4. unwritable SOT (chmod 500)
+registry_entries in payload: False  overall: 46   exit=0
+warning [registry]: research cannot be saved: 1 registry entry not saved (the local layer directory is not writable); scoring used only the registry data already on this machine
+$ git -C $S/demo/repo status --short     (empty: nothing written into the target repo)
+```
+
+**DELTA**: an agent can now hand the verifier cited registry research (`registry_entries`); it is
+validated, saved to the local layer, used in the same call with a visible `agent-researched (unreviewed)`
+/ `user-supplied` tag and link, and embedded so replay on an empty machine gives byte-equal output.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T036.jsonl`, never the
 implementing agent alone]
