@@ -33,8 +33,25 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-09-28T12:56:57Z on HEAD `7de1e21` (before any T037 implementation commit),
+by backend-developer. Real MCP stdio server (`python -m easy_verifier.adapters.mcp_server`, worktree
+`PYTHONPATH=src`) driven by an `mcp` `stdio_client`, tool `score` with `repo=<scratch>/node-express`,
+`scope=project`, temp `EASY_VERIFIER_SOT` (empty). Scratch repo: `package.json` with
+`"dependencies": {"express": "^4.19.2"}`, `src/app.js`, `README.md`; `ls src/easy_verifier/registry/curated | grep express`
+→ `no curated express entry`.
+
+```
+payload keys: ['metrics', 'needs_input', 'overall', 'provenance', 'ratings']
+detected_stack: null
+needs_input keys: ['gate_evaluations']
+needs_input.reference: None
+needs_input bytes: 586
+overall: {"kind": "overall_rating", "value": 46, "contributor_count": 1, "total_dimension_count": 7, "contributors": ["test-strategy"], "contributor_values": [["test-str
+exit=0
+```
+
+No `detected_stack` / framework detection anywhere in the payload, and `needs_input` carries only
+`gate_evaluations` — no `needs_input.reference`.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
