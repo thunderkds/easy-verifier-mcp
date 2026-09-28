@@ -572,7 +572,8 @@ def _source_file_share(view: _PackView) -> _Computed:
 _SINK_METHOD = (
     "dangerous sinks are the registry's security_sinks tokens (each citing "
     "its CWE page), matched textually after the registry's comment and string "
-    "delimiters are blanked -- no data flow is traced, so a hit is a place to "
+    "delimiters are blanked (a string that interpolates keeps one mark at its "
+    "start) -- no data flow is traced, so a hit is a place to "
     "look, not a proven vulnerability; test-path hits are counted and tagged; "
     "a lower bound on the repository, since only these excerpts were read"
 )
