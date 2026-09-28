@@ -50,7 +50,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
@@ -687,23 +687,165 @@ def _role_presence(*roles: str) -> Callable[[_PackView], _Computed]:
     return compute
 
 
-_NOT_DERIVABLE = (
-    "{what} is not derivable from a read-only evidence pack: {why}; no number "
-    "is invented, so this rule's metric abstains"
+# ---------------------------------------------------------------------------
+# Acceptance-criteria trace shares (T052, FR-043). The requirement-fidelity
+# pack quotes each criterion's line and the code lines naming its
+# identifiers; ``pack.trace_search`` says what the search put in, so a
+# criterion or trace line the byte budget dropped is noticed instead of
+# reading as "untraced". These are shares over the *criteria* set, which is
+# verified complete here, so they do not abstain merely because a later
+# requirement-doc excerpt did not fit (they are EVIDENCE_LOCAL for that
+# reason, and check their own completeness below).
+# ---------------------------------------------------------------------------
+
+REQUIREMENT_FIDELITY = "requirement-fidelity"
+
+_TRACE_METHOD = (
+    "criteria are the data rows of each tasks/TASK_GUIDE_Txxx.md 'Acceptance "
+    "Criteria' table (id Txxx#row) and each FR-xxx defined in a requirements "
+    "document; a criterion is traced when one of its keys (its task ID or an "
+    "FR-xxx ID in its row) appears as a whole word in a quoted line of a code "
+    "file; " + _CLASSIFIED_BY + "; documents never count"
 )
 
 
-def _not_derivable(what: str, why: str) -> Callable[[_PackView], _Computed]:
-    def compute(_view: _PackView) -> _Computed:
-        return MetricAbstention(reason=_NOT_DERIVABLE.format(what=what, why=why))
+def trace_key_pattern(keys: Iterable[str]) -> re.Pattern[str]:
+    """Whole-word alternation over trace keys; ``-`` counts as a word char, so
+    ``FR-027`` does not match inside ``FR-027a``. Shared with the dimension so
+    both sides match identically."""
+    ordered = sorted(set(keys), key=lambda key: (-len(key), key))
+    return re.compile(
+        r"(?<![\w-])(?:" + "|".join(re.escape(k) for k in ordered) + r")(?![\w-])"
+    )
+
+
+def code_kind(path: str, tables: LanguageTables) -> str | None:
+    """``"test"``, ``"source"`` or ``None`` (not code), by path convention."""
+    if _is_test_file(path, tables):
+        return "test"
+    if _is_source_file(path, tables):
+        return "source"
+    return None
+
+
+def _ac_traced_share(kind: str) -> Callable[[_PackView], _Computed]:
+    target = "code" if kind == "source" else "a test"
+
+    def compute(view: _PackView) -> _Computed:
+        search = view.pack.trace_search
+        if search is None:
+            if view.pack.dimension != REQUIREMENT_FIDELITY:
+                why = (
+                    f"only the requirement-fidelity pack extracts acceptance "
+                    f"criteria, and this is the {view.pack.dimension!r} pack"
+                )
+            else:
+                why = (
+                    f"{view.pack.mode} mode reads no task guide or PRD as ground "
+                    "truth, and criteria are never inferred, so there is no "
+                    "criterion to trace"
+                )
+            return MetricAbstention(reason=why)
+        if search.incomplete:
+            return MetricAbstention(
+                reason="the acceptance-criteria search is incomplete: "
+                + search.incomplete
+            )
+        if not search.criteria:
+            return MetricAbstention(
+                reason=(
+                    "no acceptance criterion was found: no task guide has an "
+                    "'Acceptance Criteria' table row and no requirements document "
+                    "defines an FR-xxx ID"
+                )
+            )
+        present = {e.ref for e in view.pack.excerpts}
+        expected = [c.ref for c in search.criteria] + list(search.trace_refs)
+        dropped = [ref for ref in expected if ref not in present]
+        if dropped:
+            return MetricAbstention(
+                reason=(
+                    f"{len(dropped)} of {len(expected)} criterion or trace line(s) "
+                    "the search found are not in this pack (the byte budget "
+                    "dropped them), so the share would count them as untraced"
+                ),
+                omitted_lower_bound=len(dropped),
+            )
+        lines = [
+            e
+            for e in view.pack.excerpts
+            if code_kind(e.path, view.tables) == kind
+        ]
+        traced: list[str] = []
+        untraced: list[str] = []
+        used: set[str] = set()
+        for criterion in search.criteria:
+            pattern = trace_key_pattern(criterion.keys)
+            hits = [e.ref for e in lines if pattern.search(e.text)]
+            (traced if hits else untraced).append(criterion.id)
+            used.update(hits[:1])
+        refs = {c.ref for c in search.criteria} | used
+        return (
+            len(traced) / len(search.criteria),
+            tuple(sorted(refs)),
+            f"{len(traced)} of {len(search.criteria)} acceptance criteria are "
+            f"traced to {target} (searched {search.files_searched} code "
+            "file(s)); untraced: "
+            + (", ".join(untraced[:15]) or "none")
+            + (f", and {len(untraced) - 15} more" if len(untraced) > 15 else "")
+            + "; "
+            + _TRACE_METHOD,
+        )
 
     return compute
 
 
-_AC_TRACE_WHY = (
-    "acceptance criteria are not extracted from requirement documents and no "
-    "criterion-to-{target} trace exists in standalone mode (no task, ticket or "
-    "trace matrix is read)"
+# ---------------------------------------------------------------------------
+# Churn hotspot share (T052): the ranking is local git history, which no
+# file excerpt can carry, so the blast-radius dimension records it in
+# ``pack.reach``; the share is over the changed files the pack read.
+# ---------------------------------------------------------------------------
+
+
+def _changed_files_in_churn_hotspots_share(view: _PackView) -> _Computed:
+    reach = view.pack.reach
+    if reach is None or view.pack.dimension != BLAST_RADIUS:
+        return MetricAbstention(
+            reason=(
+                "a churn-hotspot share needs the changed files of a narrow scope "
+                "and a repository-wide ranking; only the blast-radius pack at "
+                "changes, worktree or task scope gathers them (at project scope "
+                "every file is in scope, so the share would be 10% by "
+                f"construction), and this is the {view.pack.dimension!r} pack "
+                f"at {view.pack.scope!r} scope"
+            )
+        )
+    if reach.churn_unavailable:
+        return MetricAbstention(reason=reach.churn_unavailable)
+    allowed = set(view.pack.files_read)
+    changed = [path for path in reach.changed if path in allowed]
+    if not changed:
+        return MetricAbstention(
+            reason="no changed file of this scope could be read, so there is no "
+            "changed file to place in the churn ranking"
+        )
+    hot = [path for path in changed if path in reach.hotspots_changed]
+    return (
+        len(hot) / len(changed),
+        tuple(sorted(changed)),
+        f"{len(hot)} of {len(changed)} changed file(s) are in the repository's "
+        f"top 10% by churn: " + (", ".join(hot) or "none") + f". Churn = number "
+        f"of the last {reach.commits} local commits touching a file; the top 10% "
+        f"is the first {reach.hotspot_count} of the {reach.ranked_files} tracked "
+        "file(s) with any commit in that window, ordered by churn then path, "
+        "whatever the scope (Tornhill, hotspots by change frequency)",
+    )
+
+
+_SWEEP_CAPPED = (
+    "the reference sweep stopped at its file ceiling before reaching every "
+    "repository file, so files importing a changed file may never have been "
+    "opened; the fan-in would be a lower bound, not the value"
 )
 
 
@@ -836,11 +978,15 @@ def _max_fan_in_changed(view: _PackView) -> _Computed:
                 f"this is the {view.pack.dimension!r} pack"
             )
         )
+    reach = view.pack.reach
+    if reach is not None and reach.sweep_capped:
+        return MetricAbstention(reason=_SWEEP_CAPPED)
     statements = _statements(view, source_only=False)
     if not statements:
         return _no_imports("code-file")
     fan_in: dict[str, list[Excerpt]] = {}
-    for target in view.files:
+    targets = reach.changed if reach is not None and reach.changed else view.files
+    for target in targets:
         name = _file_name(target)
         if PurePosixPath(target).suffix not in view.tables.syntax or not name:
             continue
@@ -1096,35 +1242,23 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     MetricDefinition(
         "acceptance_criteria_traced_to_code_share",
         FAMILY_EVIDENCE_COVERAGE,
-        # never computed, so its own reason must show even on a truncated pack
+        # checks its own evidence is complete (see its compute function)
         EVIDENCE_LOCAL,
-        _not_derivable(
-            "the share of acceptance criteria traced to code",
-            _AC_TRACE_WHY.format(target="code"),
-        ),
+        _ac_traced_share("source"),
     ),
     MetricDefinition(
         "acceptance_criteria_traced_to_test_share",
         FAMILY_EVIDENCE_COVERAGE,
-        # never computed, so its own reason must show even on a truncated pack
+        # checks its own evidence is complete (see its compute function)
         EVIDENCE_LOCAL,
-        _not_derivable(
-            "the share of acceptance criteria traced to a test",
-            _AC_TRACE_WHY.format(target="test"),
-        ),
+        _ac_traced_share("test"),
     ),
     MetricDefinition(
         "changed_files_in_churn_hotspots_share",
         FAMILY_CODE_SHAPE,
-        # never computed, so its own reason must show even on a truncated pack
+        # checks its own evidence is complete (see its compute function)
         EVIDENCE_LOCAL,
-        _not_derivable(
-            "the share of changed files in the top-10% churn hotspots",
-            "the blast-radius pack gathers repository hotspots only at project "
-            "scope, where every file is in scope so the share is 10% by "
-            "construction, and co-change history (not a hotspot ranking) at "
-            "narrower scopes",
-        ),
+        _changed_files_in_churn_hotspots_share,
     ),
 )
 

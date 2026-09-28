@@ -229,6 +229,75 @@ class EvidencePack:
     ``rules``, then ``+ config`` when ``.easy-verifier.toml`` contributed a file
     and ``+ agent picks (N files)`` when picks did. Never agent text."""
 
+    trace_search: TraceSearch | None = field(default=None)
+    """What the requirement-fidelity trace search set out to put in the pack
+    (T052). ``None`` for every other dimension and in standalone mode."""
+
+    reach: ReachFacts | None = field(default=None)
+    """Blast-radius facts that are not file text (T052): which changed files
+    were read, which of them are repository churn hotspots, and whether the
+    reference sweep hit its ceiling. ``None`` for every other dimension."""
+
+
+@dataclass(frozen=True)
+class AcceptanceCriterion:
+    """One acceptance criterion found in a kit document (T052).
+
+    ``ref`` is the pack excerpt quoting the line that states it; ``keys`` are
+    the identifiers whose textual appearance in a code file traces it. Nothing
+    here says whether it is traced: the metric decides that from the pack.
+    """
+
+    id: str
+    """``T052#1`` for a task-guide AC row, ``FR-043`` for a PRD requirement."""
+
+    keys: tuple[str, ...]
+    ref: str
+
+
+@dataclass(frozen=True)
+class TraceSearch:
+    """The expected contents of a requirement-fidelity pack's trace evidence.
+
+    A metric compares this against the excerpts actually present, so evidence
+    the byte budget dropped is noticed instead of reading as "untraced".
+    """
+
+    criteria: tuple[AcceptanceCriterion, ...]
+    trace_refs: tuple[str, ...]
+    """Every trace excerpt the search yielded, in yield order."""
+
+    files_searched: int
+    incomplete: str | None = None
+    """Why extraction or the search stopped early (a cap), else ``None``."""
+
+
+@dataclass(frozen=True)
+class ReachFacts:
+    """Git-derived and sweep facts of one blast-radius pack (T052)."""
+
+    changed: tuple[str, ...] = ()
+    """Scope (changed) files this pack read, redacted like ``files_read``."""
+
+    hotspots_changed: tuple[str, ...] = ()
+    """The subset of ``changed`` in the repository-wide top 10% by churn."""
+
+    commits: int = 0
+    """Local commits the churn ranking was counted over."""
+
+    ranked_files: int = 0
+    """Tracked files with at least one commit in that window."""
+
+    hotspot_count: int = 0
+    """How many files the top 10% is: ``ceil(ranked_files / 10)``."""
+
+    churn_unavailable: str | None = None
+    """Why no churn ranking was built (shallow clone, little history), else
+    ``None``."""
+
+    sweep_capped: bool = False
+    """The reference sweep stopped at its file ceiling before finishing."""
+
 
 @dataclass(frozen=True)
 class RedactionHit:

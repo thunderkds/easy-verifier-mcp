@@ -35,8 +35,10 @@ reachable and how it was discovered, and the calling agent judges the reach.
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
 from ..core.git import run_git_text
@@ -44,6 +46,7 @@ from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
     Excerpt,
+    ReachFacts,
     SourceMiss,
     SourceRole,
 )
@@ -61,7 +64,7 @@ PURPOSE = (
 
 REFERENCES_SOURCE = "referencing files (textual reference search over repository code)"
 CO_CHANGE_SOURCE = "git co-change history (local `git log --name-only`)"
-HOTSPOT_SOURCE = "repository change hotspots (local git history, project scope)"
+HOTSPOT_SOURCE = "repository change hotspots (local git history)"
 
 #: The role whose files are the packaging manifests that declare downstream
 #: entry points. Probed in every scope, narrow ones included: an entry point
@@ -98,6 +101,8 @@ MAX_NAMED_FILES = 15
 _HISTORY_COMMITS = "200"
 _HOTSPOT_COMMITS = "400"
 MIN_STEM_LENGTH = 3
+MIN_CHURN_COMMITS = 20
+"""Fewer local commits than this is too little history to rank churn on."""
 
 METHOD_WARNING = (
     "Method: reference evidence in this pack comes from a textual search for "
@@ -161,9 +166,10 @@ PROJECT_SCOPE_REASON = (
     "file is quadratic, so project scope reports repository-wide hotspots instead"
 )
 
-NARROW_SCOPE_HOTSPOT_REASON = (
-    "not examined: repository-wide hotspots are gathered for project scope only; "
-    "this run reported co-change history for the scope files instead"
+CHURN_WARNING = (
+    "Churn ranking: the top 10% of the {ranked} tracked file(s) committed in the "
+    "last {commits} local commit(s) is the first {top} by commit count (ties by "
+    "path), whatever the scope; changed files in it: {hot}."
 )
 
 EMPTY_SCOPE_REASON = "examined: the resolved {kind} scope named no files"
@@ -252,8 +258,6 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         yield from _entry_point_excerpts(context)
         return
 
-    _miss(context, HOTSPOT_SOURCE, NARROW_SCOPE_HOTSPOT_REASON)
-
     all_scope_files = tuple(getattr(resolved_scope, "files", ()) or ())
     scope_files = all_scope_files[:MAX_SCOPE_FILES]
     if len(all_scope_files) > len(scope_files):
@@ -272,6 +276,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         return
 
     _co_change_history(context, repo, scope_files)
+    _churn_ranking(context, repo, scope_files)
     yield from _entry_point_excerpts(context)
     yield from _reference_excerpts(context, scope_files)
 
@@ -331,6 +336,9 @@ def _reference_excerpts(
     # place this dimension is asked to be honest (AC #5: it may over-report,
     # but it may not go silent).
     capped = scanned >= MAX_SCAN_FILES
+    reach = getattr(context, "reach", None)
+    if reach is not None:
+        context.reach = replace(reach, sweep_capped=capped)
     if capped:
         _warn(context, SCAN_CAP_WARNING.format(cap=MAX_SCAN_FILES))
 
@@ -528,6 +536,90 @@ def _project_history(context: DimensionContext, repo: Path) -> None:
     _note_shallow(context, repo)
 
 
+def _churn_ranking(
+    context: DimensionContext, repo: Path, scope_files: tuple[str, ...]
+) -> None:
+    """Place the scope files in the repository-wide churn ranking (T052).
+
+    The ranking is over every tracked file, never the scope, so the share of
+    changed files in the top 10% is a measurement rather than 10% by
+    construction. Computed once per context: the budget calls ``collect`` once
+    per tier pass, and the answer cannot change between passes.
+    """
+    if getattr(context, "reach", None) is not None:
+        return
+    changed = []
+    for path in scope_files:
+        if context.read_source(path) is not None:
+            changed.append(redact(path))
+    unavailable = _churn_unavailable(repo)
+    if unavailable is not None:
+        context.reach = ReachFacts(
+            changed=tuple(changed), churn_unavailable=unavailable
+        )
+        _miss(context, HOTSPOT_SOURCE, unavailable)
+        return
+
+    counts: dict[str, int] = {}
+    commits = 0
+    for names in _commit_file_sets(repo, _HOTSPOT_COMMITS):
+        commits += 1
+        for name in names:
+            counts[name] = counts.get(name, 0) + 1
+    if commits < MIN_CHURN_COMMITS:
+        reason = (
+            f"examined: only {commits} local commit(s), fewer than the "
+            f"{MIN_CHURN_COMMITS} a churn ranking needs, so no file is called a "
+            "hotspot"
+        )
+        context.reach = ReachFacts(changed=tuple(changed), churn_unavailable=reason)
+        _miss(context, HOTSPOT_SOURCE, reason)
+        return
+
+    ok, out, _ = _run_git(repo, ["ls-files"])
+    tracked = set(out.splitlines()) if ok else set()
+    ranked = sorted(
+        (name for name in counts if name in tracked),
+        key=lambda name: (-counts[name], name),
+    )
+    top = math.ceil(len(ranked) / 10)
+    hot = {redact(name) for name in ranked[:top]}
+    hot_changed = tuple(path for path in changed if path in hot)
+    context.reach = ReachFacts(
+        changed=tuple(changed),
+        hotspots_changed=hot_changed,
+        commits=commits,
+        ranked_files=len(ranked),
+        hotspot_count=top,
+    )
+    context.sources_found.append(HOTSPOT_SOURCE)
+    _warn(
+        context,
+        CHURN_WARNING.format(
+            ranked=len(ranked),
+            commits=commits,
+            top=top,
+            hot=", ".join(hot_changed) or "none",
+        ),
+    )
+
+
+def _churn_unavailable(repo: Path) -> str | None:
+    """Why no churn ranking can be built here, or ``None``."""
+    if not _is_git_repo(repo):
+        return (
+            "not examined: the target is not a git repository, so there is no "
+            "local history to rank churn on"
+        )
+    ok, out, _ = _run_git(repo, ["rev-parse", "--is-shallow-repository"])
+    if ok and out.strip() == "true":
+        return (
+            "not examined: this is a shallow clone, so local history is partial "
+            "and a churn ranking over it would be a guess"
+        )
+    return None
+
+
 def _commit_file_sets(repo: Path, limit: str) -> Iterator[frozenset[str]]:
     """Yield the file set of each of the last ``limit`` local commits.
 
@@ -585,9 +677,10 @@ def _is_git_repo(repo: Path) -> bool:
 def _run_git(repo: Path, args: list[str]) -> tuple[bool, str, str]:
     """Run one read-only git subcommand against the target repository.
 
-    Never ``shell=True``, always an explicit argument list, and only ``log`` and
-    ``rev-parse`` are ever asked for — nothing here contacts a remote (NFR-012),
-    and nothing from the target repository is executed (NFR-007) — the shared
+    Never ``shell=True``, always an explicit argument list, and only ``log``,
+    ``ls-files`` and ``rev-parse`` are ever asked for — nothing here contacts a
+    remote (NFR-012), and nothing from the target repository is executed
+    (NFR-007) — the shared
     :func:`~easy_verifier.core.git.run_git_text` disarms repo-config programs.
     """
     return run_git_text(repo, args)

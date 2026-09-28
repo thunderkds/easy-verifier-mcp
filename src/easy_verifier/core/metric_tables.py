@@ -163,11 +163,15 @@ _TEST_MATCH = (
 _ASSERTIONS = ("assertion_density_per_test", "assertions_observed")
 _CCN = ("functions_over_ccn_10_share", "max_function_ccn")
 _IMPORTS = ("top_level_import_cycles", "max_fan_in_changed")
+_AC_TRACE = (
+    "acceptance_criteria_traced_to_code_share",
+    "acceptance_criteria_traced_to_test_share",
+)
 _SINKS = ("sink_hits_observed",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
-    "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS,
-    "test_name_patterns": _TEST_MATCH + _ASSERTIONS,
+    "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE,
+    "test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE,
     "test_candidates": _TEST_MATCH[1:3],
     "test_declarations": _ASSERTIONS[:1],
     "assertions": _ASSERTIONS,
