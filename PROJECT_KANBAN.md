@@ -11,7 +11,6 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive on ordinary filenames (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths) breaks citations; prerequisite for Wave 10 (guide written 2026-09-28) | backend-developer | C2 | Risk: High | P0
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
 - [ ] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0
@@ -68,6 +67,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [~] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive on ordinary filenames (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths) breaks citations; prerequisite for Wave 10 (guide written 2026-09-28) | backend-developer | C2 | Risk: High | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T029)
 
 _(empty)_
 
