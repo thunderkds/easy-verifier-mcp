@@ -30,11 +30,11 @@ from .judge import (
     rate,
     rate_overall,
 )
-from .metric_tables import curated_metric_tables
+from .metric_tables import curated_metric_tables, registry_sources
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
-from .roles import load_repo_config, parse_agent_input
+from .roles import _registry, load_repo_config, parse_agent_input, registry_notes
 from .synthesis import combined_pack
 
 
@@ -62,6 +62,14 @@ class ScoreResult:
     ``{dimension, reason, evidence_refs, omitted}``. Like ``needs_input``,
     never part of :meth:`to_dict`; set only when no picks are pending and the
     call carried no ``gate_evaluations``."""
+    registry_entries: tuple[dict[str, Any], ...] = ()
+    """Every local-layer registry field the tables were built with, as
+    replayable agent-input items with source tag and link (FR-048)."""
+    registry_notes: tuple[str, ...] = ()
+    """Registry warnings for this machine ("curated wins", research that
+    could not be saved). Like ``needs_input``, not part of :meth:`to_dict`:
+    it describes the local layer, not the score, so replay stays byte-equal
+    (DDR-0005); each adapter surfaces it itself."""
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -79,6 +87,8 @@ class ScoreResult:
                 )
             ],
         }
+        if self.registry_entries:
+            payload["registry_entries"] = [dict(item) for item in self.registry_entries]
         if self.assessments is not None and self.comparisons is not None:
             payload["assessments"] = [
                 item.to_dict() for item in self.assessments.outcomes
@@ -134,6 +144,9 @@ def score_repository(
     if findings is not None:
         by_dimension = validate_findings(findings, _pack_map(packs)).by_dimension
     result = score_packs(packs, by_dimension, evaluations)
+    result = dataclasses.replace(
+        result, registry_notes=registry_notes(document, repo_path)
+    )
 
     # One round each: a caller that already supplied agent input gets no
     # detect gate, stateless and unconditional (DDR-0006 §7). No repository
@@ -171,9 +184,15 @@ def score_packs(
             + (", ".join(actual) or "none")
         )
 
+    registry = _registry()
     metrics = compute_metrics(packs, curated_metric_tables())
+    sources = registry_sources(packs, registry)
     rules_ratings = tuple(
-        rate(_metrics_for(metrics, dimension), _coverage_for(packs, dimension))
+        rate(
+            _metrics_for(metrics, dimension),
+            _coverage_for(packs, dimension),
+            registry_sources=sources.get(dimension),
+        )
         for dimension in expected
     )
     ratings = (
@@ -197,7 +216,15 @@ def score_packs(
         )
         for slot in packs.slots
     )
-    return ScoreResult(ratings, overall, metrics, assessments, comparisons, provenance)
+    return ScoreResult(
+        ratings,
+        overall,
+        metrics,
+        assessments,
+        comparisons,
+        provenance,
+        registry_entries=registry.local_entries(),
+    )
 
 
 def _rating_provenance(rating: Rating | RatingAbstention | GatedRating) -> str:

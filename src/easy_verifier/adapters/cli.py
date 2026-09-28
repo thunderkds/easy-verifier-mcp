@@ -206,6 +206,8 @@ def _run_score(args: argparse.Namespace) -> int:
         findings=_read_findings(args.findings, required=False),
         agent_input=_read_agent_input(args.agent_input),
     )
+    for note in result.registry_notes:
+        print(f"warning [registry]: {note}", file=sys.stderr)
     return _emit(result.to_dict())
 
 

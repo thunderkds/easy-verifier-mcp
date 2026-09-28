@@ -36,7 +36,14 @@ from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
 from .models import SourceRole
 from .redact import redact
-from .registry import Registry, load_registry
+from .registry import (
+    Registry,
+    layered_registry,
+    local_write_problem,
+    parse_local_entries,
+    save_local_entries,
+    sot_root,
+)
 
 CONFIG_FILENAME = ".easy-verifier.toml"
 MAX_CONFIG_BYTES = 64 * 1024
@@ -215,13 +222,15 @@ language with no ecosystem table is evaluated by these alone."""
 
 @lru_cache(maxsize=1)
 def _registry() -> Registry:
-    """The curated reference registry (DDR-0007), loaded once per process.
+    """The reference registry (DDR-0007): curated plus the local layer.
 
     It holds each language's manifests and extra role globs; a language is
     active when one of its manifests exists (FR-032). Data, never a boundary:
     an entry naming a role outside :data:`GENERIC_PATTERNS` is rejected.
+    Cached; :func:`apply_registry_entries` clears it on every call carrying
+    agent input so a long-running server sees local writes (T036).
     """
-    return load_registry(known_roles=GENERIC_PATTERNS)
+    return layered_registry(known_roles=GENERIC_PATTERNS)
 
 
 def role(name: str) -> SourceRole:
@@ -341,17 +350,22 @@ def validate_agent_input(
     Accepts a parsed object or its JSON text. ``gate_evaluations`` is only
     shape-checked here: whether each one is valid depends on this call's
     ratings and packs, so ``gate.apply_gate_evaluations`` validates it (T028).
+    ``registry_entries`` is fully validated here (T036) and saved by
+    :func:`apply_registry_entries`.
     """
     document = parse_agent_input(document)
 
     root = _resolved_repo(repo)
     errors: list[str] = []
     for key in document:
-        if key not in ("picks", "gate_evaluations"):
+        if key not in ("picks", "gate_evaluations", "registry_entries"):
             errors.append(
-                f"{redact(str(key))}: unknown key; only picks and "
-                "gate_evaluations are accepted"
+                f"{redact(str(key))}: unknown key; only picks, "
+                "gate_evaluations and registry_entries are accepted"
             )
+    errors.extend(
+        parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
+    )
     if not isinstance(document.get("gate_evaluations", {}), dict):
         errors.append(
             "gate_evaluations: must be an object mapping a dimension to an evaluation"
@@ -382,6 +396,57 @@ def validate_agent_input(
     if errors:
         raise RoleInputError("agent input", errors)
     return dict(sorted(result.items()))
+
+
+def apply_registry_entries(document: Mapping, repo: str | Path) -> None:
+    """Save a validated document's ``registry_entries`` to the local layer and
+    reload the registry, so this call already scores with them (T036).
+
+    Called once per agent-input call, before any dimension runs. A layer that
+    cannot be written is not an error: scoring continues on the data already
+    on this machine and :func:`registry_notes` says research was not saved.
+    """
+    entries, _ = parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)
+    if entries and local_write_problem(sot_root(), Path(repo)) is None:
+        try:
+            save_local_entries(entries, sot_root(), known_roles=GENERIC_PATTERNS)
+        except OSError:
+            pass  # reported by registry_notes: the entries are not in the registry
+    _registry.cache_clear()
+
+
+def registry_notes(document: Mapping | None, repo: str | Path) -> tuple[str, ...]:
+    """What the caller must be told about the registry this call used:
+    registry warnings (e.g. "curated wins") and entries that could not be
+    saved. Never part of the byte-compared score payload: it describes this
+    machine's layer, not the score (DDR-0005)."""
+    registry = _registry()
+    notes = list(registry.warnings)
+    raw = document.get("registry_entries") if document is not None else None
+    entries, _ = parse_local_entries(raw, GENERIC_PATTERNS)
+    unsaved = [entry for entry in entries if not _in_registry(registry, entry)]
+    if unsaved:
+        reason = local_write_problem(sot_root(), Path(repo)) or "the write was refused"
+        notes.append(
+            f"research cannot be saved: {len(unsaved)} registry "
+            f"entr{'y' if len(unsaved) == 1 else 'ies'} not saved ({reason}); "
+            "scoring used only the registry data already on this machine"
+        )
+    return tuple(notes)
+
+
+def _in_registry(registry: Registry, entry) -> bool:
+    found = registry.languages.get(entry.name) or registry.frameworks.get(entry.name)
+    if found is None:
+        return False
+    if entry.field == "manifests":
+        cited_values = found.manifests
+    elif entry.field.startswith("roles."):
+        cited_values = found.roles.get(entry.field.removeprefix("roles."), ())
+    else:
+        cited_values = found.fields.get(entry.field, ())
+    have = {value for cited in cited_values for value in cited.value}
+    return set(entry.cited.value) <= have
 
 
 def _known_roles() -> str:
@@ -508,6 +573,9 @@ def resolve(
             continue
         rule_patterns = item.patterns + registry.patterns_for(item.name, ecosystems)
         rules_match = _matcher(rule_patterns)
+        # Local-layer globs came from a model's research: bounded matcher.
+        local_patterns = registry.patterns_for(item.name, ecosystems, local=True)
+        local_match = _config_matcher(local_patterns) if local_patterns else None
         config_patterns = tuple(config.get(item.name, ()))
         # Config globs are untrusted: matched segment-wise with a bounded
         # matcher, never compiled into the combined backtracking regex.
@@ -515,7 +583,7 @@ def resolve(
 
         matched: dict[str, str] = {}
         for path in walked:
-            if rules_match(path):
+            if rules_match(path) or (local_match is not None and local_match(path)):
                 matched[path] = ORIGIN_RULES
             elif config_match is not None and config_match(path):
                 matched[path] = ORIGIN_CONFIG
@@ -676,6 +744,8 @@ __all__ = [
     "MAX_ROLE_WALK_FILES",
     "RoleInputError",
     "RoleResolution",
+    "apply_registry_entries",
+    "registry_notes",
     "load_repo_config",
     "resolution_warnings",
     "resolve",
