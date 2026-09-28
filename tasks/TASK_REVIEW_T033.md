@@ -1,4 +1,4 @@
-# TASK_REVIEW — T033: [Short Title]
+# TASK_REVIEW — T033: Registry-driven token metrics: approximate CCN per function, imports, fan-in, cycles
 
 > Sibling of `tasks/TASK_GUIDE_T033.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t033_token_metrics.py` — 54 tests: hand-counted CCN fixtures for all 9 languages (±0), keywords in strings/comments not counted, innermost-function ownership, bracket continuation, 500-char line cap, escapes, import cycles, fan-in blast-radius-only, test files excluded, truncation abstention (whole-set) vs evidence-local `max_function_ccn`. Every guard sabotage-checked. Structural test updates: `test_judge.py` rule table = first 11 metric names; `.tokens` added to metrics import whitelist; untruncated fixture skips the two import metrics. Supervisor re-run `1008 passed, 2 skipped in 25.73s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28: pytest `1008 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Supervisor spot-check via `approximate_ccn`: Python function with `if/and/elif/for` plus `if`/`while for and` inside a comment and a string → CCN 5 (hand count 5); Go function with `if`, `||`, `switch/case` → CCN 4 (hand count 4, switch not counted, case counted — lizard-style) |
+| verify | ☑ pass | Real CLI (agent capture in AFTER, scratch repo `score --scope worktree`): architecture pack `max_function_ccn` 5, `top_level_import_cycles` 1 (alpha↔beta); blast-radius `max_fan_in_changed` 2; metric names absent before. Code-quality CCN abstains because its pack holds no code — follow-up T050 created (Supervisor ruling) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed new `core/tokens.py` (pure; delimiters escaped; 500-char line cap bounds regex cost), `core/metrics.py` (4 new metrics; 77 existing outcomes unchanged; overall 62→62), `core/metric_tables.py`, `core/registry.py` (5 fields; delimiter fields have their own shape check), 9 curated TOML, 3 structural test edits. Code review: P0 0, P1 0. Supervisor rulings: accept indentation-based function end for all languages and anywhere-in-line tokens (guide deviation, documented); code-quality/architecture packs lack code → new task T050 before T035. P2 carried: blast-radius scan cap not reported as truncation so fan-in can be a silent lower bound; Go imports matched by stem undercount fan-in; JS class methods / generic-return Java/C# methods / Ruby blocks not detected as functions; ternary/`??`/Kotlin `when` not counted. Citations are official-doc https links, not fetched. Security inline (Med): all registry values escaped before regex; line cap bounds ReDoS |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1008 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -90,9 +90,8 @@ Known gap at the real surface: code-quality packs carry no source excerpts, and 
 own project scope the architecture pack carries 0 code excerpts of 7, so the CCN and cycle metrics
 abstain there (honestly, with reasons). See the completion report for the proposed dimension change.
 
-**DELTA**: `score` now reports approximate CCN per observed function (share over 10, max), top-level
+**DELTA**: The engine now measures approximate cyclomatic complexity per function, import cycles and fan-in for all 9 curated languages from cited registry data, ready for T035's code-quality, architecture and blast-radius rules.
 import cycles and the max fan-in of changed files, each cited to the excerpts it was computed from,
 for all 9 curated languages from registry data only.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T033.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and hand-counted CCN spot-checks (Python 5, Go 4) on 2026-09-28, independent of the implementing agent.
