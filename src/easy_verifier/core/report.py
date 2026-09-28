@@ -27,6 +27,7 @@ HTML (AC #2, FR-018).
 from __future__ import annotations
 
 import html
+import json
 import os
 from collections.abc import Iterable
 from datetime import UTC, datetime
@@ -464,7 +465,38 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         "confidence) or stand alone as agent-rated, always shown with its parts. "
         "An assessment appears only when caller findings were submitted; divergence "
         "is shown separately and never blended.</p>"
-        f'{overall_html}<div class="score-grid">{cards}</div></section>'
+        f'{overall_html}<div class="score-grid">{cards}</div>'
+        f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
+    )
+
+
+def _render_registry_entries(ctx: _Ctx, entries) -> str:
+    """The local-layer registry data behind these ratings, tag and link on
+    every item (FR-048), plus the same items as replayable agent input: add
+    them to ``--agent-input`` to reproduce this score on any machine."""
+    if not entries:
+        return ""
+    items = "".join(
+        f'<li><span class="source-tag">{ctx.agent_text(item["source_tag"])}</span> '
+        f"<code>{ctx.agent_text(item.get('language') or item.get('framework'))}"
+        f".{ctx.agent_text(item['field'])}</code> = "
+        + ", ".join(f"<code>{ctx.agent_text(v)}</code>" for v in item["value"])
+        + f' — <a href="{html.escape(str(item["citation_url"]), quote=True)}" '
+        f'rel="noreferrer">{ctx.agent_text(item["citation_url"])}</a></li>'
+        for item in entries
+    )
+    replay = json.dumps(
+        {"registry_entries": [dict(item) for item in entries]},
+        sort_keys=True,
+        indent=2,
+    )
+    return (
+        '<section class="registry-entries"><h3>Registry data from the local '
+        "layer</h3><p>These rule inputs come from research saved on the "
+        "scoring machine, not from the curated registry. Add the block below "
+        "to <code>--agent-input</code> to reproduce this score anywhere.</p>"
+        f'<ul>{items}</ul><pre class="registry-replay">{ctx.agent_text(replay)}'
+        "</pre></section>"
     )
 
 

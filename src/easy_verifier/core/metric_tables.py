@@ -19,7 +19,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from fnmatch import translate
-from functools import lru_cache
 
 from .metrics import LanguageTables, SinkPattern
 from .registry import Registry, RegistryEntry
@@ -136,10 +135,20 @@ def _alternation(tokens: list[str]) -> re.Pattern[str]:
     return re.compile("|".join(token_regex(token) for token in ordered))
 
 
-@lru_cache(maxsize=1)
 def curated_metric_tables() -> LanguageTables:
-    """Tables from the curated registry ``roles`` already loaded, once."""
-    return metric_tables(_registry())
+    """Tables from the registry ``roles`` already loaded (curated plus the
+    local layer), compiled once per loaded registry: when ``roles._registry``
+    is reloaded after a local write (T036), the tables follow."""
+    global _compiled  # noqa: PLW0603 - one reference swap, see below
+    registry = _registry()
+    cached = _compiled
+    if cached is None or cached[0] is not registry:
+        cached = (registry, metric_tables(registry))
+        _compiled = cached  # one reference swap; a racing call recompiles
+    return cached[1]
+
+
+_compiled: tuple[Registry, LanguageTables] | None = None
 
 
 def token_regex(token: str) -> str:

@@ -61,19 +61,32 @@ The security field (T034) is read by ``core/metric_tables.py``:
 
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
+
+The local layer (T036) lives at ``$EASY_VERIFIER_SOT`` or
+``~/.easy-verifier-sot/``, one file per entry in the same schema, written only
+from validated agent input (:func:`parse_local_entries`,
+:func:`save_local_entries`). Its tags are :data:`LOCAL_TAGS`; a symlinked
+directory or file is refused. :func:`layered_registry` adds it to the curated
+layer, value by value: a value the curated entry already has is dropped and
+reported ("curated wins"), so local data can only add. Local values are
+shape-bounded tighter than curated ones (:func:`_local_shape_problem`): they
+come from a model's research, and globs and tokens become regexes.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import json
+import os
 import re
+import tempfile
 import tomllib
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from importlib import resources
 from importlib.resources.abc import Traversable
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
 from .redact import redact
@@ -87,6 +100,45 @@ MAX_ENTRY_BYTES = 64 * 1024
 MAX_VALUES_PER_FIELD = 64
 MAX_VALUE_CHARS = 200
 MAX_URL_CHARS = 500
+
+AGENT_RESEARCHED = "agent-researched (unreviewed)"
+USER_SUPPLIED = "user-supplied"
+LOCAL_TAGS = (AGENT_RESEARCHED, USER_SUPPLIED)
+"""Source tags a local-layer field may carry; never ``curated``."""
+
+_INPUT_TAGS = {
+    "agent-researched": AGENT_RESEARCHED,
+    AGENT_RESEARCHED: AGENT_RESEARCHED,
+    USER_SUPPLIED: USER_SUPPLIED,
+}
+"""Accepted agent-input ``source_tag`` spellings, to the tag that is stored."""
+
+SOT_ENV = "EASY_VERIFIER_SOT"
+SOT_DIRNAME = ".easy-verifier-sot"
+
+MAX_AGENT_ENTRIES = 20
+"""``registry_entries`` items accepted in one agent-input document."""
+
+MAX_LOCAL_FILES = 200
+"""Local-layer files loaded; more are reported, never silently dropped."""
+
+MAX_LOCAL_TOKEN_STARS = 2
+MAX_LOCAL_GLOB_STARS = 4
+MAX_LOCAL_GLOBSTARS = 2
+"""Shape bounds on one local value (backtracking guard). A token's ``*`` is a
+``\\w*`` in a regex matched over whole files; a role glob's limits are
+``.easy-verifier.toml``'s (``roles.MAX_CONFIG_*``)."""
+
+_TOKEN_FIELDS = frozenset(
+    {
+        "test_declarations",
+        "assertions",
+        "branch_keywords",
+        "function_start",
+        "import_syntax",
+        "security_sinks",
+    }
+)
 
 ENTRY_FIELDS = (
     "manifests",
@@ -186,15 +238,50 @@ class Registry:
             )
         )
 
-    def patterns_for(self, role: str, languages: Sequence[str]) -> tuple[str, ...]:
+    def patterns_for(
+        self, role: str, languages: Sequence[str], *, local: bool = False
+    ) -> tuple[str, ...]:
         """The registry's globs for ``role`` over ``languages``, in order,
-        first occurrence kept."""
+        first occurrence kept: the curated globs, or with ``local`` only the
+        local layer's (matched by a bounded matcher, never the combined
+        regex)."""
         patterns: dict[str, None] = {}
         for language in languages:
             entry = self.languages.get(language)
             for field in entry.roles.get(role, ()) if entry else ():
-                patterns.update(dict.fromkeys(field.value))
+                if (field.source_tag != CURATED) == local:
+                    patterns.update(dict.fromkeys(field.value))
         return tuple(patterns)
+
+    def local_entries(self) -> tuple[dict[str, object], ...]:
+        """Every local-layer field in use, as agent-input ``registry_entries``
+        items, sorted: embedded in score output and reports so replaying them
+        reproduces the score on a machine with an empty local layer (FR-048).
+        """
+        found = []
+        # Frameworks are stored but not yet applied anywhere (no framework
+        # detection before T037), so only language entries are "in use".
+        for kind, entries in (("language", self.languages),):
+            for entry in entries.values():
+                sections = [("manifests", entry.manifests), *entry.fields.items()]
+                sections += [(f"roles.{r}", v) for r, v in entry.roles.items()]
+                for field, cited_values in sections:
+                    for cited in cited_values:
+                        if cited.source_tag == CURATED:
+                            continue
+                        item: dict[str, object] = {kind: entry.name}
+                        if kind == "framework":
+                            item["extends"] = entry.extends
+                        item.update(
+                            field=field,
+                            value=list(cited.value),
+                            citation_url=cited.citation_url,
+                            source_tag=cited.source_tag,
+                        )
+                        if cited.cwe:
+                            item["cwe"] = cited.cwe
+                        found.append(item)
+        return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
 
 
 def _manifest_matches(pattern: str, names: set[str]) -> bool:
@@ -237,13 +324,22 @@ def curated_root() -> Traversable:
 
 
 def load_registry(
-    root: Traversable | None = None, *, known_roles: Collection[str]
+    root: Traversable | None = None,
+    *,
+    known_roles: Collection[str],
+    local: bool = False,
 ) -> Registry:
     """Load every ``*.toml`` entry under ``root`` (default: the curated layer).
 
     ``known_roles`` is the complete role set (``roles.GENERIC_PATTERNS``); an
     entry naming any other role is rejected, since the registry may extend a
     role but never add one.
+
+    ``local`` loads a local-layer directory (a :class:`~pathlib.Path`): tags
+    must be :data:`LOCAL_TAGS`, values pass :func:`_local_shape_problem`,
+    symlinked files are skipped, and an entry may omit manifests or extend a
+    language this layer does not hold — :func:`overlay` checks both against
+    the curated layer.
     """
     root = curated_root() if root is None else root
     known = frozenset(known_roles)
@@ -255,8 +351,17 @@ def load_registry(
         (item for item in root.iterdir() if item.name.endswith(".toml")),
         key=lambda item: item.name,
     )
+    if local and len(files) > MAX_LOCAL_FILES:
+        warnings.append(
+            f"local layer holds {len(files)} entry files; only the first "
+            f"{MAX_LOCAL_FILES} in name order were loaded"
+        )
+        files = files[:MAX_LOCAL_FILES]
     for item in files:
-        entry, errors = _load_entry(item, known)
+        if local and Path(str(item)).is_symlink():
+            warnings.append(f"{redact(item.name)}: entry rejected: is a symlink")
+            continue
+        entry, errors = _load_entry(item, known, local=local)
         if errors:
             warnings.append(
                 f"{redact(item.name)}: entry rejected: " + "; ".join(errors)
@@ -266,7 +371,7 @@ def load_registry(
         else:
             frameworks[entry.name] = entry
 
-    for name in list(frameworks):
+    for name in list(frameworks) if not local else ():
         if frameworks[name].extends not in languages:
             warnings.append(
                 f"{name}.toml: entry rejected: extends "
@@ -280,14 +385,19 @@ def load_registry(
 
 
 def _load_entry(
-    item: Traversable, known_roles: frozenset[str]
+    item: Traversable, known_roles: frozenset[str], *, local: bool = False
 ) -> tuple[RegistryEntry | None, list[str]]:
     name = item.name.removesuffix(".toml")
     if not _ENTRY_NAME.fullmatch(name):
         return None, ["file name must be <lowercase-name>.toml"]
     try:
-        with item.open("rb") as handle:
-            raw = handle.read(MAX_ENTRY_BYTES + 1)
+        if local:  # never follow a link swapped in after the listing
+            fd = os.open(str(item), os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            with os.fdopen(fd, "rb") as handle:
+                raw = handle.read(MAX_ENTRY_BYTES + 1)
+        else:
+            with item.open("rb") as handle:
+                raw = handle.read(MAX_ENTRY_BYTES + 1)
     except OSError:
         return None, ["could not be read"]
     if len(raw) > MAX_ENTRY_BYTES:
@@ -316,7 +426,7 @@ def _load_entry(
         if key in ("extends", "roles"):
             continue
         if key in ENTRY_FIELDS:
-            fields[key] = _cited_values(key, value, errors)
+            fields[key] = _cited_values(key, value, errors, local=local)
         elif isinstance(value, list):
             errors.append(f"{redact(key)}: unknown field; known: {_known_fields()}")
         else:
@@ -331,9 +441,9 @@ def _load_entry(
         if role not in known_roles:
             errors.append(f"roles.{redact(role)}: unknown role")
         else:
-            roles[role] = _cited_values(f"roles.{role}", value, errors)
+            roles[role] = _cited_values(f"roles.{role}", value, errors, local=local)
 
-    if data.get("extends") is None and not fields.get("manifests"):
+    if not local and data.get("extends") is None and not fields.get("manifests"):
         errors.append("manifests: a language entry needs at least one manifest")
     if data.get("extends") is not None and "manifests" in data:
         errors.append("manifests: a framework entry adds to its language only")
@@ -355,14 +465,16 @@ def _known_fields() -> str:
     return ", ".join(("extends", *ENTRY_FIELDS, "roles"))
 
 
-def _cited_values(field: str, raw: object, errors: list[str]) -> tuple[CitedValue, ...]:
+def _cited_values(
+    field: str, raw: object, errors: list[str], *, local: bool = False
+) -> tuple[CitedValue, ...]:
     if not isinstance(raw, list) or not raw:
         errors.append(f"{field}: must be a non-empty array of cited values")
         return ()
     result = []
     for index, item in enumerate(raw):
         where = f"{field}[{index}]"
-        problem = _cited_value_problem(item, field)
+        problem = _cited_value_problem(item, field, local=local)
         if problem:
             errors.append(f"{where}: {problem}")
         else:
@@ -377,7 +489,9 @@ def _cited_values(field: str, raw: object, errors: list[str]) -> tuple[CitedValu
     return tuple(result)
 
 
-def _cited_value_problem(item: object, field: str) -> str | None:
+def _cited_value_problem(
+    item: object, field: str, *, local: bool = False
+) -> str | None:
     if not isinstance(item, dict):
         return "must be a table of value, citation_url, source_tag"
     keys = _CITED_KEYS | {"cwe"} if field in _CWE_FIELDS else _CITED_KEYS
@@ -404,12 +518,42 @@ def _cited_value_problem(item: object, field: str) -> str | None:
         shape = _VALUE_SHAPES.get(field)
         if shape and not shape[0].fullmatch(value):
             return f"value: {redact(value)!r} is not {shape[1]}"
+        problem = _local_shape_problem(field, value) if local else None
+        if problem:
+            return f"value: {redact(value)!r}: {problem}"
 
     url = item["citation_url"]
     if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not _is_https(url):
         return "citation_url: must be an https:// link to the source"
-    if item["source_tag"] != CURATED:
+    if local and item["source_tag"] not in LOCAL_TAGS:
+        return f"source_tag: must be one of {', '.join(LOCAL_TAGS)}"
+    if not local and item["source_tag"] != CURATED:
         return f"source_tag: must be {CURATED!r}"
+    return None
+
+
+def _local_shape_problem(field: str, value: str) -> str | None:
+    """Bound a local value's shape, not only its length (ReDoS guard).
+
+    Tokens compile to ``\\w*`` runs (``metric_tables.token_regex``) matched
+    over whole files, so each ``*`` multiplies backtracking; globs keep
+    ``.easy-verifier.toml``'s limits, and local role globs are matched
+    segment-wise (``roles._config_matcher``), never by the combined regex.
+    """
+    if field in _TOKEN_FIELDS:
+        if value.count("*") > MAX_LOCAL_TOKEN_STARS:
+            return f"at most {MAX_LOCAL_TOKEN_STARS} '*' wildcards in a token"
+        return None
+    if field in _DELIMITER_FIELDS or field == "test_candidates":
+        return None
+    segments = value.split("/")
+    if any("**" in segment and segment != "**" for segment in segments):
+        return "'**' must be a whole path segment (e.g. 'docs/**/*.md')"
+    if segments.count("**") > MAX_LOCAL_GLOBSTARS:
+        return f"at most {MAX_LOCAL_GLOBSTARS} '**' segments are allowed"
+    stars = sum(segment.count("*") for segment in segments if segment != "**")
+    if stars > MAX_LOCAL_GLOB_STARS:
+        return f"at most {MAX_LOCAL_GLOB_STARS} '*' wildcards are allowed"
     return None
 
 
@@ -426,6 +570,333 @@ def _pattern_problem(value: object, *, path: bool = True) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# local layer (T036)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LocalEntry:
+    """One validated agent-input ``registry_entries`` item."""
+
+    name: str
+    extends: str | None
+    field: str
+    """An :data:`ENTRY_FIELDS` name or ``roles.<known role>``."""
+    cited: CitedValue
+
+
+_LOCAL_KEYS = frozenset(
+    {
+        "language",
+        "framework",
+        "extends",
+        "field",
+        "value",
+        "citation_url",
+        "source_tag",
+        "cwe",
+    }
+)
+
+
+def parse_local_entries(
+    raw: object, known_roles: Collection[str]
+) -> tuple[tuple[LocalEntry, ...], list[str]]:
+    """Validate agent-input ``registry_entries``; return entries and errors.
+
+    Any error means nothing may be saved: the caller rejects the document.
+    A value or link that redaction would alter is refused, since entries are
+    stored and embedded in reports verbatim.
+    """
+    if raw is None:
+        return (), []
+    if not isinstance(raw, list):
+        return (), ["registry_entries: must be a list of entries"]
+    if len(raw) > MAX_AGENT_ENTRIES:
+        return (), [f"registry_entries: at most {MAX_AGENT_ENTRIES} entries per call"]
+    known = frozenset(known_roles)
+    entries: list[LocalEntry] = []
+    errors: list[str] = []
+    for index, item in enumerate(raw):
+        where = f"registry_entries[{index}]"
+        entry, problem = _local_entry(item, known)
+        if problem:
+            errors.append(f"{where}: {problem}")
+        else:
+            entries.append(entry)
+    return tuple(entries), errors
+
+
+def _local_entry(
+    item: object, known: frozenset[str]
+) -> tuple[LocalEntry | None, str | None]:
+    if not isinstance(item, dict):
+        return None, (
+            "must be an object with language or framework, field, value, "
+            "citation_url, source_tag"
+        )
+    extra = sorted(str(key) for key in item if key not in _LOCAL_KEYS)
+    if extra:
+        return None, f"unknown key {', '.join(redact(key) for key in extra)}"
+    if ("language" in item) == ("framework" in item):
+        return None, "exactly one of language or framework is required"
+    kind = "language" if "language" in item else "framework"
+    name = item[kind]
+    if not (isinstance(name, str) and len(name) <= 64 and _ENTRY_NAME.fullmatch(name)):
+        return None, f"{kind}: must be a lowercase entry name such as kotlin"
+    extends = item.get("extends")
+    if kind == "framework" and not (
+        isinstance(extends, str) and _ENTRY_NAME.fullmatch(extends)
+    ):
+        return None, "extends: a framework entry names the language it adds to"
+    if kind == "language" and "extends" in item:
+        return None, "extends: only a framework entry extends a language"
+    field = item.get("field")
+    role = field.removeprefix("roles.") if isinstance(field, str) else None
+    if not (field in ENTRY_FIELDS or (field != role and role in known)):
+        return None, (
+            f"field {redact(str(field))!r}: unknown field; known: "
+            f"{', '.join(ENTRY_FIELDS)}, roles.<role>"
+        )
+    if kind == "framework" and field == "manifests":
+        return None, "manifests: a framework entry adds to its language only"
+    tag = item.get("source_tag")
+    if not isinstance(tag, str) or tag not in _INPUT_TAGS:
+        return None, "source_tag: must be agent-researched or user-supplied"
+    cited = {key: item[key] for key in ("value", "citation_url", "cwe") if key in item}
+    cited["source_tag"] = _INPUT_TAGS[tag]
+    problem = _cited_value_problem(cited, field, local=True)
+    if problem:
+        return None, problem
+    texts = [*cited["value"], cited["citation_url"]]
+    if any(redact(text) != text for text in texts):
+        return None, (
+            "looks like it holds a secret; entries are stored and reported verbatim"
+        )
+    return (
+        LocalEntry(
+            name=name,
+            extends=extends,
+            field=field,
+            cited=CitedValue(
+                value=tuple(cited["value"]),
+                citation_url=cited["citation_url"],
+                source_tag=cited["source_tag"],
+                cwe=cited.get("cwe"),
+            ),
+        ),
+        None,
+    )
+
+
+def sot_root() -> Path:
+    """The local layer directory: ``$EASY_VERIFIER_SOT`` or ``~/.easy-verifier-sot``."""
+    configured = os.environ.get(SOT_ENV)
+    return Path(configured).expanduser() if configured else Path.home() / SOT_DIRNAME
+
+
+def local_root_problem(root: Path) -> str | None:
+    """Why ``root`` cannot hold the local layer, or ``None``. A missing
+    directory is fine (an empty layer)."""
+    if not root.is_absolute():
+        return f"{SOT_ENV} must be an absolute path"
+    if root.is_symlink():
+        return "the local layer directory is a symlink; refused"
+    if root.exists() and not root.is_dir():
+        return "the local layer path is not a directory"
+    return None
+
+
+def local_write_problem(root: Path, repo: Path) -> str | None:
+    """Why research cannot be saved under ``root`` for target ``repo``."""
+    problem = local_root_problem(root)
+    if problem:
+        return problem
+    try:
+        inside = root.resolve().is_relative_to(repo.resolve())
+    except OSError:
+        return "the local layer directory could not be resolved"
+    if inside:
+        return "the local layer directory is inside the target repository (NFR-007)"
+    existing = root if root.exists() else root.parent
+    if not os.access(existing, os.W_OK):
+        return "the local layer directory is not writable"
+    return None
+
+
+def layered_registry(*, known_roles: Collection[str]) -> Registry:
+    """The curated layer plus the local layer at :func:`sot_root`."""
+    curated = load_registry(known_roles=known_roles)
+    root = sot_root()
+    problem = local_root_problem(root)
+    if problem:
+        return dataclasses.replace(
+            curated,
+            warnings=(*curated.warnings, f"local layer ignored: {problem}"),
+        )
+    if not root.is_dir():
+        return curated
+    try:
+        local = load_registry(root, known_roles=known_roles, local=True)
+    except OSError:
+        return dataclasses.replace(
+            curated,
+            warnings=(*curated.warnings, "local layer ignored: could not be read"),
+        )
+    return overlay(curated, local)
+
+
+def overlay(curated: Registry, local: Registry) -> Registry:
+    """``curated`` with ``local`` added value by value; curated always wins.
+
+    A local value the curated entry already has is dropped and reported; a
+    new language needs a manifest; a framework must extend a loaded language.
+    """
+    warnings = [*curated.warnings, *local.warnings]
+    languages = dict(curated.languages)
+    for name, entry in local.languages.items():
+        base = languages.get(name)
+        if base is not None:
+            languages[name] = _add_entry(base, entry, warnings)
+        elif not entry.manifests:
+            warnings.append(
+                f"{name}.toml: entry rejected: a language the curated layer does "
+                "not hold needs at least one manifest"
+            )
+        else:
+            languages[name] = entry
+    frameworks = dict(curated.frameworks)
+    for name, entry in local.frameworks.items():
+        base = frameworks.get(name)
+        if entry.extends not in languages or (base and base.extends != entry.extends):
+            warnings.append(
+                f"{name}.toml: entry rejected: extends {entry.extends!r}, which "
+                "is not a loaded language entry"
+            )
+        else:
+            frameworks[name] = _add_entry(base, entry, warnings) if base else entry
+    return Registry(
+        languages=languages, frameworks=frameworks, warnings=tuple(warnings)
+    )
+
+
+def _add_entry(
+    base: RegistryEntry, extra: RegistryEntry, notes: list[str]
+) -> RegistryEntry:
+    def add(label, have, more):
+        taken = {value for cited in have for value in cited.value}
+        result = list(have)
+        for cited in more:
+            fresh = tuple(value for value in cited.value if value not in taken)
+            dropped = [value for value in cited.value if value in taken]
+            if dropped:
+                notes.append(
+                    f"curated wins: {base.name}.{label} already has "
+                    f"{', '.join(dropped)}; the local value is not used"
+                )
+            if fresh:
+                result.append(dataclasses.replace(cited, value=fresh))
+                taken.update(fresh)
+        return tuple(result)
+
+    roles = dict(base.roles)
+    for role, more in extra.roles.items():
+        roles[role] = add(f"roles.{role}", roles.get(role, ()), more)
+    fields = dict(base.fields)
+    for field, more in extra.fields.items():
+        fields[field] = add(field, fields.get(field, ()), more)
+    return dataclasses.replace(
+        base,
+        manifests=add("manifests", base.manifests, extra.manifests),
+        roles=dict(sorted(roles.items())),
+        fields=dict(sorted(fields.items())),
+    )
+
+
+def save_local_entries(
+    entries: Sequence[LocalEntry], root: Path, *, known_roles: Collection[str]
+) -> None:
+    """Add ``entries`` to their ``<name>.toml`` under ``root``, atomically.
+
+    Each file is re-read, merged (an identical field is kept once), sorted,
+    and replaced via a temp file in the same directory, so concurrent writers
+    leave one complete file — the last writer's. Raises :class:`OSError` on
+    any refusal; the caller then scores with the data already on disk.
+    """
+    problem = local_root_problem(root)
+    if problem:
+        raise OSError(problem)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if root.is_symlink() or not root.is_dir():
+        raise OSError("the local layer directory is a symlink; refused")
+    known = frozenset(known_roles)
+    by_name: dict[str, list[LocalEntry]] = {}
+    for entry in entries:
+        by_name.setdefault(entry.name, []).append(entry)
+    for name, group in sorted(by_name.items()):
+        path = root / f"{name}.toml"
+        if path.is_symlink():
+            raise OSError(f"{name}.toml is a symlink; refused")
+        extends = group[0].extends
+        sections: dict[str, list[CitedValue]] = {}
+        if path.exists():
+            current, errors = _load_entry(path, known, local=True)
+            if errors:
+                raise OSError(f"{name}.toml exists but is invalid; not modified")
+            extends = current.extends
+            sections["manifests"] = list(current.manifests)
+            for field, cited_values in current.fields.items():
+                sections[field] = list(cited_values)
+            for role, cited_values in current.roles.items():
+                sections[f"roles.{role}"] = list(cited_values)
+        for entry in group:
+            if entry.extends != extends:
+                raise OSError(f"{name}.toml: conflicting extends; not modified")
+            target = sections.setdefault(entry.field, [])
+            if entry.cited not in target:
+                target.append(entry.cited)
+        data = _entry_toml(extends, sections).encode("utf-8")
+        if len(data) > MAX_ENTRY_BYTES:
+            raise OSError(f"{name}.toml would exceed {MAX_ENTRY_BYTES} bytes")
+        _atomic_write(root, path, data)
+
+
+def _entry_toml(extends: str | None, sections: Mapping[str, list[CitedValue]]) -> str:
+    lines = ["# easy-verifier local reference registry entry (T036)."]
+    if extends is not None:
+        lines.append(f"extends = {json.dumps(extends)}")
+    for field in sorted(sections):
+        ordered = sorted(
+            sections[field],
+            key=lambda c: (c.value, c.citation_url, c.source_tag, c.cwe or ""),
+        )
+        for cited in ordered:
+            lines += [
+                "",
+                f"[[{field}]]",
+                "value = [" + ", ".join(json.dumps(v) for v in cited.value) + "]",
+                f"citation_url = {json.dumps(cited.citation_url)}",
+                f"source_tag = {json.dumps(cited.source_tag)}",
+            ]
+            if cited.cwe:
+                lines.append(f"cwe = {json.dumps(cited.cwe)}")
+    return "\n".join(lines) + "\n"
+
+
+def _atomic_write(root: Path, path: Path, data: bytes) -> None:
+    fd, temp = tempfile.mkstemp(prefix=f".{path.stem}.", suffix=".tmp", dir=root)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp, path)
+    except BaseException:
+        Path(temp).unlink(missing_ok=True)
+        raise
+
+
 def _is_https(url: str) -> bool:
     if any(char.isspace() for char in url):
         return False
@@ -433,17 +904,35 @@ def _is_https(url: str) -> bool:
         parts = urlsplit(url)
     except ValueError:
         return False
-    return parts.scheme == "https" and bool(parts.hostname)
+    return (
+        parts.scheme == "https"
+        and bool(parts.hostname)
+        and parts.username is None
+        and parts.password is None
+    )
 
 
 __all__ = [
+    "AGENT_RESEARCHED",
     "CURATED",
     "ENTRY_FIELDS",
+    "LOCAL_TAGS",
+    "MAX_AGENT_ENTRIES",
     "MAX_ENTRY_BYTES",
+    "SOT_ENV",
+    "USER_SUPPLIED",
     "CitedValue",
+    "LocalEntry",
     "Registry",
     "RegistryEntry",
     "curated_root",
+    "layered_registry",
     "load_registry",
+    "local_root_problem",
+    "local_write_problem",
     "merge",
+    "overlay",
+    "parse_local_entries",
+    "save_local_entries",
+    "sot_root",
 ]

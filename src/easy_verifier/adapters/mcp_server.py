@@ -140,6 +140,8 @@ def score(
         detect_gates=True,
     )
     payload = result.to_dict()
+    if result.registry_notes:
+        payload["registry_notes"] = list(result.registry_notes)
     if result.needs_input is not None:
         payload["needs_input"] = {"picks": result.needs_input}
     elif result.gate_requests is not None:
