@@ -54,6 +54,29 @@ Claude Code starts the server in your project directory, so the default usually 
 clients may start it somewhere else. There, pass `repo` as an **absolute path** in the tool call.
 Reports are written to `<repo>/reports/`, which must be writable by your user.
 
+## Source roles and agent input
+
+Each dimension seeks **source roles**, such as `lockfile`, `requirements-doc`, or `test-file`,
+filled by language-agnostic patterns and extended by Python, JS/TS, Rust, and Java pattern sets.
+`list_dimensions` returns every role with its patterns. The target repository may add globs to
+existing roles in an optional `.easy-verifier.toml` (`[roles] requirements-doc = ["docs/specs/*.md"]`).
+It cannot remove roles or change floors.
+
+The `score` and `write_report` tools accept an optional `agent_input` argument,
+`{"picks": {"<role>": ["<repo-relative path>", ...]}}`, to add files a role's patterns missed. The
+CLI replays the same document with `--agent-input PATH`, and both adapters return identical output
+for it. Every `score` result carries a per-dimension `provenance` entry: `sources` (`rules`,
+`rules + config`, `rules + agent picks (N files)`) and `rating` (`rules`, `blended (w …)`,
+`agent-rated`, `abstained`).
+
+A `score` response may carry `needs_input`. `needs_input.picks` asks for files, and
+`needs_input.gate_evaluations` names the dimensions whose rules abstained or sit within ±10% of a
+threshold, with the evidence refs to read. To answer, call `score` again with the same
+`agent_input` plus `"gate_evaluations": {"<dimension>": {"score": 0-100, "confidence": 0-1,
+"evidence_refs": ["<ref>"]}}`. Each answer blends in with `w = 0.5 × confidence`, or stands alone
+as `agent-rated` where the rules abstained. The result is always shown with its parts, for example
+`74 = rules 68 + agent 88 (w 0.30)`. A call that carries `gate_evaluations` asks nothing further.
+
 ## 4. Check the connection
 
 - Claude Code: `claude mcp list`, or `/mcp` inside a session.

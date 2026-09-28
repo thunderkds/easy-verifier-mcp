@@ -14,7 +14,7 @@ import pkgutil
 from dataclasses import dataclass
 from importlib import import_module
 
-from ..core.models import DimensionDescriptor
+from ..core.models import DimensionDescriptor, SourceRole
 from . import (
     architecture,
     blast_radius,
@@ -43,6 +43,8 @@ class DimensionDiscovery:
     name: str
     purpose: str
     sources_sought: tuple[str, ...]
+    roles: tuple[SourceRole, ...] = ()
+    """Each role's name and generic patterns (FR-031, FR-013a)."""
 
 
 def list_dimensions() -> tuple[DimensionDiscovery, ...]:
@@ -69,6 +71,7 @@ def list_dimensions() -> tuple[DimensionDiscovery, ...]:
                 name=descriptor.name,
                 purpose=descriptor.purpose,
                 sources_sought=descriptor.sources_sought,
+                roles=descriptor.roles,
             )
         )
     return tuple(sorted(discovered, key=lambda item: item.name))

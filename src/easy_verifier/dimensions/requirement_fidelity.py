@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceRole,
+)
+from ..core.roles import role
 from . import _doc_extract
 
 NAME = "requirement-fidelity"
@@ -20,12 +26,14 @@ PURPOSE = (
     "whether the implementation is faithful to what was actually asked for."
 )
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    "PRD.md",
-    "REQUIREMENT.md",
-    "PROJECT_SPEC.md",
-    "tasks/TASK_GUIDE_*.md",
+ROLES: tuple[SourceRole, ...] = (
+    role("requirements-doc"),
+    role("spec-doc"),
+    role("task-breakdown"),
 )
+"""Source roles (T026): filled by any matching file in any language."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MARKERS: tuple[str, ...] = (
     "functional requirement",
@@ -49,4 +57,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )

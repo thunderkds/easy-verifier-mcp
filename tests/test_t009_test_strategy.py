@@ -54,7 +54,9 @@ def test_this_repo_cites_its_test_tree_and_pytest_config_with_real_lines() -> No
     pack = run_dimension(test_strategy.DESCRIPTOR, REPO_ROOT, scope="project")
 
     paths = [excerpt.path for excerpt in pack.excerpts]
-    assert "pyproject.toml" in pack.sources_found
+    # T026: pyproject.toml fills the `test-config` role (Python table).
+    assert "test-config" in pack.sources_found
+    assert "pyproject.toml" in pack.files_read
     assert any(path.startswith("tests/") for path in paths)
 
     config = next(item for item in pack.excerpts if item.path == "pyproject.toml")
@@ -241,7 +243,9 @@ def test_framework_config_split_across_three_files_is_cited_from_each(
 
     for path in ("pyproject.toml", "pytest.ini", "setup.cfg", "tox.ini"):
         assert path in cited, path
-        assert path in pack.sources_found or path == "tox.ini"
+        assert path in pack.files_read, path
+    # T026: all four fill the one `test-config` role; the workflow fills CI.
+    assert {"test-config", "ci-workflow"} <= set(pack.sources_found)
 
     # The shared manifest is cited from its test section, not from line 1.
     assert cited["pyproject.toml"].start_line == 4
@@ -448,7 +452,12 @@ def test_changes_scope_with_only_test_edits_and_a_deleted_test(
     assert "tests/test_gone.py" in deleted
     # Discovery limited to the diff is stated, not silently presented as absence.
     assert any("Test discovery was limited" in text for text in pack.warnings)
-    assert _reasons(pack)["pytest.ini"] == "not in the resolved changes scope"
+    # T026: no test configuration exists anywhere in this fixture, so the
+    # role says "not found" (the old per-file checklist said "not in scope").
+    assert _reasons(pack)["test-config"].startswith("not found")
+    # The test file outside the diff-only scope still fills `test-file`, but
+    # only because the changed test was read -- never by widening.
+    assert "test-file" in pack.sources_found
 
 
 def test_missing_and_bogus_selectors_never_widen_to_the_whole_repository(
@@ -482,7 +491,7 @@ def test_missing_and_bogus_selectors_never_widen_to_the_whole_repository(
     )
     assert bogus.files_read == ()
     assert bogus.excerpts == ()
-    assert _reasons(bogus)["pytest.ini"] == "not in the resolved task scope"
+    assert _reasons(bogus)["test-config"] == "not in the resolved task scope"
 
 
 def test_declared_sources_are_probed_so_every_miss_reason_is_truthful(
@@ -501,12 +510,12 @@ def test_declared_sources_are_probed_so_every_miss_reason_is_truthful(
     pack = run_dimension(test_strategy.DESCRIPTOR, tmp_path, scope="project")
     reasons = _reasons(pack)
 
-    assert pack.sources_found == ("pytest.ini",)
-    assert reasons["tox.ini"] == "not found in the target repository"
-    assert reasons["pyproject.toml"] == "not found in the target repository"
-    assert reasons["conftest.py"] == "not found in the target repository"
-    assert reasons[".github/workflows/ci.yml"] == "not found in the target repository"
-    assert reasons["package.json"] == "not a regular file"
+    # T026: sources are roles. pytest.ini fills `test-config`; a directory
+    # named package.json is not a file, so it fills and activates nothing.
+    assert pack.sources_found == ("test-config",)
+    assert reasons["test-file"].startswith("not found")
+    assert reasons["ci-workflow"].startswith("not found")
+    assert "package.json" not in pack.files_read
     assert "not examined" not in reasons[test_strategy.CORRESPONDENCE_SOURCE]
     assert not any("byte budget" in reason for reason in reasons.values())
 
@@ -533,9 +542,10 @@ def test_nested_declared_source_is_never_both_cited_and_declared_missing(
     reasons = _reasons(pack)
 
     assert "tests/conftest.py" in pack.files_read
-    assert "conftest.py" not in reasons
     assert "sub/pyproject.toml" in pack.files_read
-    assert "pyproject.toml" not in reasons
+    # T026: both fill `test-config`, which is found and therefore never missing.
+    assert "test-config" in pack.sources_found
+    assert "test-config" not in reasons
 
     sought = len(test_strategy.SOURCES_SOUGHT)
     found = len(pack.sources_found)

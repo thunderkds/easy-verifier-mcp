@@ -40,8 +40,15 @@ import subprocess
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 
-from ..core.models import DimensionContext, DimensionDescriptor, Excerpt, SourceMiss
+from ..core.models import (
+    DimensionContext,
+    DimensionDescriptor,
+    Excerpt,
+    SourceMiss,
+    SourceRole,
+)
 from ..core.redact import redact
+from ..core.roles import role
 
 NAME = "blast-radius"
 
@@ -56,24 +63,23 @@ REFERENCES_SOURCE = "referencing files (textual reference search over repository
 CO_CHANGE_SOURCE = "git co-change history (local `git log --name-only`)"
 HOTSPOT_SOURCE = "repository change hotspots (local git history, project scope)"
 
-#: Packaging manifests that declare downstream entry points. Probed in every
-#: scope, narrow ones included: an entry point declared at the repository root
-#: is downstream of a change anywhere, so restricting these to the scope's own
-#: file set would drop exactly the evidence this dimension is asked for.
-ENTRY_POINT_MANIFESTS: tuple[str, ...] = (
-    "pyproject.toml",
-    "setup.py",
-    "package.json",
-    "Cargo.toml",
-    "go.mod",
-)
+#: The role whose files are the packaging manifests that declare downstream
+#: entry points. Probed in every scope, narrow ones included: an entry point
+#: declared at the repository root is downstream of a change anywhere, so
+#: restricting these to the scope's own file set would drop exactly the
+#: evidence this dimension is asked for.
+MANIFEST_ROLE = "package-manifest"
 
-SOURCES_SOUGHT: tuple[str, ...] = (
-    REFERENCES_SOURCE,
-    CO_CHANGE_SOURCE,
-    HOTSPOT_SOURCE,
-    *ENTRY_POINT_MANIFESTS,
+ROLES: tuple[SourceRole, ...] = (
+    SourceRole(name=REFERENCES_SOURCE, patterns=()),
+    SourceRole(name=CO_CHANGE_SOURCE, patterns=()),
+    SourceRole(name=HOTSPOT_SOURCE, patterns=()),
+    role(MANIFEST_ROLE),
 )
+"""Source roles (T026): three pseudo-roles this dimension credits itself, and
+the package-manifest role filled by any ecosystem's manifest."""
+
+SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MAX_SCOPE_FILES = 50
 """Scope files expanded from. A worktree scope can name hundreds of files, and
@@ -107,8 +113,8 @@ METHOD_WARNING = (
 ENTRY_POINT_SEARCH_WARNING = (
     "Entry points were looked for in these packaging manifests: {manifests}; "
     "by these declaration markers: {markers}; and in entry-point-shaped files "
-    "({shapes}) surfaced by the reference search. Manifests that are not in "
-    "the repository are named in sources_missing."
+    "({shapes}) surfaced by the reference search. An unfilled package-manifest "
+    "role is named in sources_missing."
 )
 
 CO_CHANGE_WARNING = (
@@ -231,7 +237,8 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     _warn(
         context,
         ENTRY_POINT_SEARCH_WARNING.format(
-            manifests=", ".join(ENTRY_POINT_MANIFESTS),
+            manifests=", ".join(context.role_files.get(MANIFEST_ROLE, ()))
+            or "none matched the package-manifest role",
             markers=", ".join(_ENTRY_POINT_MARKERS),
             shapes=", ".join(_ENTRY_POINT_SHAPES),
         ),
@@ -427,7 +434,7 @@ def _entry_point_excerpts(context: DimensionContext) -> Iterator[Excerpt]:
     absence of a declaration is itself the answer, and ``files_read`` records
     that it was looked at.
     """
-    for manifest in ENTRY_POINT_MANIFESTS:
+    for manifest in context.role_files.get(MANIFEST_ROLE, ()):
         text = context.read_source(manifest)
         if text is None:
             continue
@@ -617,4 +624,5 @@ DESCRIPTOR = DimensionDescriptor(
     purpose=PURPOSE,
     sources_sought=SOURCES_SOUGHT,
     collect=collect,
+    roles=ROLES,
 )

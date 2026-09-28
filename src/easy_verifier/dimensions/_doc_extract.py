@@ -1,8 +1,8 @@
 """Shared extraction for the four **document-shaped** dimensions only.
 
 ``architecture``, ``solution-fit``, ``requirement-fidelity`` and ``code-quality``
-each declare a checklist of source paths plus a set of marker keywords, and use
-this module to turn "declared source found" into bounded, citable excerpts.
+each declare source roles plus a set of marker keywords, and use this module to
+turn the files resolved for those roles into bounded, citable excerpts.
 ``security``, ``test-strategy`` and ``blast-radius`` stay bespoke (Constraint 8,
 ``BRAINSTORMING_LOG.md`` § Option A post-mortem) — widening this helper to fit
 them is the mistake that sank Option A.
@@ -34,19 +34,25 @@ _MARKDOWN_EXTENSIONS = frozenset({".md", ".markdown"})
 
 
 def iter_excerpts(
-    context: DimensionContext, sources: Sequence[str], markers: Sequence[str]
+    context: DimensionContext, roles: Sequence[str], markers: Sequence[str]
 ) -> Iterator[Excerpt]:
     """Yield bounded excerpts from relevant kit or standalone sources.
 
-    A source that is missing yields nothing (``read_source`` already records
-    the miss). A source with no heading matching ``markers`` is still *found*
-    — it simply contributes zero excerpts, because found and useful are not
-    the same fact.
+    ``roles`` are role names; their files come from ``context.role_files``,
+    resolved by the pipeline before ``collect`` runs. A file that cannot be
+    read yields nothing (``read_source`` already records the miss). A file with
+    no heading matching ``markers`` still *fills* its role — it simply
+    contributes zero excerpts, because found and useful are not the same fact.
 
     ``markers`` empty is itself a declared choice, not an edge case: it means
     the dimension wants the whole (bounded) document, unfiltered, which is
     what a checklist-style dimension like ``architecture`` declares.
     """
+    role_paths = tuple(
+        dict.fromkeys(
+            path for name in roles for path in context.role_files.get(name, ())
+        )
+    )
     if context.mode == "standalone":
         found_doc_evidence = False
         examined: set[str] = set()
@@ -59,18 +65,18 @@ def iter_excerpts(
                 found_doc_evidence = True
                 yield excerpt
 
-        # A dimension's declared document names remain legitimate standalone
-        # candidates even when they are outside generic README/docs discovery.
-        for declared in sources:
-            if declared in examined:
+        # A dimension's role files remain legitimate standalone candidates even
+        # when they are outside generic README/docs discovery.
+        for concrete in role_paths:
+            if concrete in examined:
                 continue
-            for concrete, text in context.read_sources(declared):
-                if concrete in examined:
-                    continue
-                examined.add(concrete)
-                for excerpt in _excerpts_from_document(concrete, text, markers):
-                    found_doc_evidence = True
-                    yield excerpt
+            examined.add(concrete)
+            text = context.read_source(concrete)
+            if text is None:
+                continue
+            for excerpt in _excerpts_from_document(concrete, text, markers):
+                found_doc_evidence = True
+                yield excerpt
 
         # Code is consulted only after every discovered document proved silent
         # for this dimension. Discovery and reading both remain lazy/bounded.
@@ -82,8 +88,9 @@ def iter_excerpts(
                 yield from _excerpts_from_document(source, text, markers)
         return
 
-    for source in sources:
-        for concrete, text in context.read_sources(source):
+    for concrete in role_paths:
+        text = context.read_source(concrete)
+        if text is not None:
             yield from _excerpts_from_document(concrete, text, markers)
 
 

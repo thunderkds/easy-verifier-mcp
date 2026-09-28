@@ -260,7 +260,8 @@ def test_source_found_with_no_matching_markers_counts_as_found_zero_excerpts(
     )
     pack = run_dimension(solution_fit.DESCRIPTOR, tmp_path)
 
-    assert "PRD.md" in pack.sources_found
+    assert "requirements-doc" in pack.sources_found  # T026: the role PRD.md fills
+    assert "PRD.md" in pack.files_read
     assert not [e for e in pack.excerpts if e.path == "PRD.md"]
 
 
@@ -336,8 +337,9 @@ def test_requirement_fidelity_collects_task_acceptance_criteria(
 
     pack = run_dimension(requirement_fidelity.DESCRIPTOR, tmp_path)
 
-    assert "tasks/TASK_GUIDE_*.md" in pack.sources_sought
-    assert "tasks/TASK_GUIDE_*.md" in pack.sources_found
+    # T026: the task guide fills the `task-breakdown` role.
+    assert "task-breakdown" in pack.sources_sought
+    assert "task-breakdown" in pack.sources_found
     assert "tasks/TASK_GUIDE_T123.md" in pack.files_read
     assert any(
         excerpt.path == "tasks/TASK_GUIDE_T123.md"
@@ -424,7 +426,9 @@ def test_symlink_to_outside_the_repo_is_not_followed(tmp_path: Path) -> None:
 
     pack = run_dimension(solution_fit.DESCRIPTOR, repo)
 
-    assert "PRD.md" in {m.source for m in pack.sources_missing}
+    reasons = {m.source: m.reason for m in pack.sources_missing}
+    assert "PRD.md" in reasons["requirements-doc"]  # T026: keyed by role
+    assert "outside the repository" in reasons["requirements-doc"]
     assert not any("secret outside content" in e.text for e in pack.excerpts)
 
 
@@ -586,7 +590,7 @@ def test_discovered_doc_alias_to_secret_bearing_file_is_excluded(
     assert "README.md" not in pack.files_read
     assert not any("raw secret bytes" in excerpt.text for excerpt in pack.excerpts)
     assert any(
-        miss.source == "README.md" and miss.reason == "excluded: secret-bearing"
+        miss.source == "readme" and miss.reason == "excluded: secret-bearing"
         for miss in pack.sources_missing
     )
 
@@ -603,8 +607,9 @@ def test_task_guide_glob_alias_to_secret_bearing_file_is_excluded(
 
     assert "tasks/TASK_GUIDE_T123.md" not in pack.files_read
     assert not any("raw secret bytes" in excerpt.text for excerpt in pack.excerpts)
+    # T026: the only file matching `task-breakdown` resolves to a
+    # secret-bearing file, so the role is excluded, not merely unreadable.
     assert any(
-        miss.source == "tasks/TASK_GUIDE_*.md"
-        and miss.reason == "matching files existed but none were readable"
+        miss.source == "task-breakdown" and miss.reason == "excluded: secret-bearing"
         for miss in pack.sources_missing
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -75,7 +76,46 @@ def test_combined_score_and_discovery_match_across_adapters() -> None:
 
     cli_score = cli_json("score", "--repo", str(REPO_ROOT), "--scope", "worktree")
     mcp_score = mcp_call("score", {"repo": str(REPO_ROOT), "scope": "worktree"})
+    # `needs_input` is a declared MCP-only field (T027, FR-034/FR-040): the
+    # core computes it but only the MCP adapter puts it on the wire, so the
+    # CLI payload never carries the key. This is a test-declared exclusion,
+    # not a widening of DDR-0005's closed normalization list.
+    assert "needs_input" not in cli_score
+    mcp_score_for_parity = {k: v for k, v in mcp_score.items() if k != "needs_input"}
+    assert normalize(cli_score) == normalize(mcp_score_for_parity)
+
+
+def test_score_with_the_same_picks_matches_across_adapters(tmp_path: Path) -> None:
+    """FR-022 amended (T026 AC #11): agent input is part of the input, so the
+    same picks through the MCP argument and the CLI file give the same bytes
+    after DDR-0005's unchanged three-rule normalization."""
+    agent_input = {"picks": {"ci-workflow": ["scripts/verify_container.sh"]}}
+    document = tmp_path / "agent-input.json"
+    document.write_text(json.dumps(agent_input), encoding="utf-8")
+
+    cli_score = cli_json(
+        "score",
+        "--repo",
+        str(REPO_ROOT),
+        "--scope",
+        "worktree",
+        "--agent-input",
+        str(document),
+    )
+    mcp_score = mcp_call(
+        "score",
+        {"repo": str(REPO_ROOT), "scope": "worktree", "agent_input": agent_input},
+    )
+    # T028: a picks round may now ask for gate evaluations; `needs_input` is
+    # the same test-declared MCP-only exclusion as above, not a DDR-0005 rule.
+    assert "needs_input" not in cli_score
+    mcp_score = {k: v for k, v in mcp_score.items() if k != "needs_input"}
     assert normalize(cli_score) == normalize(mcp_score)
+    provenance = {
+        item["dimension"]: item["sources"] for item in cli_score["provenance"]
+    }
+    assert provenance["security"] == "rules + agent picks (1 file)"
+    assert provenance["test-strategy"] == "rules + agent picks (1 file)"
 
 
 def test_normalization_is_field_limited_and_can_fail() -> None:

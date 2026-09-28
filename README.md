@@ -101,6 +101,68 @@ python -m easy_verifier.adapters.cli score --repo . --scope project
 Pass optional findings through `--findings PATH` or stdin to add the caller-derived assessments and
 rating-to-assessment divergences to the same JSON output.
 
+#### Source roles — any language, no configuration required
+
+Each dimension seeks **source roles** rather than exact filenames: a `lockfile`, a
+`requirements-doc`, a `ci-workflow`, a `test-file`, and so on. `list-dimensions` prints every
+role with its glob patterns. Roles are filled in this order:
+
+1. **Generic patterns**, which work in any language (`**/*.lock`, `**/test/**`, `**/*_test.*`,
+   `.github/workflows/*.yml`, `docs/**/*requirement*.md`, …).
+2. **Ecosystem pattern sets** for Python, JS/TS, Rust, and Java. Each is switched on when its
+   manifest is present (`pyproject.toml`, `package.json`, `Cargo.toml`, `pom.xml`/`build.gradle*`)
+   and can only add patterns. It never adds, removes, or exempts a role.
+3. An optional **`.easy-verifier.toml`** in the target repository, which may only add globs to
+   existing roles:
+
+   ```toml
+   [roles]
+   requirements-doc = ["docs/specs/*.md"]
+   lint-config = ["tools/lint/*.json"]
+   ```
+
+   Any other key, an unknown role, a wrong type, an empty list, or an attempt to set a floor is a
+   validation error that names the key (exit 2). Without the file, output is unchanged.
+4. **Agent-input picks**, a JSON document of the form
+   `{"picks": {"requirements-doc": ["notes/wants.md"]}}`. The CLI replays it with
+   `--agent-input PATH` on `score` and `write-report`, and MCP takes it as the `agent_input`
+   argument. Picks only add files. A pick that is absolute, escapes the repository, does not exist,
+   is secret-bearing, sits under a vendor or build directory, or names an unknown role is rejected
+   with a named error. The same document may carry `gate_evaluations`
+   (`{"<dimension>": {"score": 0-100, "confidence": 0-1, "evidence_refs": ["path:1-9"]}}`),
+   accepted only for a dimension at a hard gate (below).
+
+   ```console
+   easy-verifier score --repo /path/to/repo --agent-input agent-input.json
+   ```
+
+Coverage is *roles filled ÷ roles declared*. A role counts as filled only when one of its files
+was actually read, and every role counts in every repository. Files under `node_modules`,
+`target`, `dist`, `build`, `.venv`, `vendor`, and `.git` never fill a role. Each dimension's output
+and HTML report carries a sources provenance line: `rules`, `rules + config`, or
+`rules + agent picks (N files)`. Coverage and ratings are not comparable with v0.1.0, which counted
+exact filenames.
+
+**Hard gates (MCP `score` only).** The CLI never asks. Over MCP, `score` may return `needs_input`
+with at most one question per response, and at most two extra rounds:
+
+1. `needs_input.picks`: some roles are unfilled but the repository has candidate files.
+2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
+   asked on the call that carries picks, or on the first call when nothing needs picking. A
+   dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
+   within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
+   borderline). Only reference ids are listed, at most 20 per dimension.
+
+A valid evaluation cites at least one ref from that dimension's pack. It blends into the rules
+rating R with `w = 0.5 × confidence`, so `final = R·(1−w) + A·w`, rounded half up. If the rules
+abstained, the agent's score stands alone, labelled `agent-rated`, and the abstention record is
+kept beside it. The number is always shown with its parts, for example
+`74 = rules 68 + agent 88 (w 0.30)`. The overall discloses how many dimensions were rule-rated,
+blended, or agent-rated, and which abstained. An evaluation for an ungated dimension is rejected.
+Outside a gate the agent changes no number. Findings assessments are never blended. `rationale`
+may be sent but is never written to any output. Save the final `agent_input` and replay it with
+`--agent-input` to reproduce the same result from the CLI.
+
 `write-report` accepts findings from `--findings PATH`, or from stdin when the flag is omitted.
 The named file takes precedence when both are supplied:
 

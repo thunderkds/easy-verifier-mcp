@@ -318,8 +318,9 @@ def test_sources_cut_off_by_the_budget_are_reported_as_not_examined(tmp_path):
 
     assert pack.truncated is True
     reasons = {miss.source: miss.reason for miss in pack.sources_missing}
-    assert "README.md" in reasons
-    assert "byte budget" in reasons["README.md"]
+    # T026: the checklist is source roles; README.md fills the `readme` role.
+    assert "readme" in reasons
+    assert "byte budget" in reasons["readme"]
     assert set(pack.sources_found) | set(reasons) == set(pack.sources_sought)
 
 
@@ -625,7 +626,7 @@ def test_empty_file_counts_as_found_but_yields_no_excerpt(tmp_path):
     (tmp_path / "README.md").write_text("", encoding="utf-8")
     pack = run_dimension(architecture.DESCRIPTOR, tmp_path)
 
-    assert "README.md" in pack.sources_found
+    assert "readme" in pack.sources_found  # T026: the role it fills
     assert "README.md" in pack.files_read
     assert pack.excerpts == ()
 
@@ -640,8 +641,8 @@ def test_unreadable_file_is_missing_with_a_reason_and_does_not_crash(tmp_path):
     finally:
         target.chmod(0o644)
 
-    miss = next(m for m in pack.sources_missing if m.source == "README.md")
-    assert "unreadable" in miss.reason
+    miss = next(m for m in pack.sources_missing if m.source == "readme")
+    assert "README.md" in miss.reason and "unreadable" in miss.reason
     assert "README.md" not in pack.files_read
 
 
@@ -649,8 +650,8 @@ def test_binary_file_is_skipped_not_decoded_with_replacement_characters(tmp_path
     (tmp_path / "README.md").write_bytes(b"\xff\xfe\x00binary\x00")
     pack = run_dimension(architecture.DESCRIPTOR, tmp_path)
 
-    miss = next(m for m in pack.sources_missing if m.source == "README.md")
-    assert "UTF-8" in miss.reason
+    miss = next(m for m in pack.sources_missing if m.source == "readme")
+    assert "README.md" in miss.reason and "UTF-8" in miss.reason
     assert pack.excerpts == ()
     assert "�" not in json.dumps(dataclasses.asdict(pack))
 
@@ -667,8 +668,8 @@ def test_symlink_pointing_outside_the_repo_is_not_followed(tmp_path):
 
     pack = run_dimension(architecture.DESCRIPTOR, repo)
 
-    miss = next(m for m in pack.sources_missing if m.source == "README.md")
-    assert "outside the repository" in miss.reason
+    miss = next(m for m in pack.sources_missing if m.source == "readme")
+    assert "README.md" in miss.reason and "outside the repository" in miss.reason
     assert "do not read me" not in json.dumps(dataclasses.asdict(pack))
 
 

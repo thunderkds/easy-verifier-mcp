@@ -160,10 +160,17 @@ def test_entry_point_declarations_are_cited_and_absent_manifests_are_listed(
 
     entry = next(item for item in pack.excerpts if item.path == "pyproject.toml")
     assert "[project.scripts]" in entry.text
-    assert "pyproject.toml" in pack.sources_found
-    reasons = _reasons(pack)
-    assert "not found" in reasons["package.json"]
-    assert any(w.startswith("Entry points were looked for") for w in pack.warnings)
+    # T026: any ecosystem's manifest fills the one `package-manifest` role, so
+    # an absent package.json is no longer a miss of its own.
+    assert "package-manifest" in pack.sources_found
+    looked = next(w for w in pack.warnings if w.startswith("Entry points were looked"))
+    assert "pyproject.toml" in looked
+
+    # With no manifest at all, the role's absence is stated, not implied.
+    (tmp_path / "pyproject.toml").unlink()
+    bare = run_dimension(blast_radius.DESCRIPTOR, tmp_path, scope="changes", ref="HEAD")
+    assert _reasons(bare)["package-manifest"].startswith("not found")
+    assert any("none matched the package-manifest role" in w for w in bare.warnings)
 
 
 # ---------------------------------------------------------------------------

@@ -69,7 +69,11 @@ def test_cli_score_needs_no_findings_and_returns_disclosed_ratings(
     assert completed.returncode == 0, completed.stderr
     payload = json.loads(completed.stdout)
     assert tuple(item["dimension"] for item in payload["ratings"]) == dimension_names()
-    assert set(payload) == {"ratings", "overall", "metrics"}
+    # T026 (FR-039, AC #10) adds per-dimension source provenance to the payload.
+    assert set(payload) == {"ratings", "overall", "metrics", "provenance"}
+    assert [item["dimension"] for item in payload["provenance"]] == list(
+        dimension_names()
+    )
     assert payload["overall"]["kind"] in {"overall_rating", "rating_abstention"}
     if payload["overall"]["kind"] == "overall_rating":
         assert payload["overall"]["disclosure"]
@@ -86,9 +90,11 @@ def test_cli_and_mcp_score_payloads_match(tmp_path: Path) -> None:
     completed = _run("score", "--repo", str(target), "--scope", "project")
 
     assert completed.returncode == 0, completed.stderr
-    assert json.loads(completed.stdout) == _mcp_score(
-        {"repo": str(target), "scope": "project"}
-    )
+    # `needs_input` is MCP-only (T027/T028, FR-034/FR-040), the same
+    # test-declared exclusion the adapter parity oracle makes.
+    mcp_payload = _mcp_score({"repo": str(target), "scope": "project"})
+    mcp_payload.pop("needs_input", None)
+    assert json.loads(completed.stdout) == mcp_payload
 
 
 def test_optional_findings_add_assessments_and_divergences(tmp_path: Path) -> None:
@@ -119,10 +125,12 @@ def test_optional_findings_add_assessments_and_divergences(tmp_path: Path) -> No
 
     assert completed.returncode == 0, completed.stderr
     payload = json.loads(completed.stdout)
+    # T026 (FR-039, AC #10) adds per-dimension source provenance to the payload.
     assert set(payload) == {
         "ratings",
         "overall",
         "metrics",
+        "provenance",
         "assessments",
         "divergences",
     }

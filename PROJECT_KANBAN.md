@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-24
+**Last updated**: 2026-09-26
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,7 +11,11 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive rewrites ordinary repo paths (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths), making citations to them unresolvable. Found by T026; guide not yet written (run `bugfix` skill) | backend-developer | C2 | Risk: High | P1
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
+
+**Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
+_(complete — T026, T027, T028 merged to `feat/any-language-discovery`)_
 
 _(Wave 1 complete — T001, T002, T003, T004, T005, T006 all merged to `develop`. Wave 2 is now the front.)_
 
@@ -45,6 +49,12 @@ _(empty)_
 _(empty)_
 
 ### Done
+
+- [x] **T028** — MCP evaluate gate: abstain/±10% triggers (threshold 0 never borderline), validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | ✅ Done 2026-09-26 — Stage 4 P1 threshold-0 over-gating + P2 unbounded refs fixed `38c4b3f`; 740 passed/2 skipped; live Docker MCP 3-call flow: kitchd, bryony, ai-training all 7/7. Evidence: `tasks/TASK_REVIEW_T028.md`
+
+- [x] **T027** — MCP detect gate: `needs_input.picks.groups` (grouped, ≤20 redacted candidates/group, one round, MCP-only) | ✅ Done 2026-09-26 — Stage 4 P1 symlink escape fixed `b106862`; candidates grouped (bryony 8.3→2.1 KB); 674 passed/2 skipped; live Docker MCP round trip: ai-training 7/7 rated after picks. Evidence: `tasks/TASK_REVIEW_T027.md`
+
+- [x] **T026** — Any-language source roles, add-only `.easy-verifier.toml`, role-based coverage in all 7 dimensions, `agent_input.picks` replay, source provenance | ✅ Done 2026-09-26 — Stage 4 P1 (config-glob ReDoS) fixed `8e699b8`; 658 passed/2 skipped; Docker score kitchd 7/7, bryony 5/7, ai-training 6/7 rated (was 5/2/3). Evidence: `tasks/TASK_REVIEW_T026.md`
 
 - [x] **T024** — MCP client setup guides: `docs/DOCKER_MCP_GUIDE.md` (hardened container: raw `docker run`, `claude mcp add`, JSON clients, Compose) + `docs/LOCAL_MCP_GUIDE.md` (host-direct entry point); README §MCP/§Docker trimmed to summaries that link to them | C0 | Risk: Low | P2 | Completed: 2026-09-24 | 8 new doc-truth tests pin every documented `docker run` to `compose.yaml`'s hardening, forbid TTY allocation, pin the local guide to the real `easy-verifier-mcp` entry point and `--http` flag, and require both README links; sabotage probe fails each of 7 mutations; live stdio handshake passed through the exact documented `docker run`, the Compose variant, and host-direct; full suite `596 passed, 2 skipped`; ruff clean. `/docs/` is gitignored — guides must be `git add -f`'d like `RELEASE_GUIDE.md`. Evidence in `tasks/TASK_REVIEW_T024.md`.
 - [x] **T023** — final v1 release verification + README/release-guide truth pass at published host, MCP-stdio, and Docker boundaries | C2 | Risk: High | P0 | Completed: 2026-09-23 | Published commit `475c501`; final wrapper returned `RESULT integration=0 container=0 release=0`; all KPI rows `PASS`; README and `docs/RELEASE_GUIDE.md` aligned with fail-closed semantics.

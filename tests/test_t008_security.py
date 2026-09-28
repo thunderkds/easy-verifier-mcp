@@ -13,6 +13,7 @@ from easy_verifier.adapters.cli import main as cli_main
 from easy_verifier.core.context import MODE_STANDALONE, detect_context
 from easy_verifier.core.models import ApprovalRequest, EvidencePack
 from easy_verifier.core.pipeline import run_dimension
+from easy_verifier.core.roles import resolve
 from easy_verifier.dimensions import security
 
 
@@ -92,9 +93,12 @@ def test_secret_file_defaults_to_refusal_and_surfaces_request(
     assert ".env" not in pack.files_read
     assert ".env" not in pack.sources_found
     assert raw not in serialized
-    env_miss = next(miss for miss in pack.sources_missing if miss.source == ".env")
+    # T026: `.env` is the only file matching the `credential-file` role.
+    env_miss = next(
+        miss for miss in pack.sources_missing if miss.source == "credential-file"
+    )
     assert env_miss.reason == "excluded: secret-bearing; operator approval required"
-    assert ".env" in pack.sources_sought
+    assert "credential-file" in pack.sources_sought
     assert pack.coverage_score is not None and pack.coverage_score < 1.0
 
 
@@ -113,6 +117,8 @@ def test_explicit_per_file_approval_allows_security_only_read(
         tmp_path,
         secret_approval=approve,
     )
+    # T026: role files are resolved by the pipeline before `collect` runs.
+    context.role_files = resolve(tmp_path, security.ROLES).files
 
     excerpts = tuple(security.collect(context))
 
@@ -365,16 +371,20 @@ def test_declared_sources_are_probed_so_miss_reasons_are_truthful(
     pack = run_dimension(security.DESCRIPTOR, tmp_path, scope="project")
     reasons = _reasons(pack)
 
-    assert "requirements.txt" in pack.sources_found
-    assert "src/auth.py" in pack.sources_found
+    # T026: sources are roles; each is filled by the file named beside it.
+    assert "package-manifest" in pack.sources_found  # requirements.txt
+    assert "auth-code" in pack.sources_found  # src/auth.py
+    assert {"requirements.txt", "src/auth.py"} <= set(pack.files_read)
 
     # Genuinely absent — the truthful state is "not found".
-    for absent in ("package.json", "Dockerfile", "compose.yaml", "poetry.lock"):
-        assert reasons[absent] == "not found in the target repository", absent
+    for absent in ("lockfile", "container-config", "ci-workflow"):
+        assert reasons[absent].startswith("not found"), absent
 
     # Present but withheld — distinct from both of the above (AC #11/#13).
-    assert reasons[".env"] == "excluded: secret-bearing; operator approval required"
-    assert ".env" not in pack.sources_found
+    assert reasons["credential-file"] == (
+        "excluded: secret-bearing; operator approval required"
+    )
+    assert "credential-file" not in pack.sources_found
 
     # The v1 out-of-scope pseudo-source states its own reason.
     assert "out of scope for v1" in reasons["git history (out of scope for v1)"]
@@ -426,4 +436,4 @@ def test_bogus_task_selector_still_resolves_to_an_empty_scope(tmp_path: Path) ->
 
     assert pack.files_read == ()
     reasons = {miss.source: miss.reason for miss in pack.sources_missing}
-    assert reasons["requirements.txt"] == "not in the resolved task scope"
+    assert reasons["package-manifest"] == "not in the resolved task scope"
