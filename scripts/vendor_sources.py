@@ -75,6 +75,67 @@ CWE_ATTRIBUTION = (
 MAX_TOTAL_BYTES = 500 * 1024
 
 
+class UpstreamFormatError(RuntimeError):
+    """Raised when a fetched source no longer matches its expected shape.
+
+    Fails loudly, before any file is written, so a silent upstream format
+    change can never produce a quietly degraded committed snapshot.
+    """
+
+
+def _validate_linguist(languages: dict[str, dict[str, list[str]]]) -> None:
+    if len(languages) < 500:
+        raise UpstreamFormatError(
+            f"Linguist: expected >= 500 languages, parsed only {len(languages)} "
+            "— languages.yml may have changed structure"
+        )
+    required = {
+        "Python": ".py",
+        "Kotlin": ".kt",
+        "Go": ".go",
+        "C++": ".cpp",
+    }
+    for name, extension in required.items():
+        entry = languages.get(name)
+        if entry is None:
+            raise UpstreamFormatError(f"Linguist: missing expected language {name!r}")
+        if not entry["extensions"]:
+            raise UpstreamFormatError(f"Linguist: {name!r} has no extensions")
+        if extension not in entry["extensions"]:
+            raise UpstreamFormatError(
+                f"Linguist: {name!r} extensions do not include {extension!r}: "
+                f"{entry['extensions']}"
+            )
+
+
+def _validate_asvs(requirements: list[dict[str, str]]) -> None:
+    if len(requirements) < 300:
+        raise UpstreamFormatError(
+            f"ASVS: expected >= 300 requirements, got {len(requirements)} "
+            "— export format may have changed"
+        )
+    for req in requirements:
+        if not req.get("id") or not req.get("title") or not req.get("chapter"):
+            raise UpstreamFormatError(
+                f"ASVS: requirement missing id/title/chapter: {req}"
+            )
+
+
+def _validate_cwe(weaknesses: list[dict[str, str]]) -> None:
+    if len(weaknesses) < 900:
+        raise UpstreamFormatError(
+            f"CWE: expected >= 900 weaknesses, got {len(weaknesses)} "
+            "— catalogue format may have changed"
+        )
+    ids = {w["id"] for w in weaknesses}
+    required_ids = {"78", "89", "95", "798"}
+    missing = required_ids - ids
+    if missing:
+        raise UpstreamFormatError(
+            f"CWE: missing expected weakness ids {sorted(missing)}"
+        )
+
+
 def _retrieved_now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -131,6 +192,7 @@ def _parse_languages_yml(text: str) -> dict[str, dict[str, list[str]]]:
 def fetch_linguist() -> dict:
     raw = _fetch(LINGUIST_URL)
     languages = _parse_languages_yml(raw.decode("utf-8"))
+    _validate_linguist(languages)
     return {
         "meta": {
             "source_url": LINGUIST_URL,
@@ -158,6 +220,7 @@ def fetch_asvs() -> dict:
         }
         for req in data["requirements"]
     ]
+    _validate_asvs(requirements)
     return {
         "meta": {
             "source_url": ASVS_URL,
@@ -201,6 +264,7 @@ def fetch_cwe() -> dict:
             )
             elem.clear()
     weaknesses.sort(key=lambda w: int(w["id"]))
+    _validate_cwe(weaknesses)
     return {
         "meta": {
             "source_url": CWE_URL,

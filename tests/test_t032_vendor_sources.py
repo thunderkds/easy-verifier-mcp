@@ -207,6 +207,150 @@ class TestLinguistParser:
         assert "Empty Group" not in result
 
 
+class TestValidatorsFailLoudlyOnFormatDrift:
+    """Stage 4 P1: post-extraction sanity assertions must fail loudly, before
+    any file is written, when an upstream source drifts from its expected
+    shape — never degrade quietly."""
+
+    def _load_module(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "vendor_sources_validators", SCRIPT_PATH
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    # --- Linguist -----------------------------------------------------
+
+    def test_linguist_validator_passes_on_healthy_input(self):
+        module = self._load_module()
+        languages = {
+            f"Lang{i}": {"extensions": [f".l{i}"], "filenames": []} for i in range(500)
+        }
+        languages["Python"] = {"extensions": [".py"], "filenames": []}
+        languages["Kotlin"] = {"extensions": [".kt"], "filenames": []}
+        languages["Go"] = {"extensions": [".go"], "filenames": []}
+        languages["C++"] = {"extensions": [".cpp"], "filenames": []}
+        module._validate_linguist(languages)  # must not raise
+
+    def test_linguist_validator_fails_on_too_few_languages(self):
+        module = self._load_module()
+        languages = {"Python": {"extensions": [".py"], "filenames": []}}
+        with pytest.raises(module.UpstreamFormatError, match="500"):
+            module._validate_linguist(languages)
+
+    def test_linguist_validator_fails_when_reformatted_yaml_yields_no_extensions(self):
+        # Simulates the real degradation mode: a reformatted languages.yml
+        # parses without a Python exception but the purpose-built line
+        # parser silently extracts nothing useful.
+        module = self._load_module()
+        sample = "Python:\n  type: programming\n  color: \"#3572A5\"\n"
+        languages = module._parse_languages_yml(sample)
+        with pytest.raises(module.UpstreamFormatError):
+            module._validate_linguist(languages)
+
+    def test_linguist_validator_fails_when_required_language_missing(self):
+        module = self._load_module()
+        languages = {
+            f"Lang{i}": {"extensions": [f".l{i}"], "filenames": []} for i in range(600)
+        }
+        # No Python/Kotlin/Go/C++ present.
+        with pytest.raises(module.UpstreamFormatError, match="Python"):
+            module._validate_linguist(languages)
+
+    # --- ASVS -----------------------------------------------------------
+
+    def test_asvs_validator_passes_on_healthy_input(self):
+        module = self._load_module()
+        requirements = [
+            {"id": f"V1.1.{i}", "title": "t", "chapter": "c", "url": "https://x"}
+            for i in range(300)
+        ]
+        module._validate_asvs(requirements)  # must not raise
+
+    def test_asvs_validator_fails_on_too_few_requirements(self):
+        module = self._load_module()
+        requirements = [
+            {"id": f"V1.1.{i}", "title": "t", "chapter": "c", "url": "https://x"}
+            for i in range(10)
+        ]
+        with pytest.raises(module.UpstreamFormatError, match="300"):
+            module._validate_asvs(requirements)
+
+    def test_asvs_validator_fails_on_missing_field(self):
+        module = self._load_module()
+        requirements = [
+            {"id": f"V1.1.{i}", "title": "t", "chapter": "c", "url": "https://x"}
+            for i in range(300)
+        ]
+        requirements[5]["title"] = ""
+        with pytest.raises(
+            module.UpstreamFormatError, match="missing id/title/chapter"
+        ):
+            module._validate_asvs(requirements)
+
+    # --- CWE --------------------------------------------------------------
+
+    def test_cwe_validator_passes_on_healthy_input(self):
+        module = self._load_module()
+        weaknesses = [
+            {"id": str(i), "name": "n", "url": "https://x"} for i in range(1000)
+        ]
+        weaknesses += [
+            {"id": "78", "name": "n", "url": "https://x"},
+            {"id": "89", "name": "n", "url": "https://x"},
+            {"id": "95", "name": "n", "url": "https://x"},
+            {"id": "798", "name": "n", "url": "https://x"},
+        ]
+        module._validate_cwe(weaknesses)  # must not raise
+
+    def test_cwe_validator_fails_on_too_few_weaknesses(self):
+        module = self._load_module()
+        weaknesses = [
+            {"id": str(i), "name": "n", "url": "https://x"} for i in range(10)
+        ]
+        with pytest.raises(module.UpstreamFormatError, match="900"):
+            module._validate_cwe(weaknesses)
+
+    def test_cwe_validator_fails_when_missing_required_id(self):
+        module = self._load_module()
+        # 900+ weaknesses, but 89 (SQL injection) is missing.
+        weaknesses = [
+            {"id": str(i), "name": "n", "url": "https://x"}
+            for i in range(1, 1000)
+            if i != 89
+        ]
+        with pytest.raises(module.UpstreamFormatError, match="89"):
+            module._validate_cwe(weaknesses)
+
+    # --- fetch_* wiring: validator runs before any file is written --------
+
+    def test_fetch_linguist_raises_before_returning_on_degraded_input(
+        self, monkeypatch
+    ):
+        module = self._load_module()
+        degraded = b"Python:\n  type: programming\n"
+        monkeypatch.setattr(module, "_fetch", lambda url: degraded)
+        with pytest.raises(module.UpstreamFormatError):
+            module.fetch_linguist()
+
+    def test_fetch_asvs_raises_before_returning_on_degraded_input(self, monkeypatch):
+        module = self._load_module()
+        degraded = json.dumps(
+            {
+                "requirements": [
+                    {"req_id": "V1.1.1", "req_description": "t", "chapter_name": "c"}
+                    for _ in range(5)
+                ]
+            }
+        ).encode("utf-8")
+        monkeypatch.setattr(module, "_fetch", lambda url: degraded)
+        with pytest.raises(module.UpstreamFormatError, match="300"):
+            module.fetch_asvs()
+
+
 class TestChecksumsFileIntegrity:
     def test_checksums_match_recorded_sha256(self):
         checksums_text = (VENDORED_DIR / "CHECKSUMS.sha256").read_text(encoding="utf-8")
