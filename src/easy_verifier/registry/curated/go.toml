@@ -1,0 +1,36 @@
+# Go — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["go.mod"]
+citation_url = "https://go.dev/ref/mod#go-mod-file"
+source_tag = "curated"
+
+[[manifests]]
+value = ["go.work"]
+citation_url = "https://go.dev/ref/mod#workspaces"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/go.mod"]
+citation_url = "https://go.dev/ref/mod#go-mod-file"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/go.work"]
+citation_url = "https://go.dev/ref/mod#workspaces"
+source_tag = "curated"
+
+[[roles.lockfile]]
+value = ["**/go.sum"]
+citation_url = "https://go.dev/ref/mod#go-sum-files"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.golangci.yml", "**/.golangci.yaml", "**/.golangci.toml", "**/.golangci.json"]
+citation_url = "https://golangci-lint.run/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/go.mod"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"

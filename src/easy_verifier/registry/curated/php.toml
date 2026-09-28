@@ -1,0 +1,36 @@
+# PHP — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["composer.json"]
+citation_url = "https://getcomposer.org/doc/04-schema.md"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/composer.json"]
+citation_url = "https://getcomposer.org/doc/04-schema.md"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/phpstan.neon", "**/phpstan.neon.dist", "**/phpstan.dist.neon"]
+citation_url = "https://phpstan.org/config-reference"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/psalm.xml", "**/psalm.xml.dist"]
+citation_url = "https://psalm.dev/docs/running_psalm/configuration/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/phpcs.xml", "**/phpcs.xml.dist", "**/.phpcs.xml", "**/.phpcs.xml.dist"]
+citation_url = "https://github.com/PHPCSStandards/PHP_CodeSniffer"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/.php-cs-fixer.php", "**/.php-cs-fixer.dist.php"]
+citation_url = "https://cs.symfony.com/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/phpunit.xml", "**/phpunit.xml.dist", "**/phpunit.dist.xml"]
+citation_url = "https://docs.phpunit.de/en/10.5/configuration.html"
+source_tag = "curated"

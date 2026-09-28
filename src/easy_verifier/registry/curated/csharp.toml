@@ -1,0 +1,56 @@
+# C# (.NET) — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["*.csproj"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview"
+source_tag = "curated"
+
+[[manifests]]
+value = ["*.sln"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/ide/solutions-and-projects-in-visual-studio"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/*.csproj"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/*.sln"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/ide/solutions-and-projects-in-visual-studio"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Directory.Build.props"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Directory.Packages.props"]
+citation_url = "https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management"
+source_tag = "curated"
+
+[[roles.lockfile]]
+value = ["**/packages.lock.json"]
+citation_url = "https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.editorconfig", "**/*.globalconfig"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/stylecop.json"]
+citation_url = "https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/Configuration.md"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/*.runsettings"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/test/configure-unit-tests-by-using-a-dot-runsettings-file"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/xunit.runner.json"]
+citation_url = "https://xunit.net/docs/configuration-files"
+source_tag = "curated"

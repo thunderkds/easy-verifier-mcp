@@ -26,6 +26,10 @@ dev = ["pytest>=7.4", "ruff>=0.6"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# The curated reference registry (T030, DDR-0007) ships inside the package.
+[tool.setuptools.package-data]
+easy_verifier = ["registry/curated/*.toml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

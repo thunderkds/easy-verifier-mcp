@@ -1,0 +1,32 @@
+# Kotlin — curated reference registry entry (T030, DDR-0007).
+# Kotlin shares Gradle's build files with Java, so both entries activate on them.
+
+[[manifests]]
+value = ["build.gradle.kts", "build.gradle"]
+citation_url = "https://kotlinlang.org/docs/gradle.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/build.gradle.kts", "**/build.gradle"]
+citation_url = "https://kotlinlang.org/docs/gradle.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/settings.gradle.kts", "**/settings.gradle"]
+citation_url = "https://docs.gradle.org/current/userguide/settings_file_basics.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/detekt.yml", "**/detekt.yaml", "**/detekt-config.yml", "**/config/detekt/*.yml"]
+citation_url = "https://detekt.dev/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/build.gradle.kts", "**/build.gradle"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[roles.test-file]]
+value = ["**/src/test/**"]
+citation_url = "https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_project_layout"
+source_tag = "curated"

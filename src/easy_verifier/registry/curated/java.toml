@@ -1,0 +1,56 @@
+# Java — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["pom.xml"]
+citation_url = "https://maven.apache.org/pom.html"
+source_tag = "curated"
+
+[[manifests]]
+value = ["build.gradle", "build.gradle.kts"]
+citation_url = "https://docs.gradle.org/current/userguide/build_file_basics.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/pom.xml"]
+citation_url = "https://maven.apache.org/pom.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/build.gradle", "**/build.gradle.kts"]
+citation_url = "https://docs.gradle.org/current/userguide/build_file_basics.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/settings.gradle", "**/settings.gradle.kts"]
+citation_url = "https://docs.gradle.org/current/userguide/settings_file_basics.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/checkstyle*.xml"]
+citation_url = "https://checkstyle.org/config.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/pmd*.xml"]
+citation_url = "https://pmd.github.io/pmd/pmd_userdocs_making_rulesets.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/spotbugs*.xml"]
+citation_url = "https://spotbugs.readthedocs.io/en/stable/filter.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/pom.xml"]
+citation_url = "https://maven.apache.org/surefire/maven-surefire-plugin/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/build.gradle", "**/build.gradle.kts"]
+citation_url = "https://docs.gradle.org/current/userguide/java_testing.html"
+source_tag = "curated"
+
+[[roles.test-file]]
+value = ["**/src/test/**"]
+citation_url = "https://maven.apache.org/guides/introduction/introduction-to-the-standard-directory-layout.html"
+source_tag = "curated"

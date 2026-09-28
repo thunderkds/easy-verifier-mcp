@@ -1,0 +1,31 @@
+# Rust — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["Cargo.toml"]
+citation_url = "https://doc.rust-lang.org/cargo/reference/manifest.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Cargo.toml"]
+citation_url = "https://doc.rust-lang.org/cargo/reference/manifest.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/clippy.toml", "**/.clippy.toml"]
+citation_url = "https://doc.rust-lang.org/clippy/configuration.html"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/rustfmt.toml", "**/.rustfmt.toml"]
+citation_url = "https://rust-lang.github.io/rustfmt/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/Cargo.toml"]
+citation_url = "https://doc.rust-lang.org/cargo/commands/cargo-test.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/.config/nextest.toml"]
+citation_url = "https://nexte.st/"
+source_tag = "curated"

@@ -1,0 +1,76 @@
+# Python — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["pyproject.toml"]
+citation_url = "https://packaging.python.org/en/latest/specifications/pyproject-toml/"
+source_tag = "curated"
+
+[[manifests]]
+value = ["setup.py", "setup.cfg"]
+citation_url = "https://setuptools.pypa.io/en/latest/userguide/quickstart.html"
+source_tag = "curated"
+
+[[manifests]]
+value = ["requirements.txt"]
+citation_url = "https://pip.pypa.io/en/stable/reference/requirements-file-format/"
+source_tag = "curated"
+
+[[manifests]]
+value = ["Pipfile"]
+citation_url = "https://pipenv.pypa.io/en/latest/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/pyproject.toml"]
+citation_url = "https://packaging.python.org/en/latest/specifications/pyproject-toml/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/setup.py", "**/setup.cfg"]
+citation_url = "https://setuptools.pypa.io/en/latest/userguide/quickstart.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/requirements*.txt"]
+citation_url = "https://pip.pypa.io/en/stable/reference/requirements-file-format/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Pipfile"]
+citation_url = "https://pipenv.pypa.io/en/latest/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/ruff.toml", "**/.ruff.toml", "**/pyproject.toml"]
+citation_url = "https://docs.astral.sh/ruff/configuration/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.flake8", "**/setup.cfg"]
+citation_url = "https://flake8.pycqa.org/en/latest/user/configuration.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/pylintrc"]
+citation_url = "https://pylint.readthedocs.io/en/stable/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/mypy.ini"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/pytest.ini", "**/tox.ini", "**/pyproject.toml", "**/setup.cfg"]
+citation_url = "https://docs.pytest.org/en/stable/reference/customize.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/conftest.py"]
+citation_url = "https://docs.pytest.org/en/stable/reference/fixtures.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/noxfile.py"]
+citation_url = "https://nox.thea.codes/en/stable/config.html"
+source_tag = "curated"

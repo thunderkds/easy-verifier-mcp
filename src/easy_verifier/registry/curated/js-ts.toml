@@ -1,0 +1,76 @@
+# JavaScript / TypeScript (Node) — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["package.json"]
+citation_url = "https://docs.npmjs.com/cli/configuring-npm/package-json"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/package.json"]
+citation_url = "https://docs.npmjs.com/cli/configuring-npm/package-json"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/pnpm-workspace.yaml"]
+citation_url = "https://pnpm.io/pnpm-workspace_yaml"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/eslint.config.*", "**/.eslintrc*"]
+citation_url = "https://eslint.org/docs/latest/use/configure/configuration-files"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/biome.json", "**/biome.jsonc"]
+citation_url = "https://biomejs.dev/reference/configuration/"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/.prettierrc*", "**/prettier.config.*"]
+citation_url = "https://prettier.io/docs/en/configuration.html"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/biome.json"]
+citation_url = "https://biomejs.dev/reference/configuration/"
+source_tag = "curated"
+
+[[roles.lockfile]]
+value = ["**/npm-shrinkwrap.json"]
+citation_url = "https://docs.npmjs.com/cli/configuring-npm/npm-shrinkwrap-json"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/jest.config.*"]
+citation_url = "https://jestjs.io/docs/configuration"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/vitest.config.*", "**/vitest.workspace.*"]
+citation_url = "https://vitest.dev/config/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/playwright.config.*"]
+citation_url = "https://playwright.dev/docs/test-configuration"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/cypress.config.*"]
+citation_url = "https://docs.cypress.io/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/karma.conf.*"]
+citation_url = "https://karma-runner.github.io/latest/config/configuration-file.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/.mocharc*"]
+citation_url = "https://mochajs.org/#configuring-mocha-nodejs"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["package.json"]
+citation_url = "https://docs.npmjs.com/cli/using-npm/scripts"
+source_tag = "curated"

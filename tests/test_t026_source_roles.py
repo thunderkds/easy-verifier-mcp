@@ -22,9 +22,9 @@ from easy_verifier.core import roles as roles_module
 from easy_verifier.core.findings import ValidationError
 from easy_verifier.core.models import SourceRole
 from easy_verifier.core.pipeline import run_dimension
+from easy_verifier.core.registry import load_registry
 from easy_verifier.core.report import write_report
 from easy_verifier.core.roles import (
-    ECOSYSTEM_PATTERNS,
     GENERIC_PATTERNS,
     load_repo_config,
     resolve,
@@ -333,9 +333,12 @@ def test_java_fixture_fills_roles_via_the_java_table(tmp_path: Path) -> None:
 
 
 def test_ecosystem_tables_only_extend_existing_roles() -> None:
-    for ecosystem, table in ECOSYSTEM_PATTERNS.items():
-        assert table["manifests"], ecosystem
-        assert set(table["roles"]) <= set(GENERIC_PATTERNS), ecosystem
+    # T030: the ecosystem tables moved into the cited reference registry.
+    for ecosystem, entry in load_registry(
+        known_roles=GENERIC_PATTERNS
+    ).languages.items():
+        assert entry.manifests, ecosystem
+        assert set(entry.roles) <= set(GENERIC_PATTERNS), ecosystem
 
 
 def test_role_set_is_identical_with_every_table_active_and_with_none(
@@ -348,12 +351,19 @@ def test_role_set_is_identical_with_every_table_active_and_with_none(
             "package.json": "{}\n",
             "Cargo.toml": "[package]\n",
             "pom.xml": "<project/>\n",
+            # T030: one manifest for each language the registry added.
+            "go.mod": "module m\n",
+            "build.gradle.kts": "\n",
+            "App.csproj": "<Project/>\n",
+            "Gemfile": "\n",
+            "composer.json": "{}\n",
         },
     )
     none = _write(tmp_path / "none", {"notes.txt": "nothing\n"})
     active = _resolve_all(every)
     inactive = _resolve_all(none)
-    assert set(active.ecosystems) == set(ECOSYSTEM_PATTERNS)
+    registry = load_registry(known_roles=GENERIC_PATTERNS)
+    assert set(active.ecosystems) == set(registry.languages)
     assert inactive.ecosystems == ()
     assert set(active.files) == set(inactive.files) == {r.name for r in _file_roles()}
     for descriptor in DIMENSIONS.values():
