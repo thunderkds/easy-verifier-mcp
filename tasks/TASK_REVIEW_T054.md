@@ -1,4 +1,4 @@
-# TASK_REVIEW — T054: [Short Title]
+# TASK_REVIEW — T054: Bugfix: reference gate asks for colocated_test_name_patterns (T037 × T052 merge regression)
 
 > Sibling of `tasks/TASK_GUIDE_T054.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t037_reference_gate.py::test_optional_fields_are_never_required`, `::test_optional_fields_really_are_optional_in_metric_code[colocated_test_name_patterns-True]`, `::test_every_field_metric_is_curated_everywhere_or_declared_optional`, `::test_no_framework_and_curated_language_means_no_gate[pyproject.toml]`, `[Cargo.toml]` |
-| Verification command run | pass | `python -m pytest -q` → `1342 passed, 2 skipped in 61.22s`; `python -m ruff check src tests` → `All checks passed!` |
-| Negative cases hold | pass | `function_start` (a genuinely required, curated-everywhere field) still asserts `after < full` in `test_optional_fields_really_are_optional_in_metric_code`, unaffected by this change |
-| verify | N/A | C1 bugfix with a real-surface AC (#4, MCP `score_repository(...).reference is None`) already exercised directly above and by the two regressed T037 tests; no separate `verify` skill run performed |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Reviewed only `src/easy_verifier/core/metric_tables.py` (`OPTIONAL_FIELDS`) and `tests/test_t037_reference_gate.py`; no classification code touched, per Files Must NOT Touch |
-| Full smoke suite still green (no regression) | pass | `1342 passed, 2 skipped` (was `1341 passed, 2 skipped` before the new guard test was added; no prior failures introduced) |
-| **UI: Visual regression (diff or verdict pasted)** | N/A | pure backend task, no UI component |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | pure backend task, no UI component |
-| **UI: Responsiveness at target viewports** | N/A | pure backend task, no UI component |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t037_reference_gate.py`: `test_optional_fields_are_never_required` extended; reality test gains the `colocated_test_name_patterns` case (fixture test file moved to `test/app.test.js` so directory evidence isolates the field's gating role); new guard `test_every_field_metric_is_curated_everywhere_or_declared_optional` (catches the next field of this kind). Supervisor re-run `1342 passed, 2 skipped in 59.46s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 13:44 UTC: pytest `1342 passed, 2 skipped` (exit 0; the two merge-regression failures `test_no_framework_and_curated_language_means_no_gate[pyproject.toml|Cargo.toml]` now pass); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Express repo still asks exactly its 4 framework fields (gate not over-suppressed) |
+| verify | ☑ pass | Supervisor MCP-path core call (`score_repository(detect_gates=True)`): this repo `reference` None (was a `python.colocated_test_name_patterns` request after the T037×T052 merge); express repo → express test_name_patterns/test_declarations/assertions/security_sinks — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/metric_tables.py` OPTIONAL_FIELDS (+1 member with reason) and test changes. Root cause: T052 added a consumed-but-optional field to FIELD_METRICS in parallel with T037's gate deriving required fields from FIELD_METRICS; each branch green alone. New guard test prevents recurrence. P0 0, P1 0. Security N/A beyond Med inline: data-only change |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1342 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -73,6 +73,6 @@ And (2026-09-28T13:37:12Z, `EASY_VERIFIER_SOT=$(mktemp -d) PYTHONPATH=src <main>
 None
 ```
 
-**DELTA**: A curated-language repo (pyproject.toml/Cargo.toml, no framework) no longer fails the reference-gate no-op test, and this repo's own MCP `score` no longer asks the caller to research `python.colocated_test_name_patterns` — the reference gate goes quiet again for curated languages with no framework.
+**DELTA**: Curated-language repos without frameworks again get no reference request, and any future optional registry field must be declared or the guard test fails.
 
-**WITNESS**: backend-developer (T054 implementing agent), 2026-09-28, run in worktree `easy-verifier-mcp-T054`; trace state file `.claude/hooks/.state/active_task` set to T054 before the run.
+**WITNESS**: Supervisor re-ran suite, ruff and MCP-path gate calls on this repo and an express repo on 2026-09-28 (13:44 UTC), independent of the implementing agent.
