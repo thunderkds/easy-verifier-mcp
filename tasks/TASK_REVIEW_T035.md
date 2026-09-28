@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t035_cited_rules.py` (rule table = approved table, weights sum 100, every input carries metric/threshold citation + source_tag, solution-fit `no_static_rule` at any coverage, role-missing metrics 0/1/abstain-on-truncation, CCN 30% earns 0 of 40, README table doc-truth, ASVS URL = vendored, hostile label/URL escaped) + T013 oracle extended (`test_full_score_panel_with_cited_links_loads_nothing`, scanner self-test). 8 sabotage pairs S1–S8 each caught. Supervisor re-run `1127 passed, 2 skipped in 37.54s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 07:42 UTC: pytest `1127 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | solution-fit abstains `no_static_rule` at coverage 1.0/0.5/0.0; unfilled role on truncated pack abstains (not 1); report: http anchor, anchor without rel=noreferrer, img/link/iframe/src/url()/@import all still flagged by the self-containment scanner; hostile citation label and URL escaped |
+| verify | ☑ pass | Real CLI 07:42 UTC `score --repo . --scope project </dev/null` on this repo: architecture 100, blast-radius all_metrics_abstained, code-quality 50, requirement-fidelity all_metrics_abstained, security 50, solution-fit no_static_rule, test-strategy 100, overall 75 (4/7) — matches agent AFTER table. HITL: user signed off 2026-09-28 ('Merge + fix tasks'): 4-repo before/after easy-verifier 60→75, kitchd 51→90, bryony 63→78, ai-training 61→70 — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/judge.py` (per-dimension RATING_RULES, Citation, RatingRule/RatingInput citation fields, `_validate_declared_data`, `no_static_rule`), `core/metrics.py` (role-missing metrics, coverage share, not-derivable abstentions), `core/report.py` (escaped citation anchors), README rating section, updated tests, T013 oracle. Code review P0 0, P1 0. Supervisor rulings: `*_missing` ≤0 metrics (avoid permanent borderline), ASVS 5.0.0 V13.3.1/V15.1.2, Martin archive link, failure precedence over no_static_rule, keep https+noreferrer anchors with a precise resource-load oracle. User-accepted follow-ups: T051 (redaction false positives — sha256 hashes in lock files, long test identifiers, git-ignored `.claude/` scanned; 40/100 of security weight), T052 (AC tracing for requirement-fidelity + churn evidence for blast-radius; both always abstain now so overall averages 4/7). Citation URLs not fetched. Security inline (Med): output escaped; no new I/O |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1127 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -135,7 +135,6 @@ Side by side (overall and per-dimension; "abst" = abstained, reason in brackets)
 HITL: acceptability of these numbers is for the Supervisor/user to sign off; the implementing agent
 does not judge it.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**DELTA**: Each dimension is now rated by its own standard-backed rules, and every rule input in `score` output and the report shows its metric citation, threshold citation and `curated` source tag.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T035.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and the real CLI on 2026-09-28 (07:42 UTC); user signed off the 4-repo before/after table the same day.
