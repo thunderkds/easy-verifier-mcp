@@ -105,7 +105,7 @@ src/easy_verifier/
 4a. **Never read the contents of a secret-bearing file** (DDR-0002) — `.env*`, `*.pem`, `*.key`, `id_rsa`, `.netrc`, `.pgpass`, `credentials`, `.npmrc`, `secrets.*` and the rest of the DDR's list. Enforced in `RepoContext.read_source()` so no dimension can bypass it.
    Existence is still reported as `excluded: secret-bearing` — distinct from `not found` and `not examined`; only the bytes are withheld. T008 alone may request such contents, via an operator HITL approval defaulting to refuse.
    **Complements constraint 4, does not replace it**: secrets also appear in files we cannot refuse to read, so exclusion shrinks the intake and redaction covers the residue.
-5. **Write nothing outside the target repo's `reports/`.** Never execute code from the target repo (NFR-007).
+5. **Write nothing outside the target repo's `reports/`**, with one exception: the local reference-registry layer at `$EASY_VERIFIER_SOT` or `~/.easy-verifier-sot/` (DDR-0007, FR-042), which must never be inside the target repo. Never execute code from the target repo (NFR-007).
 6. **stdio is the default and required transport** (FR-019a). HTTP/SSE is opt-in and must bind `127.0.0.1` only — never `0.0.0.0`, including inside a container (FR-019b, NFR-012).
 7. **Adapters stay thin.** No evaluation, context-loading, or rendering logic in `adapters/` (FR-021).
 8. **Shared extraction helper serves the four document-shaped dimensions only.** `security`, `test-strategy` and `blast-radius` stay bespoke — forcing them into the helper is the mistake that sank Option A.
