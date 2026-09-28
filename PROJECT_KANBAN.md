@@ -13,6 +13,7 @@
 ### Todo
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
+- [ ] **T053** — Remaining redaction noise (versioned URL paths, commit SHAs, checksum lines) + API_TOKEN detector gap (T051 follow-up) | backend-developer | C2 | Risk: High | P1
 - [ ] **T052** — Make requirement-fidelity and blast-radius rate: AC tracing + churn-hotspot evidence (T035 sign-off follow-up) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1

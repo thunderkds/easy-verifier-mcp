@@ -176,6 +176,7 @@ Authoritative task state lives in `PROJECT_KANBAN.md`. This table is the plannin
 | T050 | Code evidence in code-quality/architecture packs (blocks T035) | Todo | backend-developer | C2 | Medium | P0 |
 | T051 | Redaction false positives (hashes, identifiers, git-ignored) | Todo | backend-developer | C2 | High | P0 |
 | T052 | requirement-fidelity AC tracing + blast-radius churn evidence | Todo | backend-developer | C3 | Medium | P1 |
+| T053 | Remaining redaction noise + API_TOKEN detector gap | Todo | backend-developer | C2 | High | P1 |
 
 ---
 
