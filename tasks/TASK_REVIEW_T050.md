@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t050_code_evidence.py` — 14 tests: CLI subprocess (CCN 12, share 1/3, 1 cycle), doc evidence unchanged and first, whole functions most-complex-first, nesting, import-span merging, truncation reported (max kept, share abstains), changes scope reads only changed files, test files not read, `secrets.py` never read, redaction applied, >200-file cap warns and reads none, docs-only repo unchanged, deterministic selection. Sabotage: 7 single-predicate breaks each fail ≥1 test. `test_t007_doc_dimensions.py::test_standalone_docs_prevent_code_fallback` repointed (Supervisor ruling 1). Supervisor re-run `1022 passed, 2 skipped in 28.13s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 07:03 UTC: pytest `1022 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | >200 in-scope source files → warning, tier reads nothing (all-or-none, T031 pattern); truncated code-quality pack → `functions_over_ccn_10_share` abstains (FR-027a) while `max_function_ccn` stays as a lower bound; secret-bearing file never read (test) |
+| verify | ☑ pass | Supervisor real CLI on a fresh repo (`pkg/alpha.py` with `route` hand-counted CCN 11, `pkg/beta.py`, alpha↔beta imports, README): `cli score --scope project` → code-quality `max_function_ccn` 11 and `functions_over_ccn_10_share` 1.0 (`pkg/alpha.py:1-19`), architecture `top_level_import_cycles` 1 (`pkg/alpha.py:1-1`, `pkg/beta.py:1-1`); all three abstained before T050 per BEFORE — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed new `dimensions/_code_extract.py` (~150 lines), `code_quality.py`, `architecture.py`, new tests, repointed T007 test. Code review: P0 0, P1 0. Rulings: T007 test repoint accepted (T030 precedent; fixture unchanged, sabotage-checked); new module instead of `_doc_extract.py` accepted (Constraint 8 import pin); private `_is_source_file` import from metrics kept (P3) so pack and metric classify identically; 200-file all-or-none cap accepted (to surface at T035 sign-off: large repos abstain at project scope). Pack bytes (budget 120,000): this repo code-quality 1,711→118,849 (truncated), architecture 84,498→97,412; nestjs 887→1,014 / 43→948. P2 carried: this repo's `scripts/` widens the top-level dir so cycles see 2 modules (T033 definition); TS `*.spec.ts` counted as source (registry pattern gap). Security inline (Med): reads via `context.read_source` (secret guard), redaction/budget pipeline unchanged |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1022 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -151,7 +151,6 @@ architecture `top_level_import_cycles` 1 (alpha <-> beta). This repo: architectu
 `functions_over_ccn_10_share` abstains **for truncation only** (whole-set, FR-027a; the functions of
 33 source files exceed the 120,000-byte budget). Every pack stays within its budget (NFR-009).
 
-**DELTA**: A user running `score` on a real repository now gets code-quality approximate CCN figures and an architecture import-cycle count computed from cited function and import-line excerpts, instead of three abstentions.
+**DELTA**: On real repositories the code-quality pack now carries whole functions and the architecture pack import lines, so complexity and import-cycle metrics compute at the real `score` surface instead of always abstaining.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T050.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and a real CLI score on a fresh hand-counted repo on 2026-09-28 (07:03 UTC), independent of the implementing agent.
