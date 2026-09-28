@@ -558,3 +558,4 @@ duplicate `**Txxx**` rows before moving a task.
 - Removing a symbol "while keeping existing tests unchanged" is contradictory when tests import it;
   ruling: repoint structural tests, keep every behavioural fixture untouched.
 - The project `.venv` has no setuptools; wheel/build checks need `/usr/bin/python3`.
+- **Merge gate is global**: the pre_bash hook refuses a merge while *any* task is In Progress on the KANBAN, not only the one being merged; parallel tasks merge together after the last closes. The hook also matches the literal merge command text anywhere in a Bash command, including inside heredocs.
