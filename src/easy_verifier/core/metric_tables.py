@@ -200,6 +200,9 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
     "defaults it to () and _syntax does not require it",
     "test_candidates": "refines test matching; expected_test_names falls "
     "back to no templates for a suffix without it",
+    "colocated_test_name_patterns": "refines test matching alongside "
+    "test_name_patterns; python/php/rust omit it by design (T052) and the "
+    "directory-first rule still applies without it",
 }
 """Fields the metric code reads when present but never needs (T037 R1): a
 language without one still gets every metric it feeds, so the reference gate

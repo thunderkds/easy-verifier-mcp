@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t037_reference_gate.py::test_optional_fields_are_never_required`, `::test_optional_fields_really_are_optional_in_metric_code[colocated_test_name_patterns-True]`, `::test_every_field_metric_is_curated_everywhere_or_declared_optional`, `::test_no_framework_and_curated_language_means_no_gate[pyproject.toml]`, `[Cargo.toml]` |
+| Verification command run | pass | `python -m pytest -q` → `1342 passed, 2 skipped in 61.22s`; `python -m ruff check src tests` → `All checks passed!` |
+| Negative cases hold | pass | `function_start` (a genuinely required, curated-everywhere field) still asserts `after < full` in `test_optional_fields_really_are_optional_in_metric_code`, unaffected by this change |
+| verify | N/A | C1 bugfix with a real-surface AC (#4, MCP `score_repository(...).reference is None`) already exercised directly above and by the two regressed T037 tests; no separate `verify` skill run performed |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Reviewed only `src/easy_verifier/core/metric_tables.py` (`OPTIONAL_FIELDS`) and `tests/test_t037_reference_gate.py`; no classification code touched, per Files Must NOT Touch |
+| Full smoke suite still green (no regression) | pass | `1342 passed, 2 skipped` (was `1341 passed, 2 skipped` before the new guard test was added; no prior failures introduced) |
+| **UI: Visual regression (diff or verdict pasted)** | N/A | pure backend task, no UI component |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | pure backend task, no UI component |
+| **UI: Responsiveness at target viewports** | N/A | pure backend task, no UI component |
 
 ---
 
@@ -61,8 +61,18 @@ And (2026-09-28T13:37:12Z, `EASY_VERIFIER_SOT=$(mktemp -d) PYTHONPATH=src <main>
 {'requests': [{'language': 'python', 'field': 'colocated_test_name_patterns', 'why': 'rules: requirement-fidelity.acceptance_criteria_traced_to_code_share, requirement-fidelity.acceptance_criteria_traced_to_test_share, test-strategy.assertion_density_per_test, test-strategy.source_files_without_covering_test_share'}], 'omitted': 0, 'instructions': '...'}
 ```
 
-**AFTER**: [pending fix commit — same two commands, re-run post-fix]
+**AFTER** (2026-09-28T13:42:27Z and 13:42:28Z, same two commands, run after the fix commit):
 
-**DELTA**: [pending]
+```
+=== timestamp: 2026-09-28T13:42:27Z ===
+--- previously failing tests ---
+......                                                                   [100%]
+6 passed, 28 deselected in 0.93s
+=== timestamp: 2026-09-28T13:42:28Z ===
+--- MCP-path python colocated request on this repo ---
+None
+```
 
-**WITNESS**: [pending — derived from `memory/event-trace/T054.jsonl`, never the implementing agent alone]
+**DELTA**: A curated-language repo (pyproject.toml/Cargo.toml, no framework) no longer fails the reference-gate no-op test, and this repo's own MCP `score` no longer asks the caller to research `python.colocated_test_name_patterns` — the reference gate goes quiet again for curated languages with no framework.
+
+**WITNESS**: backend-developer (T054 implementing agent), 2026-09-28, run in worktree `easy-verifier-mcp-T054`; trace state file `.claude/hooks/.state/active_task` set to T054 before the run.
