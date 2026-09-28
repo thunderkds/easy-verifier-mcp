@@ -1,4 +1,4 @@
-# TASK_REVIEW — T036: [Short Title]
+# TASK_REVIEW — T036: Local registry layer, registry_entries agent input, replay parity, Docker mount
 
 > Sibling of `tasks/TASK_GUIDE_T036.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,23 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer on commit `673a83a` (no implementation commit yet), 2026-09-28T07:51:23Z.
+Fixture: a one-file Kotlin repo (`build.gradle.kts`, `src/test/kotlin/FooTest.kt` using `shouldBe`), an
+empty temp SOT dir via `EASY_VERIFIER_SOT`, and an agent-input file carrying one `registry_entries` item.
+
+```
+$ cat agent.json
+{"registry_entries": [{"language": "kotlin", "field": "assertions", "value": ["shouldBe"], "citation_url": "https://kotest.io/docs/assertions/assertions.html", "source_tag": "agent-researched"}]}
+$ date -u +%Y-%m-%dT%H:%M:%SZ && git rev-parse --short HEAD
+2026-09-28T07:51:23Z
+673a83a
+$ EASY_VERIFIER_SOT=$S/demo/sot PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score --repo $S/demo/repo --scope worktree --agent-input $S/demo/agent.json </dev/null; echo "exit=$?"
+validation error: agent input: 1 error(s): registry_entries: unknown key; only picks and gate_evaluations are accepted
+exit=2
+$ ls -A $S/demo/sot            # nothing written: no local layer exists
+$ grep -rn "easy-verifier-sot\|EASY_VERIFIER_SOT" src | wc -l
+0
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
