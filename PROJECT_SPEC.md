@@ -177,6 +177,7 @@ Authoritative task state lives in `PROJECT_KANBAN.md`. This table is the plannin
 | T051 | Redaction false positives (hashes, identifiers, git-ignored) | Todo | backend-developer | C2 | High | P0 |
 | T052 | requirement-fidelity AC tracing + blast-radius churn evidence | Todo | backend-developer | C3 | Medium | P1 |
 | T053 | Remaining redaction noise + API_TOKEN detector gap | Todo | backend-developer | C2 | High | P1 |
+| T054 | Bugfix: gate asks colocated_test_name_patterns (merge regression) | Todo | backend-developer | C1 | Medium | P0 |
 
 ---
 

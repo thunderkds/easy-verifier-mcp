@@ -13,6 +13,7 @@
 ### Todo
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
+- [ ] **T054** — Bugfix: reference gate asks for colocated_test_name_patterns (T037 × T052 merge regression) | backend-developer | C1 | Risk: Med | P0
 - [ ] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
