@@ -50,9 +50,10 @@ def finding(
 
 
 def rating(dimension: str, value: int = 100) -> Rating:
-    passed_count = round(value * len(RATING_RULES) / 100)
+    rules = RATING_RULES[dimension]
+    passed_count = round(value * len(rules) / 100)
     inputs = []
-    for index, (name, rule) in enumerate(RATING_RULES.items()):
+    for index, (name, rule) in enumerate(rules.items()):
         passed = index < passed_count
         metric_value = (
             rule.threshold
@@ -73,6 +74,9 @@ def rating(dimension: str, value: int = 100) -> Rating:
                 passed=passed,
                 earned_weight=rule.weight if passed else 0,
                 computed_from=(f"{dimension}.py:1-1",),
+                metric_citation=rule.metric_citation,
+                threshold_citation=rule.threshold_citation,
+                source_tag=rule.source_tag,
             )
         )
     computed = round(
@@ -91,6 +95,12 @@ def ratings(*, abstain: str | None = None):
             failure="collector failed",
         )
         if name == abstain
+        else RatingAbstention(
+            dimension=name,
+            reason_code="no_static_rule",
+            coverage_floor=COVERAGE_FLOORS[name].value,
+        )
+        if not RATING_RULES[name]
         else rating(name)
         for name in DIMENSIONS
     )

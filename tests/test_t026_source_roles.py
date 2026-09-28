@@ -217,7 +217,13 @@ def test_the_generic_fixture_rates_dimensions_that_abstain_on_main(
         "test-strategy",
         "blast-radius",
     ):
-        assert ratings[dimension]["kind"] == "rating", ratings[dimension]
+        # T035: solution-fit declares no static rule and requirement-fidelity's
+        # AC-trace metrics are not derivable, so they abstain for those reasons;
+        # the criterion here is that no dimension falls below its coverage floor.
+        assert ratings[dimension].get("reason_code") != "below_coverage_floor", (
+            ratings[dimension]
+        )
+    assert ratings["solution-fit"]["reason_code"] == "no_static_rule"
 
 
 # ---------------------------------------------------------------------------

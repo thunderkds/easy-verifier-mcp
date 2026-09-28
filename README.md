@@ -101,6 +101,46 @@ python -m easy_verifier.adapters.cli score --repo . --scope project
 Pass optional findings through `--findings PATH` or stdin to add the caller-derived assessments and
 rating-to-assessment divergences to the same JSON output.
 
+#### How each dimension is rated
+
+Each dimension has its own rules, declared as data in `judge.RATING_RULES`. A rule compares one
+metric with a threshold. A met rule earns its weight and an unmet rule earns zero. The weights in
+each dimension add up to 100. A metric that abstains is left out of both the earned and the total
+weight, and if every metric abstains the dimension abstains (`all_metrics_abstained`). Each rule
+cites its **metric** source and its **threshold** source separately. `project-default` means the
+standard names the measure but publishes no number, so the number is ours. Every rating input in
+the `score` output carries `metric_citation`, `threshold_citation` and `source_tag` (`curated` for
+every rule shipped in the package), and the HTML report shows them as links.
+
+<!-- rating-rules:start -->
+| Dimension | Metric | Rule | Weight | Metric cites | Threshold cites |
+|---|---|---|---|---|---|
+| `architecture` | `architecture_description_missing` | ≤ 0 | 30 | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) |
+| `architecture` | `decision_records_missing` | ≤ 0 | 30 | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) |
+| `architecture` | `top_level_import_cycles` | ≤ 0 | 40 | [Martin 1996, Granularity (Acyclic Dependencies Principle)](https://web.archive.org/web/2015/http://www.objectmentor.com/resources/articles/granularity.pdf) | [Martin 1996, Granularity (Acyclic Dependencies Principle)](https://web.archive.org/web/2015/http://www.objectmentor.com/resources/articles/granularity.pdf) |
+| `solution-fit` | — (no static rule: abstains as `no_static_rule`, rated only at the evaluate gate) | — | — | [ISO/IEC 25010:2023 (functional suitability)](https://www.iso.org/standard/78176.html) | — |
+| `requirement-fidelity` | `acceptance_criteria_traced_to_code_share` | ≥ 0.8 | 50 | [ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)](https://www.iso.org/standard/72089.html) | project-default |
+| `requirement-fidelity` | `acceptance_criteria_traced_to_test_share` | ≥ 0.8 | 50 | [ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)](https://www.iso.org/standard/72089.html) | project-default |
+| `code-quality` | `functions_over_ccn_10_share` | ≤ 0.1 | 40 | [McCabe 1976, A Complexity Measure](https://doi.org/10.1109/TSE.1976.233837); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | [NIST SP 500-235 (Watson & McCabe 1996)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication500-235.pdf) |
+| `code-quality` | `max_function_ccn` | ≤ 15 | 20 | [McCabe 1976, A Complexity Measure](https://doi.org/10.1109/TSE.1976.233837); [NIST SP 500-235 (Watson & McCabe 1996)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication500-235.pdf) | [NIST SP 500-235 (15 with justification)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication500-235.pdf) |
+| `code-quality` | `lint_config_missing` | ≤ 0 | 20 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `code-quality` | `format_config_missing` | ≤ 0 | 20 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `security` | `redaction_hits_observed` | ≤ 0 | 40 | [CWE-798 Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html); [OWASP ASVS 5.0.0 V13.3.1 (secrets management)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) | [OWASP ASVS 5.0.0 V13.3.1 (secrets management)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) |
+| `security` | `sink_hits_observed` | ≤ 0 | 40 | [CWE Top 25 (CWE-95, CWE-78, CWE-89)](https://cwe.mitre.org/top25/) | [CWE Top 25 (CWE-95, CWE-78, CWE-89)](https://cwe.mitre.org/top25/) |
+| `security` | `lockfile_missing` | ≤ 0 | 20 | [OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) | [OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) |
+| `test-strategy` | `source_files_without_covering_test_share` | ≤ 0.2 | 35 | [ISO/IEC/IEEE 29119-4:2021 (test techniques, coverage)](https://www.iso.org/standard/79430.html) | project-default |
+| `test-strategy` | `assertion_density_per_test` | ≥ 1 | 35 | [Kudrjavets, Nagappan & Ball 2006, Assessing the Relationship between Software Assertions and Faults](https://doi.org/10.1109/ISSRE.2006.13) | project-default |
+| `test-strategy` | `test_config_and_ci_missing` | ≤ 0 | 30 | [ISO/IEC/IEEE 29119-2:2021 (test processes, test environment)](https://www.iso.org/standard/79428.html) | project-default |
+| `blast-radius` | `max_fan_in_changed` | ≤ 20 | 50 | [Henry & Kafura 1981, Software Structure Metrics Based on Information Flow](https://doi.org/10.1109/TSE.1981.231113) | project-default |
+| `blast-radius` | `changed_files_in_churn_hotspots_share` | ≤ 0.2 | 50 | [Nagappan & Ball 2005, Use of Relative Code Churn Measures to Predict System Defect Density](https://doi.org/10.1145/1062455.1062514) | project-default |
+<!-- rating-rules:end -->
+
+The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
+file read, else 0. On a truncated pack an unfilled role abstains, because the budget may have
+dropped the file. The requirement-fidelity metrics and `changed_files_in_churn_hotspots_share`
+cannot be derived from a read-only pack, so they always abstain with a stated reason. That makes
+requirement-fidelity and project-scope blast-radius abstain and go to the evaluate gate.
+
 #### Source roles — any language, no configuration required
 
 Each dimension seeks **source roles** rather than exact filenames: a `lockfile`, a
