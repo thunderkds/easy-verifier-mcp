@@ -71,6 +71,9 @@ MAX_TASK_GUIDES = 500
 MAX_TRACE_SCAN_FILES = 2000
 """Code files walked by the trace search; more marks the search incomplete."""
 
+MAX_UNTRACED_LISTED = 50
+"""Untraced criteria listed (and quoted) per kind; the rest are counted."""
+
 MAX_CRITERIA = 5000
 """Criteria extracted; more marks the search incomplete (keeps the pack and
 the metric's work bounded on a hostile or enormous kit)."""
@@ -118,11 +121,9 @@ def _trace_evidence(context: DimensionContext) -> tuple[Excerpt, ...]:
     found = rows + definitions
     too_many = len(found) > MAX_CRITERIA
     found = found[:MAX_CRITERIA]
-    criteria = tuple(
-        AcceptanceCriterion(id=ident, keys=keys, ref=_safe_ref(excerpt))
-        for ident, keys, excerpt in found
+    traces, untraced, searched, scan_capped = _search_traces(
+        context, [keys for _id, keys, _excerpt in found]
     )
-    traces, searched, scan_capped = _search_traces(context, criteria)
 
     incomplete = None
     if too_many:
@@ -136,14 +137,30 @@ def _trace_evidence(context: DimensionContext) -> tuple[Excerpt, ...]:
             f"the trace search stopped at its ceiling of {MAX_TRACE_SCAN_FILES} "
             "code files; files beyond it were never opened"
         )
+    listed = {
+        kind: sorted(untraced[kind])[:MAX_UNTRACED_LISTED] for kind in untraced
+    }
+
+    def entries(kind: str) -> tuple[AcceptanceCriterion, ...]:
+        return tuple(
+            AcceptanceCriterion(id=found[i][0], ref=_safe_ref(found[i][2]))
+            for i in listed[kind]
+        )
+
     context.trace_search = TraceSearch(
-        criteria=criteria,
-        trace_refs=tuple(_safe_ref(excerpt) for excerpt in traces),
+        criteria=len(found),
+        traced_to_code=len(found) - len(untraced["source"]),
+        traced_to_test=len(found) - len(untraced["test"]),
+        trace_lines=len(traces),
+        untraced_code=entries("source"),
+        untraced_code_omitted=len(untraced["source"]) - len(listed["source"]),
+        untraced_test=entries("test"),
+        untraced_test_omitted=len(untraced["test"]) - len(listed["test"]),
         files_searched=searched,
         incomplete=incomplete,
     )
     message = TRACE_WARNING.format(
-        criteria=len(criteria),
+        criteria=len(found),
         rows=len(rows),
         guides=guides,
         frs=len(definitions),
@@ -153,7 +170,8 @@ def _trace_evidence(context: DimensionContext) -> tuple[Excerpt, ...]:
     if message not in context.warnings:
         context.warnings = (*context.warnings, message)
 
-    evidence = (*(excerpt for _id, _keys, excerpt in found), *traces)
+    quoted = sorted(set(listed["source"]) | set(listed["test"]))
+    evidence = (*(found[i][2] for i in quoted), *traces)
     context._trace_excerpts = evidence
     return evidence
 
@@ -228,8 +246,8 @@ def _fr_definitions(context: DimensionContext) -> list[_Found]:
 
 
 def _search_traces(
-    context: DimensionContext, criteria: tuple[AcceptanceCriterion, ...]
-) -> tuple[list[Excerpt], int, bool]:
+    context: DimensionContext, criteria: list[tuple[str, ...]]
+) -> tuple[list[Excerpt], dict[str, set[int]], int, bool]:
     """One bounded pass quoting the lines that first trace each criterion.
 
     A line is quoted only when it traces a criterion not yet traced in a file
@@ -238,15 +256,15 @@ def _search_traces(
     deterministic (DDR-0005).
     """
     by_key: dict[str, set[int]] = {}
-    for index, criterion in enumerate(criteria):
-        for key in criterion.keys:
+    untraced = {kind: set(range(len(criteria))) for kind in ("source", "test")}
+    for index, keys in enumerate(criteria):
+        for key in keys:
             by_key.setdefault(key, set()).add(index)
     if not by_key:
-        return [], 0, False
+        return [], untraced, 0, False
 
     pattern = trace_key_pattern(by_key)
     tables = curated_metric_tables()
-    untraced = {kind: set(range(len(criteria))) for kind in ("source", "test")}
     traces: list[Excerpt] = []
     searched = 0
     for walked, candidate in enumerate(
@@ -255,7 +273,7 @@ def _search_traces(
         if not untraced["source"] and not untraced["test"]:
             break
         if walked > MAX_TRACE_SCAN_FILES:
-            return traces, searched, True
+            return traces, untraced, searched, True
         kind = code_kind(candidate, tables)
         if kind is None or not untraced[kind]:
             continue
@@ -271,7 +289,7 @@ def _search_traces(
                 traces.append(
                     _line_excerpt(candidate, number, line, matches[0].start())
                 )
-    return traces, searched, False
+    return traces, untraced, searched, False
 
 
 def _line_excerpt(path: str, number: int, line: str, hit: int = 0) -> Excerpt:

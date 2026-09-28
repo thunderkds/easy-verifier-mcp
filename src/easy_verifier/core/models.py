@@ -241,32 +241,37 @@ class EvidencePack:
 
 @dataclass(frozen=True)
 class AcceptanceCriterion:
-    """One acceptance criterion found in a kit document (T052).
-
-    ``ref`` is the pack excerpt quoting the line that states it; ``keys`` are
-    the identifiers whose textual appearance in a code file traces it. Nothing
-    here says whether it is traced: the metric decides that from the pack.
-    """
+    """One acceptance criterion found in a kit document (T052), and the pack
+    excerpt (``ref``) quoting the line that states it."""
 
     id: str
     """``T052#1`` for a task-guide AC row, ``FR-043`` for a PRD requirement."""
 
-    keys: tuple[str, ...]
     ref: str
 
 
 @dataclass(frozen=True)
 class TraceSearch:
-    """The expected contents of a requirement-fidelity pack's trace evidence.
+    """Compact result of the requirement-fidelity trace search (T052).
 
-    A metric compares this against the excerpts actually present, so evidence
-    the byte budget dropped is noticed instead of reading as "untraced".
+    Counted over every criterion the search found; only a bounded,
+    deterministic list of untraced criteria rides along (NFR-009). Every
+    trace line and every listed criterion is also a pack excerpt, so a metric
+    can check the byte budget kept all of them before it reports a share.
     """
 
-    criteria: tuple[AcceptanceCriterion, ...]
-    trace_refs: tuple[str, ...]
-    """Every trace excerpt the search yielded, in yield order."""
+    criteria: int
+    traced_to_code: int
+    traced_to_test: int
+    trace_lines: int
+    """Trace excerpts the search yielded (one code-file line each)."""
 
+    untraced_code: tuple[AcceptanceCriterion, ...]
+    untraced_code_omitted: int
+    """Untraced-to-code criteria beyond the listed ones."""
+
+    untraced_test: tuple[AcceptanceCriterion, ...]
+    untraced_test_omitted: int
     files_searched: int
     incomplete: str | None = None
     """Why extraction or the search stopped early (a cap), else ``None``."""

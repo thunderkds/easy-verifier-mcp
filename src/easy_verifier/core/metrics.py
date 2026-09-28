@@ -249,6 +249,10 @@ class LanguageTables:
     test_name_patterns: tuple[re.Pattern[str], ...]
     """Full-match patterns over a base name that make it a test file."""
 
+    colocated_test_patterns: tuple[re.Pattern[str], ...]
+    """Full-match patterns over a base name that make it a test file even
+    under a source-root directory (T052); a subset of test names."""
+
     test_candidates: Mapping[str, tuple[str, ...]]
     """Source suffix -> test base-name templates with ``{stem}``/``{ext}``. A
     template starting ``./`` only matches a test in the source's directory."""
@@ -760,41 +764,46 @@ def _ac_traced_share(kind: str) -> Callable[[_PackView], _Computed]:
                     "defines an FR-xxx ID"
                 )
             )
+        if kind == "source":
+            traced, listed, omitted = (
+                search.traced_to_code,
+                search.untraced_code,
+                search.untraced_code_omitted,
+            )
+        else:
+            traced, listed, omitted = (
+                search.traced_to_test,
+                search.untraced_test,
+                search.untraced_test_omitted,
+            )
         present = {e.ref for e in view.pack.excerpts}
-        expected = [c.ref for c in search.criteria] + list(search.trace_refs)
-        dropped = [ref for ref in expected if ref not in present]
-        if dropped:
+        lines = [
+            e for e in view.pack.excerpts if code_kind(e.path, view.tables) is not None
+        ]
+        missing = [c.ref for c in listed if c.ref not in present]
+        missing_lines = max(0, search.trace_lines - len(lines))
+        if missing or missing_lines:
+            dropped = len(missing) + missing_lines
             return MetricAbstention(
                 reason=(
-                    f"{len(dropped)} of {len(expected)} criterion or trace line(s) "
-                    "the search found are not in this pack (the byte budget "
-                    "dropped them), so the share would count them as untraced"
+                    f"{dropped} cited criterion or trace line(s) the search found "
+                    "are not in this pack (the byte budget dropped them), so the "
+                    "share could not be shown with its evidence"
                 ),
-                omitted_lower_bound=len(dropped),
+                omitted_lower_bound=dropped,
             )
-        pattern = trace_key_pattern(k for c in search.criteria for k in c.keys)
-        first_line: dict[str, str] = {}
-        for excerpt in view.pack.excerpts:
-            if code_kind(excerpt.path, view.tables) == kind:
-                for key in pattern.findall(excerpt.text):
-                    first_line.setdefault(key, excerpt.ref)
-        traced: list[str] = []
-        untraced: list[str] = []
-        used: set[str] = set()
-        for criterion in search.criteria:
-            hits = [first_line[key] for key in criterion.keys if key in first_line]
-            (traced if hits else untraced).append(criterion.id)
-            used.update(hits[:1])
-        refs = {c.ref for c in search.criteria} | used
+        refs = {e.ref for e in lines if code_kind(e.path, view.tables) == kind}
+        refs |= {c.ref for c in listed}
+        untraced = search.criteria - traced
         return (
-            len(traced) / len(search.criteria),
+            traced / search.criteria,
             tuple(sorted(refs)),
-            f"{len(traced)} of {len(search.criteria)} acceptance criteria are "
-            f"traced to {target} (searched {search.files_searched} code "
-            "file(s)); untraced: "
-            + (", ".join(untraced[:15]) or "none")
-            + (f", and {len(untraced) - 15} more" if len(untraced) > 15 else "")
-            + "; "
+            f"{traced} of {search.criteria} acceptance criteria are traced to "
+            f"{target} (searched {search.files_searched} code file(s)); "
+            f"{untraced} untraced: "
+            + (", ".join(c.id for c in listed[:15]) or "none")
+            + (f", and {untraced - min(15, len(listed))} more" if untraced > 15 else "")
+            + f" (the first {len(listed)} are cited, {omitted} counted only); "
             + _TRACE_METHOD,
         )
 
@@ -1490,6 +1499,11 @@ def _is_test_file(path: str, tables: LanguageTables) -> bool:
     name = PurePosixPath(path).name
     if PurePosixPath(name).suffix not in tables.source_suffixes:
         return False
+
+    # An unambiguous colocated test name (``app.spec.ts``, ``x_test.go``) is a
+    # test wherever it sits (T052); only ambiguous names defer to directories.
+    if any(pattern.match(name) for pattern in tables.colocated_test_patterns):
+        return True
 
     directory = _directory_evidence(path)
     if directory is not None:

@@ -503,10 +503,20 @@ PATHS = [
 ]
 
 
+#: Deliberate T052 changes: test-strategy now uses the shared classifier, where
+#: a source-root directory beats a prefix-style name, and ``*Tests.java`` is a
+#: registry colocated test name. True = test, False = source.
+_T052_CHANGED = {
+    "ATests.java": True,
+    "src/easy_verifier/dimensions/test_strategy.py": False,
+}
+
+
 @pytest.mark.parametrize("path", PATHS)
 def test_test_strategy_classification_matches_the_former_tables(path):
-    assert test_strategy._is_test_file(path) is _former_is_test(path)
-    former_source = Path(path).suffix in _FORMER_SUFFIXES and not _former_is_test(path)
+    expected_test = _T052_CHANGED.get(path, _former_is_test(path))
+    assert test_strategy._is_test_file(path) is expected_test
+    former_source = Path(path).suffix in _FORMER_SUFFIXES and not expected_test
     assert test_strategy._is_source_file(path) is former_source
 
 

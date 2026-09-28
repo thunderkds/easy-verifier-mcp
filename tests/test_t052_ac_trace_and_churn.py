@@ -102,11 +102,12 @@ def test_three_of_four_criteria_named_in_code_give_a_share_of_075(tmp_path: Path
     code, test = _metric(pack, CODE), _metric(pack, TEST)
     assert code.outcome == 0.75
     assert test.outcome == 0.25
-    # AC 1: each criterion is cited at its own guide line; the Evaluation
-    # table's row after the next heading is not a criterion.
-    ids = [c.id for c in pack.trace_search.criteria]
-    assert ids == ["T001#1", "T002#1", "T003#1", "T004#1"]
-    assert "tasks/TASK_GUIDE_T001.md:7-7" in code.computed_from
+    # AC 1: four criteria (the Evaluation table after the next heading is not
+    # one); the untraced one is cited at its own guide line.
+    search = pack.trace_search
+    assert (search.criteria, search.traced_to_code, search.traced_to_test) == (4, 3, 1)
+    assert [c.id for c in search.untraced_code] == ["T004#1"]
+    assert "tasks/TASK_GUIDE_T004.md:7-7" in code.computed_from
     assert "src/app.py:1-1" in code.computed_from
     assert "T004#1" in code.derivation
 
@@ -141,8 +142,8 @@ def test_fr_ids_are_criteria_and_trace_keys_with_exact_boundaries(tmp_path: Path
         },
     )
     pack = _rf(tmp_path)
-    ids = [c.id for c in pack.trace_search.criteria]
-    assert ids == ["T009#1", "FR-001", "FR-002"]
+    assert pack.trace_search.criteria == 3
+    assert [c.id for c in pack.trace_search.untraced_code] == ["FR-001"]
     assert _metric(pack, CODE).outcome == pytest.approx(2 / 3)
 
 
@@ -164,11 +165,11 @@ def test_standalone_mode_abstains_with_its_stated_reason(tmp_path: Path):
 def test_a_budget_that_drops_trace_lines_abstains_instead_of_undercounting(
     tmp_path: Path,
 ):
-    # Sabotage pair: only the byte budget differs. 160 bytes holds the four
-    # criterion rows but not every trace line.
+    # Sabotage pair: only the byte budget differs. 90 bytes holds the three
+    # quoted untraced rows but not every trace line.
     _kit_repo(tmp_path)
     full = _metric(_rf(tmp_path), CODE)
-    tight = _metric(_rf(tmp_path, budget_bytes=160), CODE)
+    tight = _metric(_rf(tmp_path, budget_bytes=90), CODE)
     assert full.outcome == 0.75
     assert tight.abstained
     assert "byte budget dropped" in tight.abstention.reason
@@ -194,7 +195,7 @@ def test_more_criteria_than_the_ceiling_abstains(
     _kit_repo(tmp_path)
     monkeypatch.setattr(requirement_fidelity, "MAX_CRITERIA", 3)
     capped = _rf(tmp_path)
-    assert len(capped.trace_search.criteria) == 3
+    assert capped.trace_search.criteria == 3
     assert "more than 3 criteria" in _metric(capped, CODE).abstention.reason
 
     monkeypatch.setattr(requirement_fidelity, "MAX_CRITERIA", 4)
@@ -328,3 +329,71 @@ def test_project_scope_still_abstains_because_the_share_is_10_percent_by_constru
     pack = run_dimension(blast_radius.DESCRIPTOR, tmp_path, "project")
     assert pack.reach is None
     assert "by construction" in _metric(pack, HOT).abstention.reason
+
+
+def test_untraced_list_is_capped_and_counts_the_rest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _kit_repo(tmp_path)
+    monkeypatch.setattr(requirement_fidelity, "MAX_UNTRACED_LISTED", 1)
+    pack = _rf(tmp_path)
+    search = pack.trace_search
+    assert [c.id for c in search.untraced_test] == ["T002#1"]
+    assert search.untraced_test_omitted == 2
+    assert _metric(pack, TEST).outcome == 0.25  # counted over all 4 criteria
+    # Only the listed untraced rows are quoted; traced rows are not.
+    quoted = {
+        e.path
+        for e in pack.excerpts
+        if e.start_line == e.end_line and e.text.startswith("| 1 | criterion")
+    }
+    assert quoted == {"tasks/TASK_GUIDE_T002.md", "tasks/TASK_GUIDE_T004.md"}
+
+
+# ---------------------------------------------------------------------------
+# Review P1: colocated test names are tests even under a source root
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("path", "kind"),
+    [
+        ("src/app.controller.spec.ts", "test"),
+        ("apps/api/src/tasks/tasks.service.test.tsx", "test"),
+        ("internal/store/store_test.go", "test"),
+        ("src/main/java/com/x/FooTests.java", "test"),
+        ("src/main/kotlin/FooTest.kt", "test"),
+        ("src/App/FooTests.cs", "test"),
+        ("lib/foo_spec.rb", "test"),
+        # prefix-style / ambiguous names keep the directory-first rule
+        ("src/easy_verifier/dimensions/test_strategy.py", "source"),
+        ("src/pkg/test_helpers.py", "source"),
+        ("lib/test_thing.rb", "source"),
+        ("src/app.controller.ts", "source"),
+        ("tests/test_app.py", "test"),
+    ],
+)
+def test_shared_classifier_colocated_names(path: str, kind: str):
+    from easy_verifier.core.metrics import code_kind
+    from easy_verifier.dimensions import test_strategy
+
+    assert code_kind(path, curated_metric_tables()) == kind
+    assert test_strategy._is_test_file(path) is (kind == "test")
+
+
+def test_colocated_names_are_cited_registry_data_and_python_has_none():
+    from easy_verifier.core.roles import _registry
+
+    registry = _registry()
+    (jsts,) = registry.languages["js-ts"].fields["colocated_test_name_patterns"]
+    assert "?*.spec.ts" in jsts.value and jsts.citation_url.startswith("https://")
+    assert "colocated_test_name_patterns" not in registry.languages["python"].fields
+
+
+def test_a_colocated_spec_under_src_traces_to_a_test(tmp_path: Path):
+    # Sabotage pair: only the file name differs (spec-suffixed vs plain).
+    spec, plain = tmp_path / "spec", tmp_path / "plain"
+    _kit_repo(spec, t004_in="src/app.controller.spec.ts")
+    _kit_repo(plain, t004_in="src/app.controller.ts")
+    assert _metric(_rf(spec), TEST).outcome == 0.5
+    assert _metric(_rf(plain), TEST).outcome == 0.25

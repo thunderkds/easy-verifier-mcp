@@ -67,6 +67,11 @@ value = ["?*Test.java", "Test?*.java"]
 citation_url = "https://maven.apache.org/surefire/maven-surefire-plugin/examples/inclusion-exclusion.html"
 source_tag = "curated"
 
+[[colocated_test_name_patterns]]
+value = ["?*Test.java", "?*Tests.java"]
+citation_url = "https://maven.apache.org/surefire/maven-surefire-plugin/examples/inclusion-exclusion.html"
+source_tag = "curated"
+
 [[test_candidates]]
 value = ["{stem}Test{ext}", "Test{stem}{ext}"]
 citation_url = "https://maven.apache.org/surefire/maven-surefire-plugin/examples/inclusion-exclusion.html"

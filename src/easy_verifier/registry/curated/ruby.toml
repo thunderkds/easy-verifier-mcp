@@ -52,6 +52,11 @@ value = ["?*_spec.rb"]
 citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
 source_tag = "curated"
 
+[[colocated_test_name_patterns]]
+value = ["?*_spec.rb"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
 [[test_name_patterns]]
 value = ["test_?*.rb"]
 citation_url = "https://docs.seattlerb.org/minitest/"
