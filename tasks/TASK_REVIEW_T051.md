@@ -104,9 +104,77 @@ by file: [('.claude/harness-lock.json', 111), ('.codex/harness-lock.json', 60), 
 ```
 Observed: on this repo all 159 hits are in git-ignored `.claude/` (94 sha256 values in `.claude/harness-lock.json`, `def test_…` names, suffix-less paths, and 46 fingerprinted paths of `.claude/hooks/.state/*`). kitchd: 171 of 222 in git-ignored `.claude/`/`.codex/harness-lock.json`. bryony: 117 of 132 in lockfiles (`"integrity": "sha1-…"`, yarn `resolved "…tgz#<sha1>"`). ai-training: 237 of 271 in `uv.lock` (`hash = "sha256:…"` + pythonhosted URL digests) plus `def test_…` names.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (captured 2026-09-28T08:10:25Z on branch `feat/T051-redaction-fp` @ `10ba129`; same command, same 4 target repos; target-repo HEADs in the log — this repo's main checkout had moved to `3ff6dda` through concurrent Supervisor/T036 commits, which do not touch the scanned `.claude/` or lockfile content):
+```
+2026-09-28T08:10:25Z start easy-verifier-mcp 3ff6dda
+2026-09-28T08:10:27Z end easy-verifier-mcp exit=0
+2026-09-28T08:10:27Z start kitchd 872cc92
+2026-09-28T08:10:30Z end kitchd exit=0
+2026-09-28T08:10:30Z start bryony 8df7b986f
+2026-09-28T08:10:40Z end bryony exit=0
+2026-09-28T08:10:40Z start ai-training 86c98d5
+2026-09-28T08:10:42Z end ai-training exit=0
+easy-verifier-mcp {'redaction_hits_observed': 21} security rating: 50 overall: 75
+kitchd {'redaction_hits_observed': 59} security rating: 60 overall: 90
+bryony {'redaction_hits_observed': 14} security rating: 60 overall: 78
+ai-training {'redaction_hits_observed': 31} security rating: 60 overall: 70
+```
+Before → after, security `redaction_hits_observed`: easy-verifier-mcp **159 → 21**, kitchd **222 → 59**, bryony **132 → 14**, ai-training **271 → 31**. Only rating change across all 4 repos × 7 dimensions: easy-verifier-mcp security 20 → 50 (overall 68 → 75). Other metric deltas on this repo only (from dropping git-ignored `.claude/`): `security.sink_hits_observed` 6 → 0 (the 6 sinks were in `.claude/hooks/*.py`), `security.lockfile_missing` 0 → abstained (`.claude/harness-lock.json` had been filling the lockfile role), `architecture.top_level_import_cycles` abstained → 0.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+Remaining hits (redacted excerpt text, never raw values):
+```
+[self]
+hits: 21
+by file: [('src/easy_verifier/core/redact.py', 5), ('README.md', 4), ('CLAUDE.md', 3), ('PROJECT_KANBAN.md', 2), ('scripts/vendor_sources.py', 2), ('src/easy_verifier/core/metric_tables.py', 2), ('memory/learnings.md', 1), ('src/easy_verifier/core/judge.py', 1), ('src/easy_verifier/core/scope.py', 1
+by detector: [('high_entropy_string', 11), ('key_material_segment', 5), ('credential_assignment', 3), ('aws_access_key_id', 1), ('high_entropy_hex', 1)]
+[kitchd]
+hits: 59
+by file: [('apps/api/src/auth/auth.e2e.spec.ts', 7), ('repo…****:e808c802ee27.html', 4), ('repo…****:4d10b85626cf.html', 4), ('repo…****:c1e88fe3b79e.html', 4), ('repo…****:80b8e26427f3.html', 4), ('repo…****:733ce35941d0.html', 4), ('repo…****:9a2cc977475d.html', 4), ('repo…****:60e73
+by detector: [('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
+[bryony]
+hits: 14
+by file: [('CHANGELOG.md', 3), ('backend/bin/ec2/fabric/fabfile.py', 3), ('frontend/app/scripts/modules/auth/views/register.itemview.js', 2), ('backend/Gruntfile.js', 2), ('backend/bin/fabric/fabfile.py', 2), ('nodes/package.json', 1), ('backend/server/dashboard/authenticate.js', 1)]
+by detector: [('high_entropy_hex', 7), ('credential_assignment', 4), ('high_entropy_string', 2), ('key_material_segment', 1)]
+[ai-training]
+hits: 31
+by file: [('tests/test_llm_payload_contracts.py', 4), ('src/core/llm/factory.py', 3), ('src/core/observability/langfuse.py', 3), ('src/core/subgraphs/research/research_agent.py', 2), ('src/docs/ragas-evaluation.md', 2), ('tests/test_llm_factory.py', 2), ('tests/test_llm_payload_gates.py', 2), ('test
+by detector: [('high_entropy_string', 24), ('credential_assignment', 7)]
+[self sample]
+CLAUDE.md:128 high_entropy_string | See [`docs…****:3bda998323af.md`](docs…****:3bda998323af.md) for full Step 1 / Step 1.5 (Ambiguity Resolution Protocol) / Step 2 d
+CLAUDE.md:152 high_entropy_string | - **Stage 1.5** (Sub-Agent Architecture): design the sub-agent team; base team is always Comm…****:fb6035c79266; `Skill({ skill: "cr
+PROJECT_KANBAN.md:64 key_material_segment | - [~] **T051** — Redaction false positives: content hashes, long identifiers, git-ignored files (T035 sign-off follow-up) | 
+PROJECT_KANBAN.md:65 key_material_segment | - [~] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-devel
+README.md:128 high_entropy_string | | `security` | `redaction_hits_observed` | ≤ 0 | 40 | [CWE-798 Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions
+README.md:130 high_entropy_string | | `security` | `lockfile_missing` | ≤ 0 | 20 | [OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)](https://github.com/OWASP
+memory/learnings.md:139 aws_access_key_id | run_dimension(DESCRIPTOR, "/nonexistent/AKIA…****:1a5d44a2dca1/repo")
+scripts/vendor_sources.py:58 high_entropy_string | "OWAS…****:e1b0aefbf060.0.0_en.flat.json"
+[bryony sample]
+nodes/package.json:29 key_material_segment | "license": "BSD-…****:248dd895a2f8"
+frontend/app/scripts/modules/auth/views/register.itemview.js:19 credential_assignment | password: '#pas…****:a9ca1573cef4',
+frontend/app/scripts/modules/auth/views/register.itemview.js:101 credential_assignment | password = this…****:fcad7430e71a),
+backend/server/dashboard/authenticate.js:41 credential_assignment | const token = quer…****:12d09cfeec1f;
+CHANGELOG.md:9 high_entropy_hex | - [#5dad3801](https://gitlab.asoft-python.com/bryony/bryony/commit/5dad…****:c7dce6c9ce19) Developer implement feature to allow user r
+CHANGELOG.md:15 high_entropy_hex | - [#61d3ce17](https://gitlab.asoft-python.com/bryony/bryony/commit/61d3…****:1435d5caead0) To Be Added to LinkedIn List extract wrong
+CHANGELOG.md:25 high_entropy_hex | - [#ec0d9d76](https://gitlab.asoft-python.com/bryony/bryony/commit/ec0d…****:d77f64a8c89c) Supports Company Tags feature: show compan
+backend/Gruntfile.js:77 high_entropy_hex | login: '6b88…****:42332d012db5',
+[ai-training sample]
+src/core/profile/extraction.py:137 high_entropy_string | SystemMessage(cont…****:deed5ccff74a),
+src/core/subgraphs/fitness/planner.py:155 high_entropy_string | SystemMessage(cont…****:bd58f154ce1d),
+src/core/subgraphs/fitness/template_registry.py:60 high_entropy_string | sess…****:cf21321ce3cb(profile, constraints),
+src/core/subgraphs/research/research_agent.py:113 credential_assignment | token = set_…****:4ce698f2e665)
+src/core/subgraphs/research/research_agent.py:144 high_entropy_string | SystemMessage(cont…****:f7cd178577aa),
+src/docs/ragas-evaluation.md:61 high_entropy_string | - Set `VERI…****:bf883de7139a` in your environment/`.env`.
+[kitchd sample]
+by detector: [('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
+apps/api/src/auth/auth.e2e.spec.ts:39 credential_assignment | password: 'corr…****:622493693890',
+apps/api/src/auth/auth.e2e.spec.ts:65 credential_assignment | const password = 'corr…****:622493693890';
+by detector: [('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
+repo…****:e808c802ee27.html:5 key_material_segment | <title>Code Review Report — task/T019…****:c69625c8230c</title>
+```
+What remains is (a) real secret shapes the suite is meant to flag — `credential_assignment` on test passwords/`api_key=` lines, a hex `login:` value in bryony `Gruntfile.js`, deliberate `FAKE…` fixtures in this repo's docs — and (b) false-positive classes outside T051's three: tracked report/URL paths with digit pieces (kitchd `reports/*-T019-…html`), commit SHAs in prose/URLs (`CHANGELOG.md`, `commit <sha>`), `key=CONSTANT` (`content=SYSTEM_PROMPT`), and `sha256sum`-format lines. Ruling items, not fixed here.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T051.jsonl`, never the
-implementing agent alone]
+Runtime (bryony, same machine, back to back): pre-T051 `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/06633da9-85a5-4902-ba87-95dec4f60d5e/scratchpad/pre/src` 9.97 s vs T051 9.71 s; ignore listing = 16 `git ls-files` calls per score run, 82 ms total.
+
+**DELTA**: security's `redaction_hits_observed` no longer counts sha/integrity digests in lock files, `def test_…`/SCREAMING_CASE identifiers, or anything in git-ignored files, so the 40-weight rule now reflects secret-shaped content (4-repo total 784 → 125) while every existing secret test still passes.
+
+**WITNESS**: [reviewer — derive from `memory/event-trace/T051.jsonl`]
