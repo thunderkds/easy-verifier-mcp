@@ -573,3 +573,11 @@ duplicate `**Txxx**` rows before moving a task.
 - T033 CCN/cycle metrics were correct but abstained on code-quality/architecture packs, which hold no code. Before writing rules over a metric, confirm the dimension's pack actually carries the evidence at the real surface. Follow-up T050 added (blocks T035).
 - Carry-forward P2s: blast-radius scan cap not reported as truncation (fan-in silent lower bound); Go imports matched by stem; JS class methods, generic-return Java/C# methods, Ruby blocks not detected as functions; ternary, ?? and Kotlin when not counted.
 - tokens: function end by indentation for all languages; syntax table keyed by file extension (curated_metric_tables().syntax['.py']).
+
+## 2026-09-28 — T034/T050 closed; CLI verify gotcha
+
+- CLI score reads findings from stdin when stdin is not a TTY; in the Bash tool stdin is an open pipe, so a verify run hangs. Always run the CLI with </dev/null.
+- Clear .claude/hooks/.state/active_task as soon as a task closes, or the step-limit hook counts Supervisor calls against it.
+- T034: interpolating strings are blanked but leave a NUL placeholder (strip(mark_interpolation=True), sink matching only); registry tokens reference it as <INTERP>. P2 carried: require('child_process').exec / destructured exec, fully qualified calls, bracket-less Ruby calls not matched.
+- T050: code-quality carries whole functions (most complex first), architecture carries import lines; all-or-none 200-file cap, so large repos abstain at project scope (raise at T035 sign-off).
+- Merged branch after T033/T034/T050: 1098 passed, 2 skipped.
