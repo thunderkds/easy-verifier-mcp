@@ -121,7 +121,12 @@ _DETECTORS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "credential_assignment",
         re.compile(
-            r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|token|password|passwd|"
+            # Left boundary is "not a letter or digit", not `\b`: `_` is a word
+            # character, so `\b` never fired inside `API_TOKEN`, `SERVICE_TOKEN`
+            # or `db_password` and the most common way credentials are named in
+            # env files and code went uncaught (T053). `mytoken=` stays out.
+            r"(?i)(?<![A-Za-z0-9])(?:api[_-]?key|apikey|secret[_-]?key|secret|token|"
+            r"password|passwd|"
             r"pwd|access[_-]?key|client[_-]?secret|auth[_-]?token|authorization)"
             r"[\"']?\s*[:=]\s*[\"']?"
             r"(?P<secret>[^\s\"',;)}\]]{3,200})"
@@ -168,7 +173,8 @@ the token in a webhook URL path, and the password inside a
 """
 
 _WORD_PIECE = r"(?:[A-Z]{1,30}|[A-Z]?[a-z]{1,30})"
-_WORD_JOINED_NAME = re.compile(rf"{_WORD_PIECE}(?:[/_-]{_WORD_PIECE}){{1,30}}")
+_NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}})"
+_WORD_JOINED_NAME = re.compile(rf"{_NAME_PIECE}(?:[/_-]{_NAME_PIECE}){{1,30}}")
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}(?![A-Za-z0-9+/=_-])")
 """A long token that is plainly an ordinary file name — `LOG_source-discovery.md`.
 
@@ -182,17 +188,22 @@ Exempt only when all three hold: the token is directly followed by a file suffix
 (`.md`, `.json`); it has at least two pieces; and every piece is a *word shape*
 — letters only, and all upper case, all lower case, or Capitalized. Random
 material fails the last test almost surely: a base64url token mixes case inside
-a piece (`xQzRtWvB`) and nearly always carries a digit. A token with a digit is
-never exempt, so `build/app-<key>.min.js` and hash-named build artefacts behave
-exactly as before; the hex and per-segment rules are untouched.
+a piece (`xQzRtWvB`) and nearly always carries a digit. T053 admits one
+more piece shape — a run of at most 8 digits (`5`, `2024`, `01`), so version and
+release labels (`…_Verification_Standard_5.0.0_en.json`) read as names. A digit
+*inside* a piece still disqualifies it, so `build/app-<key>.min.js` and
+hash-named build artefacts (`main-3f9a2b1c.js`) behave exactly as before. T053
+also applies this shape test, with the same anchors, to the per-segment rule;
+the hex rule is untouched.
 
 A bare identifier with no suffix (`BRAINSTORMING_LOG_source-discovery` in prose)
 is judged as before — over-redaction stays the direction outside the one shape
 that breaks citations.
 
-Residue, stated plainly: a secret made only of single-case letter runs joined by
-`_`/`-`/`/` and written directly before a `.ext` suffix (`kqzvxm-hjtybn.txt`) is
-no longer caught by this rule. Generated keys are alphanumeric and mixed case, so
+Residue, stated plainly: a secret made only of single-case letter runs and short
+digit runs joined by `_`/`-`/`/` and written directly before a `.ext` suffix
+(`kqzvxm-4821-hjtybn.txt`, `Summer-2024-Pw.txt`) is no longer caught by this
+rule or by the per-segment rule. Generated keys are alphanumeric and mixed case, so
 this is not the shape credentials take; it is the price of readable paths.
 """
 
@@ -222,6 +233,58 @@ that shape; ``password = kqzvxm_hjtybn…`` is still caught by the
 ``credential_assignment`` detector, which this exemption does not touch.
 """
 
+_URL = re.compile(
+    r"https?://(?P<host>[^\s/\"'<>`?#()\[\]{}|\\]{1,255})"
+    r"(?P<path>/[^\s\"'<>`?#@()\[\]{}|\\]{0,2000})?"
+)
+"""Host and path of an ``http(s)`` URL — the anchor for T053's version-label rule.
+
+A word-joined name (:data:`_WORD_JOINED_NAME`, digit runs allowed) inside this
+span is skipped by the long-token and per-segment rules: ``v5.0.0_release/5.0/
+docs_en/OWASP_…_Standard_5`` and ``/2011/07/running-a-nodejs-server-…/`` are path
+text, not key material. The span deliberately stops short of the places a URL
+carries credentials:
+
+- **userinfo** — the host class admits ``@``, and a URL whose host run contains
+  ``@`` (``https://svc:Summer-2024-Pw@db/…``) is dropped entirely, so its
+  password is judged exactly as before;
+- **query and fragment** — the path stops at ``?`` and ``#``, so
+  ``?pass=Summer-2024-Pw`` is judged as before.
+
+Random tokens in a path (a Slack webhook segment ``aB3xK9mQ…``) fail the piece
+shape, so they are caught as before; named detectors never consult the span.
+Residue, stated plainly: a password built from word pieces and digit runs
+(``Summer-2024-Pw``) written as a URL *path* segment is no longer caught."""
+
+_CONSTANT_ASSIGNMENT = re.compile(
+    rf"_?{_WORD_PIECE}(?:_{_WORD_PIECE}){{0,30}}=_?[A-Z]{{1,30}}(?:_[A-Z]{{1,30}}){{1,30}}"
+)
+"""``key=UPPER_SNAKE_CONSTANT`` — a keyword argument or assignment that names a
+constant: ``content=QUERY_PLANNING_SYSTEM_PROMPT``, ``limit=MAX_SINK_EXCERPTS``.
+
+The long-token candidate class contains ``=``, so T051's identifier exemption
+never saw these. Skipped by the long-token rule only, and only when the *whole*
+candidate is a word-shaped key, ``=``, and at least two ``_``-joined all-upper
+letter pieces. The two-piece floor is what keeps a base32 secret out (base32 has
+no ``_``); a digit, a lower-case letter or a quote in the value keeps the old
+behaviour. A secret-named key (``PASSWORD=SOME_CONSTANT``) is still caught by
+``credential_assignment``, which never consults this. Residue, stated plainly: a
+random value made only of upper-case letter runs joined by ``_`` under a
+non-secret key."""
+
+_LICENSE_VALUE = re.compile(
+    r"(?<![A-Za-z0-9_])(?i:licen[cs]e)[\"']?[ \t]{0,20}[:=][ \t]{0,20}[\"']?"
+    r"(?P<id>[A-Za-z0-9.+-]{1,64})(?=[\"']?[ \t]*(?:[,;)}\]\r\n]|$))",
+    re.MULTILINE,
+)
+"""The value of a ``license`` key — where SPDX identifiers (``BSD-3-Clause``) live.
+
+``BSD-3-Clause`` mixes case and digits, so the per-segment rule fingerprinted
+it. A segment is skipped only when it lies inside this value *and* is a
+word-joined name (:data:`_WORD_JOINED_NAME`), so random material under a
+``license`` key (``aB3x-K9mQ-7rT2``) is caught as before, and ``license_key`` is
+not a ``license`` key."""
+
 _SECRET_KEY_WORD = re.compile(
     r"(?i)api[_-]?key|apikey|secret|token|passw(?:or)?d|pwd|access[_-]?key|"
     r"private[_-]?key|credential|authorization"
@@ -235,13 +298,14 @@ a fingerprinted digest, one that under-matches costs a credential."""
 _HASH_KEY = re.compile(
     r"(?i)(?<![A-Za-z0-9])"
     r"(?:sha(?:1|224|256|384|512)?(?:sum)?|shasum|md5(?:sum)?|blake2[bs]?|"
-    r"integrity|hash(?:es)?|narhash|checksum|digest|rev|commit|resolved_reference)"
+    r"integrity|hash(?:es)?|narhash|checksum|digest|rev|commit|pinned|resolved_reference)"
     r"[\"']?(?:[ \t]{0,20}[:=]|[ \t]{1,20}(?=sha(?:1|256|384|512)-))"
 )
 """A hash-named key *in key position*: followed by ``:``/``=`` (JSON, TOML, YAML,
 ``key=value``) or, for yarn v1 lockfiles, by whitespace and an SRI value
 (``integrity sha512-…``). ``content_hash:`` and ``"sha256":`` qualify; the word
-"hash" in prose (``the hash of…``) does not, and neither does ``contenthash:``."""
+"hash" in prose (``the hash of…``) does not, and neither does ``contenthash:``.
+``pinned`` (T053) covers a vendoring note's ``Pinned:  v5.0.0_release (<sha>)``."""
 
 _GIT_SHA_FRAGMENT = re.compile(
     r"(?:\.tgz|\.git|git\+[^\s\"'#]{1,500})#"
@@ -251,6 +315,32 @@ _GIT_SHA_FRAGMENT = re.compile(
 ``resolved "…/pkg-1.0.0.tgz#<sha1>"``, Cargo ``source = "git+https://…#<sha>"``.
 Exactly 40 or 64 hex characters, directly after ``.tgz#``, ``.git#`` or a
 ``git+`` URL; nothing else a lock file carries after ``#``."""
+
+_COMMIT_SHA = re.compile(
+    r"(?:(?<![A-Za-z0-9])(?i:commits?)[^0-9A-Za-z\n]{1,20}"
+    r"|raw\.githubusercontent\.com/[^/\s]{1,100}/[^/\s]{1,100}/"
+    r"|/(?:blob|tree)/)"
+    r"(?P<sha>[0-9a-f]{40})(?![0-9A-Za-z])"
+)
+"""A 40-hex commit SHA named as one (T053): the word ``commit(s)`` followed only
+by punctuation or spaces (``commit d0921d…``, ``| Local commit | `…` |``,
+``/commit/<sha>``), a ``raw.githubusercontent.com/<owner>/<repo>/<sha>`` ref, or
+a ``/blob/<sha>`` / ``/tree/<sha>`` path. Lower-case hex, exactly 40. Shorter
+SHAs need no exemption: they sit below the 32-character hex floor and carry no
+upper case for the per-segment rule. Hash context for the sha only, and vetoed
+by a secret-named word on the line like every hash context. Residue, stated
+plainly: a 40-hex secret written right after the word ``commit`` or in a
+``/blob/``/``/tree/`` path segment."""
+
+_CHECKSUM_LINE = re.compile(
+    r"^(?P<sha>[0-9a-f]{64}|[0-9a-f]{128}) [ *][^\s][^\r\n]{0,500}$", re.MULTILINE
+)
+"""A ``sha256sum``/``sha512sum`` output line: 64 or 128 lower-case hex at line
+start, two spaces (text mode) or space-star (binary mode), a file name, end of
+line (T053). Hash context for the digest only; a secret-named word on the line
+vetoes it. A bare digest, one space, or a digest not at line start is judged as
+before. Residue, stated plainly: a 64/128-hex secret at line start followed by
+two spaces and a word."""
 
 _KEY_MATERIAL_CANDIDATE = re.compile(r"[A-Za-z0-9_-]{12,512}")
 """A word-ish run, scanned per segment — the rule that makes paths and URIs safe.
@@ -361,14 +451,38 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
             hash_context = _hash_context_spans(text)
         return _within(hash_context, match.start(), match.end())
 
+    anchors: dict[str, list[tuple[int, int]]] = {}
+
+    def in_anchor(name: str, match: re.Match[str]) -> bool:
+        # Lazy like the hash context: only a candidate that looks like a name pays.
+        if name not in anchors:
+            if name == "url":
+                anchors[name] = [
+                    (found.start("host"), found.end())
+                    for found in _URL.finditer(text)
+                    if "@" not in found.group("host")
+                ]
+            else:
+                anchors[name] = [
+                    found.span("id") for found in _LICENSE_VALUE.finditer(text)
+                ]
+        return _within(anchors[name], match.start(), match.end())
+
+    def is_version_labelled_name(match: re.Match[str]) -> bool:
+        # A URL path often ends in `/`; a trailing separator is not a piece.
+        name = match.group().rstrip("/")
+        return bool(_WORD_JOINED_NAME.fullmatch(name)) and bool(
+            _FILE_SUFFIX.match(text, match.end()) or in_anchor("url", match)
+        )
+
     for match in _ENTROPY_CANDIDATE.finditer(text):
         if _PATHISH.search(match.group()):
             continue
-        if _WORD_JOINED_NAME.fullmatch(match.group()) and _FILE_SUFFIX.match(
-            text, match.end()
-        ):
+        if is_version_labelled_name(match):
             continue
         if _UNDERSCORE_IDENTIFIER.fullmatch(match.group()):
+            continue
+        if _CONSTANT_ASSIGNMENT.fullmatch(match.group()):
             continue
         if _shannon_entropy(match.group()) >= _MIN_ENTROPY_BITS and not (
             in_hash_context(match)
@@ -378,6 +492,10 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
     for match in _KEY_MATERIAL_CANDIDATE.finditer(text):
         segment = match.group()
         if not all(pattern.search(segment) for pattern in _KEY_MATERIAL_CLASSES):
+            continue
+        if is_version_labelled_name(match) or (
+            _WORD_JOINED_NAME.fullmatch(segment) and in_anchor("license", match)
+        ):
             continue
         if _shannon_entropy(segment) >= _MIN_SEGMENT_ENTROPY_BITS and not (
             in_hash_context(match)
@@ -404,7 +522,11 @@ def _hash_context_spans(text: str) -> list[tuple[int, int]]:
     Only the three entropy rules consult this; named detectors never do.
     """
     keys = [match.start() for match in _HASH_KEY.finditer(text)]
-    fragments = [match.span("sha") for match in _GIT_SHA_FRAGMENT.finditer(text)]
+    fragments = [
+        match.span("sha")
+        for pattern in (_GIT_SHA_FRAGMENT, _COMMIT_SHA, _CHECKSUM_LINE)
+        for match in pattern.finditer(text)
+    ]
     if not keys and not fragments:
         return []
     # Whole-text scans, then mapped to lines: none of the three patterns can
