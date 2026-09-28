@@ -851,3 +851,19 @@ unchanged COVERAGE_FLOORS (2026-09-26 decision); T029 redact.py false positive i
   `project-default`. solution-fit has no rule → abstains by design → FR-036 evaluate gate.
   Martin abstractness/distance dropped (not reliable with tokens).
 - Path chosen: **Option A — data registry (TOML) + token metrics.** Prerequisite: T029.
+
+### 2026-09-28 — 32 evaluation areas (user list) → BRAINSTORMING_LOG_evaluation-areas.md
+
+User supplied 32 evaluation areas (architecture direction … business continuity) to apply the
+registry criteria to. Classified S (static rule, ~16) / mixed (~11) / G (gate) / X (not verifiable
+from a repo, ~7: incident response, BAA/vendor, capacity/cost, DR restore, BCP, parts of
+auth/PHI/observability/deps/Terraform drift).
+- **E1 Domain: optional packs (user chose recommended).** Verifier stays general-purpose;
+  healthcare (PHI #9, BAA/residency #28), finance (#3) and frontend a11y (#19) are packs active only
+  when detected or configured — a detect-gate pick or `.easy-verifier.toml`, never guessed.
+- **E2 Structure: Option B (user chose recommended).** 13 dimensions = 7 existing + 6 new (data,
+  api, reliability, infrastructure, supply-chain, operations). Each of the 32 areas is a named
+  **rule group** inside one dimension (mapping table in the log), so all 32 labels appear in reports.
+  New dimensions need their own coverage floors (2026-09-26 "keep floors" covers the existing 7 only).
+- **E3 Unverifiable (X) areas: "documentation present/missing" (user chose recommended).** One shared
+  rule type, cited file when present, **never a quality score**; kept visible so all 32 labels show.
