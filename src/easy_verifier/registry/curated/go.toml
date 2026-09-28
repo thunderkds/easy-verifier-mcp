@@ -125,3 +125,11 @@ cwe = "CWE-89"
 value = [".Query ( +", ".QueryRow ( +", ".Exec ( +", ".Query ( fmt.Sprintf (", ".QueryRow ( fmt.Sprintf (", ".Exec ( fmt.Sprintf ("]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["gin=github.com/gin-gonic/gin"]
+citation_url = "https://gin-gonic.com/en/docs/quickstart/"
+source_tag = "curated"

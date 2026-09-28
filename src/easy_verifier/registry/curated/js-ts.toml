@@ -215,3 +215,31 @@ cwe = "CWE-89"
 value = [".query ( <INTERP>", ".execute ( <INTERP>"]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["express=express"]
+citation_url = "https://expressjs.com/en/starter/installing.html"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["react=react"]
+citation_url = "https://react.dev/learn/add-react-to-an-existing-project"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["next=next"]
+citation_url = "https://nextjs.org/docs/app/getting-started/installation"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["vue=vue"]
+citation_url = "https://vuejs.org/guide/quick-start.html"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["angular=@angular/core"]
+citation_url = "https://angular.dev/reference/configs/npm-packages"
+source_tag = "curated"

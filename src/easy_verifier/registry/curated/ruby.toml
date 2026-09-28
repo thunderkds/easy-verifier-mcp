@@ -155,3 +155,11 @@ cwe = "CWE-89"
 value = [".where ( <INTERP>", ".execute ( <INTERP>", ".find_by_sql ( <INTERP>"]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["rails=rails"]
+citation_url = "https://guides.rubyonrails.org/getting_started.html"
+source_tag = "curated"

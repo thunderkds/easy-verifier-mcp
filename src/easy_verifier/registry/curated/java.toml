@@ -176,3 +176,11 @@ cwe = "CWE-89"
 value = [".executeQuery ( +", ".executeUpdate ( +", ".execute ( +", ".prepareStatement ( +", ".executeQuery ( String.format ("]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["spring-boot=org.springframework.boot"]
+citation_url = "https://docs.spring.io/spring-boot/installing.html"
+source_tag = "curated"

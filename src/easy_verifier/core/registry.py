@@ -59,6 +59,13 @@ The security field (T034) is read by ``core/metric_tables.py``:
   mark at its start; a ``Y`` ending in ``$`` counts only before a name or
   ``{``.
 
+The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
+
+* ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
+  ``"spring-boot=org.springframework.boot"``: the framework is detected when
+  one of the language's manifests declares that dependency. Its framework
+  entry, if any, is ``<framework>.toml`` with ``extends = "<language>"``.
+
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
 
@@ -154,6 +161,7 @@ ENTRY_FIELDS = (
     "import_syntax",
     "security_sinks",
     "interpolating_strings",
+    "frameworks",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
@@ -179,6 +187,10 @@ _VALUE_SHAPES = {
     "interpolating_strings": (
         re.compile(r"^[^\s\\]{1,4} [^\s\\]{1,4}$"),
         "a string opener X and an interpolation opener Y, as X Y",
+    ),
+    "frameworks": (
+        re.compile(r"^[a-z0-9][a-z0-9-]*=[A-Za-z0-9@][A-Za-z0-9@/._:+-]*$"),
+        "<framework>=<dependency>, e.g. express=express",
     ),
 }
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
@@ -253,15 +265,17 @@ class Registry:
                     patterns.update(dict.fromkeys(field.value))
         return tuple(patterns)
 
-    def local_entries(self) -> tuple[dict[str, object], ...]:
+    def local_entries(
+        self, frameworks: Collection[str] = ()
+    ) -> tuple[dict[str, object], ...]:
         """Every local-layer field in use, as agent-input ``registry_entries``
         items, sorted: embedded in score output and reports so replaying them
         reproduces the score on a machine with an empty local layer (FR-048).
+        A framework entry is in use only when detected (``frameworks``).
         """
         found = []
-        # Frameworks are stored but not yet applied anywhere (no framework
-        # detection before T037), so only language entries are "in use".
-        for kind, entries in (("language", self.languages),):
+        used = {n: self.frameworks[n] for n in frameworks if n in self.frameworks}
+        for kind, entries in (("language", self.languages), ("framework", used)):
             for entry in entries.values():
                 sections = [("manifests", entry.manifests), *entry.fields.items()]
                 sections += [(f"roles.{r}", v) for r, v in entry.roles.items()]
@@ -282,6 +296,41 @@ class Registry:
                             item["cwe"] = cited.cwe
                         found.append(item)
         return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
+
+
+    def detection_keys(self, language: str) -> tuple[tuple[str, str], ...]:
+        """``(framework, dependency)`` pairs from ``language``'s ``frameworks``
+        field (curated and local), in declared order."""
+        entry = self.languages.get(language)
+        pairs = (
+            tuple(value.split("=", 1))
+            for cited in (entry.fields.get("frameworks", ()) if entry else ())
+            for value in cited.value
+        )
+        return tuple(dict.fromkeys(pairs))
+
+    def applied(self, frameworks: Sequence[tuple[str, str]]) -> Registry:
+        """This registry with each detected ``(framework, language)`` entry
+        merged into its language (:func:`merge`, add-only); ``self`` when no
+        detected framework has an entry extending that language."""
+        by_language: dict[str, list[RegistryEntry]] = {}
+        for name, language in frameworks:
+            entry = self.frameworks.get(name)
+            if (
+                entry is not None
+                and entry.extends == language
+                and language in self.languages
+            ):
+                by_language.setdefault(language, []).append(entry)
+        if not by_language:
+            return self
+        return dataclasses.replace(
+            self,
+            languages={
+                name: merge(entry, by_language[name]) if name in by_language else entry
+                for name, entry in self.languages.items()
+            },
+        )
 
 
 def _manifest_matches(pattern: str, names: set[str]) -> bool:
@@ -447,6 +496,8 @@ def _load_entry(
         errors.append("manifests: a language entry needs at least one manifest")
     if data.get("extends") is not None and "manifests" in data:
         errors.append("manifests: a framework entry adds to its language only")
+    if data.get("extends") is not None and "frameworks" in data:
+        errors.append("frameworks: detection keys belong to the language entry")
     if errors:
         return None, errors
     return (
@@ -661,6 +712,8 @@ def _local_entry(
         )
     if kind == "framework" and field == "manifests":
         return None, "manifests: a framework entry adds to its language only"
+    if kind == "framework" and field == "frameworks":
+        return None, "frameworks: detection keys belong to the language entry"
     tag = item.get("source_tag")
     if not isinstance(tag, str) or tag not in _INPUT_TAGS:
         return None, "source_tag: must be agent-researched or user-supplied"

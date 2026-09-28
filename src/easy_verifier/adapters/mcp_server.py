@@ -108,7 +108,12 @@ def gather_combined(
         '"evidence_refs": [ref, ...]}}. Each evaluation blends in as '
         "rules x (1 - w) + agent x w with w = 0.5 x confidence, or stands "
         "alone as agent-rated where the rules abstained; parts are always "
-        "shown. Otherwise use the response as-is."
+        "shown. If it carries needs_input.reference, the detected languages "
+        "or frameworks (detected_stack) lack registry fields the rules read: "
+        "follow its instructions (at most 2 lookups per field, official docs "
+        "first, else ask the user one question at a time) and send the "
+        "answers as agent_input.registry_entries on the next call. Otherwise "
+        "use the response as-is."
     ),
     structured_output=True,
 )
@@ -127,7 +132,8 @@ def score(
     only this adapter asks for it and puts it on the wire (FR-021, FR-034,
     FR-040) — the CLI payload never carries the key, and never pays for the
     extra walk that produces it. At most one of ``picks`` (T027) and
-    ``gate_evaluations`` (T028) is asked per response.
+    ``gate_evaluations`` (T028) is asked per response; ``reference`` (T037)
+    rides along with either.
     """
     result = score_repository(
         repo,
@@ -142,10 +148,15 @@ def score(
     payload = result.to_dict()
     if result.registry_notes:
         payload["registry_notes"] = list(result.registry_notes)
+    needs_input: dict[str, Any] = {}
+    if result.reference is not None:
+        needs_input["reference"] = result.reference
     if result.needs_input is not None:
-        payload["needs_input"] = {"picks": result.needs_input}
+        needs_input["picks"] = result.needs_input
     elif result.gate_requests is not None:
-        payload["needs_input"] = {"gate_evaluations": list(result.gate_requests)}
+        needs_input["gate_evaluations"] = list(result.gate_requests)
+    if needs_input:
+        payload["needs_input"] = needs_input
     return payload
 
 

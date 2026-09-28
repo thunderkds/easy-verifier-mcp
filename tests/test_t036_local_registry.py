@@ -591,7 +591,8 @@ def test_provenance_map_covers_registry_fields_and_real_metrics():
     from easy_verifier.core.metric_tables import FIELD_METRICS, ROLE_METRICS
     from easy_verifier.core.metrics import METRIC_NAMES
 
-    assert set(FIELD_METRICS) == set(reg.ENTRY_FIELDS) - {"manifests"}
+    # manifests and frameworks (T037) only activate entries; they feed no metric.
+    assert set(FIELD_METRICS) == set(reg.ENTRY_FIELDS) - {"manifests", "frameworks"}
     named = {m for ms in (*FIELD_METRICS.values(), *ROLE_METRICS.values()) for m in ms}
     assert named <= set(METRIC_NAMES)
     assert set(ROLE_METRICS) <= set(GENERIC_PATTERNS)

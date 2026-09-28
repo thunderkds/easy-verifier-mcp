@@ -184,7 +184,7 @@ and HTML report carries a sources provenance line: `rules`, `rules + config`, or
 exact filenames.
 
 **Hard gates (MCP `score` only).** The CLI never asks. Over MCP, `score` may return `needs_input`
-with at most one question per response, and at most two extra rounds:
+with at most one of picks or gate evaluations per response, and at most two extra rounds:
 
 1. `needs_input.picks`: some roles are unfilled but the repository has candidate files.
 2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
@@ -192,6 +192,13 @@ with at most one question per response, and at most two extra rounds:
    dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
    within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
    borderline). Only reference ids are listed, at most 20 per dimension.
+3. `needs_input.reference` rides along with either question and adds no round. It lists only
+   the registry fields the rules read that a language or framework in `detected_stack` lacks
+   (`{language | framework + extends, field, why}`; frameworks are asked only test naming, test
+   declarations, assertions and security sinks; optional fields never), at most 20 per call, languages first, plus
+   an `omitted` count. Its fixed instructions: at most 2 lookups per field, official docs first,
+   a clear https link; otherwise ask the user one question at a time with a recommended answer
+   and submit it as `user-supplied`. Answers return as `registry_entries`.
 
 A valid evaluation cites at least one ref from that dimension's pack. It blends into the rules
 rating R with `w = 0.5 × confidence`, so `final = R·(1−w) + A·w`, rounded half up. If the rules
