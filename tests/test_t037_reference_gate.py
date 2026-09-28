@@ -362,3 +362,10 @@ def test_score_tool_description_mentions_reference_gate():
     tool = mcp_server.mcp._tool_manager.get_tool("score")
     assert "needs_input.reference" in tool.description
     assert "registry_entries" in tool.description
+
+
+def test_reference_never_enters_the_shared_payload(express_repo):
+    result = score_repository(express_repo, detect_gates=True)
+    assert result.reference is not None
+    assert "needs_input" not in result.to_dict()
+    assert '"instructions"' not in result.serialize()
