@@ -82,6 +82,19 @@ warning [registry]: research cannot be saved: 1 registry entry not saved (the lo
 $ git -C $S/demo/repo status --short     (empty: nothing written into the target repo)
 ```
 
+**AFTER (per rule input tagging, Stage 4 P1 fix)**: backend-developer, commit `4891a3b`, 2026-09-28T08:09:01Z.
+Same fixture, fresh temp SOT; test-strategy rating inputs from the real CLI payload:
+
+```
+$ EASY_VERIFIER_SOT=$S/demo/sot PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score --repo $S/demo/repo --scope project --agent-input $S/demo/agent.json </dev/null > A.json
+exit=0
+{"metric_name": "assertion_density_per_test", "metric_value": 1.0, "source_tag": "agent-researched (unreviewed)", "registry_citations": [{"label": "kotlin.assertions", "url": "https://kotest.io/docs/assertions/assertions.html"}]}
+{"metric_name": "test_config_and_ci_missing", "metric_value": 0, "source_tag": "curated"}
+$ (replay A's registry_entries with EASY_VERIFIER_SOT=$S/demo/sotB, empty) > B.json
+exit=0
+A.json == B.json byte-equal
+```
+
 **DELTA**: an agent can now hand the verifier cited registry research (`registry_entries`); it is
 validated, saved to the local layer, used in the same call with a visible `agent-researched (unreviewed)`
 / `user-supplied` tag and link, and embedded so replay on an empty machine gives byte-equal output.
