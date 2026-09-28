@@ -30,3 +30,30 @@ source_tag = "curated"
 value = ["**/src/test/**"]
 citation_url = "https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_project_layout"
 source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".kt"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*Test.kt"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}Test{ext}"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["@Test"]
+citation_url = "https://kotlinlang.org/api/core/kotlin-test/kotlin.test/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert<A-Z>*"]
+citation_url = "https://kotlinlang.org/api/core/kotlin-test/kotlin.test/"
+source_tag = "curated"

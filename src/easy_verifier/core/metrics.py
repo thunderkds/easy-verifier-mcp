@@ -11,7 +11,11 @@ this module deliberately does **not** do:
   imports only :mod:`dataclasses`, :mod:`json`, :mod:`re`,
   :mod:`pathlib.PurePosixPath` (a pure string type that touches no disk) and
   this package's own plain-data models. A metric that could read a file could
-  cite evidence the pack never gathered, which is the whole point of FR-027;
+  cite evidence the pack never gathered, which is the whole point of FR-027.
+  Language knowledge (which suffixes are code, how tests are named, declared
+  and assert) is the reference registry's (DDR-0007, FR-041), and arrives as a
+  :class:`LanguageTables` argument the caller built from the already-loaded
+  registry (``core/metric_tables.py``) -- this module holds no copy of it;
 * **rate, threshold, weight or judge anything.** A metric is a fact, never an
   opinion. Rules over these metrics are T020's job (``core/judge.py``);
 * **invent a metric for a dimension that failed.** A
@@ -44,7 +48,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
@@ -221,6 +225,32 @@ def _serializable(metric: Metric) -> dict:
     }
 
 
+@dataclass(frozen=True)
+class LanguageTables:
+    """The registry's language knowledge, as plain compiled data (T031).
+
+    Built by ``core/metric_tables.py`` from the loaded reference registry and
+    handed to :func:`compute_metrics`; never loaded here, so this module still
+    reads nothing. Treat it as immutable.
+    """
+
+    source_suffixes: frozenset[str]
+    """File suffixes (dot included) of files that are code."""
+
+    test_name_patterns: tuple[re.Pattern[str], ...]
+    """Full-match patterns over a base name that make it a test file."""
+
+    test_candidates: Mapping[str, tuple[str, ...]]
+    """Source suffix -> test base-name templates with ``{stem}``/``{ext}``. A
+    template starting ``./`` only matches a test in the source's directory."""
+
+    test_declarations: tuple[re.Pattern[str], ...]
+    """Each counts test declarations independently (``findall``)."""
+
+    assertions: re.Pattern[str]
+    """One alternation; its non-overlapping matches are the assertions."""
+
+
 # ---------------------------------------------------------------------------
 # The pack view a metric computation is handed. Plain data derived from the
 # pack -- no I/O, no lazy callables, nothing that could reach outside it.
@@ -238,18 +268,20 @@ class _PackView:
     source_files: tuple[str, ...]
     test_files: tuple[str, ...]
     test_excerpts: tuple[Excerpt, ...]
+    tables: LanguageTables
 
 
-def _view(pack: EvidencePack) -> _PackView:
+def _view(pack: EvidencePack, tables: LanguageTables) -> _PackView:
     files = _dedup(pack.files_read)
     return _PackView(
         pack=pack,
         files=files,
-        source_files=tuple(path for path in files if _is_source_file(path)),
-        test_files=tuple(path for path in files if _is_test_file(path)),
+        source_files=tuple(path for path in files if _is_source_file(path, tables)),
+        test_files=tuple(path for path in files if _is_test_file(path, tables)),
         test_excerpts=tuple(
-            excerpt for excerpt in pack.excerpts if _is_test_file(excerpt.path)
+            excerpt for excerpt in pack.excerpts if _is_test_file(excerpt.path, tables)
         ),
+        tables=tables,
     )
 
 
@@ -305,7 +337,7 @@ def _sources_without_covering_test(view: _PackView) -> _Computed:
                 "nothing whose test correspondence could be checked. " + _CLASSIFIED_BY
             )
         )
-    _matched, unmatched = _correspondence(view.files, view.test_files)
+    _matched, unmatched = _correspondence(view.files, view.test_files, view.tables)
     return (
         len(unmatched),
         tuple(sorted(view.source_files)),
@@ -326,7 +358,7 @@ def _assertion_density_per_test(view: _PackView) -> _Computed:
                 "assertions in. " + _CLASSIFIED_BY
             )
         )
-    tests = sum(_count_test_functions(e.text) for e in view.test_excerpts)
+    tests = sum(_count_test_functions(e.text, view.tables) for e in view.test_excerpts)
     if not tests:
         return MetricAbstention(
             reason=(
@@ -335,7 +367,7 @@ def _assertion_density_per_test(view: _PackView) -> _Computed:
                 "denominator; that is not the same as a density of 0"
             )
         )
-    assertions = sum(_count_assertions(e.text) for e in view.test_excerpts)
+    assertions = sum(_count_assertions(e.text, view.tables) for e in view.test_excerpts)
     return (
         assertions / tests,
         tuple(sorted(e.ref for e in view.test_excerpts)),
@@ -353,7 +385,7 @@ def _assertions_observed(view: _PackView) -> _Computed:
                 "assertion in. " + _CLASSIFIED_BY
             )
         )
-    assertions = sum(_count_assertions(e.text) for e in view.test_excerpts)
+    assertions = sum(_count_assertions(e.text, view.tables) for e in view.test_excerpts)
     return (
         assertions,
         tuple(sorted(e.ref for e in view.test_excerpts)),
@@ -546,8 +578,13 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
 METRIC_NAMES: tuple[str, ...] = tuple(d.name for d in METRIC_DEFINITIONS)
 
 
-def compute_metrics(pack: EvidencePack | CombinedPack) -> MetricSet:
+def compute_metrics(
+    pack: EvidencePack | CombinedPack, tables: LanguageTables
+) -> MetricSet:
     """Compute every declared metric over ``pack``.
+
+    ``tables`` is the registry's language knowledge (:class:`LanguageTables`),
+    built by the caller; see ``core/metric_tables.py``.
 
     Accepts a single :class:`~easy_verifier.core.models.EvidencePack` or the
     :class:`~easy_verifier.core.models.CombinedPack` T012 produces; a combined
@@ -563,7 +600,7 @@ def compute_metrics(pack: EvidencePack | CombinedPack) -> MetricSet:
 
     metrics: list[Metric] = []
     for dimension, evidence in packs:
-        view = _view(evidence)
+        view = _view(evidence, tables)
         truncated, omitted = _truncation_of(evidence)
         allowed = allowed_refs(evidence)
         for definition in METRIC_DEFINITIONS:
@@ -687,6 +724,11 @@ def _excerpt_lines(excerpt: Excerpt) -> int:
 # residue on T019, to be closed by lifting these predicates into a pure module
 # both import.
 #
+# Since T031 the language tables it used (source suffixes, test names, test
+# candidates, the Go same-directory rule) come from the reference registry via
+# LanguageTables; the algorithm -- deepest directory segment wins, project
+# boundaries -- is unchanged.
+#
 # Everything below is string work over PurePosixPath. No path is resolved, no
 # file is opened, and nothing here touches the filesystem.
 # ---------------------------------------------------------------------------
@@ -708,36 +750,6 @@ _TEST_DIR_SEGMENTS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 #: Nothing here special-cases a literal path.
 _SOURCE_DIR_SEGMENTS = frozenset(
     {"app", "cmd", "internal", "lib", "pkg", "source", "sources", "src"}
-)
-
-_TEST_NAME_PATTERNS = (
-    re.compile(r"^test_.+\.py$"),
-    re.compile(r"^.+_test\.py$"),
-    re.compile(r"^.+_test\.go$"),
-    re.compile(r"^.+_test\.rs$"),
-    re.compile(r"^.+_spec\.rb$"),
-    re.compile(r"^test_.+\.rb$"),
-    re.compile(r"^.+\.(test|spec)\.[cm]?[jt]sx?$"),
-    re.compile(r"^.+Test\.java$"),
-    re.compile(r"^Test.+\.java$"),
-    re.compile(r"^.+Tests?\.cs$"),
-)
-
-_SOURCE_SUFFIXES = frozenset(
-    {
-        ".cs",
-        ".go",
-        ".java",
-        ".js",
-        ".jsx",
-        ".kt",
-        ".php",
-        ".py",
-        ".rb",
-        ".rs",
-        ".ts",
-        ".tsx",
-    }
 )
 
 _MANIFEST_NAMES = frozenset(
@@ -779,7 +791,7 @@ def _parent(path: str) -> str:
     return PurePosixPath(path).parent.as_posix()
 
 
-def _is_test_file(path: str) -> bool:
+def _is_test_file(path: str, tables: LanguageTables) -> bool:
     """True when ``path`` is a test file under :data:`_CLASSIFIED_BY`'s rule.
 
     Directory evidence first and deepest-wins, name evidence only as a
@@ -788,14 +800,14 @@ def _is_test_file(path: str) -> bool:
     ``tests/data/sample.json`` is neither test nor source.
     """
     name = PurePosixPath(path).name
-    if PurePosixPath(name).suffix not in _SOURCE_SUFFIXES:
+    if PurePosixPath(name).suffix not in tables.source_suffixes:
         return False
 
     directory = _directory_evidence(path)
     if directory is not None:
         return directory
 
-    return any(pattern.match(name) for pattern in _TEST_NAME_PATTERNS)
+    return any(pattern.match(name) for pattern in tables.test_name_patterns)
 
 
 def _directory_evidence(path: str) -> bool | None:
@@ -814,13 +826,15 @@ def _directory_evidence(path: str) -> bool | None:
     return None
 
 
-def _is_source_file(path: str) -> bool:
+def _is_source_file(path: str, tables: LanguageTables) -> bool:
     """A file the correspondence rule can be asked about: code, not a test."""
-    return PurePosixPath(path).suffix in _SOURCE_SUFFIXES and not _is_test_file(path)
+    return PurePosixPath(path).suffix in tables.source_suffixes and not _is_test_file(
+        path, tables
+    )
 
 
 def _correspondence(
-    files: tuple[str, ...], tests: tuple[str, ...]
+    files: tuple[str, ...], tests: tuple[str, ...], tables: LanguageTables
 ) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
     """Map each source file to its conventionally named, project-local tests."""
     by_name: dict[str, list[str]] = {}
@@ -832,15 +846,15 @@ def _correspondence(
     matched: dict[str, tuple[str, ...]] = {}
     unmatched: list[str] = []
     for source in files:
-        if not _is_source_file(source):
+        if not _is_source_file(source, tables):
             continue
         source_project = _project_boundary(source, boundaries)
         hits: list[str] = []
-        for name in _expected_test_names(source):
+        for name, same_directory in _expected_test_names(source, tables):
             for test in by_name.get(name, ()):
                 if _project_boundary(test, boundaries) != source_project:
                     continue
-                if source.endswith(".go") and _parent(test) != _parent(source):
+                if same_directory and _parent(test) != _parent(source):
                     continue
                 hits.append(test)
         if hits:
@@ -884,62 +898,41 @@ def _is_ancestor(candidate: str, directory: str) -> bool:
     return directory == candidate or directory.startswith(f"{candidate}/")
 
 
-def _expected_test_names(source: str) -> tuple[str, ...]:
+def _expected_test_names(
+    source: str, tables: LanguageTables
+) -> tuple[tuple[str, bool], ...]:
+    """``(test base name, must share the source's directory)`` per template."""
     name = PurePosixPath(source).name
     stem = PurePosixPath(name).stem
     suffix = PurePosixPath(name).suffix
-
-    if suffix == ".py":
-        return (f"test_{stem}.py", f"{stem}_test.py")
-    if suffix == ".go":
-        return (f"{stem}_test.go",)
-    if suffix in {".js", ".jsx", ".ts", ".tsx"}:
-        return (
-            f"{stem}.test{suffix}",
-            f"{stem}.spec{suffix}",
-            f"{stem}_test{suffix}",
+    values = {"stem": stem, "ext": suffix}
+    return tuple(
+        (
+            _PLACEHOLDER.sub(
+                lambda match: values[match[1]], template.removeprefix("./")
+            ),
+            template.startswith("./"),
         )
-    if suffix == ".rb":
-        return (f"{stem}_spec.rb", f"test_{stem}.rb")
-    if suffix == ".java":
-        return (f"{stem}Test.java", f"Test{stem}.java")
-    if suffix == ".cs":
-        return (f"{stem}Test.cs", f"{stem}Tests.cs")
-    return ()
+        for template in tables.test_candidates.get(suffix, ())
+    )
+
+
+_PLACEHOLDER = re.compile(r"\{(stem|ext)\}")
 
 
 # ---------------------------------------------------------------------------
 # Textual assertion / test-declaration counting.
 #
 # Textual on purpose: nothing here parses or executes target code (NFR-007).
-# The recognised forms are listed explicitly, so a repository using a shape not
-# listed is *under*-counted rather than guessed at -- and both metrics that use
-# these say so in their derivation.
+# The recognised forms are the registry's, listed explicitly per language, so a
+# repository using a shape not listed is *under*-counted rather than guessed at
+# -- and both metrics that use these say so in their derivation.
 # ---------------------------------------------------------------------------
 
-_ASSERTION_PATTERN = re.compile(
-    r"(?:\bassert\b"  # python, java, js, rust (assert!)
-    r"|\bassert!"
-    r"|\bassert_[a-z_]+\b"  # rust assert_eq!, python unittest assert_called
-    r"|\bassert[A-Z]\w*"  # junit/xunit assertEquals, assertTrue
-    r"|\bexpect\s*\("  # jest, chai
-    r"|\.should\b"  # rspec, chai
-    r"|\bAssert\.\w+"  # xunit / nunit
-    r")"
-)
 
-_TEST_DECLARATION_PATTERNS = (
-    re.compile(r"^\s*(?:async\s+)?def\s+test\w*\s*\(", re.MULTILINE),
-    re.compile(r"^\s*func\s+Test\w*\s*\(", re.MULTILINE),
-    re.compile(r"^\s*(?:it|test)\s*\(\s*[\"'`]", re.MULTILINE),
-    re.compile(r"^\s*@Test\b", re.MULTILINE),
-    re.compile(r"^\s*#\[test\]", re.MULTILINE),
-)
+def _count_assertions(text: str, tables: LanguageTables) -> int:
+    return len(tables.assertions.findall(text))
 
 
-def _count_assertions(text: str) -> int:
-    return len(_ASSERTION_PATTERN.findall(text))
-
-
-def _count_test_functions(text: str) -> int:
-    return sum(len(pattern.findall(text)) for pattern in _TEST_DECLARATION_PATTERNS)
+def _count_test_functions(text: str, tables: LanguageTables) -> int:
+    return sum(len(pattern.findall(text)) for pattern in tables.test_declarations)

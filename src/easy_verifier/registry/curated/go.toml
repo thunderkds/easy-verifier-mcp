@@ -34,3 +34,30 @@ source_tag = "curated"
 value = ["**/go.mod"]
 citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
 source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".go"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*_test.go"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["./{stem}_test{ext}"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["func Test* ("]
+citation_url = "https://pkg.go.dev/testing"
+source_tag = "curated"
+
+[[assertions]]
+value = ["t.Error", "t.Errorf", "t.Fatal", "t.Fatalf", "t.Fail", "t.FailNow"]
+citation_url = "https://pkg.go.dev/testing#T"
+source_tag = "curated"

@@ -39,3 +39,45 @@ source_tag = "curated"
 value = ["**/test_helper.rb"]
 citation_url = "https://guides.rubyonrails.org/testing.html"
 source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".rb"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*_spec.rb"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["test_?*.rb"]
+citation_url = "https://docs.seattlerb.org/minitest/"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}_spec{ext}"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["test_{stem}{ext}"]
+citation_url = "https://docs.seattlerb.org/minitest/"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ['it "', "it '"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["expect (", ".should"]
+citation_url = "https://rspec.info/features/3-13/rspec-expectations/built-in-matchers/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert", "assert_?*"]
+citation_url = "https://docs.seattlerb.org/minitest/Minitest/Assertions.html"
+source_tag = "curated"

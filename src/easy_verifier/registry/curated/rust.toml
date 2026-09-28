@@ -29,3 +29,30 @@ source_tag = "curated"
 value = ["**/.config/nextest.toml"]
 citation_url = "https://nexte.st/"
 source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".rs"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*_test.rs"]
+citation_url = "https://doc.rust-lang.org/book/ch11-03-test-organization.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["#[test]"]
+citation_url = "https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert"]
+citation_url = "https://doc.rust-lang.org/std/macro.assert.html"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert_?*"]
+citation_url = "https://doc.rust-lang.org/std/macro.assert_eq.html"
+source_tag = "curated"

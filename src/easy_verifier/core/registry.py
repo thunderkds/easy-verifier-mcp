@@ -17,12 +17,28 @@ A framework entry carries ``extends = "<language>"`` and no manifests; it may
 only add to its language (:func:`merge`). A new field is added by naming it in
 :data:`ENTRY_FIELDS` — existing files stay valid.
 
+The metric fields (T031) are read by ``core/metric_tables.py``:
+
+* ``source_extensions`` — file suffixes that are code, e.g. ``".py"``;
+* ``test_name_patterns`` — base-name globs naming a test file, e.g.
+  ``"test_?*.py"`` (``fnmatch`` syntax, case-sensitive);
+* ``test_candidates`` — the test base names a source file expects, with
+  ``{stem}`` and ``{ext}`` placeholders, e.g. ``"test_{stem}{ext}"``; a leading
+  ``./`` means the test must sit in the source file's own directory;
+* ``test_declarations`` / ``assertions`` — code tokens, matched textually. In a
+  token ``*`` is any identifier characters, ``?`` exactly one, ``<A-Z>`` one
+  character of the listed ranges, and a space is optional whitespace (required
+  between two identifier characters); everything else is literal. A token
+  starting or ending in an identifier character only matches as a whole word.
+  Declarations match at the start of a line; assertions anywhere.
+
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import re
 import tomllib
 from collections.abc import Collection, Mapping, Sequence
@@ -45,8 +61,28 @@ MAX_VALUES_PER_FIELD = 64
 MAX_VALUE_CHARS = 200
 MAX_URL_CHARS = 500
 
-ENTRY_FIELDS = ("manifests",)
+ENTRY_FIELDS = (
+    "manifests",
+    "source_extensions",
+    "test_name_patterns",
+    "test_candidates",
+    "test_declarations",
+    "assertions",
+)
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
+
+_VALUE_SHAPES = {
+    "source_extensions": (
+        re.compile(r"^\.[A-Za-z0-9_+-]+$"),
+        "a file suffix such as .py",
+    ),
+    "test_name_patterns": (re.compile(r"^[^/]+$"), "a base-name glob, no /"),
+    "test_candidates": (
+        re.compile(r"^(\./)?[^/]*\{stem\}[^/]*$"),
+        "a base name containing {stem}, optionally prefixed ./",
+    ),
+}
+"""Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
 
 _CITED_KEYS = {"value", "citation_url", "source_tag"}
 _ENTRY_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -69,6 +105,10 @@ class RegistryEntry:
     extends: str | None
     manifests: tuple[CitedValue, ...]
     roles: Mapping[str, tuple[CitedValue, ...]]
+    fields: Mapping[str, tuple[CitedValue, ...]] = dataclasses.field(
+        default_factory=dict
+    )
+    """Every other :data:`ENTRY_FIELDS` field present, by name."""
 
 
 @dataclass(frozen=True)
@@ -120,20 +160,23 @@ def merge(
     result is deterministic; a field already present is not repeated.
     """
     roles = {name: list(fields) for name, fields in language.roles.items()}
+    others = {name: list(fields) for name, fields in language.fields.items()}
     for framework in sorted(frameworks, key=lambda entry: entry.name):
         if framework.extends != language.name:
             raise ValueError(
                 f"framework {framework.name!r} extends {framework.extends!r}, "
                 f"not {language.name!r}"
             )
-        for name, fields in framework.roles.items():
-            merged = roles.setdefault(name, [])
-            merged.extend(field for field in fields if field not in merged)
+        for target, source in ((roles, framework.roles), (others, framework.fields)):
+            for name, fields in source.items():
+                merged = target.setdefault(name, [])
+                merged.extend(cited for cited in fields if cited not in merged)
     return RegistryEntry(
         name=language.name,
         extends=None,
         manifests=language.manifests,
         roles={name: tuple(fields) for name, fields in sorted(roles.items())},
+        fields={name: tuple(fields) for name, fields in sorted(others.items())},
     )
 
 
@@ -248,8 +291,9 @@ def _load_entry(
         RegistryEntry(
             name=name,
             extends=extends,
-            manifests=fields.get("manifests", ()),
+            manifests=fields.pop("manifests", ()),
             roles=dict(sorted(roles.items())),
+            fields=dict(sorted(fields.items())),
         ),
         [],
     )
@@ -266,7 +310,7 @@ def _cited_values(field: str, raw: object, errors: list[str]) -> tuple[CitedValu
     result = []
     for index, item in enumerate(raw):
         where = f"{field}[{index}]"
-        problem = _cited_value_problem(item)
+        problem = _cited_value_problem(item, field)
         if problem:
             errors.append(f"{where}: {problem}")
         else:
@@ -280,7 +324,7 @@ def _cited_values(field: str, raw: object, errors: list[str]) -> tuple[CitedValu
     return tuple(result)
 
 
-def _cited_value_problem(item: object) -> str | None:
+def _cited_value_problem(item: object, field: str) -> str | None:
     if not isinstance(item, dict):
         return "must be a table of value, citation_url, source_tag"
     missing = sorted(_CITED_KEYS - set(item))
@@ -299,6 +343,9 @@ def _cited_value_problem(item: object) -> str | None:
         problem = _pattern_problem(value)
         if problem:
             return f"value: {problem}"
+        shape = _VALUE_SHAPES.get(field)
+        if shape and not shape[0].fullmatch(value):
+            return f"value: {redact(value)!r} is not {shape[1]}"
 
     url = item["citation_url"]
     if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not _is_https(url):

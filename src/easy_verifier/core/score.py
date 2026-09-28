@@ -30,6 +30,7 @@ from .judge import (
     rate,
     rate_overall,
 )
+from .metric_tables import curated_metric_tables
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
@@ -170,7 +171,7 @@ def score_packs(
             + (", ".join(actual) or "none")
         )
 
-    metrics = compute_metrics(packs)
+    metrics = compute_metrics(packs, curated_metric_tables())
     rules_ratings = tuple(
         rate(_metrics_for(metrics, dimension), _coverage_for(packs, dimension))
         for dimension in expected

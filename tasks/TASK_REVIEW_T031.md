@@ -54,9 +54,45 @@ exists; PHP `src/Foo.php` uncovered (1) and `public function testAdds` not a dec
 (density abstains); Go `t.Errorf` counts 0 assertions (density 0.0); RSpec `it "adds" do` and
 C# `[Fact]` are not test declarations (density abstains).
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured by backend-developer (implementer; reviewer to re-run), same script, T031 changes
+applied (commit follows this capture):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```text
+$ date -u; git rev-parse --short HEAD; PYTHONPATH=src python demo_t031.py
+2026-09-28T05:35:02Z
+2ca23cb + T031 working tree
+Kotlin Foo.kt + src/test/kotlin/FooTest.kt: {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 1.0}
+PHP src/Foo.php + tests/FooTest.php: {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 1.0}
+Go calc.go + calc_test.go (t.Errorf): {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 1.0}
+RSpec spec/calc_spec.rb (it "x" do): {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 1.0}
+C# tests/CalcTests.cs ([Fact]): {'source_files_without_covering_test': 0, 'assertions_observed': 1, 'assertion_density_per_test': 1.0}
+exit=0
+```
+
+Real surface (CLI `score --scope project`) on a scratch repo with `go.mod`, `calc.go`, `calc_test.go`
+(`t.Errorf`), `Foo.kt`, `src/test/kotlin/FooTest.kt` (`assertEquals`), 2026-09-28T05:32:47Z,
+test-strategy dimension:
+
+```text
+--- AFTER (2ca23cb + T031 changes)
+exit=0
+source_files_without_covering_test = ABSTAINED
+assertion_density_per_test = 1.0
+assertions_observed = 2
+--- BEFORE (2ca23cb, T031 changes stashed)
+exit=0
+source_files_without_covering_test = ABSTAINED
+assertion_density_per_test = 0.5
+assertions_observed = 1
+```
+
+The correspondence metric abstains at the CLI both before and after because the test-strategy
+pack never reads `calc.go` / `Foo.kt` (`source_file_share` 0 of 4 files read) — evidence selection
+in `dimensions/test_strategy.py`, outside T031; the correspondence fix is proven on hand-built packs.
+
+**DELTA**: Go `t.Errorf`/`t.Fatalf` assertions, RSpec `it "x" do`, C# `[Fact]`/`[Test]`/`[TestMethod]`
+and PHPUnit `public function test*` declarations now count, and Kotlin/PHP sources are matched to
+their `FooTest` files — all from cited registry data rather than code tables.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T031.jsonl`, never the
 implementing agent alone]
