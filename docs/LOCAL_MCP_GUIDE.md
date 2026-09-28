@@ -77,6 +77,17 @@ threshold, with the evidence refs to read. To answer, call `score` again with th
 as `agent-rated` where the rules abstained. The result is always shown with its parts, for example
 `74 = rules 68 + agent 88 (w 0.30)`. A call that carries `gate_evaluations` asks nothing further.
 
+`needs_input.reference` (reference gate) rides along with either question. Every `score` response
+lists `detected_stack`: the languages found by manifest and the frameworks found by a manifest
+dependency (for example `express` in `package.json`), using the registry's cited detection keys.
+When a detected language or framework lacks a registry field the rating rules read, `reference`
+lists only those fields as `{language | framework + extends, field, why}` (`why` names the rules
+that read it), at most 20 per call, languages first, with an `omitted` count and fixed
+instructions: at most 2 lookups per field, official docs first, cite a clear https link; otherwise
+ask the user one question at a time with a recommended answer and send it as `user-supplied`.
+Answers go back as `agent_input.registry_entries`. Until then those fields are scored with
+generic patterns only. The CLI never shows `reference`.
+
 ## 4. Check the connection
 
 - Claude Code: `claude mcp list`, or `/mcp` inside a session.
