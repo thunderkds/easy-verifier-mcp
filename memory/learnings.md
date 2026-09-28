@@ -595,3 +595,10 @@ duplicate `**Txxx**` rows before moving a task.
 - T036: per-input source tags come from a static field→metric map (metric_tables FIELD_METRICS/ROLE_METRICS); keep it updated when a metric starts reading a new registry field.
 - Docker CLI inside the image needs --entrypoint easy-verifier (default entrypoint is the MCP server).
 - Merged after T036+T051: 1205 passed, 2 skipped.
+
+## 2026-09-28 — T037/T052/T053/T054 merged
+
+- Parallel-merge regression (again): T052 added a consumed-but-optional registry field while T037 derived required gate fields from FIELD_METRICS; both green alone, red together. Guard test now forces every FIELD_METRICS field to be curated for all 9 languages or declared in OPTIONAL_FIELDS. Always run the full suite after merging parallel tasks, before starting the next wave.
+- Reference gate token cost on real repos: ~1.3 KB for one framework (4 fields), 0 for curated-only repos.
+- Colocated test names (*.spec.ts, *_test.go, *Test.java...) now beat source dirs via registry colocated_test_name_patterns; Python test_*.py keeps directory-first.
+- Merged after Wave 10 core: 1342 passed, 2 skipped.
