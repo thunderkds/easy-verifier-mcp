@@ -33,12 +33,24 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: (captured 2026-09-28T05:19:06Z, in worktree `easy-verifier-mcp-T032`, before any T032
+implementation commit)
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-09-28T05:19:06Z
+$ ls scripts/vendor_sources.py
+ls: cannot access 'scripts/vendor_sources.py': No such file or directory
+$ ls src/easy_verifier/registry/vendored
+ls: cannot access 'src/easy_verifier/registry/vendored': No such file or directory
+$ python3 -c "import scripts.vendor_sources"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'scripts.vendor_sources'
+```
+
+**AFTER**: [to be filled once the script and vendored snapshots exist — same commands, post-change]
 
 **DELTA**: [one sentence — what a user can now do that they could not before]
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T032.jsonl`, never the
-implementing agent alone]
+**WITNESS**: common-infrastructure agent, T032 worktree, 2026-09-28.
