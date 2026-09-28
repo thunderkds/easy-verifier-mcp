@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t034_security_sinks.py` — 76 tests: 30 original safe/unsafe twins (every language × declared CWE, incl. f-string `execute` → 1 CWE-89, parameterised `%s` → 0), 10 interpolated-string twins (JS/TS template literals, Kotlin, Ruby, PHP) each with a placeholder-off sabotage, comment/string-blanking sabotage, not-after-`.` guard sabotage, sink-excerpt sabotage, per-file cap + warning, truncation, abstention, bad/missing `cwe` rejected, CWE URLs checked against vendored cwe.json, CLI subprocess. Noise check: 74 tracked source files → 0 hits. Supervisor re-run `1084 passed, 2 skipped in 27.11s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 07:11 UTC: pytest `1084 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Supervisor JS repo: constant template `db.query(`SELECT 1`)` → no hit; the same interpolated call inside a `//` comment → no hit; tagged template, Kotlin `"$5"`, Ruby/PHP single-quoted strings → no hit (tests) |
+| verify | ☑ pass | Real CLI 07:11 UTC (stdin closed) on a fresh Node repo `src/users.js`: security `sink_hits_observed` = 3 → `src/users.js:3` CWE-89 (template literal `${id}`), `:5` CWE-89 (string concat), `:7` CWE-95 (`eval`), each citing its CWE page; line 4 constant template and line 1 comment not hit — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/registry.py` (`security_sinks` with required `cwe`, `interpolating_strings`), `core/metric_tables.py` (token compile, `<INTERP>`, not-after-`.`/`>`/`$` guard), `core/tokens.py` (`strip(mark_interpolation=True)`, NUL placeholder, length-preserving, default off so T033 unchanged), `core/metrics.py` (`sink_hits_observed`, evidence-local), `dimensions/security.py` (sink-line excerpts via `read_source`, ≤20/file + warning), 9 curated TOML. Round 1 P1: interpolated-string SQL (AC1 'template string into query(') undetectable because blanking removed interpolation → fixed with the placeholder mechanism (Supervisor ruling on AC1 vs AC3). Ruling (b): CWE-only citation per item accepted. P2 carried: `require('child_process').exec(...)`/destructured `exec` missed (pattern needs `child_process.exec(`); fully qualified calls missed by the guard; bracket-less Ruby calls and prefixed templates missed; no data flow; a literal NUL in code would read as the placeholder. Security inline (Med): values escaped before regex; line cap bounds cost; redact.py and judge.py untouched |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1084 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -107,7 +107,6 @@ sink_hits_observed: {'abstained': False, 'value': 1} ['app/users.js:2-2']
   derivation: 1 dangerous-sink hit(s) in 1 excerpt(s): app/users.js:2 CWE-89 (https://cwe.mitre.org/data/definitions/89.html); dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read
 ```
 
-**DELTA**: a `score` run now reports, per dangerous sink (eval/exec CWE-95, shell CWE-78, SQL string building CWE-89, including interpolated template/string literals in JS/TS, Kotlin, Ruby and PHP), a cited path:line hit in the security dimension's metrics, where before sink code was invisible to it.
+**DELTA**: The security dimension now finds eval/exec, shell and string-built SQL sinks — including JS/TS template-literal SQL — in 9 languages, each hit cited with path:line and its CWE page.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T034.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and a real CLI score on a fresh Node repo on 2026-09-28 (07:11 UTC), independent of the implementing agent.
