@@ -59,9 +59,35 @@ excerpts_observed: value=1 abstained=False computed_from=['pyproject.toml:1-2']
 occurrences of 'execute(' / 'shell=True' in output: 0 0
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured 2026-09-28T07:04:25Z on `432a97f` (implementation commit), same scratch repo, same command. `sink_hits_observed` = 2 on the security dimension, one hit per sink line with path:line, CWE id and the vendored CWE page; the security pack now quotes `app/db.py:6-6` and `app/db.py:11-11` (excerpts_observed 1 -> 3). The `score` payload carries metrics, not excerpt text, so the literal sink lines still do not appear in it; they are in the pack the metric cites. The security *rating* still abstains (coverage floor) and no rule reads the metric yet -- rules/weights are T035.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```text
+$ date -u; git -C /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T034 rev-parse --short HEAD
+2026-09-28T07:04:25Z
+432a97f
+$ cat -n app/db.py (scratch repo)
+     1	import sqlite3
+     2	import subprocess
+     3	
+     4	
+     5	def find_user(cursor, user):
+     6	    cursor.execute(f"SELECT * FROM users WHERE name = '{user}'")
+     7	    return cursor.fetchall()
+     8	
+     9	
+    10	def run(cmd):
+    11	    return subprocess.run(cmd, shell=True)
+$ PYTHONPATH=src .venv/bin/python -c 'main(["score","--repo","<scratch>/sinkrepo","--scope","project"])' > out.json
+exit=0
+security metric names: ['test_to_source_ratio', 'source_files_without_covering_test', 'assertion_density_per_test', 'assertions_observed', 'redaction_hits_observed', 'redacted_file_share', 'excerpts_observed', 'declared_source_coverage', 'evidence_lines_observed', 'mean_excerpt_lines', 'source_file_share', 'functions_over_ccn_10_share', 'max_function_ccn', 'top_level_import_cycles', 'max_fan_in_changed', 'sink_hits_observed']
+any metric named *sink*: ['sink_hits_observed']
+excerpts_observed: value=3 abstained=False computed_from=['app/db.py:11-11', 'app/db.py:6-6', 'pyproject.toml:1-2']
+sink_hits_observed: value=2 abstained=False computed_from=['app/db.py:11-11', 'app/db.py:6-6']
+  derivation: 2 dangerous-sink hit(s) in 2 excerpt(s): app/db.py:6 CWE-89 (https://cwe.mitre.org/data/definitions/89.html), app/db.py:11 CWE-78 (https://cwe.mitre.org/data/definitions/78.html); dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read
+occurrences of 'execute(' / 'shell=True' in output: 0 0
+```
+
+**DELTA**: a `score` run now reports, per dangerous sink (eval/exec CWE-95, shell CWE-78, SQL string building CWE-89), a cited path:line hit in the security dimension's metrics, where before sink code was invisible to it.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T034.jsonl`, never the
 implementing agent alone]
