@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t036_local_registry.py` — 30 tests (intake validation incl. http URL, `../` field/name, wildcard/globstar caps, secret-bearing values; symlinked SOT/entry refusal; SOT inside target refused; atomic temp-file swap; curated-wins value-by-value; cache refresh; replay byte-parity on empty SOT; unwritable → curated-only with note; per-input tag via field→metric map; least-reviewed tag wins; absent language doesn't tag; judge rejects tag/citation mismatch; report shows registry-data link). 11 + 4 sabotage breaks each caught. `test_package_never_reads_the_environment` narrowed to the single approved `EASY_VERIFIER_SOT` read (Supervisor ruling). Supervisor re-run `1157 passed, 2 skipped in 60.64s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28: pytest `1157 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0); `docker compose build && bash scripts/verify_container.sh` → `PASS: uid=10001, tools=11, root=read-only, reports=writable, network=none, ports=none, caps=none` (exit 0) |
+| Negative cases hold | ☑ pass | Supervisor adversarial CLI probes (`--agent-input`, `</dev/null`): http citation → exit 2 'must be an https:// link'; language `../../etc` → exit 2; glob `/etc/passwd` → exit 2 'repository-relative glob'; spoofed `source_tag: curated` → exit 2; regex-shaped `(a+)+$` accepted only as an escaped literal token (no ReDoS, exit 0); symlinked SOT dir (→ /tmp) → refused, 'research cannot be saved', nothing written to /tmp |
+| verify | ☑ pass | Real CLI (agent AFTER at 4891a3b, 08:09Z): Kotlin `assertions` entry → `assertion_density_per_test` input `source_tag: agent-researched (unreviewed)` + `registry_citations` kotest link; unrelated `test_config_and_ci_missing` stays `curated`; replay on empty SOT byte-equal (cmp); invalid entries exit 2 with reasons; target `git status` clean. Supervisor Docker verify pass — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/registry.py` (local layer, intake validation, atomic writes, symlink/inside-repo refusal, LOCAL_TAGS), `core/roles.py`, `core/metric_tables.py` (FIELD_METRICS/ROLE_METRICS, cache keyed on registry object), `core/score.py`, `core/synthesis.py`, `core/judge.py` (input-level tag validation), `core/report.py`, adapters, compose.yaml, Docker guide, conftest. Round 1 P1: tags only once per run → fixed with per-input field→metric provenance (FR-048). Rulings: single env read exemption (PROJECT_SPEC constraint 5 reworded by Supervisor, commit on llm-integration); curated-wins value-by-value. Security review inline (High): intake fully validated + probed; P2 accepted: TOCTOU on final symlink check (same-user), calls without agent input don't reload registry, tagging by language may over-flag (never hides), Docker host dir created root-owned needs chown (documented) |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 1157 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -95,9 +95,8 @@ exit=0
 A.json == B.json byte-equal
 ```
 
-**DELTA**: an agent can now hand the verifier cited registry research (`registry_entries`); it is
+**DELTA**: The calling LLM can submit cited registry entries that are validated, saved once to `~/.easy-verifier-sot/`, reused across repos, flagged on every score input that depends on them, and replayed byte-equal anywhere.
 validated, saved to the local layer, used in the same call with a visible `agent-researched (unreviewed)`
 / `user-supplied` tag and link, and embedded so replay on an empty machine gives byte-equal output.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T036.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff, adversarial intake probes and the Docker container verification on 2026-09-28, independent of the implementing agent.
