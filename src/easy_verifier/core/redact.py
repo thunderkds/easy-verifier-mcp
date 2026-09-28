@@ -39,6 +39,18 @@ the location and the fingerprint only — deliberately no ``value`` field, becau
 every such field is a leak waiting for a future serializer to find it. Nothing
 here assigns a severity, score or verdict (FR-013).
 
+Three T051 exemptions (T035 sign-off: security's ``redaction_hits_observed``
+was dominated by content hashes and identifiers) skip a span for the entropy
+rules only — named detectors never consult them — and no entropy bar moved:
+:data:`_HASH_KEY` / :data:`_GIT_SHA_FRAGMENT` (digests in a hash context) and
+:data:`_UNDERSCORE_IDENTIFIER` (word-only ``snake_case`` names). Residual risk,
+stated plainly: a secret on the same line as a hash-named key with no
+secret-named word anywhere on that line (``"sha256": "…", "blob": "<key>"``); a
+real secret stored under a hash-named key (``hash: <key>``); a 40/64-hex secret
+written right after ``.tgz#``/``.git#``; and a secret made only of single-case
+letter runs joined by ``_``. Each is a shape credentials are not issued in, and
+each is documented beside its pattern.
+
 Every pattern below is linear — no nested or adjacent unbounded quantifiers, and
 every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 (ReDoS). This module reads attacker-influenceable content.
@@ -196,6 +208,9 @@ so ``BRAINSTORMING_LOG_source-discovery`` in prose is judged exactly as before.
 
 Exempt only when the *whole* candidate is at least two pieces joined by ``_`` and
 every piece is letters only and all upper case, all lower case, or Capitalized.
+(The two-piece floor is also implied: a piece is at most 30 letters and a
+candidate at least 32 characters, so a piece longer than 30 letters is never
+exempt — that bound is what the tests pin.)
 Any digit or any mixed-case piece (``xQzRtWvB``) keeps the old behaviour, so
 generated key material — alphanumeric, mixed case — is judged as before; the
 key-material and hex rules still run on an exempt token.

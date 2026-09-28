@@ -185,9 +185,10 @@ def git_ignore_filter(repo: Path) -> Callable[[str], bool]:
     pattern says.
 
     Unchanged behaviour (skip nothing) when git is absent, the target is not a
-    git work tree (a tarball), git fails for any reason, or the target directory
-    is itself ignored by an enclosing repository (git answers ``./``) — an
-    evaluation must never go silently empty.
+    git work tree (a tarball), or git fails for any reason. A target directory
+    that an enclosing repository ignores makes git answer ``./``, which matches
+    no repo-relative path, so that case also skips nothing — an evaluation must
+    never go silently empty.
 
     A secret-bearing name (DDR-0002) is **never** skipped: its contents are
     never read anyway, and its existence — a git-ignored ``.env`` is the normal
@@ -218,7 +219,7 @@ def git_ignore_filter(repo: Path) -> Callable[[str], bool]:
         return _skip_nothing
     listing = result.stdout.decode("utf-8", "surrogateescape")
     entries = [entry for entry in listing.split("\0") if entry]
-    if result.returncode != 0 or "./" in entries:
+    if result.returncode != 0:
         return _skip_nothing
     ignored_dirs = frozenset(e for e in entries if e.endswith("/"))
     ignored_files = frozenset(e for e in entries if not e.endswith("/"))
