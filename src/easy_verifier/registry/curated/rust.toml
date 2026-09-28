@@ -99,3 +99,19 @@ source_tag = "curated"
 value = ["use"]
 citation_url = "https://doc.rust-lang.org/reference/items/use-declarations.html"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Command::new ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".execute ( & format! (", ".query ( & format! (", "sqlx::query ( & format! (", "sql_query ( format! ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

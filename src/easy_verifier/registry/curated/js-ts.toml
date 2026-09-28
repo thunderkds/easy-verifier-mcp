@@ -179,3 +179,25 @@ source_tag = "curated"
 value = ["require ("]
 citation_url = "https://nodejs.org/api/modules.html#requireid"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( ?", "new Function ("]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["child_process.exec (", "child_process.execSync (", "shell : true"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".query ( +", ".execute ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

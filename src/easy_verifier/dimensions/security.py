@@ -10,7 +10,14 @@ from collections.abc import Iterator
 from fnmatch import fnmatchcase
 from pathlib import PurePosixPath
 
-from ..core.context import SECRET_BEARING_PATTERNS, whole_file_excerpt
+from ..core.context import (
+    MAX_EXCERPT_LINES,
+    MAX_LINE_CHARS,
+    SECRET_BEARING_PATTERNS,
+    whole_file_excerpt,
+)
+from ..core.metric_tables import curated_metric_tables
+from ..core.metrics import sink_hits
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -47,6 +54,14 @@ is reported ``excluded: secret-bearing`` (DDR-0002)."""
 SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
 MAX_SECURITY_SOURCES = 200
+
+MAX_SINK_EXCERPTS_PER_FILE = 20
+"""Dangerous-sink excerpts quoted from one file (T034); more is warned."""
+
+SINK_CAP_WARNING = (
+    "{path}: more than {limit} dangerous-sink excerpts; only the first {limit} "
+    "are quoted, so sink_hits_observed is a lower bound for this file."
+)
 
 #: Declared entries that name a body of evidence rather than a repository path.
 #: Probing them as paths would report a truthful-looking "not found" for
@@ -222,6 +237,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             excerpt = whole_file_excerpt(path, text)
             if excerpt is not None:
                 yield excerpt
+            yield from _sink_excerpts(context, path, text, excerpt)
 
     if resolved_scope is None:
         return
@@ -243,11 +259,44 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         # file carries credential evidence. The pipeline scans again at the
         # evidence boundary and owns the actual replacement + hit metadata.
         if category is None and not scan(text).hits:
+            yield from _sink_excerpts(context, source, text, None)
             continue
 
         excerpt = whole_file_excerpt(source, text)
         if excerpt is not None:
             yield excerpt
+        yield from _sink_excerpts(context, source, text, excerpt)
+
+
+def _sink_excerpts(
+    context: DimensionContext, path: str, text: str, whole: Excerpt | None
+) -> Iterator[Excerpt]:
+    """The lines of each registry dangerous-sink hit in ``text`` (T034).
+
+    Hits the whole-file excerpt ``whole`` already quotes in full are skipped;
+    one excerpt spans each hit's own lines, overlapping spans merged.
+    """
+    after = whole.end_line if whole is not None else 0
+    lines = text.split("\n")
+    spans: list[list[int]] = []
+    for hit in sink_hits(path, text, curated_metric_tables()):
+        end = min(hit.end_line, hit.line + MAX_EXCERPT_LINES - 1)
+        if end <= after or any(
+            len(line) > MAX_LINE_CHARS for line in lines[hit.line - 1 : end]
+        ):
+            continue
+        if spans and hit.line <= spans[-1][1]:
+            spans[-1][1] = max(spans[-1][1], end)
+        else:
+            spans.append([hit.line, end])
+    if len(spans) > MAX_SINK_EXCERPTS_PER_FILE:
+        _warn(
+            context,
+            SINK_CAP_WARNING.format(path=path, limit=MAX_SINK_EXCERPTS_PER_FILE),
+        )
+    for start, end in spans[:MAX_SINK_EXCERPTS_PER_FILE]:
+        quoted = "\n".join(line.removesuffix("\r") for line in lines[start - 1 : end])
+        yield Excerpt(path=path, start_line=start, end_line=end, text=quoted)
 
 
 def _warn(context: DimensionContext, message: str) -> None:

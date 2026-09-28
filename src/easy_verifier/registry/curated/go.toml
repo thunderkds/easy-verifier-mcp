@@ -109,3 +109,19 @@ source_tag = "curated"
 value = ["import"]
 citation_url = "https://go.dev/ref/spec#Import_declarations"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["exec.Command ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".Query ( +", ".QueryRow ( +", ".Exec ( +", ".Query ( fmt.Sprintf (", ".QueryRow ( fmt.Sprintf (", ".Exec ( fmt.Sprintf ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

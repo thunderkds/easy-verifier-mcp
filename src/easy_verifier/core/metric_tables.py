@@ -21,7 +21,7 @@ from collections.abc import Iterable
 from fnmatch import translate
 from functools import lru_cache
 
-from .metrics import LanguageTables
+from .metrics import LanguageTables, SinkPattern
 from .registry import Registry, RegistryEntry
 from .roles import _registry
 from .tokens import LanguageSyntax, language_syntax
@@ -43,11 +43,13 @@ def metric_tables(
     suffixes: dict[str, None] = dict.fromkeys(extra_source_extensions)
     candidates: dict[str, dict[str, None]] = {}
     syntax: dict[str, LanguageSyntax] = {}
+    sinks: dict[str, tuple[SinkPattern, ...]] = {}
     for entry in entries:
         extensions = _values(entry, "source_extensions")
         compiled = _syntax(entry)
         for extension in extensions if compiled else ():
             syntax.setdefault(extension, compiled)
+            sinks.setdefault(extension, _sinks(entry))
         suffixes.update(dict.fromkeys(extensions))
         for extension in extensions:
             candidates.setdefault(extension, {}).update(
@@ -79,6 +81,7 @@ def metric_tables(
         if assertions
         else _NEVER,
         syntax=syntax,
+        sinks={suffix: found for suffix, found in sinks.items() if found},
     )
 
 
@@ -103,6 +106,26 @@ def _syntax(entry: RegistryEntry) -> LanguageSyntax | None:
         branch=_alternation(_values(entry, "branch_keywords")),
         function_start=_alternation(_values(entry, "function_start")),
         imports=_alternation(_values(entry, "import_syntax")),
+    )
+
+
+def _sinks(entry: RegistryEntry) -> tuple[SinkPattern, ...]:
+    """``entry``'s ``security_sinks`` tokens (T034), one pattern per token.
+
+    A token starting with an identifier character may not follow ``.``,
+    ``>`` or ``$``: ``eval(`` is a sink, ``model.eval(`` and ``$eval`` are not.
+    """
+    return tuple(
+        SinkPattern(
+            cwe=cited.cwe or "",
+            token=token,
+            citation_url=cited.citation_url,
+            regex=re.compile(
+                (r"(?<![.>$])" if _word(token[:1]) else "") + token_regex(token)
+            ),
+        )
+        for cited in entry.fields.get("security_sinks", ())
+        for token in cited.value
     )
 
 

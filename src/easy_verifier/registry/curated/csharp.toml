@@ -139,3 +139,25 @@ source_tag = "curated"
 value = ["using"]
 citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/using-directive"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["CSharpScript.EvaluateAsync ("]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Process.Start ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = ["new SqlCommand ( $", "new SqlCommand ( +", ".CommandText = $", ".CommandText = +", ".ExecuteSqlRaw ( $", ".ExecuteSqlRaw ( +", ".FromSqlRaw ( $", ".FromSqlRaw ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"

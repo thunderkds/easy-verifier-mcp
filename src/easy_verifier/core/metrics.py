@@ -55,7 +55,13 @@ from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
 from .models import CombinedPack, EvidencePack, Excerpt
-from .tokens import LanguageSyntax, approximate_ccn, import_statements
+from .tokens import (
+    MAX_LINE_CHARS,
+    LanguageSyntax,
+    approximate_ccn,
+    import_statements,
+    strip,
+)
 
 WHOLE_SET = "whole_set"
 """A ratio, density or aggregate share: it describes the whole set it was
@@ -256,6 +262,57 @@ class LanguageTables:
     syntax: Mapping[str, LanguageSyntax] = field(default_factory=dict)
     """Source suffix -> the language's structure tokens (T033); a suffix
     absent here gets no CCN or import evidence."""
+
+    sinks: Mapping[str, tuple[SinkPattern, ...]] = field(default_factory=dict)
+    """Source suffix -> the language's dangerous-sink tokens (T034); matched
+    only where ``syntax`` can blank that language's comments and strings."""
+
+
+@dataclass(frozen=True)
+class SinkPattern:
+    """One registry ``security_sinks`` token, compiled (T034)."""
+
+    cwe: str
+    token: str
+    citation_url: str
+    regex: re.Pattern[str]
+
+
+@dataclass(frozen=True)
+class SinkHit:
+    """One sink match: 1-indexed lines within the text it was found in."""
+
+    line: int
+    end_line: int
+    cwe: str
+    citation_url: str
+
+
+def sink_hits(path: str, text: str, tables: LanguageTables) -> tuple[SinkHit, ...]:
+    """Every registry sink token matching ``text`` (the contents of ``path``).
+
+    Tokens match code only: comments and strings are blanked first
+    (``core/tokens.py``), so a sink named in a comment or a string is no hit.
+    A match starting on a line longer than ``MAX_LINE_CHARS`` (generated or
+    minified code) is ignored. One hit per starting line and CWE, by line.
+    """
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    patterns = tables.sinks.get(suffix, ())
+    if syntax is None or not patterns:
+        return ()
+    code = strip(text, syntax)
+    lines = code.split("\n")
+    found: dict[tuple[int, str], SinkHit] = {}
+    for pattern in patterns:
+        for match in pattern.regex.finditer(code):
+            line = code.count("\n", 0, match.start()) + 1
+            if len(lines[line - 1]) > MAX_LINE_CHARS:
+                continue
+            end = line + code.count("\n", match.start(), match.end())
+            hit = SinkHit(line, end, pattern.cwe, pattern.citation_url)
+            found.setdefault((line, pattern.cwe), hit)
+    return tuple(found[key] for key in sorted(found))
 
 
 # ---------------------------------------------------------------------------
@@ -508,6 +565,54 @@ def _source_file_share(view: _PackView) -> _Computed:
         )
         + "; "
         + _CLASSIFIED_BY,
+    )
+
+
+_SINK_METHOD = (
+    "dangerous sinks are the registry's security_sinks tokens (each citing "
+    "its CWE page), matched textually after the registry's comment and string "
+    "delimiters are blanked -- no data flow is traced, so a hit is a place to "
+    "look, not a proven vulnerability; test-path hits are counted and tagged; "
+    "a lower bound on the repository, since only these excerpts were read"
+)
+
+
+def _sink_hits_observed(view: _PackView) -> _Computed:
+    scanned = [
+        excerpt
+        for excerpt in view.pack.excerpts
+        if view.tables.sinks.get(PurePosixPath(excerpt.path).suffix)
+        and PurePosixPath(excerpt.path).suffix in view.tables.syntax
+    ]
+    if not scanned:
+        return MetricAbstention(
+            reason=(
+                "no excerpt in this pack is from a registry language with sink "
+                "patterns, so no code was scanned; that is not the same as code "
+                "without sinks. " + _SINK_METHOD
+            )
+        )
+    hits: dict[tuple[str, int, str], tuple[str, str]] = {}
+    for excerpt in scanned:
+        for hit in sink_hits(excerpt.path, excerpt.text, view.tables):
+            line = excerpt.start_line + hit.line - 1
+            key = (excerpt.path, line, hit.cwe)
+            hits.setdefault(key, (excerpt.ref, hit.citation_url))
+    cited = sorted({ref for ref, _url in hits.values()}) or sorted(
+        {e.ref for e in scanned}
+    )
+    listed = ", ".join(
+        f"{path}:{line} {cwe} ({url})"
+        + (" [test path]" if _is_test_file(path, view.tables) else "")
+        for (path, line, cwe), (_ref, url) in sorted(hits.items())
+    )
+    return (
+        len(hits),
+        tuple(cited),
+        f"{len(hits)} dangerous-sink hit(s) in {len(scanned)} excerpt(s): "
+        + (listed or "none")
+        + "; "
+        + _SINK_METHOD,
     )
 
 
@@ -848,6 +953,12 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     ),
     MetricDefinition(
         "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
+    ),
+    MetricDefinition(
+        "sink_hits_observed",
+        FAMILY_SECURITY_SURFACE,
+        EVIDENCE_LOCAL,
+        _sink_hits_observed,
     ),
 )
 

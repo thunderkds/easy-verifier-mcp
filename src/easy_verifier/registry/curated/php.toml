@@ -139,3 +139,25 @@ source_tag = "curated"
 value = ["include", "include_once"]
 citation_url = "https://www.php.net/manual/en/function.include.php"
 source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( $", "create_function ("]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["shell_exec ( $", "system ( $", "exec ( $", "passthru ( $"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = ["->query ( .", "->exec ( .", "mysqli_query ( $* , ."]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
