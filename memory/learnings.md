@@ -559,3 +559,11 @@ duplicate `**Txxx**` rows before moving a task.
   ruling: repoint structural tests, keep every behavioural fixture untouched.
 - The project `.venv` has no setuptools; wheel/build checks need `/usr/bin/python3`.
 - **Merge gate is global**: the pre_bash hook refuses a merge while *any* task is In Progress on the KANBAN, not only the one being merged; parallel tasks merge together after the last closes. The hook also matches the literal merge command text anywhere in a Bash command, including inside heredocs.
+
+## 2026-09-28 — T031/T032: shared tables must reach the real surface
+
+- A table swap in core/metrics.py was invisible at the CLI because dimensions/test_strategy.py held a second copy and never read sources. Always verify a metrics change with a real CLI score run, not only hand-built packs.
+- Sabotage pairs can pass for the wrong reason when another rule (e.g. the project boundary) already separates the files; vary only the pinned predicate.
+- metric_tables.curated_metric_tables() is the one compiled table set; metrics.py stays pure (tables passed in).
+- Vendored snapshots (Linguist d0921d10, ASVS v5.0.0, CWE 4.20) live in registry/vendored/; ASVS has one canonical URL for all requirements, cite by requirement id.
+- Merged branch after T031+T032: 954 passed, 2 skipped.

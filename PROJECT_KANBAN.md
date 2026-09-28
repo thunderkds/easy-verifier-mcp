@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
-- [ ] **T033** — Registry-driven token metrics: approximate CCN, imports, fan-in, cycles | backend-developer | C3 | Risk: Med | P0
 - [ ] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0
 - [ ] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0
 - [ ] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1
@@ -64,8 +63,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-
-_(empty)_
+- [~] **T033** — Registry-driven token metrics: approximate CCN, imports, fan-in, cycles | backend-developer | C3 | Risk: Med | P0 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T033)
 
 ### Ready for Review
 
