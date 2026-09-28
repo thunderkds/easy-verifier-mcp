@@ -723,9 +723,10 @@ def _walk(
             entry.is_file()
             and (extensions is None or entry.suffix.lower() in extensions)
             and (not contained_only or _is_contained(entry, repo))
-            and not _skip(entry.relative_to(repo).as_posix())
         ):
-            yield entry.relative_to(repo).as_posix()
+            relative = entry.relative_to(repo).as_posix()
+            if not _skip(relative):
+                yield relative
 
 
 def _is_contained(candidate: Path, repo: Path) -> bool:

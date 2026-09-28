@@ -351,7 +351,15 @@ def _named_spans(text: str) -> Iterator[tuple[int, int, str]]:
 
 def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
     """Yield the catch-all entropy candidates — the deliberately noisy layer."""
-    hash_context = _hash_context_spans(text)
+    hash_context: list[tuple[int, int]] | None = None
+
+    def in_hash_context(match: re.Match[str]) -> bool:
+        # Computed on first need: most texts have no candidate that clears a
+        # bar, and the pass is a whole-text scan (a 27 MB JSON file in bryony).
+        nonlocal hash_context
+        if hash_context is None:
+            hash_context = _hash_context_spans(text)
+        return _within(hash_context, match.start(), match.end())
 
     for match in _ENTROPY_CANDIDATE.finditer(text):
         if _PATHISH.search(match.group()):
@@ -362,25 +370,28 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
             continue
         if _UNDERSCORE_IDENTIFIER.fullmatch(match.group()):
             continue
-        if _within(hash_context, match.start(), match.end()):
-            continue
-        if _shannon_entropy(match.group()) >= _MIN_ENTROPY_BITS:
+        if _shannon_entropy(match.group()) >= _MIN_ENTROPY_BITS and not (
+            in_hash_context(match)
+        ):
             yield match.start(), match.end(), "high_entropy_string"
 
     for match in _KEY_MATERIAL_CANDIDATE.finditer(text):
         segment = match.group()
         if not all(pattern.search(segment) for pattern in _KEY_MATERIAL_CLASSES):
             continue
-        if _within(hash_context, match.start(), match.end()):
-            continue
-        if _shannon_entropy(segment) >= _MIN_SEGMENT_ENTROPY_BITS:
+        if _shannon_entropy(segment) >= _MIN_SEGMENT_ENTROPY_BITS and not (
+            in_hash_context(match)
+        ):
             yield match.start(), match.end(), "key_material_segment"
 
     for match in _HEX_CANDIDATE.finditer(text):
-        if _within(hash_context, match.start(), match.end()):
-            continue
-        if _shannon_entropy(match.group()) >= _MIN_HEX_ENTROPY_BITS:
+        if _shannon_entropy(match.group()) >= _MIN_HEX_ENTROPY_BITS and not (
+            in_hash_context(match)
+        ):
             yield match.start(), match.end(), "high_entropy_hex"
+
+
+_NEWLINE = re.compile("\n")
 
 
 def _hash_context_spans(text: str) -> list[tuple[int, int]]:
@@ -392,20 +403,28 @@ def _hash_context_spans(text: str) -> list[tuple[int, int]]:
     secret-named word anywhere on the same line (:data:`_SECRET_KEY_WORD`).
     Only the three entropy rules consult this; named detectors never do.
     """
-    spans: list[tuple[int, int]] = []
-    start = 0
-    for line in text.split("\n"):
-        end = start + len(line)
-        if not _SECRET_KEY_WORD.search(line):
-            if _HASH_KEY.search(line):
-                spans.append((start, end))
-            else:
-                spans.extend(
-                    (start + m.start("sha"), start + m.end("sha"))
-                    for m in _GIT_SHA_FRAGMENT.finditer(line)
-                )
-        start = end + 1
-    return spans
+    keys = [match.start() for match in _HASH_KEY.finditer(text)]
+    fragments = [match.span("sha") for match in _GIT_SHA_FRAGMENT.finditer(text)]
+    if not keys and not fragments:
+        return []
+    # Whole-text scans, then mapped to lines: none of the three patterns can
+    # match across a newline, and a per-line loop was ~2x the cost of a whole
+    # score run on a repo with large minified files.
+    line_starts = [0, *(match.end() for match in _NEWLINE.finditer(text))]
+    vetoed = {
+        bisect.bisect_right(line_starts, match.start()) - 1
+        for match in _SECRET_KEY_WORD.finditer(text)
+    }
+    spans: set[tuple[int, int]] = set()
+    hash_lines = {bisect.bisect_right(line_starts, key) - 1 for key in keys}
+    for line in hash_lines - vetoed:
+        last = line + 1 == len(line_starts)
+        spans.add((line_starts[line], len(text) if last else line_starts[line + 1] - 1))
+    for sha_start, sha_end in fragments:
+        line = bisect.bisect_right(line_starts, sha_start) - 1
+        if line not in vetoed and line not in hash_lines:
+            spans.add((sha_start, sha_end))
+    return sorted(spans)
 
 
 def _within(spans: list[tuple[int, int]], start: int, end: int) -> bool:
