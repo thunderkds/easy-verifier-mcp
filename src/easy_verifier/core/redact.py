@@ -408,8 +408,8 @@ def _hash_context_spans(text: str) -> list[tuple[int, int]]:
     if not keys and not fragments:
         return []
     # Whole-text scans, then mapped to lines: none of the three patterns can
-    # match across a newline, and a per-line loop was ~2x the cost of a whole
-    # score run on a repo with large minified files.
+    # match across a newline, and a per-line Python loop cost seconds on one
+    # 27 MB JSON file in a real target repo.
     line_starts = [0, *(match.end() for match in _NEWLINE.finditer(text))]
     vetoed = {
         bisect.bisect_right(line_starts, match.start()) - 1
