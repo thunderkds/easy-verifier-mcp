@@ -14,6 +14,7 @@
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
 - [ ] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0
+- [ ] **T050** — Code-quality and architecture packs gather code evidence (source excerpts, import lines); added at T033 Stage 4, blocks T035 | backend-developer | C2 | Risk: Med | P0
 - [ ] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0
 - [ ] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1
 - [ ] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1

@@ -173,6 +173,7 @@ Authoritative task state lives in `PROJECT_KANBAN.md`. This table is the plannin
 | T047 | Pack mechanism + healthcare pack | Todo | backend-developer | C2 | Medium | P2 |
 | T048 | Finance pack | Todo | backend-developer | C2 | Medium | P2 |
 | T049 | Frontend accessibility pack | Todo | backend-developer | C2 | Medium | P2 |
+| T050 | Code evidence in code-quality/architecture packs (blocks T035) | Todo | backend-developer | C2 | Medium | P0 |
 
 ---
 

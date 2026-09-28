@@ -54,7 +54,7 @@ User (2026-09-28): "which best practice did we refer to score … the source of 
 
 ## Dependencies & Reachability
 
-**Depends on**: T033 — CCN/cycle/fan-in metrics; T034 — sink metric
+**Depends on**: T033 — CCN/cycle/fan-in metrics; T034 — sink metric; T050 — code-quality/architecture packs carry code evidence
 
 **Entry point**: `RATING_RULES`
 
