@@ -22,6 +22,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .context import git_ignore_filter
 from .redact import redact
 
 KIND_TASK = "task"
@@ -130,9 +131,11 @@ def _resolve_project(repo: Path) -> Scope:
 
     A plain filesystem walk rather than ``git ls-files``, so this works
     identically whether or not ``repo`` is a git repository (Edge Case
-    Checklist, AC #9).
+    Checklist, AC #9). Where git is available, files it ignores are dropped
+    (T051) — decided once here, see :func:`context.git_ignore_filter`.
     """
-    files = sorted(_walk_files(repo, repo))
+    skip = git_ignore_filter(repo)
+    files = sorted(path for path in _walk_files(repo, repo) if not skip(path))
     return Scope(kind=KIND_PROJECT, files=tuple(files))
 
 

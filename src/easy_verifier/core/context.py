@@ -17,6 +17,7 @@ itself, so no caller can emit a response without it (FR-004).
 from __future__ import annotations
 
 import fnmatch
+import subprocess
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -170,6 +171,76 @@ so this errs wide on purpose."""
 def _is_secret_bearing(relative_path: str) -> bool:
     name = Path(relative_path).name
     return any(fnmatch.fnmatch(name, pattern) for pattern in SECRET_BEARING_PATTERNS)
+
+
+def git_ignore_filter(repo: Path) -> Callable[[str], bool]:
+    """Return ``skip(relative_path)``: True for a file the repo's git ignores (T051).
+
+    Decided with **one** read-only ``git ls-files --others --ignored
+    --exclude-standard --directory`` per call, so nested ``.gitignore`` files,
+    ``.git/info/exclude`` and the global excludes file are honoured exactly as
+    git honours them, and the answer is a set lookup per file afterwards — never
+    a process per file. Callers build it once per walk. Only *untracked* ignored
+    files are skipped: a tracked file is part of the repository whatever a
+    pattern says.
+
+    Unchanged behaviour (skip nothing) when git is absent, the target is not a
+    git work tree (a tarball), git fails for any reason, or the target directory
+    is itself ignored by an enclosing repository (git answers ``./``) — an
+    evaluation must never go silently empty.
+
+    A secret-bearing name (DDR-0002) is **never** skipped: its contents are
+    never read anyway, and its existence — a git-ignored ``.env`` is the normal
+    case — stays reportable as ``excluded: secret-bearing``.
+
+    ``core.fsmonitor`` is forced off because a target repository's own config
+    could otherwise name a program for git to run (NFR-007).
+    """
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.fsmonitor=false",
+                "-C",
+                str(repo),
+                "ls-files",
+                "--others",
+                "--ignored",
+                "--exclude-standard",
+                "--directory",
+                "-z",
+            ],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return _skip_nothing
+    listing = result.stdout.decode("utf-8", "surrogateescape")
+    entries = [entry for entry in listing.split("\0") if entry]
+    if result.returncode != 0 or "./" in entries:
+        return _skip_nothing
+    ignored_dirs = frozenset(e for e in entries if e.endswith("/"))
+    ignored_files = frozenset(e for e in entries if not e.endswith("/"))
+    if not ignored_dirs and not ignored_files:
+        return _skip_nothing
+
+    def skip(relative_path: str) -> bool:
+        if _is_secret_bearing(relative_path):
+            return False
+        if relative_path in ignored_files:
+            return True
+        parts = relative_path.split("/")[:-1]
+        return any(
+            "/".join(parts[: depth + 1]) + "/" in ignored_dirs
+            for depth in range(len(parts))
+        )
+
+    return skip
+
+
+def _skip_nothing(relative_path: str) -> bool:
+    return False
 
 
 class RepoPathError(ValueError):
@@ -587,6 +658,7 @@ def _walk(
     extensions: frozenset[str] | None = _DOC_EXTENSIONS,
     contained_only: bool = True,
     _visited: set[Path] | None = None,
+    _skip: Callable[[str], bool] | None = None,
 ) -> Iterator[str]:
     """Yield matching files under the directory, depth-first and sorted.
 
@@ -604,6 +676,11 @@ def _walk(
     also yields a *file* symlink resolving outside the repository — never a
     directory — so role resolution can let ``read_source`` state the true
     reason ("resolves outside the repository") instead of "not found".
+
+    Files the repository's git ignores are not yielded (T051,
+    :func:`git_ignore_filter`, decided once per top-level walk); an ignored
+    directory is still descended so a secret-bearing file inside it stays
+    visible.
     """
     # Checked on entry rather than at the recursive call, so it covers the roots
     # `_candidate_docs` passes in too: `docs/` itself can be the escaping link.
@@ -624,6 +701,8 @@ def _walk(
     # cycles without materialising the file inventory.
     if _visited is None:
         _visited = set()
+    if _skip is None:
+        _skip = git_ignore_filter(repo)
     if resolved in _visited:
         return
     _visited.add(resolved)
@@ -637,11 +716,13 @@ def _walk(
                     extensions=extensions,
                     contained_only=contained_only,
                     _visited=_visited,
+                    _skip=_skip,
                 )
         elif (
             entry.is_file()
             and (extensions is None or entry.suffix.lower() in extensions)
             and (not contained_only or _is_contained(entry, repo))
+            and not _skip(entry.relative_to(repo).as_posix())
         ):
             yield entry.relative_to(repo).as_posix()
 
