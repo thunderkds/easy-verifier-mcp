@@ -545,3 +545,16 @@ duplicate `**Txxx**` rows before moving a task.
   read `git ls-files` live, as T029's does.
 - **Pipeline gate**: `pre_bash` blocks `git merge` while the task shows In Progress on the KANBAN.
   Order is: evidence ready → KANBAN Done commit → evidence commit → merge (T028 precedent).
+
+## 2026-09-28 — T030: registry landed; carry-forwards for T036
+
+- `core/roles.py::_registry()` is `lru_cache(maxsize=1)` — a long-running MCP server loads the
+  registry once. **T036 must invalidate it on every local-layer write** (or read local per call).
+- The loader accepts only `source_tag = "curated"` and does not bound glob *shape*; T036 must widen
+  tags and add `.easy-verifier.toml`-style glob limits before accepting user/agent files
+  (patterns feed a backtracking regex).
+- Kotlin activates on `build.gradle(.kts)`, so Gradle Java repos also get Kotlin patterns — add-only,
+  accepted.
+- Removing a symbol "while keeping existing tests unchanged" is contradictory when tests import it;
+  ruling: repoint structural tests, keep every behavioural fixture untouched.
+- The project `.venv` has no setuptools; wheel/build checks need `/usr/bin/python3`.
