@@ -445,3 +445,174 @@ def test_token_regex_is_literal_except_for_its_own_syntax(token, matches, misses
     assert pattern.search(matches), (token, pattern.pattern)
     assert not pattern.search(misses), (token, pattern.pattern)
     assert r"\w*\w*" not in pattern.pattern
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 P1 - dimensions/test_strategy.py reads the same registry tables
+# ---------------------------------------------------------------------------
+
+from easy_verifier.core.pipeline import run_dimension  # noqa: E402
+from easy_verifier.dimensions import test_strategy  # noqa: E402
+
+_FORMER_SUFFIXES = frozenset(
+    {".cs", ".go", ".java", ".js", ".jsx", ".kt", ".php", ".py", ".rb", ".rs"}
+    | {".ts", ".tsx"}
+)
+_FORMER_TEST_DIRS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
+
+
+def _former_is_test(path: str) -> bool:
+    """`test_strategy._is_test_file` as it was before T031, verbatim logic."""
+    pure = Path(path)
+    if any(pattern.match(pure.name) for pattern in _FORMER_NAMES):
+        return True
+    return any(p.lower() in _FORMER_TEST_DIRS for p in pure.parts[:-1]) and (
+        pure.suffix in _FORMER_SUFFIXES
+    )
+
+
+def _former_expected(source: str) -> tuple[tuple[str, bool], ...]:
+    stem, suffix = Path(source).stem, Path(source).suffix
+    names = {
+        ".py": (f"test_{stem}.py", f"{stem}_test.py"),
+        ".go": (f"{stem}_test.go",),
+        ".rb": (f"{stem}_spec.rb", f"test_{stem}.rb"),
+        ".java": (f"{stem}Test.java", f"Test{stem}.java"),
+        ".cs": (f"{stem}Test.cs", f"{stem}Tests.cs"),
+    }.get(suffix)
+    if suffix in {".js", ".jsx", ".ts", ".tsx"}:
+        names = (f"{stem}.test{suffix}", f"{stem}.spec{suffix}", f"{stem}_test{suffix}")
+    return tuple((name, suffix == ".go") for name in names or ())
+
+
+PATHS = [
+    *NAMES,
+    "src/a.py",
+    "tests/a.py",
+    "tests/data/a.json",
+    "pkg/tests/helper.py",
+    "src/easy_verifier/dimensions/test_strategy.py",
+    "spec/support/x.rb",
+    "__tests__/a.jsx",
+    "src/main/java/A.java",
+    "src/test/java/ATest.java",
+    "lib/engine.rs",
+    "tests/it.rs",
+    "cmd/main.go",
+    "app/Model.cs",
+]
+
+
+@pytest.mark.parametrize("path", PATHS)
+def test_test_strategy_classification_matches_the_former_tables(path):
+    assert test_strategy._is_test_file(path) is _former_is_test(path)
+    former_source = Path(path).suffix in _FORMER_SUFFIXES and not _former_is_test(path)
+    assert test_strategy._is_source_file(path) is former_source
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["a.py", "a.go", "a.js", "a.tsx", "a.rb", "A.java", "A.cs", "lib.rs", "x.txt"],
+)
+def test_candidate_names_match_the_former_rules(source):
+    from easy_verifier.core.metrics import expected_test_names
+
+    got = expected_test_names(source, curated_metric_tables())
+    assert sorted(got) == sorted(_former_expected(source))
+
+
+def test_test_strategy_holds_no_language_table():
+    source = (REPO_ROOT / "src/easy_verifier/dimensions/test_strategy.py").read_text()
+    for former in ("_TEST_NAME_PATTERNS", "_SOURCE_SUFFIXES", "_expected_test_names"):
+        assert former not in source, former
+    assert (
+        re.findall(r"[\"']\.(?:py|go|rs|java|kt|php|rb|cs|jsx?|tsx?)[\"']", source)
+        == []
+    )
+
+
+def _repo(tmp_path: Path, files: dict[str, str]) -> Path:
+    for relative, body in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+    return tmp_path
+
+
+def _strategy_metrics(repo: Path):
+    pack = run_dimension(test_strategy.DESCRIPTOR, repo, scope="project")
+    return pack, compute_metrics(pack, curated_metric_tables())
+
+
+def test_kotlin_pack_reads_source_and_test_and_measures_coverage(tmp_path):
+    repo = _repo(
+        tmp_path,
+        {
+            "build.gradle.kts": "plugins {}\n",
+            "src/main/kotlin/Foo.kt": "fun foo() = 1\n",
+            "src/test/kotlin/FooTest.kt": (
+                "class FooTest {\n    @Test\n"
+                "    fun foo() { assertEquals(1, foo()) }\n}\n"
+            ),
+        },
+    )
+    pack, metrics = _strategy_metrics(repo)
+    assert "src/main/kotlin/Foo.kt" in pack.files_read
+    assert "src/test/kotlin/FooTest.kt" in pack.files_read
+    assert _value(metrics, "source_files_without_covering_test") == 0
+    # The source is read, never excerpted: excerpts stay test/config evidence.
+    assert "src/main/kotlin/Foo.kt" not in [e.path for e in pack.excerpts]
+
+
+def test_go_pack_reads_source_and_test_and_counts_t_errorf(tmp_path):
+    repo = _repo(
+        tmp_path,
+        {
+            "go.mod": "module calc\n",
+            "calc.go": "package calc\n\nfunc Add(a, b int) int { return a + b }\n",
+            "calc_test.go": (
+                'package calc\n\nimport "testing"\n\nfunc TestAdd(t *testing.T) {\n'
+                '\tif Add(1, 1) != 2 {\n\t\tt.Errorf("want 2")\n\t}\n}\n'
+            ),
+        },
+    )
+    pack, metrics = _strategy_metrics(repo)
+    assert {"calc.go", "calc_test.go"} <= set(pack.files_read)
+    assert _value(metrics, "source_files_without_covering_test") == 0
+    assert _value(metrics, "assertions_observed") == 1
+
+
+def test_an_uncovered_source_is_read_so_the_metric_can_count_it(tmp_path):
+    """Reading only covered sources would make the metric 0 by construction."""
+    repo = _repo(
+        tmp_path,
+        {
+            "src/foo.py": "def foo(): ...\n",
+            "src/orphan.py": "def orphan(): ...\n",
+            "tests/test_foo.py": "def test_foo():\n    assert True\n",
+        },
+    )
+    pack, metrics = _strategy_metrics(repo)
+    assert "src/orphan.py" in pack.files_read
+    assert _value(metrics, "source_files_without_covering_test") == 1
+    assert [e.path for e in pack.excerpts] == ["tests/test_foo.py"]
+
+
+def test_sources_are_read_all_or_none_within_the_cap(tmp_path, monkeypatch):
+    repo = _repo(
+        tmp_path,
+        {
+            "src/a.py": "def a(): ...\n",
+            "src/b.py": "def b(): ...\n",
+            **{f"tests/test_{i}.py": "def test_x():\n    assert 1\n" for i in range(3)},
+        },
+    )
+    monkeypatch.setattr(test_strategy, "MAX_TEST_SOURCES", 4)
+    pack = run_dimension(test_strategy.DESCRIPTOR, repo, scope="project")
+    assert not {"src/a.py", "src/b.py"} & set(pack.files_read)
+    assert any("were not read" in warning for warning in pack.warnings)
+    # Sabotage pair: with room for them, both are read and nothing is warned.
+    monkeypatch.setattr(test_strategy, "MAX_TEST_SOURCES", 5)
+    pack = run_dimension(test_strategy.DESCRIPTOR, repo, scope="project")
+    assert {"src/a.py", "src/b.py"} <= set(pack.files_read)
+    assert not any("were not read" in warning for warning in pack.warnings)

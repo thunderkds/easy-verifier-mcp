@@ -29,6 +29,8 @@ from collections.abc import Iterator
 from pathlib import PurePosixPath
 
 from ..core.context import MAX_LINE_CHARS, whole_file_excerpt
+from ..core.metric_tables import curated_metric_tables
+from ..core.metrics import expected_test_names
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -102,6 +104,13 @@ COVERAGE_ARTIFACT_WARNING = (
     "finding of this engine."
 )
 
+UNREAD_SOURCES_WARNING = (
+    "{count} source file(s) in the resolved scope were not read, because "
+    "together with the test evidence they exceed the {cap}-file read cap. The "
+    "pack therefore holds no source file, so source-to-test figures computed "
+    "over it cannot describe this scope's sources."
+)
+
 DELETED_TEST_WARNING = (
     "Test file(s) in the change set could not be read from the worktree, which "
     "is what a deleted or moved test looks like: {paths}."
@@ -136,41 +145,16 @@ _COVERAGE_ARTIFACT_DIRS = frozenset({"htmlcov", "coverage"})
 
 _TEST_DIR_SEGMENTS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 
-#: Basenames each ecosystem's own test runner would collect, matched anywhere
-#: in the tree so a co-located test counts. Known over-inclusion: a production
-#: module genuinely named ``test_*.py`` (this dimension's own source, for one)
-#: is classified as a test. That is the convention pytest itself applies, and
-#: the alternative — demanding a ``tests/`` ancestor — would silently drop every
-#: co-located suite, which is the failure mode that matters here.
-_TEST_NAME_PATTERNS = (
-    re.compile(r"^test_.+\.py$"),
-    re.compile(r"^.+_test\.py$"),
-    re.compile(r"^.+_test\.go$"),
-    re.compile(r"^.+_test\.rs$"),
-    re.compile(r"^.+_spec\.rb$"),
-    re.compile(r"^test_.+\.rb$"),
-    re.compile(r"^.+\.(test|spec)\.[cm]?[jt]sx?$"),
-    re.compile(r"^.+Test\.java$"),
-    re.compile(r"^Test.+\.java$"),
-    re.compile(r"^.+Tests?\.cs$"),
-)
-
-_SOURCE_SUFFIXES = frozenset(
-    {
-        ".cs",
-        ".go",
-        ".java",
-        ".js",
-        ".jsx",
-        ".kt",
-        ".php",
-        ".py",
-        ".rb",
-        ".rs",
-        ".ts",
-        ".tsx",
-    }
-)
+#: Test naming, source suffixes and candidate test names are the reference
+#: registry's (T031, FR-041), read through ``curated_metric_tables()`` -- the
+#: same compiled tables ``core/metrics.py`` measures with, so the dimension and
+#: its metrics can never disagree about what a test is. A basename the
+#: registry names as a test counts anywhere in the tree, so a co-located test
+#: counts. Known over-inclusion: a production module genuinely named
+#: ``test_*.py`` (this dimension's own source, for one) is classified as a
+#: test. That is the convention pytest itself applies, and the alternative --
+#: demanding a ``tests/`` ancestor -- would silently drop every co-located
+#: suite, which is the failure mode that matters here.
 
 _CONFIG_SUFFIXES = frozenset({".cfg", ".ini", ".json", ".toml", ".yaml", ".yml"})
 
@@ -327,7 +311,29 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     )
 
     corresponding = {test for tests_for in matched.values() for test in tests_for}
-    for _rank, source in _ranked_candidates(scope_files, tests, corresponding):
+    ranked = _ranked_candidates(scope_files, tests, corresponding)
+
+    # Source files are read too (T031), after all test evidence and without an
+    # excerpt, so `files_read` shows the sources the correspondence is about and
+    # metrics can measure both covered and uncovered ones, without spending the
+    # byte budget. All or none: a silently partial source set would make a
+    # whole-set figure describe an arbitrary subset. Decided before any yield,
+    # so the warning cannot be lost when the budget abandons this generator.
+    ranked_paths = {path for _rank, path in ranked}
+    sources = [
+        path
+        for path in scope_files
+        if _is_source_file(path) and path not in ranked_paths
+    ]
+    if reader.reads + len(ranked) + len(sources) > MAX_TEST_SOURCES:
+        if sources:
+            _warn(
+                context,
+                UNREAD_SOURCES_WARNING.format(count=len(sources), cap=MAX_TEST_SOURCES),
+            )
+        sources = []
+
+    for _rank, source in ranked:
         if reader.reads >= MAX_TEST_SOURCES:
             return
         text = reader.read(source)
@@ -340,6 +346,9 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         )
         if excerpt is not None:
             yield excerpt
+
+    for source in sources:
+        reader.read(source)
 
 
 class _Reader:
@@ -425,14 +434,16 @@ def _correspondence(
             continue
         source_project = _project_boundary(source, boundaries)
         hits: list[str] = []
-        for name in _expected_test_names(source):
+        for name, same_directory in expected_test_names(
+            source, curated_metric_tables()
+        ):
             for test in by_name.get(name, ()):
                 # Two files that belong to different projects are unrelated,
                 # whatever their names say. Go's convention is stricter still:
-                # same package means same directory.
+                # same package means same directory (a registry `./` template).
                 if _project_boundary(test, boundaries) != source_project:
                     continue
-                if source.endswith(".go") and _parent(test) != _parent(source):
+                if same_directory and _parent(test) != _parent(source):
                     continue
                 hits.append(test)
         if hits:
@@ -493,33 +504,6 @@ def _is_ancestor(candidate: str, directory: str) -> bool:
     if candidate == "":
         return True
     return directory == candidate or directory.startswith(f"{candidate}/")
-
-
-def _expected_test_names(source: str) -> tuple[str, ...]:
-    """The conventional test basenames for one source file, by ecosystem."""
-    name = PurePosixPath(source).name
-    stem = PurePosixPath(name).stem
-    suffix = PurePosixPath(name).suffix
-
-    if suffix == ".py":
-        return (f"test_{stem}.py", f"{stem}_test.py")
-    if suffix == ".go":
-        return (f"{stem}_test.go",)
-    if suffix in {".js", ".jsx", ".ts", ".tsx"}:
-        return (
-            f"{stem}.test{suffix}",
-            f"{stem}.spec{suffix}",
-            f"{stem}_test{suffix}",
-        )
-    if suffix == ".rb":
-        return (f"{stem}_spec.rb", f"test_{stem}.rb")
-    if suffix == ".java":
-        return (f"{stem}Test.java", f"Test{stem}.java")
-    if suffix == ".cs":
-        return (f"{stem}Test.cs", f"{stem}Tests.cs")
-    # Rust and everything else have no single-file naming convention that can
-    # be asserted without guessing; an admitted gap is the honest answer.
-    return ()
 
 
 def _correspondence_reason(
@@ -661,18 +645,20 @@ def _parent(path: str) -> str:
 
 
 def _is_test_file(path: str) -> bool:
+    tables = curated_metric_tables()
     name = PurePosixPath(path).name
-    if any(pattern.match(name) for pattern in _TEST_NAME_PATTERNS):
+    if any(pattern.match(name) for pattern in tables.test_name_patterns):
         return True
     parts = PurePosixPath(path).parts[:-1]
     return any(part.lower() in _TEST_DIR_SEGMENTS for part in parts) and (
-        PurePosixPath(name).suffix in _SOURCE_SUFFIXES
+        PurePosixPath(name).suffix in tables.source_suffixes
     )
 
 
 def _is_source_file(path: str) -> bool:
     """A file the correspondence rule can be asked about: code, not a test."""
-    return PurePosixPath(path).suffix in _SOURCE_SUFFIXES and not _is_test_file(path)
+    suffix = PurePosixPath(path).suffix
+    return suffix in curated_metric_tables().source_suffixes and not _is_test_file(path)
 
 
 def _is_dedicated_config(path: str) -> bool:

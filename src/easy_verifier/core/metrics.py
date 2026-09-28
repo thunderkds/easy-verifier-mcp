@@ -850,7 +850,7 @@ def _correspondence(
             continue
         source_project = _project_boundary(source, boundaries)
         hits: list[str] = []
-        for name, same_directory in _expected_test_names(source, tables):
+        for name, same_directory in expected_test_names(source, tables):
             for test in by_name.get(name, ()):
                 if _project_boundary(test, boundaries) != source_project:
                     continue
@@ -898,7 +898,7 @@ def _is_ancestor(candidate: str, directory: str) -> bool:
     return directory == candidate or directory.startswith(f"{candidate}/")
 
 
-def _expected_test_names(
+def expected_test_names(
     source: str, tables: LanguageTables
 ) -> tuple[tuple[str, bool], ...]:
     """``(test base name, must share the source's directory)`` per template."""

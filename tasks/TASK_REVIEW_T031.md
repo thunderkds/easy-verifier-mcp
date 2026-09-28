@@ -90,6 +90,41 @@ The correspondence metric abstains at the CLI both before and after because the 
 pack never reads `calc.go` / `Foo.kt` (`source_file_share` 0 of 4 files read) — evidence selection
 in `dimensions/test_strategy.py`, outside T031; the correspondence fix is proven on hand-built packs.
 
+**AFTER — Stage 4 P1 fix** (`dimensions/test_strategy.py` now classifies and ranks with the same
+registry `LanguageTables`, and reads the scope's source files after the test evidence, without an
+excerpt, all-or-none within `MAX_TEST_SOURCES`). Real CLI, scratch repos per the review:
+Kotlin = `build.gradle.kts` + `src/main/kotlin/Foo.kt` + `src/test/kotlin/FooTest.kt`;
+Go = `go.mod` + `calc.go` + `calc_test.go` (`t.Errorf`). Test-strategy metrics shown; `source_file_share`'s
+`computed_from` is the deduplicated `files_read` of the test-strategy pack.
+
+```text
+=== BEFORE: e2daf07 (branch HEAD), 2026-09-28T05:40:23Z
+$ python -m easy_verifier.adapters.cli score --repo <ktrepo> --scope project
+  exit=0
+  source_files_without_covering_test = ABSTAINED  computed_from=[]
+  assertions_observed = 1  computed_from=['src/test/kotlin/FooTest.kt:1-4']
+  source_file_share = 0.0  computed_from=['build.gradle.kts', 'src/test/kotlin/FooTest.kt']
+$ python -m easy_verifier.adapters.cli score --repo <gorepo2> --scope project
+  exit=0
+  source_files_without_covering_test = ABSTAINED  computed_from=[]
+  assertions_observed = 1  computed_from=['calc_test.go:1-9']
+  source_file_share = 0.0  computed_from=['calc_test.go', 'go.mod']
+=== AFTER: e2daf07 + P1 fix, 2026-09-28T05:40:24Z
+$ python -m easy_verifier.adapters.cli score --repo <ktrepo> --scope project
+  exit=0
+  source_files_without_covering_test = 0  computed_from=['src/main/kotlin/Foo.kt']
+  assertions_observed = 1  computed_from=['src/test/kotlin/FooTest.kt:1-4']
+  source_file_share = 0.3333333333333333  computed_from=['build.gradle.kts', 'src/main/kotlin/Foo.kt', 'src/test/kotlin/FooTest.kt']
+$ python -m easy_verifier.adapters.cli score --repo <gorepo2> --scope project
+  exit=0
+  source_files_without_covering_test = 0  computed_from=['calc.go']
+  assertions_observed = 1  computed_from=['calc_test.go:1-9']
+  source_file_share = 0.3333333333333333  computed_from=['calc.go', 'calc_test.go', 'go.mod']
+```
+
+BEFORE = branch HEAD `e2daf07` with the fix stashed; AFTER = the same tree with the fix applied
+(committed right after this capture). The earlier abstention note above is superseded by this block.
+
 **DELTA**: Go `t.Errorf`/`t.Fatalf` assertions, RSpec `it "x" do`, C# `[Fact]`/`[Test]`/`[TestMethod]`
 and PHPUnit `public function test*` declarations now count, and Kotlin/PHP sources are matched to
 their `FooTest` files — all from cited registry data rather than code tables.
