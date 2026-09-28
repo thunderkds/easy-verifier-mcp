@@ -36,10 +36,10 @@ reachable and how it was discovered, and the calling agent judges the reach.
 from __future__ import annotations
 
 import re
-import subprocess
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 
+from ..core.git import run_git_text
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -587,18 +587,10 @@ def _run_git(repo: Path, args: list[str]) -> tuple[bool, str, str]:
 
     Never ``shell=True``, always an explicit argument list, and only ``log`` and
     ``rev-parse`` are ever asked for — nothing here contacts a remote (NFR-012),
-    and nothing from the target repository is executed (NFR-007).
+    and nothing from the target repository is executed (NFR-007) — the shared
+    :func:`~easy_verifier.core.git.run_git_text` disarms repo-config programs.
     """
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repo), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except (FileNotFoundError, OSError):
-        return False, "", "git binary not available"
-    return result.returncode == 0, result.stdout, result.stderr.strip()
+    return run_git_text(repo, args)
 
 
 # --------------------------------------------------------------------------

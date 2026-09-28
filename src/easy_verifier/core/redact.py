@@ -39,6 +39,18 @@ the location and the fingerprint only — deliberately no ``value`` field, becau
 every such field is a leak waiting for a future serializer to find it. Nothing
 here assigns a severity, score or verdict (FR-013).
 
+Three T051 exemptions (T035 sign-off: security's ``redaction_hits_observed``
+was dominated by content hashes and identifiers) skip a span for the entropy
+rules only — named detectors never consult them — and no entropy bar moved:
+:data:`_HASH_KEY` / :data:`_GIT_SHA_FRAGMENT` (digests in a hash context) and
+:data:`_UNDERSCORE_IDENTIFIER` (word-only ``snake_case`` names). Residual risk,
+stated plainly: a secret on the same line as a hash-named key with no
+secret-named word anywhere on that line (``"sha256": "…", "blob": "<key>"``); a
+real secret stored under a hash-named key (``hash: <key>``); a 40/64-hex secret
+written right after ``.tgz#``/``.git#``; and a secret made only of single-case
+letter runs joined by ``_``. Each is a shape credentials are not issued in, and
+each is documented beside its pattern.
+
 Every pattern below is linear — no nested or adjacent unbounded quantifiers, and
 every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 (ReDoS). This module reads attacker-influenceable content.
@@ -46,6 +58,7 @@ every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 
 from __future__ import annotations
 
+import bisect
 import hashlib
 import math
 import re
@@ -183,6 +196,62 @@ no longer caught by this rule. Generated keys are alphanumeric and mixed case, s
 this is not the shape credentials take; it is the price of readable paths.
 """
 
+_UNDERSCORE_IDENTIFIER = re.compile(rf"{_WORD_PIECE}(?:_{_WORD_PIECE}){{1,30}}")
+"""A long token that is plainly a code identifier — `test_agent_guide_dedup_rules`.
+
+T051 (T035 sign-off): long snake_case test names and SCREAMING_CASE constants
+cleared the 4.0-bit long-token bar as one token and dominated the security
+dimension's ``redaction_hits_observed``. Same guards as T029's file-name
+exemption, minus the suffix anchor, and narrower in one respect: the joiner is
+``_`` only. A ``-``/``/``-joined run still needs T029's ``.ext`` to be exempt,
+so ``BRAINSTORMING_LOG_source-discovery`` in prose is judged exactly as before.
+
+Exempt only when the *whole* candidate is at least two pieces joined by ``_`` and
+every piece is letters only and all upper case, all lower case, or Capitalized.
+(The two-piece floor is also implied: a piece is at most 30 letters and a
+candidate at least 32 characters, so a piece longer than 30 letters is never
+exempt — that bound is what the tests pin.)
+Any digit or any mixed-case piece (``xQzRtWvB``) keeps the old behaviour, so
+generated key material — alphanumeric, mixed case — is judged as before; the
+key-material and hex rules still run on an exempt token.
+
+Residue, stated plainly: a secret made only of single-case letter runs joined by
+``_`` (``kqzvxm_hjtybn_wpfrls_dgcaeu_oiqzvx``) is no longer caught by the
+long-token rule anywhere, not only before a suffix. Credentials are not issued in
+that shape; ``password = kqzvxm_hjtybn…`` is still caught by the
+``credential_assignment`` detector, which this exemption does not touch.
+"""
+
+_SECRET_KEY_WORD = re.compile(
+    r"(?i)api[_-]?key|apikey|secret|token|passw(?:or)?d|pwd|access[_-]?key|"
+    r"private[_-]?key|credential|authorization"
+)
+"""A secret-named word anywhere on a line vetoes every hash-context exemption on it.
+
+Deliberately a bare substring test over the whole line (``API_TOKEN_SHA256``,
+``password_hash``, ``tokenizer_digest`` all veto): a veto that over-matches costs
+a fingerprinted digest, one that under-matches costs a credential."""
+
+_HASH_KEY = re.compile(
+    r"(?i)(?<![A-Za-z0-9])"
+    r"(?:sha(?:1|224|256|384|512)?(?:sum)?|shasum|md5(?:sum)?|blake2[bs]?|"
+    r"integrity|hash(?:es)?|narhash|checksum|digest|rev|commit|resolved_reference)"
+    r"[\"']?(?:[ \t]{0,20}[:=]|[ \t]{1,20}(?=sha(?:1|256|384|512)-))"
+)
+"""A hash-named key *in key position*: followed by ``:``/``=`` (JSON, TOML, YAML,
+``key=value``) or, for yarn v1 lockfiles, by whitespace and an SRI value
+(``integrity sha512-…``). ``content_hash:`` and ``"sha256":`` qualify; the word
+"hash" in prose (``the hash of…``) does not, and neither does ``contenthash:``."""
+
+_GIT_SHA_FRAGMENT = re.compile(
+    r"(?:\.tgz|\.git|git\+[^\s\"'#]{1,500})#"
+    r"(?P<sha>[0-9a-fA-F]{40}|[0-9a-fA-F]{64})(?![0-9A-Za-z])"
+)
+"""A commit or tarball SHA in a lock-file URL fragment — yarn/npm
+``resolved "…/pkg-1.0.0.tgz#<sha1>"``, Cargo ``source = "git+https://…#<sha>"``.
+Exactly 40 or 64 hex characters, directly after ``.tgz#``, ``.git#`` or a
+``git+`` URL; nothing else a lock file carries after ``#``."""
+
 _KEY_MATERIAL_CANDIDATE = re.compile(r"[A-Za-z0-9_-]{12,512}")
 """A word-ish run, scanned per segment — the rule that makes paths and URIs safe.
 
@@ -282,6 +351,16 @@ def _named_spans(text: str) -> Iterator[tuple[int, int, str]]:
 
 def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
     """Yield the catch-all entropy candidates — the deliberately noisy layer."""
+    hash_context: list[tuple[int, int]] | None = None
+
+    def in_hash_context(match: re.Match[str]) -> bool:
+        # Computed on first need: most texts have no candidate that clears a
+        # bar, and the pass is a whole-text scan (a 27 MB JSON file in bryony).
+        nonlocal hash_context
+        if hash_context is None:
+            hash_context = _hash_context_spans(text)
+        return _within(hash_context, match.start(), match.end())
+
     for match in _ENTROPY_CANDIDATE.finditer(text):
         if _PATHISH.search(match.group()):
             continue
@@ -289,19 +368,69 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
             text, match.end()
         ):
             continue
-        if _shannon_entropy(match.group()) >= _MIN_ENTROPY_BITS:
+        if _UNDERSCORE_IDENTIFIER.fullmatch(match.group()):
+            continue
+        if _shannon_entropy(match.group()) >= _MIN_ENTROPY_BITS and not (
+            in_hash_context(match)
+        ):
             yield match.start(), match.end(), "high_entropy_string"
 
     for match in _KEY_MATERIAL_CANDIDATE.finditer(text):
         segment = match.group()
         if not all(pattern.search(segment) for pattern in _KEY_MATERIAL_CLASSES):
             continue
-        if _shannon_entropy(segment) >= _MIN_SEGMENT_ENTROPY_BITS:
+        if _shannon_entropy(segment) >= _MIN_SEGMENT_ENTROPY_BITS and not (
+            in_hash_context(match)
+        ):
             yield match.start(), match.end(), "key_material_segment"
 
     for match in _HEX_CANDIDATE.finditer(text):
-        if _shannon_entropy(match.group()) >= _MIN_HEX_ENTROPY_BITS:
+        if _shannon_entropy(match.group()) >= _MIN_HEX_ENTROPY_BITS and not (
+            in_hash_context(match)
+        ):
             yield match.start(), match.end(), "high_entropy_hex"
+
+
+_NEWLINE = re.compile("\n")
+
+
+def _hash_context_spans(text: str) -> list[tuple[int, int]]:
+    """Sorted, disjoint ``(start, end)`` spans whose entropy candidates are digests.
+
+    A whole line is hash context when it carries a hash-named key in key
+    position (:data:`_HASH_KEY`); a lock-file URL fragment SHA
+    (:data:`_GIT_SHA_FRAGMENT`) is hash context on its own. Either is vetoed by a
+    secret-named word anywhere on the same line (:data:`_SECRET_KEY_WORD`).
+    Only the three entropy rules consult this; named detectors never do.
+    """
+    keys = [match.start() for match in _HASH_KEY.finditer(text)]
+    fragments = [match.span("sha") for match in _GIT_SHA_FRAGMENT.finditer(text)]
+    if not keys and not fragments:
+        return []
+    # Whole-text scans, then mapped to lines: none of the three patterns can
+    # match across a newline, and a per-line Python loop cost seconds on one
+    # 27 MB JSON file in a real target repo.
+    line_starts = [0, *(match.end() for match in _NEWLINE.finditer(text))]
+    vetoed = {
+        bisect.bisect_right(line_starts, match.start()) - 1
+        for match in _SECRET_KEY_WORD.finditer(text)
+    }
+    spans: set[tuple[int, int]] = set()
+    hash_lines = {bisect.bisect_right(line_starts, key) - 1 for key in keys}
+    for line in hash_lines - vetoed:
+        last = line + 1 == len(line_starts)
+        spans.add((line_starts[line], len(text) if last else line_starts[line + 1] - 1))
+    for sha_start, sha_end in fragments:
+        line = bisect.bisect_right(line_starts, sha_start) - 1
+        if line not in vetoed and line not in hash_lines:
+            spans.add((sha_start, sha_end))
+    return sorted(spans)
+
+
+def _within(spans: list[tuple[int, int]], start: int, end: int) -> bool:
+    """True if ``[start, end)`` lies wholly inside one of the sorted ``spans``."""
+    index = bisect.bisect_right(spans, start, key=lambda span: span[0]) - 1
+    return index >= 0 and spans[index][0] <= start and end <= spans[index][1]
 
 
 def _resolve_overlaps(

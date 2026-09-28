@@ -423,7 +423,10 @@ def test_only_read_only_git_subcommands_are_ever_invoked(
 
 def test_subprocess_is_reached_only_through_the_single_read_only_helper() -> None:
     source = inspect.getsource(blast_radius)
-    assert source.count("subprocess.run(") == 1
+    # T051: the one helper now lives in core/git.py (shared, config-hardened);
+    # `_run_git` here only delegates to it.
+    assert source.count("subprocess.run(") == 0
+    assert "return run_git_text(repo, args)" in inspect.getsource(blast_radius._run_git)
     assert "shell=True," not in source
     assert "exec(" not in source
     assert "eval(" not in source
