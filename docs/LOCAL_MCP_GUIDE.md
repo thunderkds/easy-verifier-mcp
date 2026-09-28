@@ -82,7 +82,8 @@ lists `detected_stack`: the languages found by manifest and the frameworks found
 dependency (for example `express` in `package.json`), using the registry's cited detection keys.
 When a detected language or framework lacks a registry field the rating rules read, `reference`
 lists only those fields as `{language | framework + extends, field, why}` (`why` names the rules
-that read it), at most 20 per call, languages first, with an `omitted` count and fixed
+that read it; a framework is only asked what a framework can add — test naming, test
+declarations, assertions, security sinks — and optional fields are never asked), at most 20 per call, languages first, with an `omitted` count and fixed
 instructions: at most 2 lookups per field, official docs first, cite a clear https link; otherwise
 ask the user one question at a time with a recommended answer and send it as `user-supplied`.
 Answers go back as `agent_input.registry_entries`. Until then those fields are scored with

@@ -192,7 +192,12 @@ def test_express_without_entry_lists_express_fields_only(express_repo):
     assert reference is not None
     requests = reference["requests"]
     assert {item.get("framework") for item in requests} == {"express"}
-    assert [item["field"] for item in requests] == list(gate.required_fields())
+    assert [item["field"] for item in requests] == [
+        "test_name_patterns",
+        "test_declarations",
+        "assertions",
+        "security_sinks",
+    ]
     assert all(item["extends"] == "js-ts" and item["why"] for item in requests)
     assert reference["omitted"] == 0
     assert reference["instructions"] == gate.REFERENCE_INSTRUCTIONS
@@ -212,11 +217,83 @@ def test_instructions_carry_the_research_bound():
         assert phrase in text
 
 
-def test_no_framework_and_curated_language_complete_means_no_gate(tmp_path):
+@pytest.mark.parametrize(
+    "manifest",
+    ["package.json", "pyproject.toml", "go.mod", "pom.xml", "Cargo.toml", "Gemfile"],
+)
+def test_no_framework_and_curated_language_means_no_gate(tmp_path, manifest):
+    text = _package() if manifest.endswith(".json") else "\n"
+    repo = _write(tmp_path, {manifest: text})
+    assert gate.detect_stack(repo, _registry())["frameworks"] == []
+    assert score_repository(repo, detect_gates=True).reference is None
+
+
+def test_mcp_no_framework_no_reference(tmp_path):
     repo = _write(tmp_path, {"package.json": _package(), "a.js": "let a = 1;\n"})
-    result = score_repository(repo, detect_gates=True)
-    assert result.reference is None
     assert "reference" not in mcp_server.score(repo=str(repo)).get("needs_input", {})
+
+
+def test_optional_fields_are_never_required():
+    assert set(gate.OPTIONAL_FIELDS) == {"interpolating_strings", "test_candidates"}
+    assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
+
+
+def _without(field: str):
+    import dataclasses
+
+    full = _registry()
+    return dataclasses.replace(
+        full,
+        languages={
+            name: dataclasses.replace(
+                entry, fields={k: v for k, v in entry.fields.items() if k != field}
+            )
+            for name, entry in full.languages.items()
+        },
+    )
+
+
+def _numeric(result, metrics) -> int:
+    return sum(
+        1
+        for item in result.metrics
+        if item.name in metrics and isinstance(item.outcome, int | float)
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "optional"),
+    [
+        ("interpolating_strings", True),
+        ("test_candidates", True),
+        ("function_start", False),
+    ],
+)
+def test_optional_fields_really_are_optional_in_metric_code(
+    tmp_path, monkeypatch, field, optional
+):
+    from easy_verifier.core import metric_tables, score
+
+    repo = _write(
+        tmp_path,
+        {
+            "package.json": _package(),
+            "src/app.js": "function f(a) {\n  if (a) { return eval(a); }\n}\n",
+            "src/app.test.js": "it('f', () => { expect(1).toBe(1); });\n",
+        },
+    )
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    metrics = set(gate.FIELD_METRICS[field])
+    full = _numeric(score_repository(repo, scope="project"), metrics)
+    stripped = _without(field)
+    monkeypatch.setattr(score, "_registry", lambda: stripped)
+    monkeypatch.setattr(metric_tables, "_registry", lambda: stripped)
+    after = _numeric(score_repository(repo, scope="project"), metrics)
+    assert full > 0
+    if optional:
+        assert after == full, f"{field}: metrics stop computing without it"
+    else:
+        assert after < full  # control: a required field does matter
 
 
 def test_local_express_entry_closes_the_gate(express_repo):
@@ -241,27 +318,38 @@ def test_framework_entry_extending_another_language_does_not_count(express_repo)
 # AC2/AC4: cap 20, languages first, deterministic, overflow labelled
 
 
-def test_cap_order_and_duplicate_fields_across_frameworks():
-    stack = {
-        "languages": ["zz-unknown"],
-        "frameworks": [
-            {"name": "express", "language": "js-ts"},
-            {"name": "react", "language": "js-ts"},
-        ],
-    }
+FRAMEWORKS = [
+    {"name": "express", "language": "js-ts"},
+    {"name": "react", "language": "js-ts"},
+]
+
+
+def test_two_frameworks_fit_with_duplicate_fields_and_languages_first():
+    stack = {"languages": ["zz-unknown"], "frameworks": FRAMEWORKS}
     required = list(gate.required_fields())
+    addable = [f for f in required if f in gate.FRAMEWORK_FIELDS]
+    requests = gate.reference_requests(stack, _registry())["requests"]
+    n = len(required)
+    assert len(requests) == n + 2 * len(addable) <= 20
+    assert [i.get("language") for i in requests[:n]] == ["zz-unknown"] * n
+    assert [(i["framework"], i["field"]) for i in requests[n:]] == [
+        (name, f) for name in ("express", "react") for f in addable
+    ]
+
+
+def test_cap_order_and_overflow_labelled():
+    stack = {"languages": ["zz-a", "zz-b"], "frameworks": FRAMEWORKS}
+    required = list(gate.required_fields())
+    addable = [f for f in required if f in gate.FRAMEWORK_FIELDS]
     reference = gate.reference_requests(stack, _registry())
     requests = reference["requests"]
     assert len(requests) == gate.MAX_REFERENCE_FIELDS == 20
-    assert [i.get("language") for i in requests[: len(required)]] == [
-        "zz-unknown"
-    ] * len(required)
-    assert [i["field"] for i in requests[len(required) :]] == required[
-        : 20 - len(required)
-    ]
-    assert {i["framework"] for i in requests[len(required) :]} == {"express"}
-    total = 3 * len(required)
-    assert reference["omitted"] == total - 20
+    assert all("language" in i for i in requests)
+    assert [i["language"] for i in requests] == (
+        ["zz-a"] * len(required) + ["zz-b"] * len(required)
+    )[:20]
+    total = 2 * len(required) + 2 * len(addable)
+    assert reference["omitted"] == total - 20 > 0
     assert "omitted" in reference["instructions"]
     assert "generic patterns" in reference["instructions"]
     assert gate.reference_requests(stack, _registry()) == reference

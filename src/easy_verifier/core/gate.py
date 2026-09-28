@@ -41,7 +41,7 @@ from .judge import (
     RatingAbstention,
     within_band,
 )
-from .metric_tables import FIELD_METRICS, ROLE_METRICS
+from .metric_tables import FIELD_METRICS, OPTIONAL_FIELDS, ROLE_METRICS
 from .redact import redact
 from .registry import ENTRY_FIELDS, Registry, _manifest_matches
 from .roles import (
@@ -413,6 +413,21 @@ Only these keys count, so a word in ``description`` or ``scripts`` never
 detects a framework. Other manifests are matched textually (a whole
 dependency token, case-insensitive)."""
 
+FRAMEWORK_FIELDS = frozenset(
+    {
+        "test_name_patterns",
+        "test_declarations",
+        "assertions",
+        "security_sinks",
+        "roles.test-config",
+        "roles.lint-config",
+    }
+)
+"""Fields a framework can meaningfully add to its language (T037 R2,
+Supervisor ruling): test naming/declaration/assertion forms, sinks, and the
+role globs frameworks extend. Language syntax (extensions, delimiters,
+branch/function/import tokens) is never asked for a framework."""
+
 REFERENCE_INSTRUCTIONS = (
     "Each request names a registry field the rating rules read that this "
     "language or framework lacks. For each, in order: do at most 2 lookups, "
@@ -533,6 +548,7 @@ def required_fields() -> dict[str, str]:
 
     A ``roles.<role>`` field counts only when the role has no generic,
     language-free pattern: otherwise the generic patterns already serve it.
+    :data:`OPTIONAL_FIELDS` never count: the metrics compute without them.
     """
     consumers: dict[str, list[str]] = {}
     for dimension, rules in RATING_RULES.items():
@@ -550,6 +566,8 @@ def required_fields() -> dict[str, str]:
     )
     result = {}
     for field, metrics in fields.items():
+        if field in OPTIONAL_FIELDS:
+            continue
         rules = sorted({r for metric in metrics for r in consumers.get(metric, ())})
         if rules:
             result[field] = "rules: " + ", ".join(rules)
@@ -566,11 +584,14 @@ def reference_requests(stack: Mapping, registry: Registry) -> dict | None:
         for field, why in required.items():
             if entry is None or not _has(entry, field):
                 missing.append({"language": language, "field": field, "why": why})
+    framework_required = {
+        field: why for field, why in required.items() if field in FRAMEWORK_FIELDS
+    }
     for item in stack["frameworks"]:
         entry = registry.frameworks.get(item["name"])
         if entry is not None and entry.extends != item["language"]:
             entry = None
-        for field, why in required.items():
+        for field, why in framework_required.items():
             if entry is None or not _has(entry, field):
                 missing.append(
                     {
@@ -596,6 +617,7 @@ def _has(entry, field: str) -> bool:
 
 
 __all__ = [
+    "FRAMEWORK_FIELDS",
     "MAX_CANDIDATES_PER_ROLE",
     "MAX_MANIFESTS",
     "MAX_REFERENCE_FIELDS",

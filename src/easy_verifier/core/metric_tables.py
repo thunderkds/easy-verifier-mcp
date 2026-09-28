@@ -186,6 +186,16 @@ language's ``roles.*`` globs, which are tracked by :data:`ROLE_METRICS`.
 ``frameworks`` (T037) feeds none either: it detects framework entries, whose
 own fields are merged into their language and tracked here."""
 
+OPTIONAL_FIELDS: Mapping[str, str] = {
+    "interpolating_strings": "refines sink matching; tokens.language_syntax "
+    "defaults it to () and _syntax does not require it",
+    "test_candidates": "refines test matching; expected_test_names falls "
+    "back to no templates for a suffix without it",
+}
+"""Fields the metric code reads when present but never needs (T037 R1): a
+language without one still gets every metric it feeds, so the reference gate
+never asks for them."""
+
 ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "lint-config": ("lint_config_missing",),
     "format-config": ("format_config_missing",),
@@ -307,6 +317,7 @@ def _union(entries: list[RegistryEntry], field: str) -> list[str]:
 
 __all__ = [
     "FIELD_METRICS",
+    "OPTIONAL_FIELDS",
     "ROLE_METRICS",
     "curated_metric_tables",
     "metric_tables",

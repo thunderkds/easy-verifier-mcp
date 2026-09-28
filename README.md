@@ -194,7 +194,8 @@ with at most one of picks or gate evaluations per response, and at most two extr
    borderline). Only reference ids are listed, at most 20 per dimension.
 3. `needs_input.reference` rides along with either question and adds no round. It lists only
    the registry fields the rules read that a language or framework in `detected_stack` lacks
-   (`{language | framework + extends, field, why}`), at most 20 per call, languages first, plus
+   (`{language | framework + extends, field, why}`; frameworks are asked only test naming, test
+   declarations, assertions and security sinks; optional fields never), at most 20 per call, languages first, plus
    an `omitted` count. Its fixed instructions: at most 2 lookups per field, official docs first,
    a clear https link; otherwise ask the user one question at a time with a recommended answer
    and submit it as `user-supplied`. Answers return as `registry_entries`.
