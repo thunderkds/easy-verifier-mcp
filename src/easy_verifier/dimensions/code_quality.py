@@ -29,7 +29,7 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.roles import role
-from . import _doc_extract
+from . import _code_extract, _doc_extract
 
 NAME = "code-quality"
 
@@ -64,8 +64,11 @@ MARKERS: tuple[str, ...] = (
 
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
-    """Yield bounded excerpts from sections matching convention markers."""
+    """Yield bounded excerpts from sections matching convention markers, then
+    whole in-scope functions, most complex first (T050), as the last tier."""
+    sources = _code_extract.source_candidates(context, "function excerpts")
     yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
+    yield from _code_extract.function_excerpts(context, sources)
 
 
 DESCRIPTOR = DimensionDescriptor(

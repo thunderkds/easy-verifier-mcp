@@ -72,8 +72,18 @@ def test_standalone_docs_prevent_code_fallback(tmp_path: Path, module) -> None:
 
     pack = run_dimension(module.DESCRIPTOR, tmp_path)
 
-    assert pack.files_read == ("README.md",)
-    assert {excerpt.path for excerpt in pack.excerpts} == {"README.md"}
+    # T050: code-quality and architecture read in-scope source once more, in
+    # their own trailing code tier (a function / its import lines); the doc
+    # fallback firing would read it a second time or quote it whole.
+    code_tier = module.NAME in ("code-quality", "architecture")
+    assert pack.files_read == (
+        ("README.md", "implementation.py") if code_tier else ("README.md",)
+    )
+    assert {excerpt.ref for excerpt in pack.excerpts} == (
+        {"README.md:1-1", "implementation.py:1-2"}
+        if module.NAME == "code-quality"
+        else {"README.md:1-1"}
+    )
 
 
 def test_standalone_code_discovery_is_bounded(tmp_path: Path) -> None:
