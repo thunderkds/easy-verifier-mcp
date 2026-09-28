@@ -13,9 +13,6 @@
 ### Todo
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
-- [ ] **T053** — Remaining redaction noise (versioned URL paths, commit SHAs, checksum lines) + API_TOKEN detector gap (T051 follow-up) | backend-developer | C2 | Risk: High | P1
-- [ ] **T052** — Make requirement-fidelity and blast-radius rate: AC tracing + churn-hotspot evidence (T035 sign-off follow-up) | backend-developer | C3 | Risk: Med | P1
-- [ ] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
@@ -62,8 +59,9 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-
-_(empty)_
+- [~] **T053** — Remaining redaction noise (versioned URL paths, commit SHAs, checksum lines) + API_TOKEN detector gap (T051 follow-up) | backend-developer | C2 | Risk: High | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T053)
+- [~] **T052** — Make requirement-fidelity and blast-radius rate: AC tracing + churn-hotspot evidence (T035 sign-off follow-up) | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T052)
+- [~] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T037)
 
 ### Ready for Review
 

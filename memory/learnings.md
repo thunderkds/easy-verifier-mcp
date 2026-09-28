@@ -588,3 +588,10 @@ duplicate `**Txxx**` rows before moving a task.
 - Overall rose mainly because solution-fit (by design), requirement-fidelity (no AC extraction) and blast-radius (project scope) abstain; T052 fixes the latter two.
 - Security redaction hits were mostly false positives (sha256 hashes in lock files, long test identifiers, git-ignored .claude/ scanned); T051 fixes before security scores can be trusted.
 - Rulings: X-present rules implemented as *_missing metrics with <=0 (a >=1 rule would sit on its threshold and always hit the evaluate gate); report citations are https anchors with rel=noreferrer, T013 oracle distinguishes navigation from resource loads.
+
+## 2026-09-28 — T036/T051 merged
+
+- NFR-007 hole found in review: git honours repo config (core.fsmonitor, filter clean/smudge, diff.external, textconv, hooks), so reading a hostile repo could execute code. All git now goes through core/git.py run_git (overrides, filter blanking, --no-ext-diff/--no-textconv, no shell, stdin closed, timeout, env without HOME). Any new git call must use it (grep test enforces).
+- T036: per-input source tags come from a static field→metric map (metric_tables FIELD_METRICS/ROLE_METRICS); keep it updated when a metric starts reading a new registry field.
+- Docker CLI inside the image needs --entrypoint easy-verifier (default entrypoint is the MCP server).
+- Merged after T036+T051: 1205 passed, 2 skipped.
