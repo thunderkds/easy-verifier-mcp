@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t031_metrics_registry.py` — 114 tests: Kotlin/PHP/Go/RSpec/C# fixture ACs; former-table oracle parity for Python/JS/Java/Rust classification + assertion counts (metrics and test_strategy, 39 paths); registry-copy sabotage (Kotlin candidates removed → uncovered); token compiler cannot inject regex; framework merge add-only; source-read cap pair (cap 4 → none read + warning, cap 5 → both read). `tests/test_metrics.py` harness-only change (Supervisor ruling (a)). Supervisor re-run: `926 passed, 2 skipped in 25.13s` |
+| Verification command run | ☑ pass | Supervisor 2026-09-28 05:43 UTC: pytest `926 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
+| Negative cases hold | ☑ pass | Uncovered source counted as 1 (not 0 by construction); source reads all-or-none against `MAX_TEST_SOURCES` with `UNREAD_SOURCES_WARNING`; malformed registry metric values rejected at intake; token compiler escapes everything except `*`, `?`, `<A-Z>`, space |
+| verify | ☑ pass | Real CLI 05:43 UTC, fresh Kotlin repo (`build.gradle.kts`, `src/main/kotlin/Foo.kt`, `src/test/kotlin/FooTest.kt`): `cli score --scope project` test-strategy → `source_files_without_covering_test` 0 (Foo.kt), `test_to_source_ratio` 1.0, `assertions_observed` 1 (FooTest.kt) — abstained before T031 per BEFORE/agent CLI table; Go repo same result in agent's AFTER — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/metrics.py` (tables removed, `compute_metrics(pack, tables)`, public `expected_test_names`), new `core/metric_tables.py`, `core/registry.py` (5 new ENTRY_FIELDS), `core/score.py`, `dimensions/test_strategy.py`, 9 curated TOML. Code review round 1: P1 — `dimensions/test_strategy.py` kept a second copy of test-name/source tables (FR-041) and never read sources, so the fix was invisible at the real surface → fixed in d6ad17c (shared compiled tables; sources read after test evidence, no excerpt, capped). Rulings: signature change accepted; Rust `?*_test.rs` kept for parity; `_MANIFEST_NAMES` left hard-coded (boundary regression risk); wider test-strategy `files_read` accepted (G1: no score backward-compat). Residual: test_strategy vs metrics `_is_test_file` algorithms still differ (T019 residue; tables now shared). Security inline (Med): source reads go through `context.read_source` (secret-bearing guard intact), no excerpt → redaction/budget unaffected |
+| Full smoke suite still green (no regression) | ☑ pass | full suite 926 passed, 2 skipped |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -125,9 +125,8 @@ $ python -m easy_verifier.adapters.cli score --repo <gorepo2> --scope project
 BEFORE = branch HEAD `e2daf07` with the fix stashed; AFTER = the same tree with the fix applied
 (committed right after this capture). The earlier abstention note above is superseded by this block.
 
-**DELTA**: Go `t.Errorf`/`t.Fatalf` assertions, RSpec `it "x" do`, C# `[Fact]`/`[Test]`/`[TestMethod]`
+**DELTA**: Kotlin, PHP, Go (t.Errorf), RSpec and C# test suites are now recognised and measured, from one cited registry shared by metrics and the test-strategy dimension.
 and PHPUnit `public function test*` declarations now count, and Kotlin/PHP sources are matched to
 their `FooTest` files — all from cited registry data rather than code tables.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T031.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor re-ran suite, ruff and the real CLI on a fresh Kotlin repo on 2026-09-28 (05:43 UTC), independent of the implementing agent.
