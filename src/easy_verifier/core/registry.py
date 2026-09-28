@@ -22,6 +22,10 @@ The metric fields (T031) are read by ``core/metric_tables.py``:
 * ``source_extensions`` — file suffixes that are code, e.g. ``".py"``;
 * ``test_name_patterns`` — base-name globs naming a test file, e.g.
   ``"test_?*.py"`` (``fnmatch`` syntax, case-sensitive);
+* ``colocated_test_name_patterns`` (T052) — the subset of test names that are
+  unambiguous even inside a source root (``"?*.spec.ts"``, ``"?*_test.go"``):
+  a match is a test wherever it sits. Prefix-style names (``test_?*.py``)
+  stay out, since production modules carry them too;
 * ``test_candidates`` — the test base names a source file expects, with
   ``{stem}`` and ``{ext}`` placeholders, e.g. ``"test_{stem}{ext}"``; a leading
   ``./`` means the test must sit in the source file's own directory;
@@ -151,6 +155,7 @@ ENTRY_FIELDS = (
     "manifests",
     "source_extensions",
     "test_name_patterns",
+    "colocated_test_name_patterns",
     "test_candidates",
     "test_declarations",
     "assertions",
@@ -178,6 +183,10 @@ _VALUE_SHAPES = {
         "a file suffix such as .py",
     ),
     "test_name_patterns": (re.compile(r"^[^/]+$"), "a base-name glob, no /"),
+    "colocated_test_name_patterns": (
+        re.compile(r"^[^/]+$"),
+        "a base-name glob, no /",
+    ),
     "test_candidates": (
         re.compile(r"^(\./)?[^/]*\{stem\}[^/]*$"),
         "a base name containing {stem}, optionally prefixed ./",

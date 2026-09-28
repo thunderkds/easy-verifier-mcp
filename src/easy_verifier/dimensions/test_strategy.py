@@ -30,7 +30,7 @@ from pathlib import PurePosixPath
 
 from ..core.context import MAX_LINE_CHARS, whole_file_excerpt
 from ..core.metric_tables import curated_metric_tables
-from ..core.metrics import expected_test_names
+from ..core.metrics import code_kind, expected_test_names
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -645,20 +645,14 @@ def _parent(path: str) -> str:
 
 
 def _is_test_file(path: str) -> bool:
-    tables = curated_metric_tables()
-    name = PurePosixPath(path).name
-    if any(pattern.match(name) for pattern in tables.test_name_patterns):
-        return True
-    parts = PurePosixPath(path).parts[:-1]
-    return any(part.lower() in _TEST_DIR_SEGMENTS for part in parts) and (
-        PurePosixPath(name).suffix in tables.source_suffixes
-    )
+    """The shared classifier (``core/metrics.py``, T052): colocated test names
+    first, then the deepest source/test directory, then the name."""
+    return code_kind(path, curated_metric_tables()) == "test"
 
 
 def _is_source_file(path: str) -> bool:
     """A file the correspondence rule can be asked about: code, not a test."""
-    suffix = PurePosixPath(path).suffix
-    return suffix in curated_metric_tables().source_suffixes and not _is_test_file(path)
+    return code_kind(path, curated_metric_tables()) == "source"
 
 
 def _is_dedicated_config(path: str) -> bool:

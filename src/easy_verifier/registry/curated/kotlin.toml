@@ -43,6 +43,11 @@ value = ["?*Test.kt"]
 citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
 source_tag = "curated"
 
+[[colocated_test_name_patterns]]
+value = ["?*Test.kt"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
 [[test_candidates]]
 value = ["{stem}Test{ext}"]
 citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"

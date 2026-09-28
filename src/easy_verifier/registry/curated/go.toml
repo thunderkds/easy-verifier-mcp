@@ -47,6 +47,11 @@ value = ["?*_test.go"]
 citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
 source_tag = "curated"
 
+[[colocated_test_name_patterns]]
+value = ["?*_test.go"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
 [[test_candidates]]
 value = ["./{stem}_test{ext}"]
 citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
