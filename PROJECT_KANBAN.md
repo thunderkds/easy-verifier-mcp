@@ -61,13 +61,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 ### In Progress
 - [~] **T053** — Remaining redaction noise (versioned URL paths, commit SHAs, checksum lines) + API_TOKEN detector gap (T051 follow-up) | backend-developer | C2 | Risk: High | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T053)
 - [~] **T052** — Make requirement-fidelity and blast-radius rate: AC tracing + churn-hotspot evidence (T035 sign-off follow-up) | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T052)
-- [~] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1 | 🔄 started 2026-09-28 (worktree ../easy-verifier-mcp-T037)
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-28 (Stage 4 R1/R2 fixed; 1237 passed; CLI + MCP-path verify pass)
 - [x] **T051** — Redaction false positives: content hashes, long identifiers, git-ignored files (T035 sign-off follow-up) | backend-developer | C2 | Risk: High | P0 | ✅ Done 2026-09-28 (Stage 4 P0 safe-git fixed; 1175 passed; Docker verify pass; follow-up T053)
 - [x] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1157 passed; intake probes + Docker verify pass)
 - [x] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1127 passed; user signed off 4-repo table; follow-ups T051, T052)
