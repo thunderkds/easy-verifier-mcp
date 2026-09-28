@@ -719,7 +719,7 @@ def local_write_problem(root: Path, repo: Path) -> str | None:
         return "the local layer directory could not be resolved"
     if inside:
         return "the local layer directory is inside the target repository (NFR-007)"
-    existing = root if root.exists() else root.parent
+    existing = next(path for path in (root, *root.parents) if path.exists())
     if not os.access(existing, os.W_OK):
         return "the local layer directory is not writable"
     return None
