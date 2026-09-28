@@ -166,3 +166,21 @@ cwe = "CWE-89"
 value = [".execute ( f", ".execute ( %", ".execute ( +", ".execute ( .format ("]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["django=django"]
+citation_url = "https://docs.djangoproject.com/en/stable/topics/install/"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["flask=flask"]
+citation_url = "https://flask.palletsprojects.com/en/stable/installation/"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["fastapi=fastapi"]
+citation_url = "https://fastapi.tiangolo.com/#installation"
+source_tag = "curated"

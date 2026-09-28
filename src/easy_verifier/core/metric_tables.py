@@ -182,7 +182,9 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
 their tag and links. ``manifests`` feeds no metric directly; it activates a
-language's ``roles.*`` globs, which are tracked by :data:`ROLE_METRICS`."""
+language's ``roles.*`` globs, which are tracked by :data:`ROLE_METRICS`.
+``frameworks`` (T037) feeds none either: it detects framework entries, whose
+own fields are merged into their language and tracked here."""
 
 ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "lint-config": ("lint_config_missing",),

@@ -115,3 +115,11 @@ cwe = "CWE-89"
 value = [".execute ( & format! (", ".query ( & format! (", "sqlx::query ( & format! (", "sql_query ( format! ("]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["actix-web=actix-web"]
+citation_url = "https://actix.rs/docs/getting-started/"
+source_tag = "curated"

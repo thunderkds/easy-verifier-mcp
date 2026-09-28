@@ -175,3 +175,11 @@ cwe = "CWE-89"
 value = ["->query ( <INTERP>", "mysqli_query ( $* , <INTERP>"]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["laravel=laravel/framework"]
+citation_url = "https://packagist.org/packages/laravel/framework"
+source_tag = "curated"

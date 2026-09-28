@@ -20,7 +20,9 @@ from .gate import (
     apply_gate_evaluations,
     detect_evaluate_gates,
     detect_pick_gates,
+    detect_stack,
     gate_requests,
+    reference_requests,
 )
 from .judge import (
     GatedRating,
@@ -30,7 +32,7 @@ from .judge import (
     rate,
     rate_overall,
 )
-from .metric_tables import curated_metric_tables, registry_sources
+from .metric_tables import curated_metric_tables, metric_tables, registry_sources
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
@@ -65,6 +67,13 @@ class ScoreResult:
     registry_entries: tuple[dict[str, Any], ...] = ()
     """Every local-layer registry field the tables were built with, as
     replayable agent-input items with source tag and link (FR-048)."""
+    stack: dict[str, Any] | None = None
+    """Languages and frameworks detected from manifests (T037, FR-044);
+    listed in :meth:`to_dict` for both adapters when anything is detected."""
+    reference: dict[str, Any] | None = None
+    """MCP-only reference gate (T037, FR-045): ``{requests, omitted,
+    instructions}`` for missing registry fields. Like ``needs_input``, never
+    part of :meth:`to_dict`; the CLI never shows it (FR-040)."""
     registry_notes: tuple[str, ...] = ()
     """Registry warnings for this machine ("curated wins", research that
     could not be saved). Like ``needs_input``, not part of :meth:`to_dict`:
@@ -87,6 +96,8 @@ class ScoreResult:
                 )
             ],
         }
+        if self.stack and (self.stack["languages"] or self.stack["frameworks"]):
+            payload["detected_stack"] = self.stack
         if self.registry_entries:
             payload["registry_entries"] = [dict(item) for item in self.registry_entries]
         if self.assessments is not None and self.comparisons is not None:
@@ -143,9 +154,11 @@ def score_repository(
     by_dimension: Mapping[str, Sequence[Finding]] | None = None
     if findings is not None:
         by_dimension = validate_findings(findings, _pack_map(packs)).by_dimension
-    result = score_packs(packs, by_dimension, evaluations)
+    stack = detect_stack(repo_path, _registry())
+    frameworks = tuple((item["name"], item["language"]) for item in stack["frameworks"])
+    result = score_packs(packs, by_dimension, evaluations, frameworks=frameworks)
     result = dataclasses.replace(
-        result, registry_notes=registry_notes(document, repo_path)
+        result, stack=stack, registry_notes=registry_notes(document, repo_path)
     )
 
     # One round each: a caller that already supplied agent input gets no
@@ -153,6 +166,11 @@ def score_repository(
     # walk happens at all in that case, so a picks round costs nothing extra.
     if not detect_gates or evaluations is not None:
         return result
+    # The reference gate rides along with whichever round is asked: it adds
+    # no round of its own (DDR-0006 §7), and answers arrive as
+    # registry_entries in the same next call as picks or gate evaluations.
+    reference = reference_requests(stack, _registry())
+    result = dataclasses.replace(result, reference=reference)
     needs_input = None
     if agent_input is None:
         needs_input = detect_pick_gates(repo_path, load_repo_config(repo_path))
@@ -167,6 +185,8 @@ def score_packs(
     packs: CombinedPack,
     findings_by_dimension: Mapping[str, Sequence[Finding]] | None = None,
     gate_evaluations: object | None = None,
+    *,
+    frameworks: Sequence[tuple[str, str]] = (),
 ) -> ScoreResult:
     """Score one complete combined pack without gathering more evidence.
 
@@ -175,6 +195,10 @@ def score_packs(
     assessments are compared with the **rules** ratings only: FR-029a still
     forbids blending an assessment, and a divergence against a number the
     agent already moved would measure the agent against itself.
+
+    ``frameworks`` are the detected ``(framework, language)`` pairs (T037):
+    each one's registry entry is merged into its language before the metric
+    tables are compiled, so framework fields reach the rules.
     """
     expected = dimension_names()
     actual = tuple(slot.dimension for slot in packs.slots)
@@ -185,8 +209,10 @@ def score_packs(
         )
 
     registry = _registry()
-    metrics = compute_metrics(packs, curated_metric_tables())
-    sources = registry_sources(packs, registry)
+    applied = registry.applied(frameworks)
+    tables = curated_metric_tables() if applied is registry else metric_tables(applied)
+    metrics = compute_metrics(packs, tables)
+    sources = registry_sources(packs, applied)
     rules_ratings = tuple(
         rate(
             _metrics_for(metrics, dimension),
@@ -223,7 +249,7 @@ def score_packs(
         assessments,
         comparisons,
         provenance,
-        registry_entries=registry.local_entries(),
+        registry_entries=registry.local_entries(name for name, _ in frameworks),
     )
 
 
