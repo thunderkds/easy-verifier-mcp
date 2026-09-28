@@ -18,11 +18,11 @@ refusal, not a fallback.
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .context import git_ignore_filter
+from .git import run_git_text
 from .redact import redact
 
 KIND_TASK = "task"
@@ -419,14 +419,7 @@ def _git_required_scope(kind: str) -> Scope:
 def _run_git(repo: Path, args: list[str]) -> tuple[bool, str, str]:
     """Run a read-only git subcommand. Never ``shell=True``; the caller passes
     an explicit argument list. Only read-only subcommands are ever invoked
-    here — no ``fetch``, ``pull``, ``ls-remote`` or ``clone`` (NFR-012)."""
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repo), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except FileNotFoundError:
-        return False, "", "git binary not found on PATH"
-    return result.returncode == 0, result.stdout, result.stderr.strip()
+    here — no ``fetch``, ``pull``, ``ls-remote`` or ``clone`` (NFR-012). Goes
+    through :func:`.git.run_git_text`, which disarms repo-config-driven
+    execution (NFR-007)."""
+    return run_git_text(repo, args)

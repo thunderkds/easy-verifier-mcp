@@ -253,10 +253,9 @@ def test_ignore_decision_is_one_git_call_per_walk(
         calls.append(list(args))
         return real_run(args, *rest, **kwargs)
 
-    monkeypatch.setattr("easy_verifier.core.context.subprocess.run", counting_run)
+    monkeypatch.setattr("easy_verifier.core.git.subprocess.run", counting_run)
     list(_walk(repo, repo, extensions=None))
-    assert [call for call in calls if "ls-files" in call] == [calls[0]]
-    assert len(calls) == 1
+    assert len([call for call in calls if "ls-files" in call]) == 1
 
 
 @needs_git

@@ -17,10 +17,10 @@ itself, so no caller can emit a response without it (FR-004).
 from __future__ import annotations
 
 import fnmatch
-import subprocess
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
+from .git import run_git
 from .models import ApprovalRequest, Excerpt, SourceMiss
 from .redact import redact
 
@@ -194,33 +194,18 @@ def git_ignore_filter(repo: Path) -> Callable[[str], bool]:
     never read anyway, and its existence — a git-ignored ``.env`` is the normal
     case — stays reportable as ``excluded: secret-bearing``.
 
-    ``core.fsmonitor`` is forced off because a target repository's own config
-    could otherwise name a program for git to run (NFR-007).
+    Run through :func:`.git.run_git`, which disarms every program a target
+    repository's own config could name for git to run (NFR-007).
     """
-    try:
-        result = subprocess.run(
-            [
-                "git",
-                "-c",
-                "core.fsmonitor=false",
-                "-C",
-                str(repo),
-                "ls-files",
-                "--others",
-                "--ignored",
-                "--exclude-standard",
-                "--directory",
-                "-z",
-            ],
-            capture_output=True,
-            check=False,
-        )
-    except OSError:
+    ok, stdout, _ = run_git(
+        repo,
+        ["ls-files", "--others", "--ignored", "--exclude-standard"]
+        + ["--directory", "-z"],
+    )
+    if not ok:
         return _skip_nothing
-    listing = result.stdout.decode("utf-8", "surrogateescape")
+    listing = stdout.decode("utf-8", "surrogateescape")
     entries = [entry for entry in listing.split("\0") if entry]
-    if result.returncode != 0:
-        return _skip_nothing
     ignored_dirs = frozenset(e for e in entries if e.endswith("/"))
     ignored_files = frozenset(e for e in entries if not e.endswith("/"))
     if not ignored_dirs and not ignored_files:
