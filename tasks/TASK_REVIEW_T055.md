@@ -33,8 +33,32 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-09-29T10:15:58Z by backend-developer at worktree HEAD `e0a6d83` (no T055
+implementation commit exists). Fixture: a fresh git repo (5 commits) built by a scratch script —
+`init` (src/shop/api.py with public `list_items`, `get_item` and private `_helper`;
+`migrations/0001_init.sql`; README.md, PRD.md, docs/requirements.md, SPEC.md, ROADMAP.md,
+pyproject.toml), three "code change" commits touching only `src/shop/api.py` (never docs), then
+`HEAD` = "remove get_item; drop price column" (deletes `def get_item`, adds
+`migrations/0002_drop_price.sql` = `ALTER TABLE items DROP COLUMN price;`).
+
+```
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score --repo <fixture> --scope changes --ref HEAD </dev/null > before.json
+exit=0
+$ python show.py before.json   # ratings of the two dimensions T055 touches
+blast-radius: kind=rating_abstention value=None reason=all_metrics_abstained
+  unavailable max_fan_in_changed: no import statement was found in this pack's code-file excerpts, so there is no import graph to measure; ...
+  unavailable changed_files_in_churn_hotspots_share: examined: only 5 local commit(s), fewer than the 20 a churn ranking needs, so no file is called a hotspot
+requirement-fidelity: kind=rating value=0 reason=None
+  input acceptance_criteria_traced_to_code_share = 0.0 (at_least 0.8, passed=False) area='Business-rule correctness'
+  input acceptance_criteria_traced_to_test_share = 0.0 (at_least 0.8, passed=False) area='Business-rule correctness'
+$ grep -c 'Documentation source-of-truth governance\|public_symbols_removed' before.json
+0
+```
+
+No #5 rule sees the removed public function or the dropped column (blast-radius has only the fan-in
+and churn rules, both abstaining), and no rule or metric carries the #27 area
+`Documentation source-of-truth governance` — the two competing requirements docs (PRD.md,
+docs/requirements.md) and the three code-only commits are invisible to the rating.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
