@@ -60,9 +60,36 @@ and churn rules, both abstaining), and no rule or metric carries the #27 area
 `Documentation source-of-truth governance` — the two competing requirements docs (PRD.md,
 docs/requirements.md) and the three code-only commits are invisible to the rating.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured 2026-09-29T10:59:09Z by backend-developer at worktree HEAD `9e95cf8`, on a
+fresh fixture built by the same scratch script as BEFORE, using the same command.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score --repo <fixture> --scope changes --ref HEAD </dev/null > after.json
+exit=0
+$ python show.py after.json
+blast-radius: kind=rating value=0 reason=None
+  input public_symbols_removed = 1 (at_most 0, passed=False) area='Backward compatibility & upgrade safety'
+  input destructive_migration_ops = 1 (at_most 0, passed=False) area='Backward compatibility & upgrade safety'
+  unavailable max_fan_in_changed: no import statement was found in this pack's code-file excerpts, ...
+  unavailable changed_files_in_churn_hotspots_share: examined: only 5 local commit(s), fewer than the 20 a churn ranking needs, so no file is called a hotspot
+requirement-fidelity: kind=rating value=0 reason=None
+  input acceptance_criteria_traced_to_code_share = 0.0 (at_least 0.8, passed=False) area='Business-rule correctness'
+  input acceptance_criteria_traced_to_test_share = 0.0 (at_least 0.8, passed=False) area='Business-rule correctness'
+  input requirements_docs_count = 2 (at_most 1, passed=False) area='Documentation source-of-truth governance'
+  input code_commits_with_docs_share = 0.2 (at_least 0.3, passed=False) area='Documentation source-of-truth governance'
+$ grep -c 'Documentation source-of-truth governance\|public_symbols_removed' after.json
+10
+metric citations / derivations (blast-radius and requirement-fidelity packs):
+public_symbols_removed ['src/shop/api.py:5-5'] | 1 removed or renamed public declaration(s) in the diff of 2 changed file(s): src/shop/api.py:5-5 get_item removed. ...
+destructive_migration_ops ['migrations/0002_drop_price.sql:1-1'] | 1 destructive migration operation(s) in the diff of 2 changed file(s): migrations/0002_drop_price.sql:1-1 DROP COLUMN in a new migration file. ...
+requirements_docs_count ['PRD.md', 'docs/requirements.md'] | 2 file(s) fill the requirements-doc role ...
+code_commits_with_docs_share ['PRD.md', 'README.md', 'ROADMAP.md', 'SPEC.md', 'docs/requirements.md'] | 1 of 5 code-changing commit(s) also changed documentation, among the last 5 non-merge local commit(s) read (window 200); ...
+```
+
+**DELTA**: a `score` of a change now rates the removed public function and the dropped column
+against SemVer-cited #5 rules, each cited at its diff line. It also rates the two competing
+requirements docs and the code-only commits against 26514-cited #27 rules. Before this change
+blast-radius abstained and neither area existed.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T055x.jsonl`, never the
 implementing agent alone]
