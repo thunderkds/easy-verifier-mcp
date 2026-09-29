@@ -34,6 +34,7 @@ from pathlib import Path, PurePosixPath
 
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
+from .judge import DocumentationResult, DocumentationRule
 from .models import SourceRole
 from .redact import redact
 from .registry import (
@@ -707,6 +708,31 @@ def unfilled_reason(resolution: RoleResolution, name: str) -> str | None:
     if all(_is_secret_bearing(path) for path in paths):
         return "excluded: secret-bearing"
     return None
+
+
+def documentation_present(
+    rule: DocumentationRule, files_read: Sequence[str]
+) -> DocumentationResult:
+    """Check a documentation rule (FR-052) against the files a dimension's
+    evidence pack read, with this module's glob semantics.
+
+    The first match in sorted order is cited. ``missing`` is bounded by those
+    reads and says so: it is not a repository-wide absence."""
+    match = _matcher(rule.patterns)
+    found = sorted(path for path in files_read if match(path))
+    if found:
+        return DocumentationResult(
+            rule.area, "present", found[0], rule.citation, "matched a file read"
+        )
+    return DocumentationResult(
+        rule.area,
+        "missing",
+        None,
+        rule.citation,
+        "no file matching "
+        + ", ".join(rule.patterns)
+        + " was among the files this dimension read",
+    )
 
 
 @lru_cache(maxsize=512)

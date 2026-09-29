@@ -433,7 +433,7 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
 
 def test_overall_requires_exactly_the_seven_unique_known_dimensions():
     ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS)
-    with pytest.raises(ValueError, match="exactly the seven"):
+    with pytest.raises(ValueError, match="exactly the declared dimensions"):
         rate_overall(ratings[:-1])
     with pytest.raises(ValueError, match="duplicate"):
         rate_overall(ratings[:-1] + (ratings[0],))
@@ -468,6 +468,7 @@ def test_rating_input_rejects_incoherent_or_uncheckable_fields():
         "metric_citation": rule.metric_citation,
         "threshold_citation": rule.threshold_citation,
         "source_tag": rule.source_tag,
+        "area": rule.area,
     }
     RatingInput(**valid)
     invalid_changes = (
@@ -564,7 +565,7 @@ def test_unknown_abstention_reason_and_incoherent_payload_are_rejected():
         )
     with pytest.raises(ValueError, match="failure"):
         RatingAbstention(dimension="architecture", reason_code="dimension_failed")
-    with pytest.raises(ValueError, match="all seven abstentions"):
+    with pytest.raises(ValueError, match="every declared dimension's abstention"):
         RatingAbstention(
             dimension="overall",
             reason_code="no_dimension_rated",
@@ -808,6 +809,7 @@ def test_serialization_rejects_non_finite_json_numbers(non_finite: float):
             metric_citation=rule.metric_citation,
             threshold_citation=rule.threshold_citation,
             source_tag=rule.source_tag,
+            area=rule.area,
         )
 
 

@@ -26,6 +26,7 @@ from .gate import (
     review_requests,
 )
 from .judge import (
+    DOCUMENTATION_RULES,
     GatedRating,
     OverallRating,
     Rating,
@@ -46,6 +47,7 @@ from .registry import sot_root
 from .roles import (
     GENERIC_PATTERNS,
     _registry,
+    documentation_present,
     load_repo_config,
     parse_agent_input,
     registry_notes,
@@ -227,7 +229,7 @@ def score_packs(
     actual = tuple(slot.dimension for slot in packs.slots)
     if actual != expected:
         raise ValueError(
-            "score requires all seven dimensions in canonical order; got "
+            "score requires all declared dimensions in canonical order; got "
             + (", ".join(actual) or "none")
         )
 
@@ -236,11 +238,18 @@ def score_packs(
     tables = curated_metric_tables() if applied is registry else metric_tables(applied)
     metrics = rejected_abstentions(compute_metrics(packs, tables), packs, applied)
     sources = registry_sources(packs, applied)
+    pack_map = _pack_map(packs)
     rules_ratings = tuple(
         rate(
             _metrics_for(metrics, dimension),
             _coverage_for(packs, dimension),
             registry_sources=sources.get(dimension),
+            documentation=tuple(
+                documentation_present(rule, pack_map[dimension].files_read)
+                for rule in DOCUMENTATION_RULES.get(dimension, ())
+            )
+            if dimension in pack_map
+            else None,
         )
         for dimension in expected
     )

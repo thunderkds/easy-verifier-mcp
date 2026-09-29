@@ -77,6 +77,7 @@ def rating(dimension: str, value: int = 100) -> Rating:
                 metric_citation=rule.metric_citation,
                 threshold_citation=rule.threshold_citation,
                 source_tag=rule.source_tag,
+                area=rule.area,
             )
         )
     computed = round(

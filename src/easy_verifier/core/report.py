@@ -419,7 +419,8 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         return (
             '<section class="score-panel"><h2>Quality score</h2>'
             '<p class="score-unavailable">Overall and per-dimension ratings are '
-            "unavailable because this report does not contain all seven dimensions."
+            "unavailable because this report does not contain all declared "
+            "dimensions."
             "</p></section>"
         )
 
@@ -529,7 +530,7 @@ def _render_score_card(
         rating = rating.rules
     label = "Rules rating" if gated else "Rating"
     if type(rating) is Rating:
-        inputs = "".join(_render_rating_input(ctx, item) for item in rating.inputs)
+        areas = _render_areas(ctx, rating.inputs, rating.documentation)
         unavailable = "".join(
             f"<li><code>{ctx.esc(name)}</code> — {ctx.esc(reason)}</li>"
             for name, reason in rating.unavailable_metrics
@@ -543,7 +544,7 @@ def _render_score_card(
         rating_html = (
             f'<p class="rating-value">{label} {ctx.esc(rating.value)}/100</p>'
             f'<p class="rating-method">{ctx.esc(rating.method)}</p>'
-            f'<ol class="rating-inputs">{inputs}</ol>{unavailable_block}'
+            f"{areas}{unavailable_block}"
         )
         css = "score-card"
     else:
@@ -568,6 +569,7 @@ def _render_score_card(
             f'<p class="rating-withheld">{label} withheld</p>'
             f"<p>{ctx.esc(rating.reason_code)} — {ctx.esc(rating.reason)}</p>"
             f'{coverage}{failure}<ul class="miss-list">{misses}</ul>'
+            f"{_render_areas(ctx, (), rating.documentation)}"
         )
         css = f"score-card rating-abstention rating-{rating.reason_code}"
 
@@ -575,6 +577,34 @@ def _render_score_card(
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
         f"{_render_divergence(ctx, divergence)}</article>"
+    )
+
+
+def _render_areas(ctx: _Ctx, inputs, documentation) -> str:
+    """Rule results grouped by area (FR-051), inside their dimension's card,
+    in declared order. Documentation results carry no number (FR-052)."""
+    groups: dict[str, list[str]] = {}
+    for item in inputs:
+        groups.setdefault(item.area, []).append(_render_rating_input(ctx, item))
+    for item in documentation:
+        groups.setdefault(item.area, []).append(_render_documentation(ctx, item))
+    return "".join(
+        f'<h4 class="rating-area">{ctx.esc(area)}</h4>'
+        f'<ol class="rating-inputs">{"".join(rows)}</ol>'
+        for area, rows in groups.items()
+    )
+
+
+def _render_documentation(ctx: _Ctx, item) -> str:
+    cited = ", ".join(_render_citation(ctx, c) for c in item.citation)
+    if item.status == "present":
+        detail = f"<code>{ctx.path(item.file)}</code>"
+    else:
+        detail = ctx.esc(item.reason)
+    return (
+        f'<li class="documentation-{ctx.esc(item.status)}">Documentation '
+        f"{ctx.esc(item.status)} (not scored): {detail}"
+        f'<p class="rating-citation">Standard: {cited}</p></li>'
     )
 
 
