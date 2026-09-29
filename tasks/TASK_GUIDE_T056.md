@@ -40,10 +40,12 @@ Split from T040 (user, 2026-09-29). The user's 2026-09-28 mapping puts #8 authN/
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy)
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent) — Supervisor 2026-09-29
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy) — Supervisor 2026-09-29
+- [x] Every Acceptance Criterion below traces to a line in the Requirement — Supervisor 2026-09-29
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above — Supervisor 2026-09-29
+
+> Sign-off note (Supervisor, 2026-09-29): scope is the user's 2026-09-29 split of T040 (#8, #17 strict config). ASVS 5.0.0 was decided by the user. AC2 (auth gating) and AC4 (role vs excerpts) are **user** decisions: propose and stop before building those parts. Weight changes need user sign-off before wiring.
 
 > An agent must NOT start implementing until this gate is checked. If anything here is unclear,
 > STOP and ask the Supervisor (Karpathy: Think Before Coding).
