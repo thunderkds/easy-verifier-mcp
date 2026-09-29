@@ -178,12 +178,13 @@ def test_a_change_removing_a_public_function_counts_one_cited_at_its_line(
         {
             "src/shop/api.py": API.replace(
                 'def get_item(item_id):\n    return {"id": item_id}\n\n\n', ""
-            )
+            ),
+            "migrations/0002.sql": "CREATE TABLE t (id int);\n",
         },
     )
     metric = _metric(pack, SYMBOLS)
     assert metric.outcome == 1
-    assert "src/shop/api.py:5-5" in metric.computed_from
+    assert metric.computed_from == ("src/shop/api.py:5-5",)  # the quoted line only
     assert "get_item removed" in metric.derivation
     (quoted,) = [e for e in pack.excerpts if e.ref == "src/shop/api.py:5-5"]
     assert quoted.text == "-def get_item(item_id):"

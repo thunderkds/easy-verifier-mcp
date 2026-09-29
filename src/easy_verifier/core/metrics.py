@@ -1519,8 +1519,11 @@ def _compat_count(kind: str) -> Callable[[_PackView], _Computed]:
                 ),
                 omitted_lower_bound=len(dropped),
             )
-        refs = {item.ref for item in items}
-        refs |= {path for path in facts.examined if path in set(pack.files_read)}
+        # The quoted lines when there are any; a count of 0 cites the changed
+        # files that were read, since it is a statement about them.
+        refs = {item.ref for item in items} or {
+            path for path in facts.examined if path in set(pack.files_read)
+        }
         if not refs:
             return MetricAbstention(
                 reason="no changed file of this diff could be read or quoted, so "
