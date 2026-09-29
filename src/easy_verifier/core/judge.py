@@ -73,6 +73,45 @@ LOCAL_TAGS = (
 this module keeps its arithmetic-only imports."""
 
 
+AREAS: tuple[str, ...] = (
+    "Architecture & dependency direction",
+    "Business-rule correctness",
+    "Financial integrity & historical reconstruction",
+    "Data model, constraints, migrations",
+    "Backward compatibility & upgrade safety",
+    "Transactions, concurrency, idempotency",
+    "API contracts, validation, versioning",
+    "AuthN/Z, sessions, offboarding",
+    "PHI minimization, retention, test-data safety",
+    "Threat modeling, abuse cases, appsec",
+    "Infra security: IAM, networking, KMS, secrets",
+    "Error handling & safe degradation",
+    "Retries, deadlines, unknown outcomes, vendor outages",
+    "Observability, auditing, SLOs, error budgets",
+    "Performance, scalability, capacity, cost",
+    "Test strategy, coverage, false confidence, isolation",
+    "Type safety & code quality",
+    "Maintainability, reuse, library judgment, patterns",
+    "Accessibility, responsive UX, browser compat",
+    "Dependencies, vulns, licenses, obsolescence",
+    "CI quality & reproducibility",
+    "Artifact provenance, SBOM, signing, promotion, rollback",
+    "Terraform state, environment, account, drift",
+    "Database HA, backups, restore, DR",
+    "Incident response, change mgmt, access review",
+    "Configuration ownership & operational readiness",
+    "Documentation source-of-truth governance",
+    "Vendor, BAA, data classification, residency",
+    "AI-assisted-development safety",
+    "Developer experience & deterministic local setup",
+    "Technical-debt lifecycle & closure evidence",
+    "Business continuity & degraded modes",
+)
+"""The user's 32 evaluation areas, verbatim and in their order (DDR-0008,
+BRAINSTORMING_LOG_evaluation-areas.md). Every rule names exactly one: a rule
+group is this label on rule data, not a separate structure (FR-051)."""
+
+
 @dataclass(frozen=True)
 class RatingRule:
     """A binary threshold rule over one existing metric, with its citations.
@@ -88,6 +127,8 @@ class RatingRule:
     metric_citation: tuple[Citation, ...]
     threshold_citation: Citation | str
     source_tag: str = CURATED
+    area: str = ""
+    """One of :data:`AREAS`; validated, so an unlabelled rule is rejected."""
 
 
 # Sources cited by the rules below (approved table B5,
@@ -175,14 +216,17 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
         RatingRule(
             "architecture_description_missing", 30, 0, "at_most",
             (_ISO_42010,), _ISO_42010,
+            area=AREAS[0],
         ),
         RatingRule(
             "decision_records_missing", 30, 0, "at_most",
             (_ISO_42010,), _ISO_42010,
+            area=AREAS[0],
         ),
         RatingRule(
             "top_level_import_cycles", 40, 0, "at_most",
             (_MARTIN_ADP,), _MARTIN_ADP,
+            area=AREAS[0],
         ),
     ),
     "solution-fit": {},
@@ -190,66 +234,144 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
         RatingRule(
             "acceptance_criteria_traced_to_code_share", 50, 0.80, "at_least",
             (_ISO_29148,), PROJECT_DEFAULT,
+            area=AREAS[1],
         ),
         RatingRule(
             "acceptance_criteria_traced_to_test_share", 50, 0.80, "at_least",
             (_ISO_29148,), PROJECT_DEFAULT,
+            area=AREAS[1],
         ),
     ),
     "code-quality": _rules(
         RatingRule(
             "functions_over_ccn_10_share", 40, 0.10, "at_most",
             (_MCCABE, _ISO_5055), _NIST_500_235,
+            area=AREAS[17],
         ),
         RatingRule(
             "max_function_ccn", 20, 15, "at_most",
             (_MCCABE, _NIST_500_235),
             Citation("NIST SP 500-235 (15 with justification)", _NIST_500_235_URL),
+            area=AREAS[17],
         ),
         RatingRule(
-            "lint_config_missing", 20, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT
+            "lint_config_missing", 20, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
+            area=AREAS[16],
         ),
         RatingRule(
-            "format_config_missing", 20, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT
+            "format_config_missing", 20, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
+            area=AREAS[16],
         ),
     ),
     "security": _rules(
         RatingRule(
             "redaction_hits_observed", 40, 0, "at_most",
             (_CWE_798, _ASVS_SECRETS), _ASVS_SECRETS,
+            area=AREAS[9],
         ),
         RatingRule(
-            "sink_hits_observed", 40, 0, "at_most", (_CWE_TOP_25,), _CWE_TOP_25
+            "sink_hits_observed", 40, 0, "at_most", (_CWE_TOP_25,), _CWE_TOP_25,
+            area=AREAS[9],
         ),
         RatingRule(
             "lockfile_missing", 20, 0, "at_most",
             (_ASVS_DEPENDENCIES,), _ASVS_DEPENDENCIES,
+            area=AREAS[19],
         ),
     ),
     "test-strategy": _rules(
         RatingRule(
             "source_files_without_covering_test_share", 35, 0.20, "at_most",
             (_ISO_29119_4,), PROJECT_DEFAULT,
+            area=AREAS[15],
         ),
         RatingRule(
             "assertion_density_per_test", 35, 1.0, "at_least",
             (_KUDRJAVETS,), PROJECT_DEFAULT,
+            area=AREAS[15],
         ),
         RatingRule(
             "test_config_and_ci_missing", 30, 0, "at_most",
             (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
         ),
     ),
     "blast-radius": _rules(
         RatingRule(
-            "max_fan_in_changed", 50, 20, "at_most", (_HENRY_KAFURA,), PROJECT_DEFAULT
+            "max_fan_in_changed", 50, 20, "at_most", (_HENRY_KAFURA,), PROJECT_DEFAULT,
+            area=AREAS[4],
         ),
         RatingRule(
             "changed_files_in_churn_hotspots_share", 50, 0.20, "at_most",
             (_NAGAPPAN_BALL,), PROJECT_DEFAULT,
+            area=AREAS[4],
         ),
     ),
 }
+
+
+@dataclass(frozen=True)
+class DocumentationRule:
+    """An area no repository can verify is checked only for its document
+    (DDR-0008 E3): present with the cited file, or missing. It has no weight
+    and no threshold, so it can never become a number (FR-052, NFR-002)."""
+
+    area: str
+    patterns: tuple[str, ...]
+    """Globs over repo-relative paths, with source-role glob semantics."""
+    citation: tuple[Citation, ...]
+
+    def __post_init__(self) -> None:
+        _validate_area(self.area, "documentation rule")
+        if (
+            type(self.patterns) is not tuple
+            or not self.patterns
+            or any(type(item) is not str or not item for item in self.patterns)
+        ):
+            raise ValueError("documentation rule patterns must be non-empty strings")
+        _validate_citations(self.citation, "documentation rule citation")
+
+
+@dataclass(frozen=True)
+class DocumentationResult:
+    """``present`` with the file that satisfied the rule, or ``missing`` with
+    what bounded the search. Deliberately has no value, weight or score."""
+
+    area: str
+    status: str
+    file: str | None
+    citation: tuple[Citation, ...]
+    reason: str
+
+    def __post_init__(self) -> None:
+        _validate_area(self.area, "documentation result")
+        _validate_citations(self.citation, "documentation result citation")
+        if type(self.reason) is not str:
+            raise ValueError("documentation result reason must be a string")
+        if self.status == "present":
+            if type(self.file) is not str or not self.file.strip():
+                raise ValueError("present documentation must cite its file")
+        elif self.status == "missing":
+            if self.file is not None or not self.reason.strip():
+                raise ValueError("missing documentation has no file and a reason")
+        else:
+            raise ValueError("documentation status must be present or missing")
+
+    def to_dict(self) -> dict:
+        return {
+            "kind": "documentation",
+            "area": self.area,
+            "status": self.status,
+            "file": self.file,
+            "citation": [item.to_dict() for item in self.citation],
+            "reason": self.reason,
+        }
+
+
+# Per-dimension documentation rules (FR-052). A dimension absent here declares
+# none; the new dimensions (T041-T046) add theirs. Results are computed by
+# ``roles.documentation_present`` (glob matching stays out of this module).
+DOCUMENTATION_RULES: dict[str, tuple[DocumentationRule, ...]] = {}
 
 
 # Hard gate — evaluate (FR-036, DDR-0006): a rule input whose metric value lies
@@ -272,10 +394,14 @@ _ABSTENTION_REASONS = {
     "coverage_not_applicable": "the dimension sought no declared source",
     "dimension_failed": "the dimension failed and produced no evidence pack",
     "all_metrics_abstained": "all declared rating metrics abstained",
-    "no_dimension_rated": "none of the seven dimensions produced a rating",
+    "no_dimension_rated": "none of the declared dimensions produced a rating",
     "no_static_rule": (
         "no measurable static rule is declared for this dimension, so it is "
         "rated only at the evaluate gate"
+    ),
+    "documentation_only": (
+        "this dimension declares only documentation rules, which report "
+        "present or missing and never produce a number"
     ),
 }
 
@@ -313,6 +439,8 @@ class RatingInput:
     reviewed local tag used (T036, FR-048)."""
     registry_citations: tuple[Citation, ...] = ()
     """The links behind that local registry data; empty when ``curated``."""
+    area: str = ""
+    """The declared rule's area (FR-051); must equal it."""
 
     def __post_init__(self) -> None:
         _validate_rating_input(self)
@@ -337,6 +465,7 @@ class RatingInput:
                 if self.registry_citations
                 else {}
             ),
+            "area": self.area,
         }
 
 
@@ -349,6 +478,8 @@ class Rating:
     inputs: tuple[RatingInput, ...]
     unavailable_metrics: tuple[tuple[str, str], ...] = field(default=())
     method: str = _RATING_METHOD
+    documentation: tuple[DocumentationResult, ...] = field(default=())
+    """One result per declared documentation rule; they carry no weight."""
 
     def __post_init__(self) -> None:
         _validate_rating(self)
@@ -365,6 +496,7 @@ class Rating:
             "inputs": [item.to_dict() for item in self.inputs],
             "unavailable_metrics": [list(item) for item in self.unavailable_metrics],
             "method": self.method,
+            **_documentation_dict(self.documentation),
         }
 
     def serialize(self) -> str:
@@ -383,6 +515,8 @@ class RatingAbstention:
     failure: str | None = None
     unavailable_metrics: tuple[tuple[str, str], ...] = field(default=())
     abstentions: tuple[RatingAbstention, ...] = field(default=())
+    documentation: tuple[DocumentationResult, ...] = field(default=())
+    """Empty when no pack exists: nothing read cannot be called missing."""
 
     def __post_init__(self) -> None:
         _validate_abstention(self)
@@ -412,10 +546,16 @@ class RatingAbstention:
             "failure": self.failure,
             "unavailable_metrics": [list(item) for item in self.unavailable_metrics],
             "abstentions": [item.to_dict() for item in self.abstentions],
+            **_documentation_dict(self.documentation),
         }
 
     def serialize(self) -> str:
         return _serialize(self.to_dict())
+
+
+def _documentation_dict(results: tuple[DocumentationResult, ...]) -> dict:
+    """Emitted only when rules exist, so outputs without any are unchanged."""
+    return {"documentation": [item.to_dict() for item in results]} if results else {}
 
 
 @dataclass(frozen=True)
@@ -563,12 +703,17 @@ def rate(
     coverage: CoverageSummary,
     *,
     registry_sources: Mapping[str, tuple[str, tuple[Citation, ...]]] | None = None,
+    documentation: Sequence[DocumentationResult] | None = None,
 ) -> Rating | RatingAbstention:
     """Rate exactly one dimension represented by ``metrics`` and ``coverage``.
 
     ``registry_sources`` maps a metric name to the local-layer tag and links
     its computation used (``metric_tables.registry_sources``, T036); that
     input then carries them instead of ``curated``.
+
+    ``documentation`` holds one ``roles.documentation_present`` result per
+    declared documentation rule (FR-052); required when it declares any, and
+    ignored for a failed dimension, which read nothing.
     """
     registry_sources = registry_sources or {}
     _validate_declared_data()
@@ -587,6 +732,12 @@ def rate(
             sources_missing=misses,
             failure=failures[0],
         )
+    doc_rules = DOCUMENTATION_RULES.get(dimension, ())
+    if doc_rules and documentation is None:
+        raise ValueError(
+            f"documentation rules for {dimension!r} need their results"
+        )
+    documentation = tuple(documentation or ())
 
     floor = COVERAGE_FLOORS.get(dimension)
     if floor is None:
@@ -598,10 +749,11 @@ def rate(
             _validate_coverage(achieved)
         return RatingAbstention(
             dimension=dimension,
-            reason_code="no_static_rule",
+            reason_code="documentation_only" if doc_rules else "no_static_rule",
             coverage_floor=floor.value,
             achieved_coverage=achieved,
             sources_missing=misses,
+            documentation=documentation,
         )
     if achieved is None:
         return RatingAbstention(
@@ -610,6 +762,7 @@ def rate(
             coverage_floor=floor.value,
             achieved_coverage=None,
             sources_missing=misses,
+            documentation=documentation,
         )
     _validate_coverage(achieved)
     if achieved < 1.0 and not misses:
@@ -627,6 +780,7 @@ def rate(
             coverage_floor=floor.value,
             achieved_coverage=achieved,
             sources_missing=misses,
+            documentation=documentation,
         )
 
     by_name: dict[str, Metric] = {}
@@ -668,6 +822,7 @@ def rate(
                 threshold_citation=rule.threshold_citation,
                 source_tag=tag,
                 registry_citations=local_citations,
+                area=rule.area,
             )
         )
 
@@ -679,6 +834,7 @@ def rate(
             achieved_coverage=achieved,
             sources_missing=misses,
             unavailable_metrics=tuple(unavailable),
+            documentation=documentation,
         )
 
     earned = sum(item.earned_weight for item in inputs)
@@ -688,6 +844,7 @@ def rate(
         value=round(100 * earned / available),
         inputs=tuple(inputs),
         unavailable_metrics=tuple(unavailable),
+        documentation=documentation,
     )
 
 
@@ -735,6 +892,11 @@ def _validate_gated_rating(value: GatedRating) -> None:
         _revalidate_abstention(value.rules)
         if value.rules.reason_code == "no_dimension_rated":
             raise ValueError("a gated rating cannot wrap the overall abstention")
+        if value.rules.reason_code == "documentation_only":
+            raise ValueError(
+                "a gated rating cannot wrap a documentation_only abstention: "
+                "documentation rules are never scored"
+            )
     else:
         raise ValueError("gated rating rules must be a Rating or RatingAbstention")
     _validate_finite_number(value.agent_score, "gated rating agent_score")
@@ -756,14 +918,14 @@ def _rated_by(item: Rating | GatedRating) -> str:
 def rate_overall(
     ratings: Sequence[Rating | RatingAbstention | GatedRating],
 ) -> OverallRating | RatingAbstention:
-    """Average exactly seven unique dimension results, raters only.
+    """Average one result per declared dimension (FR-054), raters only.
 
     A :class:`GatedRating` contributes its blended or agent-rated value; the
     disclosure counts each kind (FR-038)."""
     _validate_declared_data()
     expected = tuple(COVERAGE_FLOORS)
     if len(ratings) != len(expected):
-        raise ValueError("rate_overall requires exactly the seven known dimensions")
+        raise ValueError("rate_overall requires exactly the declared dimensions")
 
     invalid_types = tuple(
         index
@@ -792,7 +954,7 @@ def rate_overall(
     if duplicates:
         raise ValueError(f"duplicate rating dimension(s): {', '.join(duplicates)}")
     if set(names) != set(expected):
-        raise ValueError("rate_overall requires exactly the seven known dimensions")
+        raise ValueError("rate_overall requires exactly the declared dimensions")
 
     by_dimension = {item.dimension: item for item in ratings}
     ordered = tuple(by_dimension[name] for name in expected)
@@ -892,6 +1054,15 @@ def _validate_declared_data() -> None:
         raise ValueError(
             "rating rules must be declared for exactly the known dimensions"
         )
+    for dimension, doc_rules in DOCUMENTATION_RULES.items():
+        if dimension not in COVERAGE_FLOORS:
+            raise ValueError(f"documentation rules name unknown {dimension!r}")
+        if type(doc_rules) is not tuple or any(
+            type(rule) is not DocumentationRule for rule in doc_rules
+        ):
+            raise ValueError(
+                f"documentation rules for {dimension!r} are not DocumentationRule"
+            )
     for dimension, rules in RATING_RULES.items():
         if type(rules) is not dict:
             raise ValueError(f"rating rules for {dimension!r} are not a dict")
@@ -922,6 +1093,39 @@ def _validate_rule(dimension: str, key: str, rule: RatingRule) -> None:
         _validate_citation(rule.threshold_citation, f"{label} threshold_citation")
     if rule.source_tag != CURATED:
         raise ValueError(f"{label} source_tag must be {CURATED!r}")
+    _validate_area(rule.area, label)
+
+
+def _validate_area(value: object, label: str) -> None:
+    if value not in AREAS:
+        raise ValueError(f"{label} area must be one of the 32 declared areas")
+
+
+def _validate_citations(value: object, label: str) -> None:
+    if type(value) is not tuple or not value:
+        raise ValueError(f"{label} must be a non-empty tuple")
+    for citation in value:
+        _validate_citation(citation, label)
+
+
+def _validate_documentation(
+    dimension: str, value: object, *, failed: bool = False
+) -> None:
+    """Exactly one result per declared documentation rule, in order; none
+    when the dimension failed and so read nothing."""
+    if type(value) is not tuple or any(
+        type(item) is not DocumentationResult for item in value
+    ):
+        raise ValueError("documentation must be a tuple of DocumentationResult")
+    rules = () if failed else DOCUMENTATION_RULES.get(dimension, ())
+    if len(value) != len(rules) or any(
+        item.area != rule.area or item.citation != rule.citation
+        for item, rule in zip(value, rules, strict=False)
+    ):
+        raise ValueError(
+            f"documentation results for {dimension!r} must match its declared "
+            "documentation rules"
+        )
 
 
 def _validate_citation(value: object, label: str) -> None:
@@ -945,6 +1149,11 @@ def _validate_abstention(value: RatingAbstention) -> None:
 
     if value.reason_code != "no_dimension_rated":
         _validate_leaf_abstention_dimension(value)
+    _validate_documentation(
+        value.dimension,
+        value.documentation,
+        failed=value.reason_code in ("dimension_failed", "no_dimension_rated"),
+    )
     _validate_source_misses(value.sources_missing)
     unavailable_names = _validate_unavailable_metrics(
         value.unavailable_metrics, "abstention", RATING_RULES.get(value.dimension)
@@ -1020,16 +1229,20 @@ def _validate_abstention(value: RatingAbstention) -> None:
                 "all unavailable metrics, with no failure or nested abstentions"
             )
         _validate_miss_coverage_coherence(value)
-    elif value.reason_code == "no_static_rule":
+    elif value.reason_code in ("no_static_rule", "documentation_only"):
+        # Two causes, two codes: which one is decided by the declared data.
+        documented = bool(DOCUMENTATION_RULES.get(value.dimension))
         if (
             RATING_RULES[value.dimension]
+            or documented != (value.reason_code == "documentation_only")
             or value.coverage_floor is None
             or value.failure is not None
             or unavailable_names
             or value.abstentions
         ):
             raise ValueError(
-                "no_static_rule requires a dimension with no declared rule, its "
+                f"{value.reason_code} requires a dimension with no declared rating "
+                "rule (and documentation rules only for documentation_only), its "
                 "floor, and no failure, unavailable metrics or nested abstentions"
             )
     else:
@@ -1060,8 +1273,9 @@ def _validate_abstention(value: RatingAbstention) -> None:
         )
         if not complete:
             raise ValueError(
-                "no_dimension_rated requires dimension 'overall' and all seven "
-                "abstentions in canonical order, with no leaf provenance fields"
+                "no_dimension_rated requires dimension 'overall' and every declared "
+                "dimension's abstention in canonical order, with no leaf provenance "
+                "fields"
             )
 
 
@@ -1195,6 +1409,7 @@ def _matches_rule(value: RatingInput, rule: RatingRule) -> bool:
         and value.comparison == rule.comparison
         and value.metric_citation == rule.metric_citation
         and value.threshold_citation == rule.threshold_citation
+        and value.area == rule.area
         # The rule itself stays curated (validated with the rule data); an
         # input may instead carry the local tag of the data it was built on.
         and (value.source_tag == rule.source_tag or value.source_tag in LOCAL_TAGS)
@@ -1208,6 +1423,7 @@ def _validate_rating(value: Rating) -> None:
         raise ValueError(f"unknown dimension for rating: {value.dimension!r}")
     if value.method != _RATING_METHOD:
         raise ValueError("rating method must equal the declared arithmetic method")
+    _validate_documentation(value.dimension, value.documentation)
     if type(value.inputs) is not tuple or not value.inputs:
         raise ValueError("rating inputs must be a non-empty tuple")
     if any(type(item) is not RatingInput for item in value.inputs):

@@ -39,10 +39,14 @@ User (2026-09-28) supplied 32 evaluation areas; decided E2 (areas as named rule 
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy)
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent) — signed off 2026-09-29 (user, 2026-09-29)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy) — signed off 2026-09-29 (user, 2026-09-29)
+- [x] Every Acceptance Criterion below traces to a line in the Requirement — signed off 2026-09-29 (user, 2026-09-29)
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above — signed off 2026-09-29 (user, 2026-09-29)
+
+> **Sign-off (user, 2026-09-29)**: gate signed off by the user on 2026-09-29, accepting the
+> implementer's area labelling of the 17 existing rules (T040 may revise). Same decision round:
+> documentation-only dimensions are never offered to the agent evaluate gate (E3).
 
 > An agent must NOT start implementing until this gate is checked. If anything here is unclear,
 > STOP and ask the Supervisor (Karpathy: Think Before Coding).
