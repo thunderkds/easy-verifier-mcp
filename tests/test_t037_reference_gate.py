@@ -238,6 +238,7 @@ def test_optional_fields_are_never_required():
         "interpolating_strings",
         "test_candidates",
         "colocated_test_name_patterns",
+        "type_stub_names",  # T040: only TypeScript generates code-suffix stubs
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 

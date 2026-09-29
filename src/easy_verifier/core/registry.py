@@ -63,6 +63,17 @@ The security field (T034) is read by ``core/metric_tables.py``:
   mark at its start; a ``Y`` ending in ``$`` counts only before a name or
   ``{``.
 
+The area fields (T040, FR-051) are read by ``core/metric_tables.py``:
+
+* ``skip_markers`` / ``network_calls`` — code tokens, matched in test-file
+  excerpts after comments and strings are blanked: an unconditional
+  skip/disable marker, and a call that reaches the network;
+* ``type_escapes`` — tokens that opt out of the type checker, matched in
+  source-file excerpts after strings (not comments) are blanked, so a
+  ``type: ignore`` comment counts and a string saying so does not;
+* ``type_stub_names`` — base-name globs of generated type stubs (``*.d.ts``),
+  never scanned for type escapes. Optional.
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -176,6 +187,9 @@ _TOKEN_FIELDS = frozenset(
         "function_start",
         "import_syntax",
         "security_sinks",
+        "skip_markers",
+        "network_calls",
+        "type_escapes",
     }
 )
 
@@ -195,6 +209,10 @@ ENTRY_FIELDS = (
     "security_sinks",
     "interpolating_strings",
     "frameworks",
+    "skip_markers",
+    "network_calls",
+    "type_escapes",
+    "type_stub_names",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
@@ -225,6 +243,7 @@ _VALUE_SHAPES = {
         re.compile(r"^[^\s\\]{1,4} [^\s\\]{1,4}$"),
         "a string opener X and an interpolation opener Y, as X Y",
     ),
+    "type_stub_names": (re.compile(r"^[^/]+$"), "a base-name glob, no /"),
     "frameworks": (
         re.compile(r"^[a-z0-9][a-z0-9-]*=[A-Za-z0-9@][A-Za-z0-9@/._:+-]*$"),
         "<framework>=<dependency>, e.g. express=express",

@@ -166,3 +166,42 @@ cwe = "CWE-89"
 value = ["new SqlCommand ( $", "new SqlCommand ( +", ".CommandText = $", ".CommandText = +", ".ExecuteSqlRaw ( $", ".ExecuteSqlRaw ( +", ".FromSqlRaw ( $", ".FromSqlRaw ( +"]
 citation_url = "https://cwe.mitre.org/data/definitions/89.html"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["[Ignore"]
+citation_url = "https://docs.nunit.org/articles/nunit/writing-tests/attributes/ignore.html"
+source_tag = "curated"
+
+[[skip_markers]]
+value = ["Skip ="]
+citation_url = "https://api.xunit.net/v3/2.0.0/Xunit.FactAttribute.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["new HttpClient ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["WebRequest.Create ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.net.webrequest.create"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["new TcpClient ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.tcpclient"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["dynamic"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/interop/using-type-dynamic"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["# pragma warning disable"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/preprocessor-directives#pragma-warning"
+source_tag = "curated"

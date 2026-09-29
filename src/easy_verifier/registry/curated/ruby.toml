@@ -168,3 +168,37 @@ source_tag = "curated"
 value = ["rails=rails"]
 citation_url = "https://guides.rubyonrails.org/getting_started.html"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["xit", "skip"]
+citation_url = "https://rspec.info/features/3-12/rspec-core/pending-and-skipped-examples/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["Net::HTTP.get (", "Net::HTTP.start (", "Net::HTTP.post (", "Net::HTTP.new ("]
+citation_url = "https://docs.ruby-lang.org/en/master/Net/HTTP.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["HTTParty.get (", "HTTParty.post ("]
+citation_url = "https://github.com/jnunemaker/httparty"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["Faraday.get (", "Faraday.new ("]
+citation_url = "https://lostisland.github.io/faraday/"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["T.untyped", "T.unsafe"]
+citation_url = "https://sorbet.org/docs/untyped"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["typed : false", "typed : ignore"]
+citation_url = "https://sorbet.org/docs/static"
+source_tag = "curated"

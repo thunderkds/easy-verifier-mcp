@@ -183,3 +183,32 @@ source_tag = "curated"
 value = ["laravel=laravel/framework"]
 citation_url = "https://packagist.org/packages/laravel/framework"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["-> markTestSkipped (", "-> markTestIncomplete ("]
+citation_url = "https://docs.phpunit.de/en/10.5/writing-tests-for-phpunit.html#skipping-tests"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["curl_exec ("]
+citation_url = "https://www.php.net/manual/en/function.curl-exec.php"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["fsockopen ("]
+citation_url = "https://www.php.net/manual/en/function.fsockopen.php"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@phpstan-ignore"]
+citation_url = "https://phpstan.org/user-guide/ignoring-errors"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@psalm-suppress"]
+citation_url = "https://psalm.dev/docs/running_psalm/dealing_with_code_issues/"
+source_tag = "curated"

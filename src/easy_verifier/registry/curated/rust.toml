@@ -123,3 +123,32 @@ source_tag = "curated"
 value = ["actix-web=actix-web"]
 citation_url = "https://actix.rs/docs/getting-started/"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["#[ignore"]
+citation_url = "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["reqwest::get (", "reqwest::Client", "reqwest::blocking::get ("]
+citation_url = "https://docs.rs/reqwest/latest/reqwest/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["TcpStream::connect ("]
+citation_url = "https://doc.rust-lang.org/std/net/struct.TcpStream.html#method.connect"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["unsafe {"]
+citation_url = "https://doc.rust-lang.org/reference/unsafe-keyword.html"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["mem::transmute"]
+citation_url = "https://doc.rust-lang.org/std/mem/fn.transmute.html"
+source_tag = "curated"

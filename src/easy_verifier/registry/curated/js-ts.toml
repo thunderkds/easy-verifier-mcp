@@ -248,3 +248,47 @@ source_tag = "curated"
 value = ["angular=@angular/core"]
 citation_url = "https://angular.dev/reference/configs/npm-packages"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["it.skip (", "test.skip (", "describe.skip (", "xit (", "xtest (", "xdescribe ("]
+citation_url = "https://jestjs.io/docs/api"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["fetch ("]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["http.request (", "http.get ("]
+citation_url = "https://nodejs.org/api/http.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["https.request (", "https.get ("]
+citation_url = "https://nodejs.org/api/https.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["axios (", "axios.get (", "axios.post (", "axios.put (", "axios.patch (", "axios.delete (", "axios.request ("]
+citation_url = "https://axios-http.com/docs/api_intro"
+source_tag = "curated"
+
+[[type_escapes]]
+value = [": any", "as any"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#any"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@ts-ignore", "@ts-nocheck"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/intro-to-js-ts.html#ts-check"
+source_tag = "curated"
+
+[[type_stub_names]]
+value = ["?*.d.ts"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html"
+source_tag = "curated"

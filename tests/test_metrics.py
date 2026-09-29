@@ -294,6 +294,9 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
     # fixture lacks, so they abstain for that reason here; their own truncation
     # pair is in tests/test_t033_token_metrics.py.
     needs_imports = {"top_level_import_cycles", "max_fan_in_changed"}
+    # T040: the fixture has no TODO/FIXME comment, so this share has a zero
+    # denominator here; its truncation pair is in tests/test_t040_*.
+    needs_imports |= {"todo_without_ticket_share"}
     for metric in whole_set:
         if not truncated and metric.name in needs_imports:
             continue

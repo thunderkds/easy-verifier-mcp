@@ -138,3 +138,32 @@ source_tag = "curated"
 value = ["gin=github.com/gin-gonic/gin"]
 citation_url = "https://gin-gonic.com/en/docs/quickstart/"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["t.Skip (", "t.Skipf (", "t.SkipNow ("]
+citation_url = "https://pkg.go.dev/testing#T.Skip"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["http.Get (", "http.Post (", "http.PostForm (", "http.Head ("]
+citation_url = "https://pkg.go.dev/net/http#Get"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["net.Dial (", "net.DialTimeout ("]
+citation_url = "https://pkg.go.dev/net#Dial"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["interface { }"]
+citation_url = "https://go.dev/ref/spec#Interface_types"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["unsafe.Pointer"]
+citation_url = "https://pkg.go.dev/unsafe#Pointer"
+source_tag = "curated"
