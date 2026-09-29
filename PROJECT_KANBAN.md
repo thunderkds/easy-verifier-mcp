@@ -15,7 +15,6 @@
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
-- [ ] **T040** — Area rule groups in existing dimensions (#5, #8, #16, #17, #27, #31) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
@@ -57,8 +56,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-
-_(empty)_
+- [~] **T040** — Area rule groups in existing dimensions (#5, #8, #16, #17, #27, #31) | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-09-29 (worktree ../easy-verifier-mcp-T040)
 
 ### Ready for Review
 

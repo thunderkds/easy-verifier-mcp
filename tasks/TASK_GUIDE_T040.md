@@ -40,10 +40,12 @@ User (2026-09-28) 32-area list; mapping puts #5 backward compatibility (blast-ra
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy)
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent) — Supervisor 2026-09-29
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy) — Supervisor 2026-09-29
+- [x] Every Acceptance Criterion below traces to a line in the Requirement — Supervisor 2026-09-29
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above — Supervisor 2026-09-29
+
+> Sign-off note (Supervisor, 2026-09-29): the six areas and their dimensions are the user's 2026-09-28 mapping, verbatim. "Rule group" = the T039 `area` label (FR-051). AC7 weight changes alter existing scores, so they need **user** sign-off before they are wired into `RATING_RULES`.
 
 > An agent must NOT start implementing until this gate is checked. If anything here is unclear,
 > STOP and ask the Supervisor (Karpathy: Think Before Coding).
@@ -54,7 +56,7 @@ User (2026-09-28) 32-area list; mapping puts #5 backward compatibility (blast-ra
 
 **Depends on**: T039 — rule groups + doc rule
 
-**Entry point**: `rule_group`
+**Entry point**: `AREAS` (corrected by Supervisor 2026-09-29: T039 implemented a rule group as the `area` label on rule data, taken from `judge.AREAS`, per FR-051. There is no separate `rule_group` structure; do not invent one)
 
 ---
 
