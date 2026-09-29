@@ -420,3 +420,59 @@ def test_report_card_renders_missing_documentation_on_abstention(monkeypatch):
     assert "documentation_only" in card
     assert "Documentation missing" in card
     assert "/100" not in card
+
+
+# --- user decision 2026-09-29: documentation-only is never agent-rated -------
+
+
+def _doc_only_ratings(monkeypatch):
+    monkeypatch.setitem(DOCUMENTATION_RULES, "solution-fit", (RUNBOOK_RULE,))
+    return tuple(
+        rate(
+            _metrics(name),
+            _coverage(name),
+            documentation=_docs(name, ("docs/runbook.md",)),
+        )
+        for name in COVERAGE_FLOORS
+    )
+
+
+def test_documentation_only_dimension_is_not_offered_the_evaluate_gate(monkeypatch):
+    from easy_verifier.core.gate import detect_evaluate_gates
+
+    ratings = _doc_only_ratings(monkeypatch)
+    assert "solution-fit" not in detect_evaluate_gates(ratings)
+    # an ordinary rule-less abstention is still gated
+    monkeypatch.setitem(DOCUMENTATION_RULES, "solution-fit", ())
+    plain = rate(_metrics("solution-fit"), _coverage("solution-fit"))
+    assert detect_evaluate_gates((plain,)) == {"solution-fit": "abstained"}
+
+
+def test_gate_evaluation_for_documentation_only_dimension_is_refused(monkeypatch):
+    from easy_verifier.core.gate import apply_gate_evaluations
+    from easy_verifier.core.roles import RoleInputError
+
+    ratings = _doc_only_ratings(monkeypatch)
+    evaluation = {
+        "solution-fit": {
+            "score": 90,
+            "confidence": 1,
+            "evidence_refs": ["docs/runbook.md:1-1"],
+        }
+    }
+    with pytest.raises(RoleInputError) as caught:
+        apply_gate_evaluations(evaluation, ratings, {})
+    message = str(caught.value)
+    assert "gate_evaluations.solution-fit" in message
+    assert "documentation" in message
+    assert "rules rated it" not in message
+
+
+def test_gated_rating_cannot_wrap_documentation_only(monkeypatch):
+    from easy_verifier.core.judge import GatedRating
+
+    ratings = _doc_only_ratings(monkeypatch)
+    doc_only = ratings[tuple(COVERAGE_FLOORS).index("solution-fit")]
+    assert doc_only.reason_code == "documentation_only"
+    with pytest.raises(ValueError, match="documentation"):
+        GatedRating(doc_only, 90, 1, ("docs/runbook.md:1-1",))

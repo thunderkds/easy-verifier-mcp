@@ -249,12 +249,14 @@ def detect_evaluate_gates(
     ``abstained`` when the rules abstained; ``borderline: <metric>, ...``
     when any rule input's value lies within the declared band of its
     threshold. Every other dimension is absent: outside a gate the agent
-    never changes a number.
+    never changes a number. A ``documentation_only`` abstention is never
+    gated: its areas are documentation present/missing, never scored (E3).
     """
     gates: dict[str, str] = {}
     for item in ratings:
         if type(item) is RatingAbstention:
-            gates[item.dimension] = "abstained"
+            if item.reason_code != "documentation_only":
+                gates[item.dimension] = "abstained"
         elif type(item) is Rating:
             near = [
                 entry.metric_name
@@ -311,11 +313,23 @@ def apply_gate_evaluations(
             ],
         )
     gates = detect_evaluate_gates(ratings)
+    documentation_only = {
+        item.dimension
+        for item in ratings
+        if type(item) is RatingAbstention and item.reason_code == "documentation_only"
+    }
     accepted: dict[str, tuple[int | float, int | float, tuple[str, ...]]] = {}
     for name, entry in document.items():
         field = f"gate_evaluations.{redact(str(name))}"
         if name not in COVERAGE_FLOORS:
             errors.append(f"{field}: unknown dimension")
+            continue
+        if name in documentation_only:
+            errors.append(
+                f"{field}: declares only documentation rules, which report "
+                "present or missing and are never scored, so no evaluation is "
+                "accepted for it"
+            )
             continue
         if name not in gates:
             errors.append(

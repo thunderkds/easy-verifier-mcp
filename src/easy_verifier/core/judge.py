@@ -892,6 +892,11 @@ def _validate_gated_rating(value: GatedRating) -> None:
         _revalidate_abstention(value.rules)
         if value.rules.reason_code == "no_dimension_rated":
             raise ValueError("a gated rating cannot wrap the overall abstention")
+        if value.rules.reason_code == "documentation_only":
+            raise ValueError(
+                "a gated rating cannot wrap a documentation_only abstention: "
+                "documentation rules are never scored"
+            )
     else:
         raise ValueError("gated rating rules must be a Rating or RatingAbstention")
     _validate_finite_number(value.agent_score, "gated rating agent_score")
