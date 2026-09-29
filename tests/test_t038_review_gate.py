@@ -565,3 +565,63 @@ def test_unwritable_layer_reports_reviews_not_saved(sot, kotlin_repo):
     (item,) = saved(sot, "kotlin")["assertions"]
     assert item["review_status"] == "pending"
     assert any("reviews cannot be saved" in n for n in payload["registry_notes"])
+
+
+# --------------------------------------------------------------------------
+# Stage 4 P1: every string written to a local file must stay valid TOML
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "comment",
+    ["wrong page \U0001f600", "tab\there, del\x7f, nul\x00, é,   end"],
+)
+def test_improve_comment_round_trips_through_the_toml_file(sot, kotlin_repo, comment):
+    (entry_id,) = review_ids(mcp(kotlin_repo, registry_entries=[kotlin_entry()]))
+    mcp(kotlin_repo, reviews={entry_id: {"answer": "improve", "comment": comment}})
+    (item,) = saved(sot, "kotlin")["assertions"]  # tomllib parses the file
+    assert item["review_comment"] == comment
+    # The entry still loads, and later writes to the same file still work.
+    local = reg.load_registry(sot, known_roles=GENERIC_PATTERNS, local=True)
+    assert local.warnings == ()
+    mcp(kotlin_repo, registry_entries=[kotlin_entry(value=["shouldBeEqual"])])
+    assert saved(sot, "kotlin")["assertions"][0]["value"] == ["shouldBeEqual"]
+
+
+def test_non_ascii_value_round_trips_through_the_toml_file(sot, kotlin_repo):
+    value = "should\U0001f600"
+    score_repository(
+        kotlin_repo, agent_input={"registry_entries": [kotlin_entry(value=[value])]}
+    )
+    (item,) = saved(sot, "kotlin")["assertions"]
+    assert item["value"] == [value]
+
+
+def test_ascii_file_bytes_are_unchanged_by_the_encoder(tmp_path):
+    entries, _ = reg.parse_local_entries(
+        [kotlin_entry(value=['say "hi"'])], GENERIC_PATTERNS
+    )
+    reg.save_local_entries(entries, tmp_path, known_roles=GENERIC_PATTERNS)
+    text = (tmp_path / "kotlin.toml").read_text()
+    assert 'value = ["say \\"hi\\""]' in text
+
+
+def test_lone_surrogate_in_comment_is_a_validation_error(kotlin_repo):
+    review = {"answer": "improve", "comment": "bad \ud800 half"}
+    with pytest.raises(RoleInputError, match="comment") as caught:
+        validate_agent_input({"reviews": {"a.b.0123456789ab": review}}, kotlin_repo)
+    assert "surrogate" in str(caught.value)
+    ok = {"answer": "improve", "comment": "fine \U0001f600"}
+    document = {"reviews": {"a.b.0123456789ab": ok}}
+    assert validate_agent_input(document, kotlin_repo) == {}
+
+
+def test_lone_surrogate_in_entry_value_is_a_validation_error(kotlin_repo):
+    errors = reg.parse_local_entries(
+        [kotlin_entry(value=["should\udfff"])], GENERIC_PATTERNS
+    )[1]
+    assert errors and "surrogate" in errors[0]
+    errors = reg.parse_local_entries(
+        [kotlin_entry(citation_url=KOTEST + "#\ud800")], GENERIC_PATTERNS
+    )[1]
+    assert errors and "citation_url" in errors[0]

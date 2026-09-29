@@ -679,7 +679,9 @@ def _review_problem(item: Mapping) -> str | None:
         return f"review_status: an item tagged {USER_APPROVED!r} is approved"
     comment = item.get("review_comment")
     if comment is not None and not (
-        isinstance(comment, str) and len(comment) <= MAX_COMMENT_CHARS
+        isinstance(comment, str)
+        and len(comment) <= MAX_COMMENT_CHARS
+        and not _has_surrogate(comment)
     ):
         return f"review_comment: must be a string of at most {MAX_COMMENT_CHARS}"
     rounds = item.get("improve_rounds", 0)
@@ -718,6 +720,8 @@ def _pattern_problem(value: object, *, path: bool = True) -> str | None:
         return "each entry must be a non-empty string"
     if len(value) > MAX_VALUE_CHARS:
         return f"each entry must be at most {MAX_VALUE_CHARS} characters"
+    if _has_surrogate(value):
+        return "each entry must not hold a lone surrogate character"
     if not path:
         return None
     pure = PurePosixPath(value)
@@ -1120,6 +1124,12 @@ def parse_reviews(
                     f"{MAX_COMMENT_CHARS} characters"
                 )
                 continue
+            if _has_surrogate(comment):
+                errors.append(
+                    f"{where}.comment: holds a lone surrogate character, which "
+                    "cannot be stored"
+                )
+                continue
             if redact(comment) != comment:
                 errors.append(
                     f"{where}.comment: looks like it holds a secret; comments "
@@ -1237,10 +1247,24 @@ def _answered(cited: CitedValue, answer: str, comment: str | None) -> CitedValue
     )
 
 
+def _toml_str(text: str) -> str:
+    """``text`` as a TOML basic string. ``json.dumps`` output is TOML only
+    with ``ensure_ascii=False``: its ``\\uD83D\\uDE00`` surrogate-pair escapes
+    are invalid TOML (T038 Stage 4 P1). JSON leaves DEL raw, which TOML
+    forbids, so it is escaped here. Lone surrogates never get this far:
+    validation refuses them (:func:`_has_surrogate`)."""
+    return json.dumps(text, ensure_ascii=False).replace("\x7f", "\\u007f")
+
+
+def _has_surrogate(text: str) -> bool:
+    """A lone surrogate cannot be written as UTF-8 or TOML."""
+    return any("\ud800" <= char <= "\udfff" for char in text)
+
+
 def _entry_toml(extends: str | None, sections: Mapping[str, list[CitedValue]]) -> str:
     lines = ["# easy-verifier local reference registry entry (T036)."]
     if extends is not None:
-        lines.append(f"extends = {json.dumps(extends)}")
+        lines.append(f"extends = {_toml_str(extends)}")
     for field in sorted(sections):
         ordered = sorted(
             sections[field],
@@ -1250,16 +1274,16 @@ def _entry_toml(extends: str | None, sections: Mapping[str, list[CitedValue]]) -
             lines += [
                 "",
                 f"[[{field}]]",
-                "value = [" + ", ".join(json.dumps(v) for v in cited.value) + "]",
-                f"citation_url = {json.dumps(cited.citation_url)}",
-                f"source_tag = {json.dumps(cited.source_tag)}",
+                "value = [" + ", ".join(_toml_str(v) for v in cited.value) + "]",
+                f"citation_url = {_toml_str(cited.citation_url)}",
+                f"source_tag = {_toml_str(cited.source_tag)}",
             ]
             if cited.cwe:
-                lines.append(f"cwe = {json.dumps(cited.cwe)}")
+                lines.append(f"cwe = {_toml_str(cited.cwe)}")
             status = cited.review_status or PENDING
-            lines.append(f"review_status = {json.dumps(status)}")
+            lines.append(f"review_status = {_toml_str(status)}")
             if cited.review_comment is not None:
-                lines.append(f"review_comment = {json.dumps(cited.review_comment)}")
+                lines.append(f"review_comment = {_toml_str(cited.review_comment)}")
             if cited.improve_rounds:
                 lines.append(f"improve_rounds = {cited.improve_rounds}")
     return "\n".join(lines) + "\n"
@@ -1279,7 +1303,7 @@ def _atomic_write(root: Path, path: Path, data: bytes) -> None:
 
 
 def _is_https(url: str) -> bool:
-    if any(char.isspace() for char in url):
+    if any(char.isspace() for char in url) or _has_surrogate(url):
         return False
     try:
         parts = urlsplit(url)
