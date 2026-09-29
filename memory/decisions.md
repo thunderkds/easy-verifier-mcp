@@ -893,3 +893,17 @@ it clearly wins. No engine change either way.
 ### 2026-09-28 — T035 sign-off (user)
 
 - User signed off the new per-dimension cited rules ('Merge + fix tasks') after seeing the 4-repo before/after table and three caveats (4/7 contributors, security noise, test-strategy presence-driven). Follow-ups T051 (redaction false positives, P0/High) and T052 (AC tracing + churn evidence, P1) added.
+
+### 2026-09-29 — T038 reject semantics (user)
+
+- **Problem**: AC3 says "reject → entry deleted, its rules abstain", but a missing field already scores with generic patterns (FR-045), so deleting the entry alone never abstains. An abstention driven only by local state would also break replay parity (DDR-0005).
+- **Decision: Option A, remembered rejection.** Reject removes the value and writes a `[[rejected.<field>]]` record in the local `<name>.toml`. While that record exists and no other curated/local data covers the field, the metrics that use it abstain with a reason naming `<lang>.<field>` as rejected by the user. The reference gate re-asks, and a new entry clears the record. The record is embedded in score `registry_entries` and accepted on replay as a `review_status: "rejected"` item, so replay stays byte-equal.
+- **Rejected alternatives**: B, abstain only on the call that carries the reject (the abstention disappears one call later); C, delete only (contradicts AC3/SC2).
+- **Also accepted**: entry id = `<name>.<field>.<12-hex sha256(value+citation_url+cwe)>`. T036 entries with no status load as `pending`. User-supplied entries keep the `user-supplied` tag on approval. Registry input accepts the `agent-researched (user-approved)` tag for replay. Improve keeps the entry pending, and at `improve_rounds>=2` the agent asks the user directly. An identical resubmit keeps its status. An unknown review id is ignored with a note in `registry_notes`. Scope widened to judge.py, metric_tables.py, score.py, adapters/mcp_server.py, and possibly synthesis.py.
+
+### 2026-09-29 — T038/T039 Stage 4 decisions (user)
+
+- **T039: dimensions made only of documentation rules are never offered to the agent evaluate gate** (E3, "never scored"). A `documentation_only` abstention stays an abstention. A supplied `gate_evaluations` entry for such a dimension is refused instead of producing a number.
+- **T039: the agent's area labels for the 17 existing rules are accepted.** T040 may revise them. The Requirement Fidelity Gate was signed off on this basis. `lockfile_missing` → "Dependencies, vulns, licenses, obsolescence", not appsec.
+- **T038 P3: `improve_rounds` is capped at 100.** Uncapped, the 101st improve would write a file that fails the load-time bound, the same local-layer-loss class as T038's Stage 4 P1 (surrogate-pair TOML escapes).
+- **Merge order: T038 first, then T039** rebased on it. Both edit `score.py`, `roles.py` and `judge.py`. Re-probe cross-cutting properties after the conflict resolution.

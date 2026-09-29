@@ -602,3 +602,11 @@ duplicate `**Txxx**` rows before moving a task.
 - Reference gate token cost on real repos: ~1.3 KB for one framework (4 fields), 0 for curated-only repos.
 - Colocated test names (*.spec.ts, *_test.go, *Test.java...) now beat source dirs via registry colocated_test_name_patterns; Python test_*.py keeps directory-first.
 - Merged after Wave 10 core: 1342 passed, 2 skipped.
+
+### 2026-09-29 — CLI `score` hangs on an open stdin pipe (T039)
+
+The CLI `score` waits for piped findings on stdin. Inside a Bash tool call stdin is an open pipe that never closes, so the command blocks forever. With `</dev/null` it finishes in about 1s. Always redirect stdin when probing the CLI from an agent. The same applies to pytest runs that reach the CLI.
+
+### 2026-09-29 — `json.dumps` is not a TOML string encoder (T038)
+
+With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as surrogate pairs (`😀`), which TOML rejects. One emoji in a user comment made a whole local-registry file unloadable. Use `ensure_ascii=False`, escape DEL, and refuse lone surrogates at validation.
