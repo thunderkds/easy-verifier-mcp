@@ -65,6 +65,7 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T039** — Shared documentation-present rule, overall over N dimensions, area labels | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (doc-only dimensions never scored nor gated (user); agent area labels accepted, T040 may revise; Stage 4 P0/P1 none; rebased on T038, 1415 passed; CLI + report + T038 cross-probe verify pass)
 - [x] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (reject = remembered rejection record, Option A; Stage 4 P1 invalid-TOML write fixed + P3 round cap fixed; 1389 passed; MCP review gate + CLI replay byte-equal verify pass)
 - [x] **T054** — Bugfix: reference gate asks for colocated_test_name_patterns (T037 × T052 merge regression) | backend-developer | C1 | Risk: Med | P0 | ✅ Done 2026-09-28 (merge regression fixed; 1342 passed; gate verify pass)
 - [x] **T052** — Make requirement-fidelity and blast-radius rate: AC tracing + churn-hotspot evidence (T035 sign-off follow-up) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-28 (Stage 4 P1s fixed; 1236 passed; kitchd CLI verify pass)
@@ -127,7 +128,6 @@ _(empty)_
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | ~~T016~~ | **Docker block CLOSED 2026-09-16** — the daemon is reachable, the image builds, and the container passes every hardening check on a live run. The task stays open only for two **script-side** defects the first complete run exposed (stale tool count; a harness that drops the final response, so its last assertion could never have passed) — in progress on `fix/t016-verifier`. | — |
 | ~~T017~~ | **CLOSED 2026-09-16.** The user chose byte-equality after a declared normalization (**DDR-0005**); FR-022 and the KPI row were contradicting each other, and both are now updated. **T017 is unblocked.** | — |
-| T039 | **Stage 4/5 done pre-rebase; waiting to rebase onto merged T038.** Code review P0/P1 none, security clean, verify pass at `87e60c6` (evidence `c7c314a`). Both branches edit `score.py`/`roles.py`/`judge.py`, so after the rebase: full suite + re-verify + re-probe cross-cutting properties, then Done + merge. | T038 merge |
 | T025 | **Docker Hub namespace not chosen.** Guide uses `<NS>` placeholder; user will supply it (2026-09-24). No spawn until it is filled into `tasks/TASK_GUIDE_T025.md` and the Fidelity Gate is signed. T024 dependency satisfied (committed `edbf482`). | user |
 
 > Both are gates at pickup time, not blockers on planning — the guides are written and the tasks are
