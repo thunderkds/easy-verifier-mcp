@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t055_git_evidence_areas.py` (52 tests). AC1: removed public function counted at `src/shop/api.py:5-5`, dropped column counted, rename vs remove, new vs edited migration. AC2: project/worktree scope, unresolved changes scope, clipped diff and budget-dropped quotes all abstain with a reason. AC3: 2 competing docs give 2, code commits never touching docs give 0.0, no git / shallow clone abstain, merges skipped, templates excluded (user). AC4: git only through `run_git_text`, pre-T055 snapshot byte-identical, key-list pin. AC5: `test_signed_off_weights_thresholds_and_areas`. DDR-0002: `test_secret_bearing_files_in_the_diff_are_excluded_not_parsed` + control twin. Implementer red-first; 13 predicates sabotage-checked. Changed pins with reasons: T035 APPROVED table and AC-trace abstain test; README rating table; T037 field-count comment corrected (14) + new pin; T007/T014 serialize via `to_json_dict` (snapshot file unchanged); test_metrics lists the 4 new metrics |
+| Verification command run | ☑ pass | Supervisor 2026-09-29 at `98eacc6`+wiring (`0b57853`): `1505 passed, 2 skipped` (exit 0), ruff exit 0. Implementer after the DDR-0002 fix `f0a16f6`: `1506 passed, 2 skipped` (exit 0), ruff exit 0 |
+| Negative cases hold | ☑ pass | No diff (project/worktree scope) abstains with the scope named, never 0. A clipped diff and budget-dropped quotes abstain. No git or a shallow clone abstains for #27. Secret-bearing files in the diff are named only, never parsed or quoted. Template files are not requirements sources. `COVERAGE_FLOORS` and budgets are unchanged |
+| verify | ☑ pass | Supervisor, real CLI, 2026-09-29T11:06Z, fixture repo with 2 commits. `score --scope changes --ref HEAD~1..HEAD`: public_symbols_removed 1 unmet ("src/shop/api.py:5-5 cancel_order removed"); destructive_migration_ops 1 unmet ("migrations/0002_drop.sql:1-1 DROP COLUMN in a new migration file"); both area "Backward compatibility & upgrade safety"; ".env" named as secret-bearing and excluded; the fake secret value is absent from the output. `score --scope project`: #5 abstains ("project scope, which carries no diff"); requirements_docs_count 2 (PRD.md, REQUIREMENT.md); code_commits_with_docs_share 0.5 (1 of 2) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed the `e0a6d83..HEAD` src diff: models (additive `compat`/`doc_history` + `to_json_dict`, both adapters switched, so parity is kept), pipeline/context plumbing, blast_radius/requirement_fidelity collectors, metrics, registry field, judge wiring. P0/P1: none. P2 (DDR-0002): the #5 diff parser read secret-bearing files; fixed in `f0a16f6`. Manual security review: git only through the hardened runner, excerpts redacted at the evidence layer, `DiffItem.detail` redacted, paths redacted. Supervisor verified the reference-gate count with `required_fields()`: 10 → 13 (T040) → 14 (T055). ISO 26514 URL confirmed by search index only (iso.org 403). Migration knowledge in the engine accepted (user), follow-up T057 |
+| Full smoke suite still green (no regression) | ☑ pass | 1506 passed, 2 skipped, exit 0 |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -91,5 +91,4 @@ against SemVer-cited #5 rules, each cited at its diff line. It also rates the tw
 requirements docs and the code-only commits against 26514-cited #27 rules. Before this change
 blast-radius abstained and neither area existed.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T055x.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-09-29T11:06:54Z, independent real-CLI runs at the changes and project scopes on a fresh fixture (above), recorded in `memory/event-trace/T055.jsonl`.
