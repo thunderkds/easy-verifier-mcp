@@ -16,6 +16,7 @@
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
 - [ ] **T056** — Area rule groups needing new evidence: #8 cookies/auth/offboarding (ASVS 5.0.0) + #17 strict type config — split from T040 (HITL: role vs excerpts, auth gating) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
 - [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
