@@ -152,3 +152,12 @@ source_tag = "curated"
 value = ["mem::transmute"]
 citation_url = "https://doc.rust-lang.org/std/mem/fn.transmute.html"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["pub fn", "pub async fn", "pub const fn", "pub unsafe fn", "pub struct", "pub enum", "pub trait", "pub type", "pub const", "pub static", "pub mod", "pub union"]
+citation_url = "https://doc.rust-lang.org/reference/visibility-and-privacy.html"
+source_tag = "curated"

@@ -233,3 +233,12 @@ source_tag = "curated"
 value = [": Any", "-> Any", "typing.Any"]
 citation_url = "https://docs.python.org/3/library/typing.html#the-any-type"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["def <a-zA-Z>", "async def <a-zA-Z>", "class <a-zA-Z>"]
+citation_url = "https://peps.python.org/pep-0008/#public-and-internal-interfaces"
+source_tag = "curated"

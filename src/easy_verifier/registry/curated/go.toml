@@ -167,3 +167,12 @@ source_tag = "curated"
 value = ["unsafe.Pointer"]
 citation_url = "https://pkg.go.dev/unsafe#Pointer"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["func <A-Z>", "func ( * * ) <A-Z>", "type <A-Z>"]
+citation_url = "https://go.dev/ref/spec#Exported_identifiers"
+source_tag = "curated"

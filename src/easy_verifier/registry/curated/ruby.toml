@@ -202,3 +202,12 @@ source_tag = "curated"
 value = ["typed : false", "typed : ignore"]
 citation_url = "https://sorbet.org/docs/static"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["def self.", "def", "class", "module"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/modules_and_classes_rdoc.html#label-Visibility"
+source_tag = "curated"

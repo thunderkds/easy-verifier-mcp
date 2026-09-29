@@ -56,6 +56,7 @@ def metric_tables(
     syntax: dict[str, LanguageSyntax] = {}
     sinks: dict[str, tuple[SinkPattern, ...]] = {}
     area: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _AREA_FIELDS}
+    public: dict[str, re.Pattern[str]] = {}
     for entry in entries:
         extensions = _values(entry, "source_extensions")
         compiled = _syntax(entry)
@@ -65,6 +66,9 @@ def metric_tables(
             for name in _AREA_FIELDS:
                 if _values(entry, name):
                     area[name].setdefault(extension, _guarded(_values(entry, name)))
+        declarations = _values(entry, "public_declarations")
+        for extension in extensions if declarations else ():
+            public.setdefault(extension, _line_start(declarations))
         suffixes.update(dict.fromkeys(extensions))
         for extension in extensions:
             candidates.setdefault(extension, {}).update(
@@ -107,6 +111,7 @@ def metric_tables(
         type_stub_patterns=tuple(
             re.compile(translate(glob)) for glob in _union(entries, "type_stub_names")
         ),
+        public_declarations=public,
     )
 
 
@@ -123,6 +128,13 @@ def _guarded(tokens: list[str]) -> re.Pattern[str]:
             for token in ordered
         )
     )
+
+
+def _line_start(tokens: list[str]) -> re.Pattern[str]:
+    """One alternation of ``tokens``, longest first, anchored at the start of
+    a line after its indentation (``public_declarations``, T055)."""
+    ordered = sorted(dict.fromkeys(tokens), key=len, reverse=True)
+    return re.compile(r"^\s*(?:" + "|".join(token_regex(t) for t in ordered) + ")")
 
 
 _STRUCTURE_FIELDS = (
@@ -209,14 +221,16 @@ _TEST_AREA = ("tests_without_assertions_share", "skipped_test_share")
 _NETWORK = ("network_calls_in_unit_tests_observed",)
 _TYPE_ESCAPES = ("type_escapes_per_kloc",)
 _TODO = ("todo_without_ticket_share",)
+_COMPAT = ("public_symbols_removed",)
+_CO_CHANGE = ("code_commits_with_docs_share",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
-    + _TYPE_ESCAPES + _TODO,
+    + _TYPE_ESCAPES + _TODO + _COMPAT + _CO_CHANGE,
     "test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE + _TEST_AREA
-    + _NETWORK,
+    + _NETWORK + _COMPAT + _CO_CHANGE,
     "colocated_test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE
-    + _TEST_AREA + _NETWORK,
+    + _TEST_AREA + _NETWORK + _COMPAT + _CO_CHANGE,
     "test_candidates": _TEST_MATCH[1:3],
     "test_declarations": _ASSERTIONS[:1] + _TEST_AREA,
     "assertions": _ASSERTIONS + _TEST_AREA[:1],
@@ -233,6 +247,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "network_calls": _NETWORK,
     "type_escapes": _TYPE_ESCAPES,
     "type_stub_names": _TYPE_ESCAPES,
+    "public_declarations": _COMPAT,
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -431,6 +446,11 @@ def token_regex(token: str) -> str:
         elif char == " ":
             before = token[index - 1] if index else ""
             after = token[index + 1] if index + 1 < len(token) else ""
+            if after == "<" and not token.startswith(_INTERP, index + 1):
+                # A character class holds identifier characters only (_CLASS),
+                # so it is an identifier character here (T055: "def <a-z>"
+                # must not match "default").
+                after = "a" if _CLASS.match(token, index + 1) else after
             parts.append(r"\s+" if _word(before) and _word(after) else r"\s*")
         else:
             parts.append(re.escape(char))

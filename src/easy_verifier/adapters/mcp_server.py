@@ -15,6 +15,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from ..core.models import to_json_dict
 from ..core.pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE, run_dimension
 from ..core.report import write_report as core_write_report
 from ..core.score import score_repository
@@ -46,7 +47,7 @@ def _dimension_handler(descriptor):
             ref=ref,
             task_id=task_id,
         )
-        return dataclasses.asdict(pack)
+        return to_json_dict(pack)
 
     return handle
 
@@ -81,7 +82,7 @@ def gather_combined(
     task_id: str | None = None,
 ) -> dict[str, Any]:
     """Delegate a multi-dimension request to the shared synthesis core."""
-    return dataclasses.asdict(
+    return to_json_dict(
         combined_pack(
             dimensions,
             repo_path=repo,

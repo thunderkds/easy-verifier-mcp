@@ -14,6 +14,11 @@ as a whole word in a code file. Whether
 that file is code or a test is decided by the metric module's shared path
 classification over the registry tables (``core/metric_tables.py``). Standalone
 mode extracts nothing: there, criteria would have to be inferred.
+
+Every mode records documentation source-of-truth facts (T055, area #27): the
+files filling the requirements-doc role, and how many of the recent local
+commits that changed code also changed a document (read-only git, bounded by
+:data:`CO_CHANGE_WINDOW`).
 """
 
 from __future__ import annotations
@@ -22,12 +27,14 @@ import re
 from collections.abc import Iterator
 from pathlib import PurePosixPath
 
+from ..core.git import run_git_text
 from ..core.metric_tables import curated_metric_tables
 from ..core.metrics import code_kind, trace_key_pattern
 from ..core.models import (
     AcceptanceCriterion,
     DimensionContext,
     DimensionDescriptor,
+    DocHistory,
     Excerpt,
     SourceRole,
     TraceSearch,
@@ -105,6 +112,8 @@ _Found = tuple[str, tuple[str, ...], Excerpt]
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """Yield AC trace evidence (kit-aware), then bounded requirement excerpts."""
+    if context.resolved_scope is not None or context.scope == "project":
+        _doc_history(context)
     if context.mode != "standalone":
         yield from _trace_evidence(context)
     yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
@@ -310,6 +319,135 @@ def _line_excerpt(path: str, number: int, line: str, hit: int = 0) -> Excerpt:
         clipped = stripped[start : start + MAX_QUOTED_LINE_CHARS]
         stripped = ("…" if start else "") + clipped + _LINE_CLIP
     return Excerpt(path=path, start_line=number, end_line=number, text=stripped)
+
+
+CO_CHANGE_WINDOW = 200
+"""Most recent non-merge local commits read for #27 co-change (T055)."""
+
+MAX_DOCS_CITED = 20
+"""Requirements documents, and co-changed documents, read and cited (#27)."""
+
+DOC_SUFFIXES = (".md", ".rst", ".adoc", ".txt")
+DOC_DIRS = frozenset({"doc", "docs"})
+_COMMIT_MARK = "\x1f"
+
+CO_CHANGE_METHOD = (
+    "Documentation co-change (#27): of the last {window} non-merge local "
+    "commits, a commit changes code when it touches a file the registry "
+    "classifies as source or test code, and changes documentation when it "
+    "touches a {suffixes} file or a file under a doc/ or docs/ directory."
+)
+
+
+def _doc_history(context: DimensionContext) -> None:
+    """Record the #27 facts once (the budget calls ``collect`` per tier pass).
+
+    Every read happens here, before the first yield, so ``files_read`` holds
+    each cited document whatever the byte budget later keeps.
+    """
+    if getattr(context, "doc_history", None) is not None:
+        return
+    docs = context.role_files.get("requirements-doc", ())
+    listed = tuple(
+        redact(path)
+        for path in docs[:MAX_DOCS_CITED]
+        if context.read_source(path) is not None
+    )
+    repo = context.repo_path
+    unavailable = _history_unavailable(repo)
+    if unavailable is not None:
+        context.doc_history = DocHistory(
+            requirements_docs=listed,
+            requirements_docs_total=len(docs),
+            window=CO_CHANGE_WINDOW,
+            history_unavailable=unavailable,
+        )
+        return
+
+    tables = curated_metric_tables()
+    scanned = code = with_docs = 0
+    co_changed: dict[str, None] = {}
+    for names in _commit_file_sets(repo):
+        scanned += 1
+        if not any(code_kind(name, tables) for name in names):
+            continue
+        code += 1
+        touched = sorted(name for name in names if _is_doc(name))
+        if touched:
+            with_docs += 1
+            co_changed.update(dict.fromkeys(touched))
+    cited = []
+    for path in co_changed:
+        if len(cited) >= MAX_DOCS_CITED:
+            break
+        if context.read_source(path) is not None:
+            cited.append(redact(path))
+    context.doc_history = DocHistory(
+        requirements_docs=listed,
+        requirements_docs_total=len(docs),
+        commits_scanned=scanned,
+        window=CO_CHANGE_WINDOW,
+        code_commits=code,
+        code_commits_with_docs=with_docs,
+        docs_cited=tuple(cited),
+    )
+    message = CO_CHANGE_METHOD.format(
+        window=CO_CHANGE_WINDOW, suffixes="/".join(DOC_SUFFIXES)
+    )
+    if message not in context.warnings:
+        context.warnings = (*context.warnings, message)
+
+
+def _is_doc(path: str) -> bool:
+    pure = PurePosixPath(path)
+    return pure.suffix.lower() in DOC_SUFFIXES or any(
+        part.lower() in DOC_DIRS for part in pure.parts[:-1]
+    )
+
+
+def _history_unavailable(repo: object) -> str | None:
+    """Why no co-change window can be read here, or ``None``."""
+    ok, out, _ = run_git_text(repo, ["rev-parse", "--is-shallow-repository"])
+    if not ok:
+        return (
+            "not examined: the target is not a git repository, so there is no "
+            "local history to read documentation co-change from"
+        )
+    if out.strip() == "true":
+        return (
+            "not examined: this is a shallow clone, so local history is partial "
+            "and a co-change share over it would describe only the commits "
+            "fetched"
+        )
+    return None
+
+
+def _commit_file_sets(repo: object) -> Iterator[frozenset[str]]:
+    """The file set of each of the last :data:`CO_CHANGE_WINDOW` non-merge
+    commits (a merge repeats its parents' changes, so it is not counted)."""
+    ok, out, _ = run_git_text(
+        repo,
+        [
+            "log",
+            "--no-merges",
+            "--name-only",
+            f"--format={_COMMIT_MARK}%H",
+            "-n",
+            str(CO_CHANGE_WINDOW),
+        ],
+    )
+    if not ok:
+        return
+    names: set[str] | None = None
+    for line in out.splitlines():
+        if line.startswith(_COMMIT_MARK):
+            if names is not None:
+                yield frozenset(names)
+            names = set()
+        elif line and names is not None:
+            names.add(line)
+    if names is not None:
+        yield frozenset(names)
 
 
 def _safe_ref(excerpt: Excerpt) -> str:

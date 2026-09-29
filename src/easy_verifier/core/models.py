@@ -15,7 +15,7 @@ not the quality of the target repository.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
 
@@ -238,6 +238,16 @@ class EvidencePack:
     were read, which of them are repository churn hotspots, and whether the
     reference sweep hit its ceiling. ``None`` for every other dimension."""
 
+    compat: CompatFacts | None = field(default=None)
+    """Backward-compatibility facts read from the diff of a ``changes`` scope
+    (T055, area #5). ``None`` for every other dimension and scope, and then
+    left out of the serialized pack (:func:`to_json_dict`)."""
+
+    doc_history: DocHistory | None = field(default=None)
+    """Documentation source-of-truth facts (T055, area #27): the requirements
+    documents and the code/doc co-change of recent local history. ``None`` for
+    every other dimension, and then left out of the serialized pack."""
+
 
 @dataclass(frozen=True)
 class AcceptanceCriterion:
@@ -305,6 +315,96 @@ class ReachFacts:
 
     sweep_capped: bool = False
     """The reference sweep stopped at its file ceiling before finishing."""
+
+
+@dataclass(frozen=True)
+class DiffItem:
+    """One #5 observation in a change's diff (T055): the pack excerpt quoting
+    the line (``ref``) and what was seen there."""
+
+    ref: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class CompatFacts:
+    """#5 facts of one blast-radius pack at ``changes`` scope (T055).
+
+    Counted over the whole diff; only the first items are listed, and each
+    listed item is also a pack excerpt, so a metric can check the byte budget
+    kept every one before it reports a count.
+    """
+
+    removed_symbols: tuple[DiffItem, ...] = ()
+    """Public declarations removed or renamed (old-side line of the diff)."""
+
+    removed_symbols_total: int = 0
+    destructive_ops: tuple[DiffItem, ...] = ()
+    """Destructive operations added to migration files (new-side line)."""
+
+    destructive_ops_total: int = 0
+    examined: tuple[str, ...] = ()
+    """Changed files whose diff was read for #5, redacted like ``files_read``."""
+
+    renamed_code_files: tuple[str, ...] = ()
+    """Code files git reports as renamed; not counted (see the metric)."""
+
+    secret_excluded: tuple[str, ...] = ()
+    """Secret-bearing files in the diff (DDR-0002): existence only; their
+    hunks were never parsed or quoted."""
+
+    unavailable: str | None = None
+    """Why the change carries no diff to read, else ``None``."""
+
+    incomplete: str | None = None
+    """Why the diff could not be read completely (clipped, a language without
+    public-declaration tokens), else ``None``."""
+
+
+@dataclass(frozen=True)
+class DocHistory:
+    """#27 facts of one requirement-fidelity pack (T055)."""
+
+    requirements_docs: tuple[str, ...] = ()
+    """Files filling the requirements-doc role that this pack read (listed)."""
+
+    requirements_docs_total: int = 0
+    commits_scanned: int = 0
+    """Non-merge local commits read, at most the window."""
+
+    window: int = 0
+    code_commits: int = 0
+    """Scanned commits that changed a code file."""
+
+    code_commits_with_docs: int = 0
+    """Code-changing commits that also changed a document."""
+
+    docs_cited: tuple[str, ...] = ()
+    """Documents co-changed with code in the window that this pack read."""
+
+    history_unavailable: str | None = None
+    """Why no co-change window was read (no git, shallow clone), else ``None``."""
+
+
+_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history"})
+"""Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
+of the serialized pack while unset, so every pack that does not use them
+serializes byte-for-byte as before."""
+
+
+def _json_fields(items: list[tuple[str, object]]) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in items
+        if not (key in _OMITTED_WHEN_ABSENT and value is None)
+    }
+
+
+def to_json_dict(value: object) -> dict:
+    """``dataclasses.asdict`` for anything carrying packs, as the adapters emit
+    it: identical except that an unset :data:`_OMITTED_WHEN_ABSENT` field is
+    left out rather than written as ``null``."""
+    return asdict(value, dict_factory=_json_fields)
 
 
 @dataclass(frozen=True)

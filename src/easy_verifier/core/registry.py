@@ -74,6 +74,15 @@ The area fields (T040, FR-051) are read by ``core/metric_tables.py``:
 * ``type_stub_names`` — base-name globs of generated type stubs (``*.d.ts``),
   never scanned for type escapes. Optional.
 
+The compatibility field (T055, area #5) is read by the ``blast-radius``
+dimension through ``core/metric_tables.py``:
+
+* ``public_declarations`` — code tokens matched at the start of a line (after
+  indentation) that declare a symbol visible outside its module, e.g.
+  ``"pub fn"`` or ``"def <a-zA-Z>"``. The declared name is the identifier the
+  token ends inside, else the next identifier after it; a token ending in
+  ``(`` names the last identifier it matched.
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -190,6 +199,7 @@ _TOKEN_FIELDS = frozenset(
         "skip_markers",
         "network_calls",
         "type_escapes",
+        "public_declarations",
     }
 )
 
@@ -213,6 +223,7 @@ ENTRY_FIELDS = (
     "network_calls",
     "type_escapes",
     "type_stub_names",
+    "public_declarations",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

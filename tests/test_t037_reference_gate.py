@@ -352,7 +352,8 @@ def test_two_frameworks_fit_with_duplicate_fields_and_languages_first():
     addable = [f for f in required if f in gate.FRAMEWORK_FIELDS]
     requests = gate.reference_requests(stack, _registry())["requests"]
     n = len(required)
-    # T040 raised a language's required fields to 16, so with two frameworks
+    # Required fields are derived (13 after T040, 14 after T055's
+    # public_declarations), so with two frameworks
     # the cap of 20 now truncates the framework duplicates (still in order).
     assert len(requests) == min(n + 2 * len(addable), 20)
     assert [i.get("language") for i in requests[:n]] == ["zz-unknown"] * n
