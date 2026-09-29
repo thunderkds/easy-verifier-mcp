@@ -58,13 +58,15 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T055** — Area rule groups needing git evidence: #5 backward compat (blast-radius diff) + #27 doc source of truth (co-change) — split from T040 | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-09-29 (worktree ../easy-verifier-mcp-T055)
+
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T055** — Area rule groups needing git evidence: #5 backward compat + #27 doc source of truth | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (4 metrics + rules, user-signed weights; templates excluded from requirements-doc role; Stage 4 P2 DDR-0002 secret-file diff exclusion fixed; 1506 passed; changes + project scope CLI verify pass; follow-up T057)
 - [x] **T040** — Area rule groups in existing dimensions (#16, #17 density, #31; #5/#27 → T055, #8/#17 strict → T056) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (5 metrics + rules, user-signed weights; Stage 4 P1 cut-test judged + P2 line fixed; 1450 passed; six-area fixture verify pass)
 - [x] **T039** — Shared documentation-present rule, overall over N dimensions, area labels | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (doc-only dimensions never scored nor gated (user); agent area labels accepted, T040 may revise; Stage 4 P0/P1 none; rebased on T038, 1415 passed; CLI + report + T038 cross-probe verify pass)
 - [x] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (reject = remembered rejection record, Option A; Stage 4 P1 invalid-TOML write fixed + P3 round cap fixed; 1389 passed; MCP review gate + CLI replay byte-equal verify pass)
