@@ -16,16 +16,24 @@ count as source without any language-specific test rule.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from collections.abc import Iterable, Mapping
 from fnmatch import translate
 from pathlib import PurePosixPath
 
 from .judge import Citation
-from .metrics import LanguageTables, SinkPattern
+from .metrics import LanguageTables, Metric, MetricAbstention, MetricSet, SinkPattern
 from .models import CombinedPack
-from .registry import AGENT_RESEARCHED, CURATED, LOCAL_TAGS, Registry, RegistryEntry
-from .roles import _config_matcher, _registry
+from .registry import (
+    AGENT_RESEARCHED,
+    CURATED,
+    LOCAL_TAGS,
+    Registry,
+    RegistryEntry,
+    _manifest_matches,
+)
+from .roles import GENERIC_PATTERNS, _config_matcher, _registry
 from .tokens import INTERPOLATION_MARK, LanguageSyntax, language_syntax
 
 _NEVER = re.compile(r"(?!)")
@@ -276,6 +284,83 @@ def registry_sources(
                 for metric, tags in sorted(used.items())
             }
     return result
+
+
+def rejected_abstentions(
+    metrics: MetricSet, packs: CombinedPack, registry: Registry
+) -> MetricSet:
+    """``metrics`` with every metric fed by a rejected registry field made
+    to abstain (T038, FR-047: "reject -> its rules abstain").
+
+    Applies per dimension, only where the rejected entry's language is
+    present in that pack (a file read or quoted with one of its source
+    extensions or manifests) and only while the field has no other data —
+    curated, other local values, or for a role its generic patterns. The
+    rejection records replay through ``registry_entries``, so this is
+    reproducible on any machine (DDR-0005).
+    """
+    reasons: dict[tuple[str, str], str] = {}
+    for slot in packs.slots:
+        if slot.pack is None:
+            continue
+        files = set(slot.pack.files_read) | {e.path for e in slot.pack.excerpts}
+        suffixes = {PurePosixPath(path).suffix for path in files}
+        names = {PurePosixPath(path).name for path in files}
+        for name, entry in sorted(registry.languages.items()):
+            if not entry.rejected or not _present(entry, suffixes, names):
+                continue
+            for field in sorted(entry.rejected):
+                if _field_has_data(entry, field):
+                    continue
+                role = field.removeprefix("roles.")
+                fed = (
+                    ROLE_METRICS.get(role, ())
+                    if role != field
+                    else FIELD_METRICS.get(field, ())
+                )
+                reason = (
+                    f"registry field {name}.{field} was rejected by the user and "
+                    "no other data exists for it; the metric abstains until a "
+                    "replacement is researched (reference gate)"
+                )
+                for metric in fed:
+                    reasons.setdefault((slot.dimension, metric), reason)
+    if not reasons:
+        return metrics
+    return dataclasses.replace(
+        metrics,
+        metrics=tuple(
+            _abstained(item, reasons[(item.dimension, item.name)])
+            if (item.dimension, item.name) in reasons and not item.abstained
+            else item
+            for item in metrics
+        ),
+    )
+
+
+def _present(entry: RegistryEntry, suffixes: set[str], names: set[str]) -> bool:
+    if set(_values(entry, "source_extensions")) & suffixes:
+        return True
+    manifests = [p for cited in entry.manifests for p in cited.value]
+    return any(_manifest_matches(pattern, names) for pattern in manifests)
+
+
+def _field_has_data(entry: RegistryEntry, field: str) -> bool:
+    if field == "manifests":
+        return bool(entry.manifests)
+    if field.startswith("roles."):
+        role = field.removeprefix("roles.")
+        return bool(entry.roles.get(role) or GENERIC_PATTERNS.get(role))
+    return bool(entry.fields.get(field))
+
+
+def _abstained(metric: Metric, reason: str) -> Metric:
+    return dataclasses.replace(
+        metric,
+        outcome=MetricAbstention(reason=reason),
+        computed_from=(),
+        derivation="no value: " + reason,
+    )
 
 
 def token_regex(token: str) -> str:

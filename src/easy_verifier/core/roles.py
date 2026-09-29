@@ -37,10 +37,14 @@ from .findings import ValidationError
 from .models import SourceRole
 from .redact import redact
 from .registry import (
+    REJECTED,
     Registry,
+    apply_reviews,
     layered_registry,
     local_write_problem,
     parse_local_entries,
+    parse_reviews,
+    review_problems,
     save_local_entries,
     sot_root,
 )
@@ -350,22 +354,23 @@ def validate_agent_input(
     Accepts a parsed object or its JSON text. ``gate_evaluations`` is only
     shape-checked here: whether each one is valid depends on this call's
     ratings and packs, so ``gate.apply_gate_evaluations`` validates it (T028).
-    ``registry_entries`` is fully validated here (T036) and saved by
-    :func:`apply_registry_entries`.
+    ``registry_entries`` and ``reviews`` (T038) are fully validated here and
+    applied by :func:`apply_registry_entries`.
     """
     document = parse_agent_input(document)
 
     root = _resolved_repo(repo)
     errors: list[str] = []
     for key in document:
-        if key not in ("picks", "gate_evaluations", "registry_entries"):
+        if key not in ("picks", "gate_evaluations", "registry_entries", "reviews"):
             errors.append(
                 f"{redact(str(key))}: unknown key; only picks, "
-                "gate_evaluations and registry_entries are accepted"
+                "gate_evaluations, registry_entries and reviews are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
     )
+    errors.extend(parse_reviews(document.get("reviews"))[1])
     if not isinstance(document.get("gate_evaluations", {}), dict):
         errors.append(
             "gate_evaluations: must be an object mapping a dimension to an evaluation"
@@ -399,20 +404,33 @@ def validate_agent_input(
 
 
 def apply_registry_entries(document: Mapping, repo: str | Path) -> None:
-    """Save a validated document's ``registry_entries`` to the local layer and
-    reload the registry, so this call already scores with them (T036).
+    """Apply a validated document's ``reviews`` (T038), then save its
+    ``registry_entries`` (T036), and reload the registry, so this call
+    already scores with both. Reviews go first: a replacement sent with an
+    ``improve`` or ``reject`` answer then supersedes the answered item.
 
     Called once per agent-input call, before any dimension runs. A layer that
     cannot be written is not an error: scoring continues on the data already
-    on this machine and :func:`registry_notes` says research was not saved.
+    on this machine and :func:`registry_notes` says what was not saved.
     """
     entries, _ = parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)
-    if entries and local_write_problem(sot_root(), Path(repo)) is None:
+    answers, _ = parse_reviews(document.get("reviews"))
+    if (entries or answers) and local_write_problem(sot_root(), Path(repo)) is None:
         try:
+            apply_reviews(answers, sot_root(), known_roles=GENERIC_PATTERNS)
             save_local_entries(entries, sot_root(), known_roles=GENERIC_PATTERNS)
         except OSError:
-            pass  # reported by registry_notes: the entries are not in the registry
+            pass  # reported by registry_notes: not in the registry
     _registry.cache_clear()
+
+
+def review_notes(document: Mapping | None) -> tuple[str, ...]:
+    """Answers in ``document`` that will be ignored (unknown or already
+    reviewed ids). Call before :func:`apply_registry_entries` changes the
+    layer; the result joins :func:`registry_notes`."""
+    raw = document.get("reviews") if document is not None else None
+    answers, _ = parse_reviews(raw)
+    return tuple(review_problems(answers, sot_root(), GENERIC_PATTERNS))
 
 
 def registry_notes(document: Mapping | None, repo: str | Path) -> tuple[str, ...]:
@@ -424,7 +442,30 @@ def registry_notes(document: Mapping | None, repo: str | Path) -> tuple[str, ...
     notes = list(registry.warnings)
     raw = document.get("registry_entries") if document is not None else None
     entries, _ = parse_local_entries(raw, GENERIC_PATTERNS)
-    unsaved = [entry for entry in entries if not _in_registry(registry, entry)]
+    refused = [
+        entry
+        for entry in entries
+        if entry.cited.review_status != REJECTED
+        and _in_registry(registry, entry, rejected=True)
+    ]
+    for entry in refused:
+        notes.append(
+            f"registry entry {entry.name}.{entry.field} = "
+            f"{', '.join(entry.cited.value)} was rejected by the user earlier; "
+            "it is not used (research a different value)"
+        )
+    unsaved = [
+        entry
+        for entry in entries
+        if entry not in refused and not _in_registry(registry, entry)
+    ]
+    answers = parse_reviews(document.get("reviews") if document else None)[0]
+    write_problem = local_write_problem(sot_root(), Path(repo))
+    if answers and write_problem:
+        notes.append(
+            f"reviews cannot be saved: {len(answers)} answer(s) not applied "
+            f"({write_problem}); the entries stay pending"
+        )
     if unsaved:
         reason = local_write_problem(sot_root(), Path(repo)) or "the write was refused"
         notes.append(
@@ -435,11 +476,16 @@ def registry_notes(document: Mapping | None, repo: str | Path) -> tuple[str, ...
     return tuple(notes)
 
 
-def _in_registry(registry: Registry, entry) -> bool:
+def _in_registry(registry: Registry, entry, *, rejected: bool = False) -> bool:
+    """Whether ``entry``'s values are in ``registry``: among the live data,
+    or with ``rejected`` among the rejection records (T038). A replayed
+    rejection record is looked up among the records."""
     found = registry.languages.get(entry.name) or registry.frameworks.get(entry.name)
     if found is None:
         return False
-    if entry.field == "manifests":
+    if rejected or entry.cited.review_status == REJECTED:
+        cited_values = found.rejected.get(entry.field, ())
+    elif entry.field == "manifests":
         cited_values = found.manifests
     elif entry.field.startswith("roles."):
         cited_values = found.roles.get(entry.field.removeprefix("roles."), ())
@@ -745,6 +791,7 @@ __all__ = [
     "RoleInputError",
     "RoleResolution",
     "apply_registry_entries",
+    "review_notes",
     "registry_notes",
     "load_repo_config",
     "resolution_warnings",
