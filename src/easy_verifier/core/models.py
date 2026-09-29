@@ -349,6 +349,10 @@ class CompatFacts:
     renamed_code_files: tuple[str, ...] = ()
     """Code files git reports as renamed; not counted (see the metric)."""
 
+    secret_excluded: tuple[str, ...] = ()
+    """Secret-bearing files in the diff (DDR-0002): existence only; their
+    hunks were never parsed or quoted."""
+
     unavailable: str | None = None
     """Why the change carries no diff to read, else ``None``."""
 

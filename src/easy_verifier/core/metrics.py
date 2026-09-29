@@ -1538,6 +1538,13 @@ def _compat_count(kind: str) -> Callable[[_PackView], _Computed]:
             if kind == "symbols" and facts.renamed_code_files
             else ""
         )
+        secret = (
+            f"; {len(facts.secret_excluded)} secret-bearing file(s) excluded: "
+            + ", ".join(facts.secret_excluded[:5])
+            + " (existence only; contents withheld and never parsed, DDR-0002)"
+            if facts.secret_excluded
+            else ""
+        )
         return (
             total,
             tuple(sorted(refs)),
@@ -1545,6 +1552,7 @@ def _compat_count(kind: str) -> Callable[[_PackView], _Computed]:
             f"file(s): {listed}"
             + (f", and {more} more counted, not quoted" if more > 0 else "")
             + renamed
+            + secret
             + ". Method: "
             + _COMPAT_METHOD,
         )

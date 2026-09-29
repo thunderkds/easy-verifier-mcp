@@ -624,3 +624,48 @@ def test_an_unknown_language_is_asked_for_public_declarations_too():
     fields = [i["field"] for i in gate.reference_requests(stack, registry)["requests"]]
     assert "public_declarations" in fields
     assert len(fields) == 14  # 13 before T055 wired the #5 rule
+
+
+# ---------------------------------------------------------------------------
+# DDR-0002: a secret-bearing file in the diff is never parsed or quoted
+# ---------------------------------------------------------------------------
+
+
+def test_secret_bearing_files_in_the_diff_are_excluded_not_parsed(tmp_path: Path):
+    root = _repo(
+        tmp_path / "r",
+        {
+            ".env": "def leaked_name():\nTOKEN=FAKEfake\n",
+            "src/app.py": "def run():\n    pass\n",
+        },
+    )
+    pack = _change(
+        root,
+        {
+            ".env": "TOKEN=FAKEfake\n",
+            "migrations/secrets.pem": "DROP TABLE items;\n",
+            "src/app.py": "def run():\n    return 1\n",
+        },
+    )
+    assert _metric(pack, OPS).outcome == 0
+    symbols = _metric(pack, SYMBOLS)
+    assert symbols.outcome == 0
+    assert pack.compat.secret_excluded == (".env", "migrations/secrets.pem")
+    assert ".env" not in pack.compat.examined
+    assert "2 secret-bearing file(s) excluded" in symbols.derivation
+    assert not [
+        e for e in pack.excerpts if e.path in {".env", "migrations/secrets.pem"}
+    ]
+    # Sabotage twin: the same content under ordinary names is parsed.
+    twin = _repo(
+        tmp_path / "twin",
+        {
+            "env.py": "def leaked_name():\n    pass\n",
+            "src/app.py": "def run():\n    pass\n",
+        },
+    )
+    parsed = _change(
+        twin, {"env.py": "X = 1\n", "migrations/0002.sql": "DROP TABLE items;\n"}
+    )
+    assert _metric(parsed, OPS).outcome == 1
+    assert _metric(parsed, SYMBOLS).outcome == 1

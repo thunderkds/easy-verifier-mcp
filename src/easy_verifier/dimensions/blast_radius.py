@@ -41,6 +41,7 @@ from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
+from ..core.context import _is_secret_bearing
 from ..core.git import run_git_text
 from ..core.metric_tables import curated_metric_tables
 from ..core.metrics import code_kind
@@ -741,7 +742,8 @@ COMPAT_METHOD = (
     "operation (DROP TABLE/COLUMN, RENAME COLUMN/TO, drop_table, remove_column, "
     "RemoveField, DeleteModel, RenameField, dropColumn, dropIfExists, ...) is a "
     "destructive migration operation, except in comment lines, in a "
-    "down/downgrade section and in a *.down.* or Flyway undo file."
+    "down/downgrade section and in a *.down.* or Flyway undo file. A "
+    "secret-bearing file (DDR-0002) is named, never parsed or quoted."
 )
 
 
@@ -775,7 +777,9 @@ def _read_diff(
     diff: str, *, clipped: bool
 ) -> tuple[CompatFacts, tuple[Excerpt, ...]]:
     tables = curated_metric_tables()
-    files = _diff_files(diff)
+    parsed = _diff_files(diff)
+    secret = tuple(redact(item["path"]) for item in parsed if item["secret"])
+    files = [item for item in parsed if not item["secret"]]
     added_names: set[str] = set()
     removed: list[tuple[str, int, str, str, int]] = []
     ops: list[tuple[str, int, str, str]] = []
@@ -845,6 +849,7 @@ def _read_diff(
         destructive_ops_total=len(ops),
         examined=tuple(redact(item["path"]) for item in files),
         renamed_code_files=tuple(renamed),
+        secret_excluded=secret,
         incomplete=incomplete,
     )
     return facts, (*symbol_excerpts, *op_excerpts)
@@ -865,13 +870,16 @@ def _diff_files(diff: str) -> list[dict]:
         if line.startswith("diff --git "):
             a, _, b = line[len("diff --git ") :].partition(" b/")
             path = b.strip('"')
+            old_path = a.strip('"').removeprefix("a/")
             current = {
                 "path": path,
-                "old_path": a.strip('"').removeprefix("a/"),
+                "old_path": old_path,
                 "status": "modified",
                 "renamed": False,
                 "lines": [],
                 "in_hunk": False,
+                # DDR-0002: a secret-bearing file's hunks are never read.
+                "secret": _is_secret_bearing(path) or _is_secret_bearing(old_path),
             }
             files.append(current)
             continue
@@ -885,13 +893,16 @@ def _diff_files(diff: str) -> list[dict]:
             elif line.startswith("rename from "):
                 current["renamed"] = True
                 current["old_path"] = line[len("rename from ") :]
+                current["secret"] = current["secret"] or _is_secret_bearing(
+                    current["old_path"]
+                )
         match = _HUNK.match(line)
         if match:
             old, new = int(match[1]), int(match[2])
             hunk += 1
             current["in_hunk"] = True
             continue
-        if not current["in_hunk"] or line.startswith("\\"):
+        if current["secret"] or not current["in_hunk"] or line.startswith("\\"):
             continue
         if line.startswith("-"):
             current["lines"].append(("-", old, line[1:], hunk))
