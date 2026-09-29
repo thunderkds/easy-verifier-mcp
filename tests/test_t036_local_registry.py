@@ -194,6 +194,7 @@ def test_valid_kotlin_assertion_saved_used_and_tagged(sot, kotlin_repo):
             "value": ["shouldBe"],
             "citation_url": KOTEST,
             "source_tag": "agent-researched (unreviewed)",
+            "review_status": "pending",  # T038: new entries start pending
         }
     ]
     # Used in the same process without a restart: every cache followed.

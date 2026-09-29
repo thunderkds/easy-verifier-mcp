@@ -478,7 +478,13 @@ def _render_registry_entries(ctx: _Ctx, entries) -> str:
         return ""
     items = "".join(
         f'<li><span class="source-tag">{ctx.agent_text(item["source_tag"])}</span> '
-        f"<code>{ctx.agent_text(item.get('language') or item.get('framework'))}"
+        + (
+            "<strong>rejected by the user: not used; rules needing it abstain"
+            "</strong> "
+            if item.get("review_status") == "rejected"
+            else ""
+        )
+        + f"<code>{ctx.agent_text(item.get('language') or item.get('framework'))}"
         f".{ctx.agent_text(item['field'])}</code> = "
         + ", ".join(f"<code>{ctx.agent_text(v)}</code>" for v in item["value"])
         + f' — <a href="{html.escape(str(item["citation_url"]), quote=True)}" '

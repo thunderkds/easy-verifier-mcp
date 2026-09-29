@@ -23,6 +23,7 @@ from .gate import (
     detect_stack,
     gate_requests,
     reference_requests,
+    review_requests,
 )
 from .judge import (
     GatedRating,
@@ -32,11 +33,24 @@ from .judge import (
     rate,
     rate_overall,
 )
-from .metric_tables import curated_metric_tables, metric_tables, registry_sources
+from .metric_tables import (
+    curated_metric_tables,
+    metric_tables,
+    registry_sources,
+    rejected_abstentions,
+)
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
-from .roles import _registry, load_repo_config, parse_agent_input, registry_notes
+from .registry import sot_root
+from .roles import (
+    GENERIC_PATTERNS,
+    _registry,
+    load_repo_config,
+    parse_agent_input,
+    registry_notes,
+    review_notes,
+)
 from .synthesis import combined_pack
 
 
@@ -79,6 +93,10 @@ class ScoreResult:
     could not be saved). Like ``needs_input``, not part of :meth:`to_dict`:
     it describes the local layer, not the score, so replay stays byte-equal
     (DDR-0005); each adapter surfaces it itself."""
+    review: dict[str, Any] | None = None
+    """MCP-only review gate (T038, FR-047): ``{entries, omitted,
+    instructions}`` for local entries awaiting the user's review. Like
+    ``reference``, never part of :meth:`to_dict`; the CLI never shows it."""
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -142,6 +160,8 @@ def score_repository(
     """
     document = parse_agent_input(agent_input) if agent_input is not None else None
     evaluations = document.get("gate_evaluations") if document is not None else None
+    # Before the answers change the layer: which of them will be ignored.
+    ignored_reviews = review_notes(document)
     packs = combined_pack(
         dimension_names(),
         repo_path=repo_path,
@@ -158,7 +178,9 @@ def score_repository(
     frameworks = tuple((item["name"], item["language"]) for item in stack["frameworks"])
     result = score_packs(packs, by_dimension, evaluations, frameworks=frameworks)
     result = dataclasses.replace(
-        result, stack=stack, registry_notes=registry_notes(document, repo_path)
+        result,
+        stack=stack,
+        registry_notes=registry_notes(document, repo_path) + ignored_reviews,
     )
 
     # One round each: a caller that already supplied agent input gets no
@@ -170,7 +192,8 @@ def score_repository(
     # no round of its own (DDR-0006 §7), and answers arrive as
     # registry_entries in the same next call as picks or gate evaluations.
     reference = reference_requests(stack, _registry())
-    result = dataclasses.replace(result, reference=reference)
+    review = review_requests(sot_root(), GENERIC_PATTERNS)
+    result = dataclasses.replace(result, reference=reference, review=review)
     needs_input = None
     if agent_input is None:
         needs_input = detect_pick_gates(repo_path, load_repo_config(repo_path))
@@ -211,7 +234,7 @@ def score_packs(
     registry = _registry()
     applied = registry.applied(frameworks)
     tables = curated_metric_tables() if applied is registry else metric_tables(applied)
-    metrics = compute_metrics(packs, tables)
+    metrics = rejected_abstentions(compute_metrics(packs, tables), packs, applied)
     sources = registry_sources(packs, applied)
     rules_ratings = tuple(
         rate(

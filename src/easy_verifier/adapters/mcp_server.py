@@ -112,8 +112,12 @@ def gather_combined(
         "or frameworks (detected_stack) lack registry fields the rules read: "
         "follow its instructions (at most 2 lookups per field, official docs "
         "first, else ask the user one question at a time) and send the "
-        "answers as agent_input.registry_entries on the next call. Otherwise "
-        "use the response as-is."
+        "answers as agent_input.registry_entries on the next call. If it "
+        "carries needs_input.review, show each listed registry entry to the "
+        "user once (value and link), ask whether it is good, needs "
+        "improvement, or should be rejected, and send the answers as "
+        "agent_input.reviews on the next call. Otherwise use the response "
+        "as-is."
     ),
     structured_output=True,
 )
@@ -133,7 +137,7 @@ def score(
     FR-040) — the CLI payload never carries the key, and never pays for the
     extra walk that produces it. At most one of ``picks`` (T027) and
     ``gate_evaluations`` (T028) is asked per response; ``reference`` (T037)
-    rides along with either.
+    and ``review`` (T038) ride along with either.
     """
     result = score_repository(
         repo,
@@ -151,6 +155,8 @@ def score(
     needs_input: dict[str, Any] = {}
     if result.reference is not None:
         needs_input["reference"] = result.reference
+    if result.review is not None:
+        needs_input["review"] = result.review
     if result.needs_input is not None:
         needs_input["picks"] = result.needs_input
     elif result.gate_requests is not None:

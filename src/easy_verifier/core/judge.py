@@ -63,7 +63,11 @@ PROJECT_DEFAULT = "project-default"
 CURATED = "curated"
 """Source tag of every rule shipped in this package (FR-048, curated half)."""
 
-LOCAL_TAGS = ("agent-researched (unreviewed)", "user-supplied")
+LOCAL_TAGS = (
+    "agent-researched (unreviewed)",
+    "user-supplied",
+    "agent-researched (user-approved)",
+)
 """Tags a rating input may carry when built on local-layer registry data
 (T036). Equal to ``registry.LOCAL_TAGS`` (pinned by a test); spelled out so
 this module keeps its arithmetic-only imports."""

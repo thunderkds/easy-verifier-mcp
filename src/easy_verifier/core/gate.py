@@ -20,6 +20,11 @@ framework, the registry fields the rating rules consume that neither the
 curated nor the local layer holds — at most :data:`MAX_REFERENCE_FIELDS`,
 languages first — with fixed research instructions. Stack detection itself
 (:func:`detect_stack`) is shared: both adapters list the detected stack.
+
+The review gate (T038, FR-047) lists each local registry entry awaiting the
+user's review once — value and link — for the agent to show the user; the
+answers come back as ``agent_input.reviews``. An ``improve`` answer and a
+rejected field with no data left return through the reference gate.
 """
 
 from __future__ import annotations
@@ -43,7 +48,14 @@ from .judge import (
 )
 from .metric_tables import FIELD_METRICS, OPTIONAL_FIELDS, ROLE_METRICS
 from .redact import redact
-from .registry import ENTRY_FIELDS, Registry, _manifest_matches
+from .registry import (
+    ENTRY_FIELDS,
+    Registry,
+    RegistryEntry,
+    _manifest_matches,
+    awaiting_review,
+    local_items,
+)
 from .roles import (
     GENERIC_PATTERNS,
     MAX_ROLE_WALK_FILES,
@@ -439,7 +451,13 @@ REFERENCE_INSTRUCTIONS = (
     'answer, and send their answer with source_tag "user-supplied" and the '
     "https link they confirm. Until answered, every listed field and the "
     "omitted count of further missing fields are scored with generic "
-    "patterns only; omitted fields are listed once these are answered."
+    "patterns only; omitted fields are listed once these are answered. A "
+    "request carrying improve is the user's needs-improvement answer on the "
+    "listed value: research again with the comment and send the replacement "
+    "the same way; when it also carries ask_user (after 2 improve rounds), "
+    "ask the user for the value directly instead. A request carrying "
+    "rejected lists values the user rejected: never send those again; until "
+    "a replacement arrives, the rules that need the field abstain."
 )
 """Fixed text sent with every reference gate (FR-046, decision B2)."""
 
@@ -575,15 +593,16 @@ def required_fields() -> dict[str, str]:
 
 
 def reference_requests(stack: Mapping, registry: Registry) -> dict | None:
-    """``needs_input.reference``: missing fields only, languages first, at
-    most :data:`MAX_REFERENCE_FIELDS`; ``None`` when nothing is missing."""
+    """``needs_input.reference``: missing fields, fields with an open
+    ``improve`` answer and rejected fields with no data left (T038),
+    languages first, at most :data:`MAX_REFERENCE_FIELDS`; ``None`` when
+    nothing is asked."""
     required = required_fields()
     missing: list[dict] = []
     for language in stack["languages"]:
         entry = registry.languages.get(language)
-        for field, why in required.items():
-            if entry is None or not _has(entry, field):
-                missing.append({"language": language, "field": field, "why": why})
+        for request in _field_requests(entry, required):
+            missing.append({"language": language, **request})
     framework_required = {
         field: why for field, why in required.items() if field in FRAMEWORK_FIELDS
     }
@@ -591,16 +610,10 @@ def reference_requests(stack: Mapping, registry: Registry) -> dict | None:
         entry = registry.frameworks.get(item["name"])
         if entry is not None and entry.extends != item["language"]:
             entry = None
-        for field, why in framework_required.items():
-            if entry is None or not _has(entry, field):
-                missing.append(
-                    {
-                        "framework": item["name"],
-                        "extends": item["language"],
-                        "field": field,
-                        "why": why,
-                    }
-                )
+        for request in _field_requests(entry, framework_required):
+            missing.append(
+                {"framework": item["name"], "extends": item["language"], **request}
+            )
     if not missing:
         return None
     return {
@@ -610,7 +623,107 @@ def reference_requests(stack: Mapping, registry: Registry) -> dict | None:
     }
 
 
+MAX_IMPROVE_ROUNDS = 2
+"""Improve answers on one field before the agent asks the user directly."""
+
+
+def _field_requests(
+    entry: RegistryEntry | None, required: Mapping[str, str]
+) -> list[dict]:
+    """The reference requests for one entry: required fields it lacks, then
+    fields with an open ``improve`` answer or a rejection and no data."""
+    if entry is None:
+        return [{"field": field, "why": why} for field, why in required.items()]
+    improving = {
+        field: cited
+        for field, cited_values in _live_items(entry)
+        for cited in cited_values
+        if cited.review_comment is not None
+    }
+    rejected = {
+        field: [value for cited in values for value in cited.value]
+        for field, values in entry.rejected.items()
+        if not _has(entry, field)
+    }
+    fields = [f for f in required if not _has(entry, f)]
+    fields += sorted((set(improving) | set(rejected)) - set(fields))
+    requests = []
+    for field in fields:
+        why = required.get(field) or (
+            "rejected by the user" if field in rejected else "needs improvement"
+        )
+        request: dict = {"field": field, "why": why}
+        if field in improving:
+            cited = improving[field]
+            request["improve"] = {
+                "value": list(cited.value),
+                "comment": cited.review_comment,
+                "rounds": cited.improve_rounds,
+            }
+            if cited.improve_rounds >= MAX_IMPROVE_ROUNDS:
+                request["ask_user"] = True
+        if field in rejected:
+            request["rejected"] = rejected[field]
+        requests.append(request)
+    return requests
+
+
+def _live_items(entry: RegistryEntry):
+    yield "manifests", entry.manifests
+    yield from entry.fields.items()
+    yield from ((f"roles.{role}", values) for role, values in entry.roles.items())
+
+
+# ---------------------------------------------------------------------------
+# review gate (T038)
+
+MAX_REVIEW_ENTRIES = 20
+"""Entries listed per call; the rest are counted in ``omitted``."""
+
+REVIEW_INSTRUCTIONS = (
+    "Each entry is registry data researched on this machine that the user "
+    "has not reviewed; it already counts toward the score. Show each one to "
+    "the user once, with its value and link, and ask: is it good, does it "
+    "need improvement, or should it be rejected? Send the answers on the "
+    "next score call as agent_input.reviews: {entry_id: \"good\" | "
+    "\"reject\" | {\"answer\": \"improve\", \"comment\": \"what to fix\"}}. "
+    "good approves it (tag agent-researched (user-approved)); improve keeps "
+    "it scoring and returns the comment in the reference gate for that "
+    "field; reject deletes it, and the rules that need the field abstain "
+    "until a replacement is researched. An answered entry is never asked "
+    "again."
+)
+"""Fixed text sent with every review gate (FR-047)."""
+
+
+def review_requests(root: Path, known_roles) -> dict | None:
+    """``needs_input.review``: each local entry awaiting review, once, at
+    most :data:`MAX_REVIEW_ENTRIES` in id order; ``None`` when none is."""
+    entries = []
+    for item in local_items(root, known_roles):
+        cited = item.pop("cited")
+        if not awaiting_review(cited):
+            continue
+        item.update(
+            value=list(cited.value),
+            citation_url=cited.citation_url,
+            source_tag=cited.source_tag,
+        )
+        if cited.cwe:
+            item["cwe"] = cited.cwe
+        entries.append(item)
+    if not entries:
+        return None
+    return {
+        "entries": entries[:MAX_REVIEW_ENTRIES],
+        "omitted": max(0, len(entries) - MAX_REVIEW_ENTRIES),
+        "instructions": REVIEW_INSTRUCTIONS,
+    }
+
+
 def _has(entry, field: str) -> bool:
+    if field == "manifests":
+        return bool(entry.manifests)
     if field.startswith("roles."):
         return bool(entry.roles.get(field.removeprefix("roles.")))
     return bool(entry.fields.get(field))
@@ -619,6 +732,9 @@ def _has(entry, field: str) -> bool:
 __all__ = [
     "FRAMEWORK_FIELDS",
     "MAX_CANDIDATES_PER_ROLE",
+    "MAX_IMPROVE_ROUNDS",
+    "MAX_REVIEW_ENTRIES",
+    "REVIEW_INSTRUCTIONS",
     "MAX_MANIFESTS",
     "MAX_REFERENCE_FIELDS",
     "REFERENCE_INSTRUCTIONS",
@@ -630,4 +746,5 @@ __all__ = [
     "gate_requests",
     "reference_requests",
     "required_fields",
+    "review_requests",
 ]

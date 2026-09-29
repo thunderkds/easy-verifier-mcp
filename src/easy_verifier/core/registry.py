@@ -82,11 +82,21 @@ layer, value by value: a value the curated entry already has is dropped and
 reported ("curated wins"), so local data can only add. Local values are
 shape-bounded tighter than curated ones (:func:`_local_shape_problem`): they
 come from a model's research, and globs and tokens become regexes.
+
+The review gate (T038, FR-047) adds ``review_status`` to every local item:
+``pending`` (new, scores immediately), ``approved`` (the user said good; an
+agent-researched item is retagged :data:`USER_APPROVED`) or ``rejected``. A
+rejected item stays in its file as a remembered record but is loaded into
+:attr:`RegistryEntry.rejected`, never into the live fields; a new entry for
+the same field clears it. ``improve`` keeps an item pending with its
+``review_comment`` and ``improve_rounds``; a new entry for the field replaces
+it and inherits the round count. Items are addressed by :func:`entry_id`.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import os
 import re
@@ -114,15 +124,29 @@ MAX_URL_CHARS = 500
 
 AGENT_RESEARCHED = "agent-researched (unreviewed)"
 USER_SUPPLIED = "user-supplied"
-LOCAL_TAGS = (AGENT_RESEARCHED, USER_SUPPLIED)
+USER_APPROVED = "agent-researched (user-approved)"
+LOCAL_TAGS = (AGENT_RESEARCHED, USER_SUPPLIED, USER_APPROVED)
 """Source tags a local-layer field may carry; never ``curated``."""
 
 _INPUT_TAGS = {
     "agent-researched": AGENT_RESEARCHED,
     AGENT_RESEARCHED: AGENT_RESEARCHED,
     USER_SUPPLIED: USER_SUPPLIED,
+    USER_APPROVED: USER_APPROVED,
 }
-"""Accepted agent-input ``source_tag`` spellings, to the tag that is stored."""
+"""Accepted agent-input ``source_tag`` spellings, to the tag that is stored.
+:data:`USER_APPROVED` is how a report's embedded entries replay (T038): the
+review answer itself is agent input too, so this grants nothing new."""
+
+PENDING, APPROVED, REJECTED = "pending", "approved", "rejected"
+REVIEW_STATUSES = (PENDING, APPROVED, REJECTED)
+REVIEW_ANSWERS = ("good", "improve", "reject")
+MAX_REVIEWS = 20
+"""``reviews`` answers accepted in one agent-input document."""
+MAX_COMMENT_CHARS = 500
+MAX_ENTRY_ID_CHARS = 200
+_REVIEW_KEYS = frozenset({"review_status", "review_comment", "improve_rounds"})
+"""Optional keys of a local-layer file item (T038)."""
 
 SOT_ENV = "EASY_VERIFIER_SOT"
 SOT_DIRNAME = ".easy-verifier-sot"
@@ -220,6 +244,11 @@ class CitedValue:
     source_tag: str
     cwe: str | None = None
     """The weakness a ``security_sinks`` item's tokens are a sink for."""
+    review_status: str | None = None
+    """``None`` for curated data; a :data:`REVIEW_STATUSES` value for local."""
+    review_comment: str | None = None
+    """The user's ``improve`` comment; set only while that answer is open."""
+    improve_rounds: int = 0
 
 
 @dataclass(frozen=True)
@@ -234,6 +263,11 @@ class RegistryEntry:
         default_factory=dict
     )
     """Every other :data:`ENTRY_FIELDS` field present, by name."""
+    rejected: Mapping[str, tuple[CitedValue, ...]] = dataclasses.field(
+        default_factory=dict
+    )
+    """Local items the user rejected (T038), by field (``roles.<role>`` for a
+    role): remembered, never used as data."""
 
 
 @dataclass(frozen=True)
@@ -281,6 +315,8 @@ class Registry:
         items, sorted: embedded in score output and reports so replaying them
         reproduces the score on a machine with an empty local layer (FR-048).
         A framework entry is in use only when detected (``frameworks``).
+        Rejection records are included with ``review_status: "rejected"``,
+        since they make metrics abstain (T038).
         """
         found = []
         used = {n: self.frameworks[n] for n in frameworks if n in self.frameworks}
@@ -288,6 +324,7 @@ class Registry:
             for entry in entries.values():
                 sections = [("manifests", entry.manifests), *entry.fields.items()]
                 sections += [(f"roles.{r}", v) for r, v in entry.roles.items()]
+                sections += list(entry.rejected.items())
                 for field, cited_values in sections:
                     for cited in cited_values:
                         if cited.source_tag == CURATED:
@@ -303,6 +340,8 @@ class Registry:
                         )
                         if cited.cwe:
                             item["cwe"] = cited.cwe
+                        if cited.review_status == REJECTED:
+                            item["review_status"] = REJECTED
                         found.append(item)
         return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
 
@@ -358,13 +397,18 @@ def merge(
     """
     roles = {name: list(fields) for name, fields in language.roles.items()}
     others = {name: list(fields) for name, fields in language.fields.items()}
+    rejected = {name: list(fields) for name, fields in language.rejected.items()}
     for framework in sorted(frameworks, key=lambda entry: entry.name):
         if framework.extends != language.name:
             raise ValueError(
                 f"framework {framework.name!r} extends {framework.extends!r}, "
                 f"not {language.name!r}"
             )
-        for target, source in ((roles, framework.roles), (others, framework.fields)):
+        for target, source in (
+            (roles, framework.roles),
+            (others, framework.fields),
+            (rejected, framework.rejected),
+        ):
             for name, fields in source.items():
                 merged = target.setdefault(name, [])
                 merged.extend(cited for cited in fields if cited not in merged)
@@ -374,6 +418,7 @@ def merge(
         manifests=language.manifests,
         roles={name: tuple(fields) for name, fields in sorted(roles.items())},
         fields={name: tuple(fields) for name, fields in sorted(others.items())},
+        rejected={name: tuple(fields) for name, fields in sorted(rejected.items())},
     )
 
 
@@ -509,6 +554,13 @@ def _load_entry(
         errors.append("frameworks: detection keys belong to the language entry")
     if errors:
         return None, errors
+    rejected: dict[str, tuple[CitedValue, ...]] = {}
+    for key, table in [*fields.items(), *((f"roles.{r}", v) for r, v in roles.items())]:
+        gone = tuple(cited for cited in table if cited.review_status == REJECTED)
+        if gone:
+            rejected[key] = gone
+    fields = _live(fields)
+    roles = _live(roles)
     return (
         RegistryEntry(
             name=name,
@@ -516,9 +568,21 @@ def _load_entry(
             manifests=fields.pop("manifests", ()),
             roles=dict(sorted(roles.items())),
             fields=dict(sorted(fields.items())),
+            rejected=dict(sorted(rejected.items())),
         ),
         [],
     )
+
+
+def _live(
+    table: Mapping[str, tuple[CitedValue, ...]],
+) -> dict[str, tuple[CitedValue, ...]]:
+    """``table`` without rejected items; a field left empty is dropped."""
+    kept = {
+        key: tuple(c for c in values if c.review_status != REJECTED)
+        for key, values in table.items()
+    }
+    return {key: values for key, values in kept.items() if values}
 
 
 def _known_fields() -> str:
@@ -544,9 +608,19 @@ def _cited_values(
                     citation_url=item["citation_url"],
                     source_tag=item["source_tag"],
                     cwe=item.get("cwe"),
+                    review_status=_review_status(item) if local else None,
+                    review_comment=item.get("review_comment"),
+                    improve_rounds=item.get("improve_rounds", 0),
                 )
             )
     return tuple(result)
+
+
+def _review_status(item: Mapping) -> str:
+    """A local item's status; absent means pending, except that the
+    approved tag implies approved."""
+    default = APPROVED if item["source_tag"] == USER_APPROVED else PENDING
+    return item.get("review_status", default)
 
 
 def _cited_value_problem(
@@ -558,9 +632,13 @@ def _cited_value_problem(
     missing = sorted(keys - set(item))
     if missing:
         return f"missing {', '.join(missing)}"
-    extra = sorted(set(item) - keys)
+    extra = sorted(set(item) - keys - (_REVIEW_KEYS if local else set()))
     if extra:
         return f"unknown key {', '.join(redact(key) for key in extra)}"
+    if local:
+        problem = _review_problem(item)
+        if problem:
+            return problem
     if "cwe" in keys and not (
         isinstance(item["cwe"], str) and _CWE.fullmatch(item["cwe"])
     ):
@@ -589,6 +667,24 @@ def _cited_value_problem(
         return f"source_tag: must be one of {', '.join(LOCAL_TAGS)}"
     if not local and item["source_tag"] != CURATED:
         return f"source_tag: must be {CURATED!r}"
+    return None
+
+
+def _review_problem(item: Mapping) -> str | None:
+    """Shape of a local item's optional review keys (T038)."""
+    status = item.get("review_status", PENDING)
+    if status not in REVIEW_STATUSES:
+        return f"review_status: must be one of {', '.join(REVIEW_STATUSES)}"
+    if item.get("source_tag") == USER_APPROVED and _review_status(item) != APPROVED:
+        return f"review_status: an item tagged {USER_APPROVED!r} is approved"
+    comment = item.get("review_comment")
+    if comment is not None and not (
+        isinstance(comment, str) and len(comment) <= MAX_COMMENT_CHARS
+    ):
+        return f"review_comment: must be a string of at most {MAX_COMMENT_CHARS}"
+    rounds = item.get("improve_rounds", 0)
+    if type(rounds) is not int or not 0 <= rounds <= 100:
+        return "improve_rounds: must be an integer from 0 through 100"
     return None
 
 
@@ -656,6 +752,7 @@ _LOCAL_KEYS = frozenset(
         "citation_url",
         "source_tag",
         "cwe",
+        "review_status",
     }
 )
 
@@ -725,7 +822,17 @@ def _local_entry(
         return None, "frameworks: detection keys belong to the language entry"
     tag = item.get("source_tag")
     if not isinstance(tag, str) or tag not in _INPUT_TAGS:
-        return None, "source_tag: must be agent-researched or user-supplied"
+        return None, (
+            "source_tag: must be agent-researched or user-supplied (a replayed "
+            f"report may also carry {USER_APPROVED!r})"
+        )
+    if "review_status" in item and item["review_status"] != REJECTED:
+        return None, (
+            'review_status: only "rejected" is accepted (a replayed rejection '
+            "record); answer the review gate with agent_input.reviews"
+        )
+    if "review_status" in item and tag == USER_APPROVED:
+        return None, f"review_status: an item tagged {USER_APPROVED!r} is approved"
     cited = {key: item[key] for key in ("value", "citation_url", "cwe") if key in item}
     cited["source_tag"] = _INPUT_TAGS[tag]
     problem = _cited_value_problem(cited, field, local=True)
@@ -746,6 +853,7 @@ def _local_entry(
                 citation_url=cited["citation_url"],
                 source_tag=cited["source_tag"],
                 cwe=cited.get("cwe"),
+                review_status=item.get("review_status") or _review_status(cited),
             ),
         ),
         None,
@@ -868,11 +976,15 @@ def _add_entry(
     fields = dict(base.fields)
     for field, more in extra.fields.items():
         fields[field] = add(field, fields.get(field, ()), more)
+    rejected = dict(base.rejected)
+    for field, more in extra.rejected.items():
+        rejected[field] = (*rejected.get(field, ()), *more)
     return dataclasses.replace(
         base,
         manifests=add("manifests", base.manifests, extra.manifests),
         roles=dict(sorted(roles.items())),
         fields=dict(sorted(fields.items())),
+        rejected=dict(sorted(rejected.items())),
     )
 
 
@@ -903,25 +1015,226 @@ def save_local_entries(
         extends = group[0].extends
         sections: dict[str, list[CitedValue]] = {}
         if path.exists():
-            current, errors = _load_entry(path, known, local=True)
-            if errors:
-                raise OSError(f"{name}.toml exists but is invalid; not modified")
+            current = _read_local(path, known)
             extends = current.extends
-            sections["manifests"] = list(current.manifests)
-            for field, cited_values in current.fields.items():
-                sections[field] = list(cited_values)
-            for role, cited_values in current.roles.items():
-                sections[f"roles.{role}"] = list(cited_values)
+            sections = _sections(current)
         for entry in group:
             if entry.extends != extends:
                 raise OSError(f"{name}.toml: conflicting extends; not modified")
             target = sections.setdefault(entry.field, [])
-            if entry.cited not in target:
-                target.append(entry.cited)
+            if any(_same_value(entry.cited, cited) for cited in target):
+                continue  # already here, reviewed or not: never reset (T038)
+            cited = entry.cited
+            if cited.review_status != REJECTED:
+                # A new entry replaces the field's rejection records and its
+                # open "improve" items, inheriting their round count.
+                closed = [c for c in target if _superseded(c)]
+                rounds = max((c.improve_rounds for c in closed), default=0)
+                target[:] = [c for c in target if not _superseded(c)]
+                cited = dataclasses.replace(cited, improve_rounds=rounds)
+            target.append(cited)
         data = _entry_toml(extends, sections).encode("utf-8")
         if len(data) > MAX_ENTRY_BYTES:
             raise OSError(f"{name}.toml would exceed {MAX_ENTRY_BYTES} bytes")
         _atomic_write(root, path, data)
+
+
+def _read_local(path: Path, known: frozenset[str]) -> RegistryEntry:
+    current, errors = _load_entry(path, known, local=True)
+    if errors:
+        raise OSError(f"{path.name} exists but is invalid; not modified")
+    return current
+
+
+def _sections(entry: RegistryEntry) -> dict[str, list[CitedValue]]:
+    """Every item of a local entry by field key, rejection records included."""
+    sections: dict[str, list[CitedValue]] = {}
+    if entry.manifests:
+        sections["manifests"] = list(entry.manifests)
+    for field, cited_values in entry.fields.items():
+        sections[field] = list(cited_values)
+    for role, cited_values in entry.roles.items():
+        sections[f"roles.{role}"] = list(cited_values)
+    for field, cited_values in entry.rejected.items():
+        sections.setdefault(field, []).extend(cited_values)
+    return sections
+
+
+def _same_value(a: CitedValue, b: CitedValue) -> bool:
+    return (a.value, a.citation_url, a.cwe) == (b.value, b.citation_url, b.cwe)
+
+
+def _superseded(cited: CitedValue) -> bool:
+    return cited.review_status == REJECTED or cited.review_comment is not None
+
+
+def entry_id(name: str, field: str, cited: CitedValue) -> str:
+    """A local item's stable id: ``<name>.<field>.<12 hex>`` over its value,
+    link and CWE, never its tag or status, so an answer keeps it."""
+    digest = hashlib.sha256(
+        json.dumps([list(cited.value), cited.citation_url, cited.cwe or ""]).encode()
+    ).hexdigest()
+    return f"{name}.{field}.{digest[:12]}"
+
+
+def parse_reviews(
+    raw: object,
+) -> tuple[dict[str, tuple[str, str | None]], list[str]]:
+    """Validate agent-input ``reviews``: ``{entry_id: answer}`` where an
+    answer is ``"good" | "improve" | "reject"`` or ``{"answer": ...,
+    "comment": ...}``. Returns ``{entry_id: (answer, comment)}`` and errors;
+    any error rejects the document. An unknown id is not an error here: it is
+    ignored with a note (:func:`review_problems`)."""
+    if raw is None:
+        return {}, []
+    if not isinstance(raw, dict):
+        return {}, [
+            "reviews: must be an object mapping an entry_id to good, improve "
+            "or reject"
+        ]
+    if len(raw) > MAX_REVIEWS:
+        return {}, [f"reviews: at most {MAX_REVIEWS} answers per call"]
+    answers: dict[str, tuple[str, str | None]] = {}
+    errors: list[str] = []
+    for key, raw_answer in raw.items():
+        if not isinstance(key, str) or not key or len(key) > MAX_ENTRY_ID_CHARS:
+            errors.append(
+                f"reviews: an entry id must be 1 to {MAX_ENTRY_ID_CHARS} characters"
+            )
+            continue
+        where = f"reviews.{redact(key)}"
+        value, comment = raw_answer, None
+        if isinstance(raw_answer, dict):
+            extra = sorted(str(k) for k in raw_answer if k not in ("answer", "comment"))
+            if extra:
+                errors.append(f"{where}: unknown key {', '.join(map(redact, extra))}")
+                continue
+            value, comment = raw_answer.get("answer"), raw_answer.get("comment")
+        if not isinstance(value, str) or value not in REVIEW_ANSWERS:
+            errors.append(f"{where}: answer must be good, improve or reject")
+            continue
+        if comment is not None:
+            if not isinstance(comment, str) or len(comment) > MAX_COMMENT_CHARS:
+                errors.append(
+                    f"{where}.comment: must be a string of at most "
+                    f"{MAX_COMMENT_CHARS} characters"
+                )
+                continue
+            if redact(comment) != comment:
+                errors.append(
+                    f"{where}.comment: looks like it holds a secret; comments "
+                    "are stored verbatim"
+                )
+                continue
+        answers[key] = (value, comment)
+    return answers, errors
+
+
+def local_items(root: Path, known_roles: Collection[str]) -> list[dict]:
+    """Every item of the local layer at ``root`` with its :func:`entry_id`,
+    identity and :class:`CitedValue` (``cited``), sorted by id; ``[]`` when
+    there is no usable layer."""
+    if local_root_problem(root) or not root.is_dir():
+        return []
+    local = load_registry(root, known_roles=known_roles, local=True)
+    items = []
+    layers = (("language", local.languages), ("framework", local.frameworks))
+    for kind, entries in layers:
+        for entry in entries.values():
+            for field, cited_values in _sections(entry).items():
+                for cited in cited_values:
+                    item: dict = {"entry_id": entry_id(entry.name, field, cited)}
+                    item[kind] = entry.name
+                    if kind == "framework":
+                        item["extends"] = entry.extends
+                    item.update(field=field, cited=cited)
+                    items.append(item)
+    return sorted(items, key=lambda item: item["entry_id"])
+
+
+def awaiting_review(cited: CitedValue) -> bool:
+    """Pending and never answered: the only items the review gate lists."""
+    return cited.review_status == PENDING and cited.review_comment is None
+
+
+def review_problems(
+    answers: Mapping[str, tuple[str, str | None]],
+    root: Path,
+    known_roles: Collection[str],
+) -> list[str]:
+    """Notes for answers that will be ignored: unknown or already-reviewed
+    ids. Computed before :func:`apply_reviews` changes anything."""
+    if not answers:
+        return []
+    by_id = {item["entry_id"]: item["cited"] for item in local_items(root, known_roles)}
+    notes = []
+    for key in sorted(answers):
+        if key not in by_id:
+            notes.append(
+                f"review for {redact(key)} ignored: no local registry entry has "
+                "that id (it may have been replaced or deleted)"
+            )
+        elif not awaiting_review(by_id[key]):
+            notes.append(
+                f"review for {redact(key)} ignored: that entry was already "
+                "reviewed, and a reviewed entry is never asked again"
+            )
+    return notes
+
+
+def apply_reviews(
+    answers: Mapping[str, tuple[str, str | None]],
+    root: Path,
+    *,
+    known_roles: Collection[str],
+) -> None:
+    """Apply the user's answers to the local layer at ``root`` (T038).
+
+    ``good`` approves (agent-researched items are retagged
+    :data:`USER_APPROVED`); ``improve`` keeps the item pending with the
+    comment and one more round; ``reject`` turns it into a rejection record.
+    Only items awaiting review change; each changed file is rewritten
+    atomically. Raises :class:`OSError` on any refusal, like
+    :func:`save_local_entries`.
+    """
+    problem = local_root_problem(root)
+    if problem:
+        raise OSError(problem)
+    if not answers or not root.is_dir():
+        return
+    known = frozenset(known_roles)
+    for path in sorted(root.glob("*.toml"))[:MAX_LOCAL_FILES]:
+        if path.is_symlink():
+            continue
+        entry, errors = _load_entry(path, known, local=True)
+        if errors:
+            continue
+        sections = _sections(entry)
+        changed = False
+        for field, cited_values in sections.items():
+            for index, cited in enumerate(cited_values):
+                answer = answers.get(entry_id(entry.name, field, cited))
+                if answer is not None and awaiting_review(cited):
+                    cited_values[index] = _answered(cited, *answer)
+                    changed = True
+        if changed:
+            data = _entry_toml(entry.extends, sections).encode("utf-8")
+            if len(data) > MAX_ENTRY_BYTES:
+                raise OSError(f"{path.name} would exceed {MAX_ENTRY_BYTES} bytes")
+            _atomic_write(root, path, data)
+
+
+def _answered(cited: CitedValue, answer: str, comment: str | None) -> CitedValue:
+    if answer == "good":
+        tag = cited.source_tag
+        if tag == AGENT_RESEARCHED:
+            tag = USER_APPROVED
+        return dataclasses.replace(cited, review_status=APPROVED, source_tag=tag)
+    if answer == "reject":
+        return dataclasses.replace(cited, review_status=REJECTED)
+    return dataclasses.replace(
+        cited, review_comment=comment or "", improve_rounds=cited.improve_rounds + 1
+    )
 
 
 def _entry_toml(extends: str | None, sections: Mapping[str, list[CitedValue]]) -> str:
@@ -943,6 +1256,12 @@ def _entry_toml(extends: str | None, sections: Mapping[str, list[CitedValue]]) -
             ]
             if cited.cwe:
                 lines.append(f"cwe = {json.dumps(cited.cwe)}")
+            status = cited.review_status or PENDING
+            lines.append(f"review_status = {json.dumps(status)}")
+            if cited.review_comment is not None:
+                lines.append(f"review_comment = {json.dumps(cited.review_comment)}")
+            if cited.improve_rounds:
+                lines.append(f"improve_rounds = {cited.improve_rounds}")
     return "\n".join(lines) + "\n"
 
 
@@ -976,13 +1295,24 @@ def _is_https(url: str) -> bool:
 
 __all__ = [
     "AGENT_RESEARCHED",
+    "APPROVED",
     "CURATED",
     "ENTRY_FIELDS",
     "LOCAL_TAGS",
     "MAX_AGENT_ENTRIES",
     "MAX_ENTRY_BYTES",
+    "MAX_REVIEWS",
+    "PENDING",
+    "REJECTED",
     "SOT_ENV",
+    "USER_APPROVED",
     "USER_SUPPLIED",
+    "apply_reviews",
+    "awaiting_review",
+    "entry_id",
+    "local_items",
+    "parse_reviews",
+    "review_problems",
     "CitedValue",
     "LocalEntry",
     "Registry",
