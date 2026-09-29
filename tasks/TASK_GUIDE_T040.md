@@ -1,4 +1,4 @@
-# TASK_GUIDE — T040: Area rule groups inside existing dimensions (#5, #8, #16, #17, #27, #31)
+# TASK_GUIDE — T040: Area rule groups inside existing dimensions (#16, #17 density, #31)
 **Date**: 2026-09-28
 **Complexity Level**: C3
 **Risk Level**: Medium
@@ -27,10 +27,13 @@ Before writing any code:
 User (2026-09-28) 32-area list; mapping puts #5 backward compatibility (blast-radius), #8 authN/Z & sessions (security), #16 false confidence & isolation (test-strategy), #17 type safety and #31 tech-debt lifecycle (code-quality), #27 documentation source of truth (requirement-fidelity) into existing dimensions.
 
 **Restated intent**:
-> Existing dimensions gain the cited rule groups for these six areas, labelled by area.
+> Existing dimensions gain the cited rule groups for areas #16, #17 (type-escape density) and #31, labelled by area.
+
+> **Scope split (user, 2026-09-29).** #5 and #27 need git diff/history in the collectors, which means pack and model changes, so they move to **T055**. #8 (cookies, auth, offboarding) and #17's strict-type-config half need new evidence (a role or targeted excerpts), so they move to **T056**. The rules here only add metrics and rules over evidence the packs already carry.
 
 **Out of scope**:
 - New dimensions (T041–T046)
+- #5, #27 (→ T055); #8 and #17 strict config (→ T056)
 - Packs (T047+)
 
 **Requirement Refs**:
@@ -64,11 +67,8 @@ User (2026-09-28) 32-area list; mapping puts #5 backward compatibility (blast-ra
 
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
-| 1 | #5 (changes scope): removed/renamed public symbols and destructive migration ops counted; SemVer 2.0 cited | #5 |
-| 2 | #8: session cookie flags (secure/httponly/samesite) and auth code presence; offboarding = documentation present/missing; OWASP ASVS V2–V4 cited | #8 |
-| 3 | #16: tests without assertions, skipped/disabled tests, network calls in unit tests counted; ISO/IEC/IEEE 29119 cited | #16 |
-| 4 | #17: strict type config present (mypy strict, tsconfig `strict`, etc.) and `any`/type-ignore density; ISO/IEC 5055 cited | #17 |
-| 5 | #27: single spec/PRD source + docs co-changed with code (git history); ISO/IEC/IEEE 26514 cited | #27 |
+| 3 | #16: tests without assertions, skipped/disabled tests (**every unconditional skip counts**; the derivation discloses how many carry a reason — user 2026-09-29), network calls in unit tests counted; ISO/IEC/IEEE 29119 cited | #16 |
+| 4 | #17: `any`/type-ignore density (generated stubs excluded); ISO/IEC 5055 cited. The strict type config half → T056 | #17 |
 | 6 | #31: TODO/FIXME share with vs without a ticket reference; SQALE/ISO 5055 cited | #31 |
 | 7 | Each dimension's weights still sum to 100; changed weights listed for Supervisor sign-off | rule table integrity |
 
@@ -81,7 +81,7 @@ User (2026-09-28) 32-area list; mapping puts #5 backward compatibility (blast-ra
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | fixture test file with a test lacking assertions | #16 rule reports it | automated test |
-| 2 | tsconfig without strict | #17 rule unmet | automated test |
+| 2 | fixture with `# type: ignore` / `any` over the threshold density | #17 rule unmet | automated test |
 
 ### Verification Command (exact, runnable)
 
@@ -120,6 +120,7 @@ Add metrics and rules only; reuse T033 tokenizer for comment/TODO scanning. Lang
 
 - [ ] `@pytest.mark.skip` with reason vs without
 - [ ] Generated type stubs
+- [ ] Registry citation URLs actually resolve to the cited page (fetch-check each new curated citation)
 - [ ] TODO inside string literals
 
 ---
