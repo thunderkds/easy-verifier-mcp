@@ -33,8 +33,18 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer in worktree `easy-verifier-mcp-T038` at HEAD `6e0e723`, before any
+T038 implementation commit; no review status exists and the agent-input `reviews` key is refused):
+
+```text
+$ date -u; git rev-parse --short HEAD
+2026-09-29T03:28:35Z
+6e0e723
+$ grep -rn 'review_status\|user-approved\|reviews' src/easy_verifier/core/{registry,gate,roles}.py
+(exit 1: no matches)
+$ PYTHONPATH=src python -c 'validate_agent_input({"reviews": {"kotlin.test_name_patterns.x": "good"}}, ".")'
+RoleInputError: agent input: 1 error(s): reviews: unknown key; only picks, gate_evaluations and registry_entries are accepted
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
