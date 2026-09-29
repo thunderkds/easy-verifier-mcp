@@ -431,9 +431,26 @@ class DocumentationResult:
         }
 
 
+_ASVS_OFFBOARDING = Citation(
+    "OWASP ASVS 5.0.0 V7.4.2 (sessions terminated when an account is disabled "
+    "or deleted, such as an employee leaving)",
+    _ASVS_URL,
+)
+_OFFBOARDING_PATTERNS = tuple(
+    f"**/*{variant}*{suffix}"
+    for keyword in ("offboard", "off-board", "off_board", "deprovision")
+    for variant in (keyword, keyword.capitalize(), keyword.upper())
+    for suffix in (".md", ".rst", ".adoc")
+)
+"""Offboarding documents: the ``_docs`` convention of ``core/roles.py``
+(keyword anywhere in a document name, three cases), spelled out here."""
+
+
 # Per-dimension documentation rules (FR-052). A dimension absent here declares
 # none; the new dimensions (T041-T046) add theirs. Results are computed by
 # ``roles.documentation_present`` (glob matching stays out of this module).
+# The entries themselves are declared at the end of this module, once the
+# validators a DocumentationRule runs on construction exist.
 DOCUMENTATION_RULES: dict[str, tuple[DocumentationRule, ...]] = {}
 
 
@@ -1661,3 +1678,11 @@ def _serialize(value: dict) -> str:
         separators=(",", ":"),
         allow_nan=False,
     )
+
+
+# #8 offboarding (T056): which access is revoked, and when, when someone leaves
+# is a process no repository can show, so only its document is checked; the
+# security dimension reads a matching document.
+DOCUMENTATION_RULES["security"] = (
+    DocumentationRule(AREAS[7], _OFFBOARDING_PATTERNS, (_ASVS_OFFBOARDING,)),
+)

@@ -161,3 +161,28 @@ source_tag = "curated"
 value = ["pub fn", "pub async fn", "pub const fn", "pub unsafe fn", "pub struct", "pub enum", "pub trait", "pub type", "pub const", "pub static", "pub mod", "pub union"]
 citation_url = "https://doc.rust-lang.org/reference/visibility-and-privacy.html"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["Cookie::build ("]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = [".secure ( true"]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = [".http_only ( true"]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = [".same_site ("]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"

@@ -24,20 +24,42 @@ from easy_verifier.core.gate import (
     gate_requests,
 )
 from easy_verifier.core.judge import (
+    DOCUMENTATION_RULES,
     RATING_RULES,
     GatedRating,
     Rating,
     RatingAbstention,
     blend,
-    rate,
     rate_overall,
     within_band,
+)
+from easy_verifier.core.judge import (
+    rate as _rate,
 )
 from easy_verifier.core.metrics import WHOLE_SET, Metric, MetricAbstention, MetricSet
 from easy_verifier.core.models import CoverageSummary, SourceMiss
 from easy_verifier.core.report import write_report
+from easy_verifier.core.roles import documentation_present
 from easy_verifier.core.score import score_repository
 from easy_verifier.dimensions import dimension_names
+
+
+def _docs(dimension):
+    """T056: the offboarding rule's results (missing) for ``dimension``."""
+    return tuple(
+        documentation_present(rule, ())
+        for rule in DOCUMENTATION_RULES.get(dimension, ())
+    )
+
+
+def rate(metrics, coverage, **kwargs):
+    """``judge.rate`` with the documentation results a dimension declaring
+    documentation rules requires (T056: security's offboarding rule), unless
+    the test passes its own."""
+    names = {name for name, _score in coverage.per_dimension}
+    if "documentation" not in kwargs and len(names) == 1:
+        kwargs["documentation"] = _docs(names.pop())
+    return _rate(metrics, coverage, **kwargs)
 
 DIMENSIONS = dimension_names()
 REF = "README.md:1-3"
@@ -88,6 +110,7 @@ def _abstention(dimension: str) -> RatingAbstention:
         coverage_floor=_floor(dimension),
         achieved_coverage=0.0,
         sources_missing=(SourceMiss("ARCHITECTURE.md", "not found in target"),),
+        documentation=_docs(dimension),
     )
 
 

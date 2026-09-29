@@ -211,3 +211,28 @@ source_tag = "curated"
 value = ["def self.", "def", "class", "module"]
 citation_url = "https://docs.ruby-lang.org/en/master/syntax/modules_and_classes_rdoc.html#label-Visibility"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".set_cookie ("]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/response.rb"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure : true", ":secure => true"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httponly : true", ":httponly => true"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["same_site :", ":same_site =>"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"

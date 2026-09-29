@@ -285,6 +285,14 @@ class LanguageTables:
     """Source suffix -> the language's public-declaration tokens (T055),
     anchored at a line start; read by the blast-radius dimension, never here."""
 
+    cookie_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    cookie_flags: Mapping[str, Mapping[str, re.Pattern[str]]] = field(
+        default_factory=dict
+    )
+    """Source suffix -> the language's cookie tokens (T056, area #8): a
+    statement that sets a cookie, and per flag of :data:`COOKIE_FLAGS` the
+    language declares, the tokens that set it inside that statement."""
+
 
 @dataclass(frozen=True)
 class SinkPattern:
@@ -332,6 +340,83 @@ def sink_hits(path: str, text: str, tables: LanguageTables) -> tuple[SinkHit, ..
             hit = SinkHit(line, end, pattern.cwe, pattern.citation_url)
             found.setdefault((line, pattern.cwe), hit)
     return tuple(found[key] for key in sorted(found))
+
+
+COOKIE_FLAGS = ("secure", "httponly", "samesite")
+"""The cookie attributes OWASP ASVS 5.0.0 V3.3.1, V3.3.4 and V3.3.2 require."""
+
+_CHAINED = re.compile(r"[ \t\r\n]*\.")
+
+
+@dataclass(frozen=True)
+class CookieSite:
+    """One cookie-setting statement (T056): its line span in the text read,
+    and the declared flags it does not set -- ``None`` when the statement runs
+    past the end of that text, so its flags cannot be judged."""
+
+    line: int
+    end_line: int
+    missing: tuple[str, ...] | None
+
+
+def cookie_sites(
+    path: str, text: str, tables: LanguageTables
+) -> tuple[CookieSite, ...]:
+    """Every registry ``cookie_calls`` statement in ``text`` (the contents of
+    ``path``), one per starting line, by line.
+
+    The call token matches code with comments and strings blanked; the
+    statement runs to a ``;`` or a line end outside brackets (a next line
+    starting with ``.`` continues it), or to a closing bracket it did not
+    open; a flag token matches inside it with comments blanked and strings
+    kept. A call starting on a line longer than ``MAX_LINE_CHARS`` is skipped.
+    """
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    calls = tables.cookie_calls.get(suffix)
+    if syntax is None or calls is None:
+        return ()
+    flags = tables.cookie_flags.get(suffix, {})
+    code = strip(text, syntax)
+    kept = strip(text, syntax, keep_strings=True)
+    lines = code.split("\n")
+    found: dict[int, CookieSite] = {}
+    for match in calls.finditer(code):
+        line = _line_of(code, match.start())
+        if line in found or len(lines[line - 1]) > MAX_LINE_CHARS:
+            continue
+        end = _statement_end(code, match.start())
+        if end is None:
+            found[line] = CookieSite(line, len(lines), None)
+            continue
+        statement = kept[match.start() : end]
+        missing = tuple(
+            name
+            for name in COOKIE_FLAGS
+            if name in flags and not flags[name].search(statement)
+        )
+        end_line = _line_of(code, end) if end < len(code) else len(lines)
+        found[line] = CookieSite(line, end_line, missing)
+    return tuple(found[key] for key in sorted(found))
+
+
+def _statement_end(code: str, start: int) -> int | None:
+    """The offset ending the statement that starts at ``start``, or ``None``
+    when brackets are still open at the end of ``code``."""
+    depth = 0
+    for index in range(start, len(code)):
+        char = code[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth < 0:
+                return index
+        elif depth == 0 and (
+            char == ";" or (char == "\n" and not _CHAINED.match(code, index + 1))
+        ):
+            return index
+    return len(code) if depth == 0 else None
 
 
 # ---------------------------------------------------------------------------
@@ -1656,6 +1741,75 @@ def _code_commits_with_docs_share(view: _PackView) -> _Computed:
     )
 
 
+_COOKIE_METHOD = (
+    "a cookie-setting statement is the registry's cookie_calls token (e.g. "
+    ".set_cookie(, res.cookie(, http.Cookie{) matched after comments and "
+    "strings are blanked, through the end of its statement; a flag counts as "
+    "set only when the language's cookie_secure / cookie_httponly / "
+    "cookie_samesite token (a literal true; SameSite with any value) occurs "
+    "inside that statement, so a flag set elsewhere (a later assignment, "
+    "framework configuration or a framework default) is not visible here and "
+    "counts as not set; only source-file excerpts of registry languages are "
+    "read, so this is a lower bound on the repository"
+)
+
+
+def _cookie_flags_missing_observed(view: _PackView) -> _Computed:
+    scanned = 0
+    sites: dict[tuple[str, int], tuple[tuple[str, ...] | None, str]] = {}
+    for excerpt in view.pack.excerpts:
+        suffix = PurePosixPath(excerpt.path).suffix
+        if suffix not in view.tables.cookie_calls or not _is_source_file(
+            excerpt.path, view.tables
+        ):
+            continue
+        scanned += 1
+        for site in cookie_sites(excerpt.path, excerpt.text, view.tables):
+            key = (excerpt.path, excerpt.start_line + site.line - 1)
+            if sites.get(key, (None, ""))[0] is None:
+                sites[key] = (site.missing, excerpt.ref)
+    judged = {key: value for key, value in sites.items() if value[0] is not None}
+    cut = len(sites) - len(judged)
+    if not judged:
+        return MetricAbstention(
+            reason=(
+                f"no cookie-setting statement could be judged in {scanned} "
+                "source-file excerpt(s) of registry languages with cookie tokens"
+                + (
+                    f" ({cut} ran past the end of its excerpt)"
+                    if cut
+                    else ""
+                )
+                + ", so no cookie flag was checked; a cookie a framework sets "
+                "itself (a session middleware's default cookie) is not visible "
+                "in code; that is not the same as cookies with every flag set. "
+                + _COOKIE_METHOD
+            )
+        )
+    lacking = {key: value for key, value in judged.items() if value[0]}
+    cited = lacking or judged
+    return (
+        len(lacking),
+        tuple(sorted({ref for _missing, ref in cited.values()})),
+        f"{len(lacking)} of {len(judged)} cookie-setting statement(s) leave a "
+        "flag unset: "
+        + (
+            ", ".join(
+                f"{path}:{line} (no {', '.join(missing or ())})"
+                for (path, line), (missing, _ref) in sorted(lacking.items())
+            )
+            or "none"
+        )
+        + (
+            f"; {cut} statement(s) ran past their excerpt and were not judged"
+            if cut
+            else ""
+        )
+        + "; "
+        + _COOKIE_METHOD,
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -1860,6 +2014,12 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
         _code_commits_with_docs_share,
+    ),
+    MetricDefinition(
+        "cookie_flags_missing_observed",
+        FAMILY_SECURITY_SURFACE,
+        EVIDENCE_LOCAL,
+        _cookie_flags_missing_observed,
     ),
 )
 

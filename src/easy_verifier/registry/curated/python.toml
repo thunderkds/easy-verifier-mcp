@@ -242,3 +242,28 @@ source_tag = "curated"
 value = ["def <a-zA-Z>", "async def <a-zA-Z>", "class <a-zA-Z>"]
 citation_url = "https://peps.python.org/pep-0008/#public-and-internal-interfaces"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".set_cookie ("]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure = True"]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httponly = True"]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["samesite ="]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"

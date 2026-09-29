@@ -83,6 +83,17 @@ dimension through ``core/metric_tables.py``:
   token ends inside, else the next identifier after it; a token ending in
   ``(`` names the last identifier it matched.
 
+The cookie fields (T056, area #8) are read by the ``security`` dimension
+through ``core/metric_tables.py``:
+
+* ``cookie_calls`` — code tokens starting a statement that sets a cookie,
+  matched after comments and strings are blanked (``".set_cookie ("``). The
+  statement runs to a ``;`` or line end outside brackets; a next line
+  starting with ``.`` continues it;
+* ``cookie_secure`` / ``cookie_httponly`` / ``cookie_samesite`` — tokens that
+  set that flag inside such a statement, matched with comments blanked and
+  strings kept (PHP option keys are strings), e.g. ``"httponly = True"``.
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -200,6 +211,10 @@ _TOKEN_FIELDS = frozenset(
         "network_calls",
         "type_escapes",
         "public_declarations",
+        "cookie_calls",
+        "cookie_secure",
+        "cookie_httponly",
+        "cookie_samesite",
     }
 )
 
@@ -224,6 +239,10 @@ ENTRY_FIELDS = (
     "type_escapes",
     "type_stub_names",
     "public_declarations",
+    "cookie_calls",
+    "cookie_secure",
+    "cookie_httponly",
+    "cookie_samesite",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

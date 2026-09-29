@@ -11,6 +11,7 @@ import pytest
 
 from easy_verifier.core.judge import (
     COVERAGE_FLOORS,
+    DOCUMENTATION_RULES,
     RATING_RULES,
     CoverageFloor,
     GatedRating,
@@ -20,8 +21,10 @@ from easy_verifier.core.judge import (
     RatingAbstention,
     RatingInput,
     _serialize,
-    rate,
     rate_overall,
+)
+from easy_verifier.core.judge import (
+    rate as _rate,
 )
 from easy_verifier.core.metrics import (
     WHOLE_SET,
@@ -30,7 +33,26 @@ from easy_verifier.core.metrics import (
     MetricSet,
 )
 from easy_verifier.core.models import CoverageSummary, SourceMiss
+from easy_verifier.core.roles import documentation_present
 from easy_verifier.dimensions import dimension_names
+
+
+def _docs(dimension):
+    """T056: the offboarding rule's results (missing) for ``dimension``."""
+    return tuple(
+        documentation_present(rule, ())
+        for rule in DOCUMENTATION_RULES.get(dimension, ())
+    )
+
+
+def rate(metrics, coverage, **kwargs):
+    """``judge.rate`` with the documentation results a dimension declaring
+    documentation rules requires (T056: security's offboarding rule), unless
+    the test passes its own."""
+    names = {name for name, _score in coverage.per_dimension}
+    if "documentation" not in kwargs and len(names) == 1:
+        kwargs["documentation"] = _docs(names.pop())
+    return _rate(metrics, coverage, **kwargs)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIMENSIONS = tuple(COVERAGE_FLOORS)

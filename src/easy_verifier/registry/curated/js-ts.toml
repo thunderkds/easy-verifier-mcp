@@ -301,3 +301,28 @@ source_tag = "curated"
 value = ["export function", "export async function", "export default function", "export default class", "export default", "export class", "export abstract class", "export const", "export let", "export var", "export interface", "export type", "export enum", "export namespace"]
 citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".cookie ("]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure : true"]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httpOnly : true"]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["sameSite :"]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"

@@ -194,3 +194,28 @@ source_tag = "curated"
 value = ["fun", "suspend fun", "open fun", "inline fun", "public fun", "class", "public class", "open class", "abstract class", "data class", "enum class", "sealed class", "interface", "object", "typealias"]
 citation_url = "https://kotlinlang.org/docs/visibility-modifiers.html"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["ResponseCookie.from ("]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = [".secure ( true"]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = [".httpOnly ( true"]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = [".sameSite ("]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
