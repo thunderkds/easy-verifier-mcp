@@ -9,6 +9,8 @@ a metric that ignored the predicate would fail here.
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from easy_verifier.core.judge import AREAS, PROJECT_DEFAULT, RATING_RULES, rate
@@ -398,3 +400,79 @@ def test_new_code_quality_rules_are_met_and_unmet():
     for name in ("type_escapes_per_kloc", "todo_without_ticket_share"):
         assert met[name] is True, name
         assert unmet[name] is False, name
+
+
+# --- Stage 4 P1: a test cut by the excerpt line cap is not judged -----------
+
+
+def _long_test_file(last_asserts: bool = True) -> str:
+    """10 asserting tests; the last starts near line 192 and asserts ~208."""
+    parts = []
+    for index in range(9):
+        parts.append(f"def test_{index}():\n    assert {index} == {index}\n\n")
+    head = "".join(parts)
+    pad = "\n" * (191 - head.count("\n"))
+    body = "    x = 1\n" * 15 + ("    assert x\n" if last_asserts else "    x += 1\n")
+    return head + pad + "def test_last():\n" + body
+
+
+def _clipped_pack(text: str):
+    from easy_verifier.core.context import whole_file_excerpt
+
+    excerpt = whole_file_excerpt("tests/test_core.py", text)
+    evidence = pack({"tests/test_core.py": "x"})
+    return dataclasses.replace(evidence, excerpts=(excerpt,))
+
+
+def test_a_test_cut_by_the_excerpt_limit_is_not_judged():
+    text = _long_test_file()
+    assert text.split("\n").index("def test_last():") + 1 == 192
+    evidence = _clipped_pack(text)
+    assert "excerpt clipped" in evidence.excerpts[0].text
+    (found,) = compute_metrics(evidence, curated_metric_tables()).by_name(
+        "tests_without_assertions_share"
+    )
+    assert found.outcome == 0.0
+    assert "0 of 9 observed test(s)" in found.derivation
+    assert "1 test(s) cut by the excerpt line limit were not judged" in found.derivation
+    assert "tests/test_core.py:19" not in found.derivation
+
+
+def test_an_unclipped_last_test_without_assertion_is_still_reported():
+    # sabotage twin: same shape, short enough to be quoted whole
+    text = _long_test_file(last_asserts=False).replace("\n" * 150, "\n")
+    found = metric("tests_without_assertions_share", {"tests/test_core.py": text})
+    assert found.outcome == pytest.approx(1 / 10)
+    line = text.split("\n").index("def test_last():") + 1
+    assert f"tests/test_core.py:{line}" in found.derivation
+    assert "cut by the excerpt line limit" not in found.derivation
+
+
+def test_clip_marker_pattern_matches_both_excerpt_producers():
+    from easy_verifier.core.context import whole_file_excerpt
+    from easy_verifier.core.metrics import excerpt_clipped
+    from easy_verifier.dimensions._code_extract import _excerpt
+
+    lines = [f"line {n}" for n in range(300)]
+    assert excerpt_clipped(whole_file_excerpt("a.py", "\n".join(lines)).text)
+    assert excerpt_clipped(_excerpt("a.py", lines, 0, 299).text)
+    assert not excerpt_clipped(whole_file_excerpt("a.py", "\n".join(lines[:5])).text)
+
+
+# --- Stage 4 P2: a test's line is its declaration's, not the blank before --
+
+
+def test_reported_line_is_the_declaration_line_not_the_preceding_blank():
+    text = "def test_ok():\n    assert 1\n\n\ndef test_empty():\n    pass\n"
+    found = metric("tests_without_assertions_share", {"tests/test_p.py": text})
+    assert "tests/test_p.py:5" in found.derivation
+    assert "tests/test_p.py:4" not in found.derivation
+
+
+def test_a_clipped_excerpt_holding_only_a_cut_test_abstains():
+    text = "\n" * 191 + "def test_last():\n" + "    x = 1\n" * 15 + "    assert x\n"
+    (found,) = compute_metrics(_clipped_pack(text), curated_metric_tables()).by_name(
+        "tests_without_assertions_share"
+    )
+    assert found.abstained
+    assert "cut by the excerpt line limit" in found.outcome.reason

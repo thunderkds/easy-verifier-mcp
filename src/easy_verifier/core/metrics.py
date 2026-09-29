@@ -1159,8 +1159,26 @@ def _code_test_excerpts(view: _PackView) -> list[tuple[Excerpt, LanguageSyntax]]
 
 
 def _declarations(text: str, tables: LanguageTables) -> list[int]:
-    starts = {m.start() for p in tables.test_declarations for m in p.finditer(text)}
+    """Offsets of each test declaration's first non-blank character: the
+    registry patterns start with ``^\\s*``, which can reach back over blank
+    lines, so ``match.start()`` alone would name the line before."""
+    starts = {
+        m.start() + len(m.group()) - len(m.group().lstrip())
+        for p in tables.test_declarations
+        for m in p.finditer(text)
+    }
     return sorted(starts)
+
+
+_CLIPPED = re.compile(r"\n…\[excerpt clipped: showing lines [^\n]*\]\Z")
+
+
+def excerpt_clipped(text: str) -> bool:
+    """Whether an excerpt ends in the line-cap clip marker that
+    ``context.whole_file_excerpt`` and ``_code_extract`` append: its last
+    quoted line is not the end of what it quotes. The marker text is pinned
+    against both producers by a test, since this module may not import them."""
+    return _CLIPPED.search(text) is not None
 
 
 def _no_tests(what: str) -> MetricAbstention:
@@ -1176,18 +1194,34 @@ def _no_tests(what: str) -> MetricAbstention:
 
 def _tests_without_assertions_share(view: _PackView) -> _Computed:
     tests = 0
+    cut = 0
     empty: list[str] = []
     refs: set[str] = set()
     for excerpt, syntax in _code_test_excerpts(view):
         starts = _declarations(excerpt.text, view.tables)
         code = strip(excerpt.text, syntax)
+        clipped = excerpt_clipped(excerpt.text)
         for index, start in enumerate(starts):
-            end = starts[index + 1] if index + 1 < len(starts) else len(code)
+            last = index + 1 == len(starts)
+            if last and clipped:
+                # its body runs past the excerpt line limit: not fully quoted
+                cut += 1
+                continue
+            end = len(code) if last else starts[index + 1]
             tests += 1
             refs.add(excerpt.ref)
             if not view.tables.assertions.search(code, start, end):
                 line = excerpt.start_line + _line_of(excerpt.text, start) - 1
                 empty.append(f"{excerpt.path}:{line}")
+    if not tests and cut:
+        return MetricAbstention(
+            reason=(
+                f"the only {cut} observed test(s) are cut by the excerpt line "
+                "limit (the last test of a clipped excerpt is not fully quoted), "
+                "so no test could be judged; that is not a share of 0. "
+                + _TEST_AREA_METHOD
+            )
+        )
     if not tests:
         return _no_tests("check for assertions")
     return (
@@ -1195,6 +1229,12 @@ def _tests_without_assertions_share(view: _PackView) -> _Computed:
         tuple(sorted(refs)),
         f"{len(empty)} of {tests} observed test(s) contain no assertion: "
         + (", ".join(empty) or "none")
+        + (
+            f"; {cut} test(s) cut by the excerpt line limit were not judged "
+            "(the last test of a clipped excerpt is not fully quoted)"
+            if cut
+            else ""
+        )
         + "; "
         + _TEST_AREA_METHOD,
     )
