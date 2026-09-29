@@ -184,3 +184,52 @@ source_tag = "curated"
 value = ["fastapi=fastapi"]
 citation_url = "https://fastapi.tiangolo.com/#installation"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["@pytest.mark.skip", "pytest.skip ("]
+citation_url = "https://docs.pytest.org/en/stable/how-to/skipping.html"
+source_tag = "curated"
+
+[[skip_markers]]
+value = ["@unittest.skip", "self.skipTest ("]
+citation_url = "https://docs.python.org/3/library/unittest.html#skipping-tests-and-expected-failures"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["urllib.request.urlopen (", "urlopen ("]
+citation_url = "https://docs.python.org/3/library/urllib.request.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["http.client.HTTPConnection (", "http.client.HTTPSConnection ("]
+citation_url = "https://docs.python.org/3/library/http.client.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["socket.create_connection ("]
+citation_url = "https://docs.python.org/3/library/socket.html#socket.create_connection"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["requests.get (", "requests.post (", "requests.put (", "requests.patch (", "requests.delete (", "requests.head (", "requests.request ("]
+citation_url = "https://requests.readthedocs.io/en/latest/api/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["httpx.get (", "httpx.post (", "httpx.request (", "httpx.Client (", "httpx.AsyncClient ("]
+citation_url = "https://www.python-httpx.org/api/"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["type : ignore"]
+citation_url = "https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"
+source_tag = "curated"
+
+[[type_escapes]]
+value = [": Any", "-> Any", "typing.Any"]
+citation_url = "https://docs.python.org/3/library/typing.html#the-any-type"
+source_tag = "curated"

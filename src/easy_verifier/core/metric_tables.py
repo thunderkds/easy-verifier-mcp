@@ -55,12 +55,16 @@ def metric_tables(
     candidates: dict[str, dict[str, None]] = {}
     syntax: dict[str, LanguageSyntax] = {}
     sinks: dict[str, tuple[SinkPattern, ...]] = {}
+    area: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _AREA_FIELDS}
     for entry in entries:
         extensions = _values(entry, "source_extensions")
         compiled = _syntax(entry)
         for extension in extensions if compiled else ():
             syntax.setdefault(extension, compiled)
             sinks.setdefault(extension, _sinks(entry))
+            for name in _AREA_FIELDS:
+                if _values(entry, name):
+                    area[name].setdefault(extension, _guarded(_values(entry, name)))
         suffixes.update(dict.fromkeys(extensions))
         for extension in extensions:
             candidates.setdefault(extension, {}).update(
@@ -97,6 +101,27 @@ def metric_tables(
         else _NEVER,
         syntax=syntax,
         sinks={suffix: found for suffix, found in sinks.items() if found},
+        skip_markers=area["skip_markers"],
+        network_calls=area["network_calls"],
+        type_escapes=area["type_escapes"],
+        type_stub_patterns=tuple(
+            re.compile(translate(glob)) for glob in _union(entries, "type_stub_names")
+        ),
+    )
+
+
+_AREA_FIELDS = ("skip_markers", "network_calls", "type_escapes")
+
+
+def _guarded(tokens: list[str]) -> re.Pattern[str]:
+    """One alternation of ``tokens``, longest first; like a sink token, one
+    starting with an identifier character may not follow ``.``, ``>``, ``$``."""
+    ordered = sorted(dict.fromkeys(tokens), key=len, reverse=True)
+    return re.compile(
+        "|".join(
+            (r"(?<![.>$])" if _word(token[:1]) else "") + token_regex(token)
+            for token in ordered
+        )
     )
 
 
@@ -180,21 +205,34 @@ _AC_TRACE = (
     "acceptance_criteria_traced_to_test_share",
 )
 _SINKS = ("sink_hits_observed",)
+_TEST_AREA = ("tests_without_assertions_share", "skipped_test_share")
+_NETWORK = ("network_calls_in_unit_tests_observed",)
+_TYPE_ESCAPES = ("type_escapes_per_kloc",)
+_TODO = ("todo_without_ticket_share",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
-    "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE,
-    "test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE,
-    "colocated_test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE,
+    "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
+    + _TYPE_ESCAPES + _TODO,
+    "test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE + _TEST_AREA
+    + _NETWORK,
+    "colocated_test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE
+    + _TEST_AREA + _NETWORK,
     "test_candidates": _TEST_MATCH[1:3],
-    "test_declarations": _ASSERTIONS[:1],
-    "assertions": _ASSERTIONS,
+    "test_declarations": _ASSERTIONS[:1] + _TEST_AREA,
+    "assertions": _ASSERTIONS + _TEST_AREA[:1],
     "branch_keywords": _CCN,
-    "comment_delimiters": _CCN + _IMPORTS + _SINKS,
-    "string_delimiters": _CCN + _IMPORTS + _SINKS,
+    "comment_delimiters": _CCN + _IMPORTS + _SINKS + _TEST_AREA + _NETWORK
+    + _TYPE_ESCAPES + _TODO,
+    "string_delimiters": _CCN + _IMPORTS + _SINKS + _TEST_AREA + _NETWORK
+    + _TYPE_ESCAPES + _TODO,
     "interpolating_strings": _SINKS,
     "function_start": _CCN,
     "import_syntax": _IMPORTS,
     "security_sinks": _SINKS,
+    "skip_markers": _TEST_AREA[1:],
+    "network_calls": _NETWORK,
+    "type_escapes": _TYPE_ESCAPES,
+    "type_stub_names": _TYPE_ESCAPES,
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -208,6 +246,8 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
     "defaults it to () and _syntax does not require it",
     "test_candidates": "refines test matching; expected_test_names falls "
     "back to no templates for a suffix without it",
+    "type_stub_names": "refines type-escape scanning: only languages that "
+    "generate stubs with a code suffix (TypeScript *.d.ts) declare it (T040)",
     "colocated_test_name_patterns": "refines test matching alongside "
     "test_name_patterns; python/php/rust omit it by design (T052) and the "
     "directory-first rule still applies without it",

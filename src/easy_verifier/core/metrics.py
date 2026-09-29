@@ -271,6 +271,16 @@ class LanguageTables:
     """Source suffix -> the language's dangerous-sink tokens (T034); matched
     only where ``syntax`` can blank that language's comments and strings."""
 
+    skip_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    network_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    type_escapes: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T040 area tokens (FR-051), present
+    only where ``syntax`` is: skip markers and network calls are matched in
+    test code, type escapes in source code with its comments kept."""
+
+    type_stub_patterns: tuple[re.Pattern[str], ...] = ()
+    """Full-match base-name patterns of generated type stubs (``*.d.ts``)."""
+
 
 @dataclass(frozen=True)
 class SinkPattern:
@@ -1116,6 +1126,339 @@ def _cycles(edges: Mapping[str, set[str]]) -> list[list[str]]:
     return cycles
 
 
+# ---------------------------------------------------------------------------
+# Area rule-group metrics (T040, FR-051): #16 false confidence and isolation,
+# #17 type escapes, #31 debt markers. Language tokens are the registry's;
+# every match runs over code with comments and strings blanked (type escapes
+# keep comments, TODO scanning reads only comments), so a marker quoted in a
+# string is never counted. Each derivation says which excerpts bounded it.
+# ---------------------------------------------------------------------------
+
+_ISOLATION_SEGMENTS = frozenset({"integration", "e2e", "end-to-end", "functional"})
+
+_TEST_AREA_METHOD = (
+    "tests are the registry's test declarations in test-file excerpts; a test "
+    "runs from its declaration to the next one (or the excerpt end); markers "
+    "and assertions are the registry's tokens, matched after comments and "
+    "strings are blanked; only excerpts of registry languages are read, so "
+    "this describes the quoted tests, not the repository"
+)
+
+
+def _line_of(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
+def _code_test_excerpts(view: _PackView) -> list[tuple[Excerpt, LanguageSyntax]]:
+    found = []
+    for excerpt in view.test_excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is not None:
+            found.append((excerpt, syntax))
+    return found
+
+
+def _declarations(text: str, tables: LanguageTables) -> list[int]:
+    """Offsets of each test declaration's first non-blank character: the
+    registry patterns start with ``^\\s*``, which can reach back over blank
+    lines, so ``match.start()`` alone would name the line before."""
+    starts = {
+        m.start() + len(m.group()) - len(m.group().lstrip())
+        for p in tables.test_declarations
+        for m in p.finditer(text)
+    }
+    return sorted(starts)
+
+
+_CLIPPED = re.compile(r"\n…\[excerpt clipped: showing lines [^\n]*\]\Z")
+
+
+def excerpt_clipped(text: str) -> bool:
+    """Whether an excerpt ends in the line-cap clip marker that
+    ``context.whole_file_excerpt`` and ``_code_extract`` append: its last
+    quoted line is not the end of what it quotes. The marker text is pinned
+    against both producers by a test, since this module may not import them."""
+    return _CLIPPED.search(text) is not None
+
+
+def _no_tests(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            "no test declaration the registry recognises was found in a "
+            "test-file excerpt of a registry language, so there is no test "
+            f"to {what}; that is a zero denominator, not a share of 0. "
+            + _TEST_AREA_METHOD
+        )
+    )
+
+
+def _tests_without_assertions_share(view: _PackView) -> _Computed:
+    tests = 0
+    cut = 0
+    empty: list[str] = []
+    refs: set[str] = set()
+    for excerpt, syntax in _code_test_excerpts(view):
+        starts = _declarations(excerpt.text, view.tables)
+        code = strip(excerpt.text, syntax)
+        clipped = excerpt_clipped(excerpt.text)
+        for index, start in enumerate(starts):
+            last = index + 1 == len(starts)
+            if last and clipped:
+                # its body runs past the excerpt line limit: not fully quoted
+                cut += 1
+                continue
+            end = len(code) if last else starts[index + 1]
+            tests += 1
+            refs.add(excerpt.ref)
+            if not view.tables.assertions.search(code, start, end):
+                line = excerpt.start_line + _line_of(excerpt.text, start) - 1
+                empty.append(f"{excerpt.path}:{line}")
+    if not tests and cut:
+        return MetricAbstention(
+            reason=(
+                f"the only {cut} observed test(s) are cut by the excerpt line "
+                "limit (the last test of a clipped excerpt is not fully quoted), "
+                "so no test could be judged; that is not a share of 0. "
+                + _TEST_AREA_METHOD
+            )
+        )
+    if not tests:
+        return _no_tests("check for assertions")
+    return (
+        len(empty) / tests,
+        tuple(sorted(refs)),
+        f"{len(empty)} of {tests} observed test(s) contain no assertion: "
+        + (", ".join(empty) or "none")
+        + (
+            f"; {cut} test(s) cut by the excerpt line limit were not judged "
+            "(the last test of a clipped excerpt is not fully quoted)"
+            if cut
+            else ""
+        )
+        + "; "
+        + _TEST_AREA_METHOD,
+    )
+
+
+def _skipped_test_share(view: _PackView) -> _Computed:
+    tests = 0
+    hits: list[tuple[str, bool]] = []
+    refs: set[str] = set()
+    for excerpt, syntax in _code_test_excerpts(view):
+        text = excerpt.text
+        declared = [_line_of(text, start) for start in _declarations(text, view.tables)]
+        tests += len(declared)
+        if declared:
+            refs.add(excerpt.ref)
+        pattern = view.tables.skip_markers.get(PurePosixPath(excerpt.path).suffix)
+        if pattern is None:
+            continue
+        raw_lines = text.split("\n")
+        code = strip(text, syntax)
+        code_lines = code.split("\n")
+        kept_lines = strip(text, syntax, keep_strings=True).split("\n")
+        for match in pattern.finditer(code):
+            number = _line_of(code, match.start())
+            if _skip_declares_a_test(number, declared, raw_lines):
+                tests += 1
+            # a reason is a string literal on the marker's own line
+            reason = kept_lines[number - 1] != code_lines[number - 1]
+            line = excerpt.start_line + number - 1
+            hits.append((f"{excerpt.path}:{line}", reason))
+            refs.add(excerpt.ref)
+    if not tests:
+        return _no_tests("compare skip markers against")
+    with_reason = sum(1 for _where, reason in hits if reason)
+    return (
+        len(hits) / tests,
+        tuple(sorted(refs)),
+        f"{len(hits)} unconditional skip/disable marker(s) against {tests} "
+        f"observed test(s) ({with_reason} with a reason, "
+        f"{len(hits) - with_reason} without): "
+        + (
+            ", ".join(
+                where + (" (reason)" if reason else " (no reason)")
+                for where, reason in hits
+            )
+            or "none"
+        )
+        + "; conditional skips (skipif) are not markers; a marker annotates "
+        "the test declared on its line, or below it across lines of the same "
+        "attribute syntax (@..., #[...], [...]), or skips from inside the body "
+        "of a test declared less indented above it; any other marker declares "
+        "a skipped test itself (it.skip, xit) and is counted as one; "
+        + _TEST_AREA_METHOD,
+    )
+
+
+def _skip_declares_a_test(number: int, declared: list[int], lines: list[str]) -> bool:
+    """Whether the skip marker on line ``number`` is a test of its own."""
+    if number in declared:
+        return False
+    marker = lines[number - 1].strip()
+    below = [line for line in declared if line > number]
+    if below and marker[:1] and not _word_char(marker[0]):
+        between = [lines[i - 1].strip() for i in range(number + 1, below[0])]
+        if all(item[:1] == marker[0] for item in between):
+            return False
+    above = [line for line in declared if line < number]
+    if not above:
+        return True
+    return _indent_of(lines[number - 1]) <= _indent_of(lines[above[-1] - 1])
+
+
+def _word_char(char: str) -> bool:
+    return char.isalnum() or char == "_"
+
+
+def _indent_of(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def _network_calls_in_unit_tests_observed(view: _PackView) -> _Computed:
+    scanned = []
+    for excerpt, syntax in _code_test_excerpts(view):
+        segments = set(PurePosixPath(excerpt.path).parent.parts)
+        pattern = view.tables.network_calls.get(PurePosixPath(excerpt.path).suffix)
+        if pattern is not None and not segments & _ISOLATION_SEGMENTS:
+            scanned.append((excerpt, syntax, pattern))
+    if not scanned:
+        return MetricAbstention(
+            reason=(
+                "no unit-test excerpt of a registry language with network-call "
+                "tokens is in this pack (tests under an integration, e2e, "
+                "end-to-end or functional directory are not unit tests), so no "
+                "unit test was scanned; that is not the same as isolated tests"
+            )
+        )
+    hits: dict[tuple[str, int], str] = {}
+    for excerpt, syntax, pattern in scanned:
+        code = strip(excerpt.text, syntax)
+        for match in pattern.finditer(code):
+            line = excerpt.start_line + _line_of(code, match.start()) - 1
+            hits.setdefault((excerpt.path, line), excerpt.ref)
+    cited = sorted(set(hits.values())) or sorted({e.ref for e, _s, _p in scanned})
+    return (
+        len(hits),
+        tuple(cited),
+        f"{len(hits)} line(s) calling the network in {len(scanned)} unit-test "
+        "excerpt(s): "
+        + (", ".join(f"{path}:{line}" for path, line in sorted(hits)) or "none")
+        + "; network calls are the registry's network_calls tokens matched "
+        "after comments and strings are blanked; tests under integration, "
+        "e2e, end-to-end or functional directories are excluded; a lower "
+        "bound on the repository, since only these excerpts were read",
+    )
+
+
+_TYPE_ESCAPE_METHOD = (
+    "type escapes are the registry's type_escapes tokens (Any, type: ignore, "
+    "@ts-ignore, ...), matched in source-file excerpts of registry languages "
+    "after string literals are blanked (comments are kept, since most "
+    "escapes are comments); generated type stubs (the registry's "
+    "type_stub_names) are not read; per 1000 quoted source lines"
+)
+
+
+def _type_escapes_per_kloc(view: _PackView) -> _Computed:
+    lines = 0
+    hits: list[str] = []
+    refs: set[str] = set()
+    for excerpt in view.pack.excerpts:
+        path = PurePosixPath(excerpt.path)
+        pattern = view.tables.type_escapes.get(path.suffix)
+        syntax = view.tables.syntax.get(path.suffix)
+        if (
+            pattern is None
+            or syntax is None
+            or not _is_source_file(excerpt.path, view.tables)
+            or any(p.fullmatch(path.name) for p in view.tables.type_stub_patterns)
+        ):
+            continue
+        lines += _excerpt_lines(excerpt)
+        refs.add(excerpt.ref)
+        text = _strings_blanked(excerpt.text, syntax)
+        for match in pattern.finditer(text):
+            line = excerpt.start_line + _line_of(text, match.start()) - 1
+            hits.append(f"{excerpt.path}:{line}")
+    if not lines:
+        return MetricAbstention(
+            reason=(
+                "no source-file excerpt of a registry language with type-escape "
+                "tokens is in this pack, so no code was scanned; that is not the "
+                "same as code without escapes. " + _TYPE_ESCAPE_METHOD
+            )
+        )
+    return (
+        len(hits) / lines * 1000,
+        tuple(sorted(refs)),
+        f"{len(hits)} type escape(s) in {lines} quoted source line(s): "
+        + (", ".join(hits) or "none")
+        + "; "
+        + _TYPE_ESCAPE_METHOD,
+    )
+
+
+def _strings_blanked(text: str, syntax: LanguageSyntax) -> str:
+    """``text`` with string literals blanked and comments kept."""
+    code = strip(text, syntax)
+    without_comments = strip(text, syntax, keep_strings=True)
+    return "".join(
+        raw if kept != raw else blank
+        for raw, kept, blank in zip(text, without_comments, code, strict=True)
+    )
+
+
+_DEBT_MARKER = re.compile(r"\b(?:TODO|FIXME|XXX|HACK)\b")
+_TICKET_REF = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b|#\d+\b|https?://\S+")
+
+_TODO_METHOD = (
+    "debt markers are TODO, FIXME, XXX or HACK as whole words inside comments "
+    "(the registry's comment delimiters; a marker in a string is not a "
+    "comment); a marker has a ticket when its comment names a KEY-123 issue "
+    "key, a #123 reference or a URL; only source-file excerpts of registry "
+    "languages are read, so this describes the quoted code, not the repository"
+)
+
+
+def _todo_without_ticket_share(view: _PackView) -> _Computed:
+    markers: list[tuple[str, bool]] = []
+    refs: set[str] = set()
+    scanned = 0
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None or not _is_source_file(excerpt.path, view.tables):
+            continue
+        scanned += 1
+        kept = strip(excerpt.text, syntax, keep_strings=True)
+        comments = "".join(
+            raw if raw != other or raw == "\n" else " "
+            for raw, other in zip(excerpt.text, kept, strict=True)
+        )
+        for number, line in enumerate(comments.split("\n"), start=1):
+            if _DEBT_MARKER.search(line):
+                where = f"{excerpt.path}:{excerpt.start_line + number - 1}"
+                markers.append((where, bool(_TICKET_REF.search(line))))
+                refs.add(excerpt.ref)
+    if not markers:
+        return MetricAbstention(
+            reason=(
+                f"no debt marker was found in the comments of {scanned} "
+                "source-file excerpt(s), so the share has a zero denominator; "
+                "that is not a share of 0. " + _TODO_METHOD
+            )
+        )
+    without = [where for where, ticket in markers if not ticket]
+    return (
+        len(without) / len(markers),
+        tuple(sorted(refs)),
+        f"{len(without)} of {len(markers)} debt marker(s) name no ticket: "
+        + (", ".join(without) or "none")
+        + "; "
+        + _TODO_METHOD,
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -1271,6 +1614,30 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         # checks its own evidence is complete (see its compute function)
         EVIDENCE_LOCAL,
         _changed_files_in_churn_hotspots_share,
+    ),
+    MetricDefinition(
+        "tests_without_assertions_share",
+        FAMILY_TEST_STRENGTH,
+        WHOLE_SET,
+        _tests_without_assertions_share,
+    ),
+    MetricDefinition(
+        "skipped_test_share", FAMILY_TEST_STRENGTH, WHOLE_SET, _skipped_test_share
+    ),
+    MetricDefinition(
+        "network_calls_in_unit_tests_observed",
+        FAMILY_TEST_STRENGTH,
+        EVIDENCE_LOCAL,
+        _network_calls_in_unit_tests_observed,
+    ),
+    MetricDefinition(
+        "type_escapes_per_kloc", FAMILY_CODE_SHAPE, WHOLE_SET, _type_escapes_per_kloc
+    ),
+    MetricDefinition(
+        "todo_without_ticket_share",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _todo_without_ticket_share,
     ),
 )
 

@@ -242,25 +242,36 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[1],
         ),
     ),
+    # Weights re-balanced by T040 for the #17 and #31 rule groups (user
+    # sign-off 2026-09-29).
     "code-quality": _rules(
         RatingRule(
-            "functions_over_ccn_10_share", 40, 0.10, "at_most",
+            "functions_over_ccn_10_share", 30, 0.10, "at_most",
             (_MCCABE, _ISO_5055), _NIST_500_235,
             area=AREAS[17],
         ),
         RatingRule(
-            "max_function_ccn", 20, 15, "at_most",
+            "max_function_ccn", 15, 15, "at_most",
             (_MCCABE, _NIST_500_235),
             Citation("NIST SP 500-235 (15 with justification)", _NIST_500_235_URL),
             area=AREAS[17],
         ),
         RatingRule(
-            "lint_config_missing", 20, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
+            "lint_config_missing", 15, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
             area=AREAS[16],
         ),
         RatingRule(
-            "format_config_missing", 20, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
+            "format_config_missing", 10, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
             area=AREAS[16],
+        ),
+        RatingRule(
+            "type_escapes_per_kloc", 15, 5, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
+            area=AREAS[16],
+        ),
+        RatingRule(
+            "todo_without_ticket_share", 15, 0.50, "at_most",
+            (_ISO_5055,), PROJECT_DEFAULT,
+            area=AREAS[30],
         ),
     ),
     "security": _rules(
@@ -279,19 +290,36 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[19],
         ),
     ),
+    # Weights re-balanced by T040 for the #16 rule group (user sign-off
+    # 2026-09-29).
     "test-strategy": _rules(
         RatingRule(
-            "source_files_without_covering_test_share", 35, 0.20, "at_most",
+            "source_files_without_covering_test_share", 25, 0.20, "at_most",
             (_ISO_29119_4,), PROJECT_DEFAULT,
             area=AREAS[15],
         ),
         RatingRule(
-            "assertion_density_per_test", 35, 1.0, "at_least",
+            "assertion_density_per_test", 20, 1.0, "at_least",
             (_KUDRJAVETS,), PROJECT_DEFAULT,
             area=AREAS[15],
         ),
         RatingRule(
-            "test_config_and_ci_missing", 30, 0, "at_most",
+            "test_config_and_ci_missing", 20, 0, "at_most",
+            (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+        RatingRule(
+            "tests_without_assertions_share", 15, 0.10, "at_most",
+            (_ISO_29119_4, _KUDRJAVETS), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+        RatingRule(
+            "skipped_test_share", 10, 0.05, "at_most",
+            (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+        RatingRule(
+            "network_calls_in_unit_tests_observed", 10, 0, "at_most",
             (_ISO_29119_2,), PROJECT_DEFAULT,
             area=AREAS[15],
         ),

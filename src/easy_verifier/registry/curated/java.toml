@@ -189,3 +189,37 @@ source_tag = "curated"
 value = ["spring-boot=org.springframework.boot"]
 citation_url = "https://docs.spring.io/spring-boot/installing.html"
 source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["@Disabled"]
+citation_url = "https://docs.junit.org/current/api/org.junit.jupiter.api/org/junit/jupiter/api/Disabled.html"
+source_tag = "curated"
+
+[[skip_markers]]
+value = ["@Ignore"]
+citation_url = "https://junit.org/junit4/javadoc/latest/org/junit/Ignore.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["HttpClient.newHttpClient (", "HttpClient.newBuilder ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpClient.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = [".openConnection ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/URL.html#openConnection()"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["new Socket ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/Socket.html"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@SuppressWarnings"]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/SuppressWarnings.html"
+source_tag = "curated"

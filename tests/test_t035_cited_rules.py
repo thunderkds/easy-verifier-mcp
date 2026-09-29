@@ -61,12 +61,16 @@ APPROVED = {
          ("29148",), PROJECT_DEFAULT),
     ],
     "code-quality": [
-        ("functions_over_ccn_10_share", 40, "at_most", 0.10,
+        # weights re-balanced by T040 (user sign-off 2026-09-29)
+        ("functions_over_ccn_10_share", 30, "at_most", 0.10,
          ("McCabe", "5055"), "NIST SP 500-235"),
-        ("max_function_ccn", 20, "at_most", 15,
+        ("max_function_ccn", 15, "at_most", 15,
          ("McCabe", "NIST SP 500-235"), "NIST SP 500-235 (15"),
-        ("lint_config_missing", 20, "at_most", 0, ("5055",), PROJECT_DEFAULT),
-        ("format_config_missing", 20, "at_most", 0, ("5055",), PROJECT_DEFAULT),
+        ("lint_config_missing", 15, "at_most", 0, ("5055",), PROJECT_DEFAULT),
+        ("format_config_missing", 10, "at_most", 0, ("5055",), PROJECT_DEFAULT),
+        ("type_escapes_per_kloc", 15, "at_most", 5, ("5055",), PROJECT_DEFAULT),
+        ("todo_without_ticket_share", 15, "at_most", 0.50, ("5055",),
+         PROJECT_DEFAULT),
     ],
     "security": [
         ("redaction_hits_observed", 40, "at_most", 0,
@@ -76,11 +80,17 @@ APPROVED = {
          (f"{_ASVS} V15.1.2",), f"{_ASVS} V15.1.2"),
     ],
     "test-strategy": [
-        ("source_files_without_covering_test_share", 35, "at_most", 0.20,
+        # weights re-balanced by T040 (user sign-off 2026-09-29)
+        ("source_files_without_covering_test_share", 25, "at_most", 0.20,
          ("29119",), PROJECT_DEFAULT),
-        ("assertion_density_per_test", 35, "at_least", 1.0,
+        ("assertion_density_per_test", 20, "at_least", 1.0,
          ("Kudrjavets",), PROJECT_DEFAULT),
-        ("test_config_and_ci_missing", 30, "at_most", 0,
+        ("test_config_and_ci_missing", 20, "at_most", 0,
+         ("29119",), PROJECT_DEFAULT),
+        ("tests_without_assertions_share", 15, "at_most", 0.10,
+         ("29119", "Kudrjavets"), PROJECT_DEFAULT),
+        ("skipped_test_share", 10, "at_most", 0.05, ("29119",), PROJECT_DEFAULT),
+        ("network_calls_in_unit_tests_observed", 10, "at_most", 0,
          ("29119",), PROJECT_DEFAULT),
     ],
     "blast-radius": [
@@ -260,16 +270,16 @@ def _code_quality_rating(over: int) -> Rating:
     return result
 
 
-def test_thirty_percent_of_functions_over_ccn_10_earns_0_of_40():
+def test_thirty_percent_of_functions_over_ccn_10_earns_0_of_30():
     unmet = _code_quality_rating(over=3)
     met = _code_quality_rating(over=1)  # sabotage pair: only the share varies
     by_name = {item.metric_name: item for item in unmet.inputs}
     share = by_name["functions_over_ccn_10_share"]
     assert share.metric_value == 0.3
-    assert (share.weight, share.earned_weight, share.passed) == (40, 0, False)
+    assert (share.weight, share.earned_weight, share.passed) == (30, 0, False)
     met_share = {i.metric_name: i for i in met.inputs}["functions_over_ccn_10_share"]
     assert met_share.metric_value == 0.1
-    assert (met_share.earned_weight, met_share.passed) == (40, True)
+    assert (met_share.earned_weight, met_share.passed) == (30, True)
 
 
 # ---------------------------------------------------------------------------
