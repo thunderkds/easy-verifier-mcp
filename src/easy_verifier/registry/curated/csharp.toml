@@ -205,3 +205,12 @@ source_tag = "curated"
 value = ["# pragma warning disable"]
 citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/preprocessor-directives#pragma-warning"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["public class", "public interface", "public enum", "public struct", "public record", "public * class", "public * (", "public * * (", "public * * * ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/access-modifiers"
+source_tag = "curated"

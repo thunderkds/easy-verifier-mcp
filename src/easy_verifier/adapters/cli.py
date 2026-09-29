@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ..core.findings import ValidationError
+from ..core.models import to_json_dict
 from ..core.pipeline import (
     DEFAULT_BUDGET_BYTES,
     DEFAULT_SCOPE,
@@ -165,7 +166,7 @@ def _run_single(args: argparse.Namespace) -> int:
     )
     for warning in pack.warnings:
         print(f"warning [{pack.mode}]: {warning}", file=sys.stderr)
-    return _emit(dataclasses.asdict(pack))
+    return _emit(to_json_dict(pack))
 
 
 def _run_combined(args: argparse.Namespace) -> int:
@@ -177,7 +178,7 @@ def _run_combined(args: argparse.Namespace) -> int:
         ref=args.ref,
         task_id=args.task_id,
     )
-    return _emit(dataclasses.asdict(result))
+    return _emit(to_json_dict(result))
 
 
 def _run_report(args: argparse.Namespace) -> int:

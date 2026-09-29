@@ -277,6 +277,8 @@ class RepoContext:
         self.approval_requests: list[ApprovalRequest] = []
         self.trace_search: object | None = None
         self.reach: object | None = None
+        self.compat: object | None = None
+        self.doc_history: object | None = None
         self._secret_approval = secret_approval
         self._secret_approval_decisions: dict[str, bool] = {}
         self._approved_secret_reads: set[str] = set()

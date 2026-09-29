@@ -319,6 +319,11 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "acceptance_criteria_traced_to_code_share",
         "acceptance_criteria_traced_to_test_share",
         "changed_files_in_churn_hotspots_share",
+        # T055: #5 needs a blast-radius diff, #27 a requirement-fidelity pack.
+        "public_symbols_removed",
+        "destructive_migration_ops",
+        "requirements_docs_count",
+        "code_commits_with_docs_share",
     }
 
     # AC #5: unaffected by truncation, both ways.

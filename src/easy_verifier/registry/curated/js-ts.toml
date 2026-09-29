@@ -292,3 +292,12 @@ source_tag = "curated"
 value = ["?*.d.ts"]
 citation_url = "https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["export function", "export async function", "export default function", "export default class", "export default", "export class", "export abstract class", "export const", "export let", "export var", "export interface", "export type", "export enum", "export namespace"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export"
+source_tag = "curated"

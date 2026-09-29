@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.core.context import MODE_KIT_AWARE, MODE_STANDALONE
-from easy_verifier.core.models import EvidencePack
+from easy_verifier.core.models import EvidencePack, to_json_dict
 from easy_verifier.core.pipeline import run_dimension
 from easy_verifier.dimensions import (
     architecture,
@@ -251,7 +251,9 @@ def test_architecture_pack_matches_pre_refactor_snapshot(tmp_path: Path) -> None
         Path(__file__).resolve().parent / "snapshots" / "architecture_pack.json"
     )
     expected = json.loads(snapshot_path.read_text(encoding="utf-8"))
-    actual = json.loads(json.dumps(dataclasses.asdict(pack)))
+    # T055: the adapters' serializer; the snapshot predates T055, so this also
+    # proves unused new pack facts leave the JSON byte-identical (DDR-0005).
+    actual = json.loads(json.dumps(to_json_dict(pack)))
 
     assert actual == expected
 

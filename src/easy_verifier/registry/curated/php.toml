@@ -212,3 +212,12 @@ source_tag = "curated"
 value = ["@psalm-suppress"]
 citation_url = "https://psalm.dev/docs/running_psalm/dealing_with_code_issues/"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["public function", "public static function", "function", "class", "abstract class", "final class", "interface", "trait", "enum"]
+citation_url = "https://www.php.net/manual/en/language.oop5.visibility.php"
+source_tag = "curated"

@@ -281,6 +281,10 @@ class LanguageTables:
     type_stub_patterns: tuple[re.Pattern[str], ...] = ()
     """Full-match base-name patterns of generated type stubs (``*.d.ts``)."""
 
+    public_declarations: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's public-declaration tokens (T055),
+    anchored at a line start; read by the blast-radius dimension, never here."""
+
 
 @dataclass(frozen=True)
 class SinkPattern:
@@ -1459,6 +1463,188 @@ def _todo_without_ticket_share(view: _PackView) -> _Computed:
     )
 
 
+# ---------------------------------------------------------------------------
+# Backward compatibility (T055, area #5): read by the blast-radius dimension
+# from the diff of a changes scope into ``pack.compat``; each listed item is
+# a pack excerpt, so a count is shown only with all of its listed evidence.
+# ---------------------------------------------------------------------------
+
+
+def _compat_count(kind: str) -> Callable[[_PackView], _Computed]:
+    what = (
+        "removed or renamed public declaration(s)"
+        if kind == "symbols"
+        else "destructive migration operation(s)"
+    )
+
+    def compute(view: _PackView) -> _Computed:
+        pack = view.pack
+        facts = pack.compat
+        if pack.dimension != BLAST_RADIUS:
+            return MetricAbstention(
+                reason=(
+                    "only the blast-radius pack reads the diff of a change, and "
+                    f"this is the {pack.dimension!r} pack"
+                )
+            )
+        if facts is None:
+            why = (
+                "the changes scope could not be resolved (its ref was not "
+                "supplied), so there is no diff to read"
+                if pack.scope == "changes"
+                else f"this pack is at {pack.scope!r} scope, which carries no "
+                "diff; backward compatibility is read only from the diff of a "
+                "'changes' scope (a commit, range or branch)"
+            )
+            return MetricAbstention(reason=why)
+        if facts.unavailable:
+            return MetricAbstention(reason=facts.unavailable)
+        if facts.incomplete:
+            return MetricAbstention(
+                reason="the diff could not be read completely: " + facts.incomplete
+            )
+        items, total = (
+            (facts.removed_symbols, facts.removed_symbols_total)
+            if kind == "symbols"
+            else (facts.destructive_ops, facts.destructive_ops_total)
+        )
+        present = {e.ref for e in pack.excerpts}
+        dropped = [item.ref for item in items if item.ref not in present]
+        if dropped:
+            return MetricAbstention(
+                reason=(
+                    f"{len(dropped)} quoted diff line(s) the count rests on are not "
+                    "in this pack (the byte budget dropped them), so the count "
+                    "could not be shown with its evidence"
+                ),
+                omitted_lower_bound=len(dropped),
+            )
+        refs = {item.ref for item in items}
+        refs |= {path for path in facts.examined if path in set(pack.files_read)}
+        if not refs:
+            return MetricAbstention(
+                reason="no changed file of this diff could be read or quoted, so "
+                "there is no evidence to cite"
+            )
+        listed = ", ".join(f"{item.ref} {item.detail}" for item in items) or "none"
+        more = total - len(items)
+        renamed = (
+            f"; {len(facts.renamed_code_files)} code file(s) renamed, not counted "
+            "(whether a file path is public API depends on the language): "
+            + ", ".join(facts.renamed_code_files[:5])
+            if kind == "symbols" and facts.renamed_code_files
+            else ""
+        )
+        return (
+            total,
+            tuple(sorted(refs)),
+            f"{total} {what} in the diff of {len(facts.examined)} changed "
+            f"file(s): {listed}"
+            + (f", and {more} more counted, not quoted" if more > 0 else "")
+            + renamed
+            + ". Method: "
+            + _COMPAT_METHOD,
+        )
+
+    return compute
+
+
+_COMPAT_METHOD = (
+    "textual, over the changes scope's diff (see the pack warning): removed "
+    "lines of non-test code starting with a registry public_declarations "
+    "token, unless the same name is declared again in the change; added "
+    "destructive operations in migration files outside down sections"
+)
+
+
+# ---------------------------------------------------------------------------
+# Documentation source of truth (T055, area #27): recorded by the
+# requirement-fidelity dimension in ``pack.doc_history``.
+# ---------------------------------------------------------------------------
+
+
+def _no_doc_history(view: _PackView) -> MetricAbstention | None:
+    pack = view.pack
+    if pack.dimension != REQUIREMENT_FIDELITY:
+        return MetricAbstention(
+            reason=(
+                "only the requirement-fidelity pack records documentation "
+                f"source-of-truth facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    if pack.doc_history is None:
+        return MetricAbstention(
+            reason=(
+                f"the {pack.scope} scope could not be resolved, so no "
+                "documentation facts were gathered"
+            )
+        )
+    return None
+
+
+def _requirements_docs_count(view: _PackView) -> _Computed:
+    absent = _no_doc_history(view)
+    if absent is not None:
+        return absent
+    facts = view.pack.doc_history
+    refs = [path for path in facts.requirements_docs if path in view.files]
+    if not facts.requirements_docs_total or not refs:
+        return MetricAbstention(
+            reason=(
+                "no readable file fills the requirements-doc role, so there is no "
+                "requirements source to count; the role's miss is in this pack's "
+                "sources_missing"
+            )
+        )
+    more = facts.requirements_docs_total - len(facts.requirements_docs)
+    return (
+        facts.requirements_docs_total,
+        tuple(sorted(refs)),
+        f"{facts.requirements_docs_total} file(s) fill the requirements-doc role "
+        "(PRD*.md or a document named for requirements, anywhere): "
+        + ", ".join(facts.requirements_docs)
+        + (f", and {more} more" if more > 0 else "")
+        + "; more than one is several competing requirements sources rather than "
+        "one canonical document",
+    )
+
+
+def _code_commits_with_docs_share(view: _PackView) -> _Computed:
+    absent = _no_doc_history(view)
+    if absent is not None:
+        return absent
+    facts = view.pack.doc_history
+    if facts.history_unavailable:
+        return MetricAbstention(reason=facts.history_unavailable)
+    if not facts.code_commits:
+        return MetricAbstention(
+            reason=(
+                f"none of the {facts.commits_scanned} non-merge local commit(s) "
+                f"read (window {facts.window}) changed a code file, so the share "
+                "has a zero denominator; that is not a share of 0"
+            )
+        )
+    cited = {*facts.docs_cited, *facts.requirements_docs}
+    refs = sorted(path for path in cited if path in view.files)
+    if not refs:
+        return MetricAbstention(
+            reason="no document of this pack was read, so there is no evidence "
+            "to cite beside the share"
+        )
+    return (
+        facts.code_commits_with_docs / facts.code_commits,
+        tuple(refs),
+        f"{facts.code_commits_with_docs} of {facts.code_commits} code-changing "
+        f"commit(s) also changed documentation, among the last "
+        f"{facts.commits_scanned} non-merge local commit(s) read (window "
+        f"{facts.window}); co-changed documents cited: "
+        + (", ".join(facts.docs_cited) or "none")
+        + "; code = a file the registry classifies as source or test code; "
+        "documentation = a .md/.rst/.adoc/.txt file or a file under doc/ or "
+        "docs/",
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -1638,6 +1824,31 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_CODE_SHAPE,
         WHOLE_SET,
         _todo_without_ticket_share,
+    ),
+    # T055: each checks its own evidence is complete (see its compute function)
+    MetricDefinition(
+        "public_symbols_removed",
+        FAMILY_CODE_SHAPE,
+        EVIDENCE_LOCAL,
+        _compat_count("symbols"),
+    ),
+    MetricDefinition(
+        "destructive_migration_ops",
+        FAMILY_CODE_SHAPE,
+        EVIDENCE_LOCAL,
+        _compat_count("ops"),
+    ),
+    MetricDefinition(
+        "requirements_docs_count",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _requirements_docs_count,
+    ),
+    MetricDefinition(
+        "code_commits_with_docs_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _code_commits_with_docs_share,
     ),
 )
 

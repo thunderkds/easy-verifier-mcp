@@ -185,3 +185,12 @@ source_tag = "curated"
 value = ["!!"]
 citation_url = "https://kotlinlang.org/docs/null-safety.html#not-null-assertion-operator"
 source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["fun", "suspend fun", "open fun", "inline fun", "public fun", "class", "public class", "open class", "abstract class", "data class", "enum class", "sealed class", "interface", "object", "typealias"]
+citation_url = "https://kotlinlang.org/docs/visibility-modifiers.html"
+source_tag = "curated"

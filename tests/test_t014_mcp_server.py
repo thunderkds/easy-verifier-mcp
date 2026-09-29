@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast
 import asyncio
-import dataclasses
 import importlib
 import json
 import subprocess
@@ -13,6 +12,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp.exceptions import ToolError
 
+from easy_verifier.core.models import to_json_dict
 from easy_verifier.core.pipeline import run_dimension
 from easy_verifier.dimensions import DIMENSIONS, dimension_names, list_dimensions
 
@@ -54,7 +54,7 @@ def test_dimension_tool_matches_the_shared_core() -> None:
     )
     expected = json.loads(
         json.dumps(
-            dataclasses.asdict(
+            to_json_dict(
                 run_dimension(DIMENSIONS["architecture"], REPO_ROOT, scope="project")
             )
         )
