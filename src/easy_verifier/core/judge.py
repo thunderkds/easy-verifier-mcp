@@ -196,6 +196,18 @@ _NAGAPPAN_BALL = Citation(
     "System Defect Density",
     "https://doi.org/10.1145/1062455.1062514",
 )
+_SEMVER = Citation(
+    "Semantic Versioning 2.0.0 (backward-incompatible public API changes)",
+    "https://semver.org/spec/v2.0.0.html",
+)
+_PARALLEL_CHANGE = Citation(
+    "Fowler, Parallel Change (expand and contract)",
+    "https://martinfowler.com/bliki/ParallelChange.html",
+)
+_ISO_26514 = Citation(
+    "ISO/IEC/IEEE 26514:2022 (design and development of information for users)",
+    "https://www.iso.org/standard/77451.html",
+)
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
     "https://www.iso.org/standard/78176.html",
@@ -230,16 +242,28 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
         ),
     ),
     "solution-fit": {},
+    # Weights re-balanced by T055 for the #27 rule group (user sign-off
+    # 2026-09-29).
     "requirement-fidelity": _rules(
         RatingRule(
-            "acceptance_criteria_traced_to_code_share", 50, 0.80, "at_least",
+            "acceptance_criteria_traced_to_code_share", 35, 0.80, "at_least",
             (_ISO_29148,), PROJECT_DEFAULT,
             area=AREAS[1],
         ),
         RatingRule(
-            "acceptance_criteria_traced_to_test_share", 50, 0.80, "at_least",
+            "acceptance_criteria_traced_to_test_share", 35, 0.80, "at_least",
             (_ISO_29148,), PROJECT_DEFAULT,
             area=AREAS[1],
+        ),
+        RatingRule(
+            "requirements_docs_count", 15, 1, "at_most",
+            (_ISO_26514, _ISO_29148), PROJECT_DEFAULT,
+            area=AREAS[26],
+        ),
+        RatingRule(
+            "code_commits_with_docs_share", 15, 0.30, "at_least",
+            (_ISO_26514,), PROJECT_DEFAULT,
+            area=AREAS[26],
         ),
     ),
     # Weights re-balanced by T040 for the #17 and #31 rule groups (user
@@ -324,14 +348,25 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[15],
         ),
     ),
+    # Weights re-balanced by T055 for the #5 rule group (user sign-off
+    # 2026-09-29).
     "blast-radius": _rules(
         RatingRule(
-            "max_fan_in_changed", 50, 20, "at_most", (_HENRY_KAFURA,), PROJECT_DEFAULT,
+            "max_fan_in_changed", 35, 20, "at_most", (_HENRY_KAFURA,), PROJECT_DEFAULT,
             area=AREAS[4],
         ),
         RatingRule(
-            "changed_files_in_churn_hotspots_share", 50, 0.20, "at_most",
+            "changed_files_in_churn_hotspots_share", 35, 0.20, "at_most",
             (_NAGAPPAN_BALL,), PROJECT_DEFAULT,
+            area=AREAS[4],
+        ),
+        RatingRule(
+            "public_symbols_removed", 15, 0, "at_most", (_SEMVER,), PROJECT_DEFAULT,
+            area=AREAS[4],
+        ),
+        RatingRule(
+            "destructive_migration_ops", 15, 0, "at_most",
+            (_SEMVER, _PARALLEL_CHANGE), PROJECT_DEFAULT,
             area=AREAS[4],
         ),
     ),

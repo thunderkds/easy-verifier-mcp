@@ -55,10 +55,15 @@ APPROVED = {
     ],
     "solution-fit": [],
     "requirement-fidelity": [
-        ("acceptance_criteria_traced_to_code_share", 50, "at_least", 0.80,
+        # T055 (user sign-off 2026-09-29): 50/50 -> 35/35 plus the #27 group.
+        ("acceptance_criteria_traced_to_code_share", 35, "at_least", 0.80,
          ("29148",), PROJECT_DEFAULT),
-        ("acceptance_criteria_traced_to_test_share", 50, "at_least", 0.80,
+        ("acceptance_criteria_traced_to_test_share", 35, "at_least", 0.80,
          ("29148",), PROJECT_DEFAULT),
+        ("requirements_docs_count", 15, "at_most", 1, ("26514", "29148"),
+         PROJECT_DEFAULT),
+        ("code_commits_with_docs_share", 15, "at_least", 0.30, ("26514",),
+         PROJECT_DEFAULT),
     ],
     "code-quality": [
         # weights re-balanced by T040 (user sign-off 2026-09-29)
@@ -94,10 +99,15 @@ APPROVED = {
          ("29119",), PROJECT_DEFAULT),
     ],
     "blast-radius": [
-        ("max_fan_in_changed", 50, "at_most", 20, ("Henry & Kafura",),
+        # T055 (user sign-off 2026-09-29): 50/50 -> 35/35 plus the #5 group.
+        ("max_fan_in_changed", 35, "at_most", 20, ("Henry & Kafura",),
          PROJECT_DEFAULT),
-        ("changed_files_in_churn_hotspots_share", 50, "at_most", 0.20,
+        ("changed_files_in_churn_hotspots_share", 35, "at_most", 0.20,
          ("Nagappan & Ball",), PROJECT_DEFAULT),
+        ("public_symbols_removed", 15, "at_most", 0, ("Semantic Versioning",),
+         PROJECT_DEFAULT),
+        ("destructive_migration_ops", 15, "at_most", 0,
+         ("Semantic Versioning", "Parallel Change"), PROJECT_DEFAULT),
     ],
 }
 
@@ -322,7 +332,13 @@ def test_ac_trace_metrics_abstain_with_a_stated_reason_without_a_trace_search():
     result = rate(metrics, _full_coverage("requirement-fidelity"))
     assert isinstance(result, RatingAbstention)
     assert result.reason_code == "all_metrics_abstained"
-    assert all("never inferred" in reason for _n, reason in result.unavailable_metrics)
+    trace = [r for n, r in result.unavailable_metrics if n.startswith("acceptance")]
+    assert len(trace) == 2 and all("never inferred" in reason for reason in trace)
+    # T055: the #27 rules abstain too; this synthetic pack has no doc_history.
+    assert {n for n, _r in result.unavailable_metrics} >= {
+        "requirements_docs_count",
+        "code_commits_with_docs_share",
+    }
 
 
 # ---------------------------------------------------------------------------

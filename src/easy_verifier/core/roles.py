@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 import re
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from functools import lru_cache
@@ -580,6 +580,27 @@ class RoleResolution:
     walk_truncated: bool
 
 
+_TEMPLATE_DIRS = frozenset({"template", "templates"})
+_TEMPLATE_NAME = re.compile(r"[._-]template\.", re.IGNORECASE)
+
+
+def _is_template(path: str) -> bool:
+    """A file under a ``template(s)/`` directory, or named ``*_template.*``,
+    ``*.template.*`` or ``*-template.*``."""
+    pure = PurePosixPath(path)
+    return bool(_TEMPLATE_NAME.search(pure.name)) or any(
+        part.lower() in _TEMPLATE_DIRS for part in pure.parts[:-1]
+    )
+
+
+RULE_EXCLUSIONS: Mapping[str, Callable[[str], bool]] = {
+    "requirements-doc": _is_template,
+}
+"""Paths a role's rule (and local-layer) patterns never fill (T055, user
+2026-09-29): a template is not a competing requirements source. Config globs
+and agent picks are explicit choices and are not filtered."""
+
+
 def resolve(
     repo: str | Path,
     roles: Sequence[SourceRole],
@@ -628,9 +649,12 @@ def resolve(
         # matcher, never compiled into the combined backtracking regex.
         config_match = _config_matcher(config_patterns) if config_patterns else None
 
+        excluded = RULE_EXCLUSIONS.get(item.name)
         matched: dict[str, str] = {}
         for path in walked:
-            if rules_match(path) or (local_match is not None and local_match(path)):
+            if (
+                rules_match(path) or (local_match is not None and local_match(path))
+            ) and not (excluded is not None and excluded(path)):
                 matched[path] = ORIGIN_RULES
             elif config_match is not None and config_match(path):
                 matched[path] = ORIGIN_CONFIG

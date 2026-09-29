@@ -519,3 +519,108 @@ def test_used_facts_are_serialized(tmp_path: Path):
     assert list(emitted) == [*PRE_T055_PACK_KEYS, "compat"]
     assert emitted["compat"]["removed_symbols_total"] == 0
     assert "doc_history" in to_json_dict(_rf(root))
+
+
+# ---------------------------------------------------------------------------
+# User decision (b): a template is not a competing requirements source
+# ---------------------------------------------------------------------------
+
+
+def test_templates_do_not_fill_the_requirements_doc_role(tmp_path: Path):
+    root = _repo(
+        tmp_path / "r",
+        {
+            "PRD.md": "# PRD\n",
+            "templates/PRD_template.md": "# PRD template\n",
+            "docs/PRD.template.md": "# t\n",
+            "docs/requirements_template.md": "# t\n",
+            "a.py": "A = 1\n",
+        },
+    )
+    pack = _rf(root)
+    metric = _metric(pack, DOCS)
+    assert metric.outcome == 1
+    assert metric.computed_from == ("PRD.md",)
+    # Sabotage twin: the same file outside a template path still competes.
+    _commit(root, {"specs/PRD_v2.md": "# PRD v2\n"})
+    assert _metric(_rf(root), DOCS).outcome == 2
+
+
+# ---------------------------------------------------------------------------
+# AC 5: user-signed weights (2026-09-29), areas and citations
+# ---------------------------------------------------------------------------
+
+BACKWARD = "Backward compatibility & upgrade safety"
+DOC_TRUTH = "Documentation source-of-truth governance"
+SIGNED_OFF = {
+    "blast-radius": {
+        "max_fan_in_changed": (35, 20, "at_most", BACKWARD),
+        "changed_files_in_churn_hotspots_share": (35, 0.20, "at_most", BACKWARD),
+        SYMBOLS: (15, 0, "at_most", BACKWARD),
+        OPS: (15, 0, "at_most", BACKWARD),
+    },
+    "requirement-fidelity": {
+        "acceptance_criteria_traced_to_code_share": (
+            35,
+            0.80,
+            "at_least",
+            "Business-rule correctness",
+        ),
+        "acceptance_criteria_traced_to_test_share": (
+            35,
+            0.80,
+            "at_least",
+            "Business-rule correctness",
+        ),
+        DOCS: (15, 1, "at_most", DOC_TRUTH),
+        CO_CHANGE: (15, 0.30, "at_least", DOC_TRUTH),
+    },
+}
+
+
+@pytest.mark.parametrize("dimension", sorted(SIGNED_OFF))
+def test_signed_off_weights_thresholds_and_areas(dimension):
+    from easy_verifier.core.judge import AREAS, PROJECT_DEFAULT, RATING_RULES
+
+    rules = RATING_RULES[dimension]
+    assert {
+        n: (r.weight, r.threshold, r.comparison, r.area) for n, r in rules.items()
+    } == SIGNED_OFF[dimension]
+    assert sum(r.weight for r in rules.values()) == 100
+    assert AREAS[4] == BACKWARD and AREAS[26] == DOC_TRUTH
+    for name in (SYMBOLS, OPS, DOCS, CO_CHANGE):
+        if name in rules:
+            assert rules[name].threshold_citation == PROJECT_DEFAULT
+    urls = {c.url for name in rules for c in rules[name].metric_citation}
+    if dimension == "blast-radius":
+        assert "https://semver.org/spec/v2.0.0.html" in urls
+    else:
+        assert "https://www.iso.org/standard/77451.html" in urls
+
+
+def test_the_new_rules_are_unmet_on_the_success_fixtures(tmp_path: Path):
+    from easy_verifier.core.judge import RATING_RULES, _passes
+
+    root = _base(tmp_path)
+    pack = _change(root, {"src/shop/api.py": API.replace("def get_item", "def x_")})
+    for name in (SYMBOLS,):
+        value = _metric(pack, name).outcome
+        assert not _passes(value, RATING_RULES["blast-radius"][name])
+    two = _repo(tmp_path / "two", {"PRD.md": "# P\n", "docs/requirements.md": "# R\n"})
+    for i in range(3):
+        _commit(two, {"a.py": f"A = {i}\n"})
+    rf = _rf(two)
+    for name in (DOCS, CO_CHANGE):
+        assert not _passes(
+            _metric(rf, name).outcome, RATING_RULES["requirement-fidelity"][name]
+        )
+
+
+def test_an_unknown_language_is_asked_for_public_declarations_too():
+    from easy_verifier.core import gate
+
+    registry = load_registry(known_roles=GENERIC_PATTERNS)
+    stack = {"languages": ["zz-unknown"], "frameworks": []}
+    fields = [i["field"] for i in gate.reference_requests(stack, registry)["requests"]]
+    assert "public_declarations" in fields
+    assert len(fields) == 14  # 13 before T055 wired the #5 rule
