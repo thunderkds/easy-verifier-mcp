@@ -144,6 +144,10 @@ REVIEW_ANSWERS = ("good", "improve", "reject")
 MAX_REVIEWS = 20
 """``reviews`` answers accepted in one agent-input document."""
 MAX_COMMENT_CHARS = 500
+MAX_IMPROVE_ROUNDS_STORED = 100
+"""Highest ``improve_rounds`` a file item may carry. Counting stops here
+rather than past it: an item over the bound would make its whole file fail
+to load (T038 security review P3)."""
 MAX_ENTRY_ID_CHARS = 200
 _REVIEW_KEYS = frozenset({"review_status", "review_comment", "improve_rounds"})
 """Optional keys of a local-layer file item (T038)."""
@@ -685,8 +689,11 @@ def _review_problem(item: Mapping) -> str | None:
     ):
         return f"review_comment: must be a string of at most {MAX_COMMENT_CHARS}"
     rounds = item.get("improve_rounds", 0)
-    if type(rounds) is not int or not 0 <= rounds <= 100:
-        return "improve_rounds: must be an integer from 0 through 100"
+    if type(rounds) is not int or not 0 <= rounds <= MAX_IMPROVE_ROUNDS_STORED:
+        return (
+            "improve_rounds: must be an integer from 0 through "
+            f"{MAX_IMPROVE_ROUNDS_STORED}"
+        )
     return None
 
 
@@ -1033,7 +1040,10 @@ def save_local_entries(
                 # A new entry replaces the field's rejection records and its
                 # open "improve" items, inheriting their round count.
                 closed = [c for c in target if _superseded(c)]
-                rounds = max((c.improve_rounds for c in closed), default=0)
+                rounds = min(
+                    max((c.improve_rounds for c in closed), default=0),
+                    MAX_IMPROVE_ROUNDS_STORED,
+                )
                 target[:] = [c for c in target if not _superseded(c)]
                 cited = dataclasses.replace(cited, improve_rounds=rounds)
             target.append(cited)
@@ -1242,8 +1252,9 @@ def _answered(cited: CitedValue, answer: str, comment: str | None) -> CitedValue
         return dataclasses.replace(cited, review_status=APPROVED, source_tag=tag)
     if answer == "reject":
         return dataclasses.replace(cited, review_status=REJECTED)
+    rounds = min(cited.improve_rounds + 1, MAX_IMPROVE_ROUNDS_STORED)
     return dataclasses.replace(
-        cited, review_comment=comment or "", improve_rounds=cited.improve_rounds + 1
+        cited, review_comment=comment or "", improve_rounds=rounds
     )
 
 

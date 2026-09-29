@@ -625,3 +625,41 @@ def test_lone_surrogate_in_entry_value_is_a_validation_error(kotlin_repo):
         [kotlin_entry(citation_url=KOTEST + "#\ud800")], GENERIC_PATTERNS
     )[1]
     assert errors and "citation_url" in errors[0]
+
+
+# --------------------------------------------------------------------------
+# Security review P3: the improve round count is bounded where it is stored
+# --------------------------------------------------------------------------
+
+
+def test_improve_past_the_round_cap_keeps_the_file_loadable(sot, kotlin_repo):
+    cap = reg.MAX_IMPROVE_ROUNDS_STORED
+    sot.mkdir(parents=True)
+    (sot / "kotlin.toml").write_text(  # a replacement that inherited the cap
+        '[[assertions]]\nvalue = ["shouldBe"]\n'
+        f'citation_url = "{KOTEST}"\nsource_tag = "{UNREVIEWED}"\n'
+        f'review_status = "pending"\nimprove_rounds = {cap}\n'
+    )
+    _registry.cache_clear()
+    (entry_id,) = review_ids(mcp(kotlin_repo))
+    result = score_repository(
+        kotlin_repo,
+        detect_gates=True,
+        agent_input={"reviews": {entry_id: {"answer": "improve", "comment": "x"}}},
+    )
+    local = reg.load_registry(sot, known_roles=GENERIC_PATTERNS, local=True)
+    assert local.warnings == ()
+    (item,) = saved(sot, "kotlin")["assertions"]
+    assert item["improve_rounds"] == cap
+    (request,) = [
+        r
+        for r in result.reference["requests"]
+        if r.get("language") == "kotlin" and r["field"] == "assertions"
+    ]
+    assert request["ask_user"] is True
+    # A replacement inherits the clamped count and still loads.
+    mcp(kotlin_repo, registry_entries=[kotlin_entry(value=["shouldBeEqual"])])
+    (item,) = saved(sot, "kotlin")["assertions"]
+    assert item["improve_rounds"] == cap
+    local = reg.load_registry(sot, known_roles=GENERIC_PATTERNS, local=True)
+    assert local.warnings == ()
