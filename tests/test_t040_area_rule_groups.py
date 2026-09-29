@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 
+from easy_verifier.core.judge import AREAS, PROJECT_DEFAULT, RATING_RULES, rate
 from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.metrics import (
     EVIDENCE_LOCAL,
@@ -18,7 +19,12 @@ from easy_verifier.core.metrics import (
     WHOLE_SET,
     compute_metrics,
 )
-from easy_verifier.core.models import EvidencePack, Excerpt, TruncationRecord
+from easy_verifier.core.models import (
+    CoverageSummary,
+    EvidencePack,
+    Excerpt,
+    TruncationRecord,
+)
 from easy_verifier.core.registry import load_registry
 from easy_verifier.core.roles import GENERIC_PATTERNS
 
@@ -302,3 +308,93 @@ def test_skip_marker_forms_decorator_attribute_and_in_body():
     found = metric("skipped_test_share", {"a_test.go": go})
     assert found.outcome == 0.5
     assert "1 with a reason" in found.derivation
+
+
+# --- AC7: the signed-off weight tables, and each new rule met / unmet --------
+
+SIGNED_OFF = {
+    "test-strategy": {
+        "source_files_without_covering_test_share": (25, AREAS[15]),
+        "assertion_density_per_test": (20, AREAS[15]),
+        "test_config_and_ci_missing": (20, AREAS[15]),
+        "tests_without_assertions_share": (15, AREAS[15]),
+        "skipped_test_share": (10, AREAS[15]),
+        "network_calls_in_unit_tests_observed": (10, AREAS[15]),
+    },
+    "code-quality": {
+        "functions_over_ccn_10_share": (30, AREAS[17]),
+        "max_function_ccn": (15, AREAS[17]),
+        "lint_config_missing": (15, AREAS[16]),
+        "format_config_missing": (10, AREAS[16]),
+        "type_escapes_per_kloc": (15, AREAS[16]),
+        "todo_without_ticket_share": (15, AREAS[30]),
+    },
+}
+
+
+@pytest.mark.parametrize("dimension", sorted(SIGNED_OFF))
+def test_signed_off_weight_table_and_areas(dimension):
+    rules = RATING_RULES[dimension]
+    assert {n: (r.weight, r.area) for n, r in rules.items()} == SIGNED_OFF[dimension]
+    assert sum(r.weight for r in rules.values()) == 100
+    for name in NEW_METRICS:
+        if name in rules:
+            assert rules[name].threshold_citation == PROJECT_DEFAULT
+
+
+def test_todo_rule_cites_iso_5055_only():
+    (citation,) = RATING_RULES["code-quality"][
+        "todo_without_ticket_share"
+    ].metric_citation
+    assert "5055" in citation.label
+
+
+def rated_inputs(files, dimension):
+    evidence = pack(files, dimension=dimension)
+    coverage = CoverageSummary(
+        per_dimension=((dimension, 1.0),),
+        combined=1.0,
+        method="test",
+        misses=((dimension, ()),),
+    )
+    result = rate(compute_metrics(evidence, curated_metric_tables()), coverage)
+    return {item.metric_name: item.passed for item in result.inputs}
+
+
+UNIT_OK = """\
+def test_a():
+    assert parse("1") == 1
+
+
+def test_b():
+    assert parse("2") == 2
+"""
+
+
+@pytest.mark.parametrize(
+    ("name", "met", "unmet"),
+    [
+        ("tests_without_assertions_share", UNIT_OK, PY_TESTS),
+        ("skipped_test_share", UNIT_OK, SKIPS),
+        (
+            "network_calls_in_unit_tests_observed",
+            UNIT_OK,
+            UNIT_OK.replace(
+                '    assert parse("2")', '    requests.get(u)\n    assert parse("2")'
+            ),
+        ),
+    ],
+)
+def test_new_test_strategy_rules_are_met_and_unmet(name, met, unmet):
+    assert rated_inputs({"tests/test_p.py": met}, "test-strategy")[name] is True
+    assert rated_inputs({"tests/test_p.py": unmet}, "test-strategy")[name] is False
+
+
+def test_new_code_quality_rules_are_met_and_unmet():
+    clean = "def f(x: int) -> int:\n    # TODO(ABC-1): tidy\n    return x\n" * 4
+    dirty = TYPED + "\n# TODO: one\n# FIXME: two\n"
+    met = rated_inputs({"src/app/p.py": clean}, "code-quality")
+    unmet = rated_inputs({"src/app/p.py": dirty}, "code-quality")
+    for name in ("type_escapes_per_kloc", "todo_without_ticket_share"):
+        assert met[name] is True, name
+        assert unmet[name] is False, name

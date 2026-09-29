@@ -352,11 +352,13 @@ def test_two_frameworks_fit_with_duplicate_fields_and_languages_first():
     addable = [f for f in required if f in gate.FRAMEWORK_FIELDS]
     requests = gate.reference_requests(stack, _registry())["requests"]
     n = len(required)
-    assert len(requests) == n + 2 * len(addable) <= 20
+    # T040 raised a language's required fields to 16, so with two frameworks
+    # the cap of 20 now truncates the framework duplicates (still in order).
+    assert len(requests) == min(n + 2 * len(addable), 20)
     assert [i.get("language") for i in requests[:n]] == ["zz-unknown"] * n
     assert [(i["framework"], i["field"]) for i in requests[n:]] == [
         (name, f) for name in ("express", "react") for f in addable
-    ]
+    ][: len(requests) - n]
 
 
 def test_cap_order_and_overflow_labelled():

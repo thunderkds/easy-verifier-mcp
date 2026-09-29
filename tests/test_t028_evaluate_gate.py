@@ -98,8 +98,9 @@ def _floor(dimension: str) -> float:
 
 
 def _rating_60(dimension: str = "code-quality") -> Rating:
-    """R = 60 on code-quality: CCN share and max CCN pass (40 + 20), lint and
-    format config missing (0 + 0); max CCN sits exactly on 15 → borderline."""
+    """R = 60 on code-quality: CCN share, max CCN and type escapes pass
+    (30 + 15 + 15, T040 weights), lint and format config missing (0 + 0);
+    max CCN sits exactly on 15 → borderline."""
     assert dimension == "code-quality"
     rating = _rating(
         dimension,
@@ -108,6 +109,7 @@ def _rating_60(dimension: str = "code-quality") -> Rating:
             "max_function_ccn": 15,
             "lint_config_missing": 1,
             "format_config_missing": 1,
+            "type_escapes_per_kloc": 0.0,
         },
     )
     assert type(rating) is Rating and rating.value == 60
