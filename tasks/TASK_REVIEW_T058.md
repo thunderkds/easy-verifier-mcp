@@ -36,8 +36,45 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer 2026-09-30T07:32:26Z-07:33:08Z, worktree HEAD `3a381b6` (no fix commit exists), `PYTHONPATH=src <main>/.venv/bin/python -c 'from easy_verifier.adapters.cli import main; main()' score --repo <repo> --scope project </dev/null`:
+
+```
+2026-09-30T07:32:26Z
+== bryony exit=0 07:32:35Z          (/home/hungnguyenhuu/workspace/project/bryony/bryony)
+architecture             50  (30/60)
+blast-radius             None  (0/0)
+code-quality             100  (20/20)
+requirement-fidelity     None  (0/0)
+security                 59  (50/85)
+solution-fit             None  (0/0)
+test-strategy            100  (75/75)
+overall 77 (contributor_count 4)
+COOKIE UNAVAILABLE: no authentication or session code (a registry auth_markers token) was found in 12 source-file excerpt(s) of registry languages with cookie tokens, so no cookie flag is ju...
+== kitchd exit=0 07:32:38Z          (/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd)
+architecture             100  (60/60)
+blast-radius             None  (0/0)
+code-quality             67  (30/45)
+requirement-fidelity     15  (15/100)
+security                 59  (50/85)
+solution-fit             None  (0/0)
+test-strategy            100  (30/30)
+overall 68 (contributor_count 5)
+COOKIE UNAVAILABLE: no authentication or session code ... was found in 11 source-file excerpt(s) ...
+== ai-training exit=0 07:32:40Z     (/home/hungnguyenhuu/workspace/training/hoang.hoan/ai-training)
+architecture             70  (70/100)
+blast-radius             None  (0/0)
+code-quality             40  (10/25)
+requirement-fidelity     0  (0/15)
+security                 59  (50/85)
+solution-fit             None  (0/0)
+test-strategy            100  (30/30)
+overall 54 (contributor_count 5)
+COOKIE UNAVAILABLE: no authentication or session code ... was found in 5 source-file excerpt(s) ...
+
+2026-09-30T07:33:08Z  security --repo <bryony> --scope project </dev/null
+files_read 225 excerpts 40   truncated False omitted_count 0
+index.js read? False quoted? False      (backend/server/dashboard/index.js)
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
