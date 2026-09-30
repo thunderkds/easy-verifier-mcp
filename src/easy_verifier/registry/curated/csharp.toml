@@ -214,3 +214,47 @@ source_tag = "curated"
 value = ["public class", "public interface", "public enum", "public struct", "public record", "public * class", "public * (", "public * * (", "public * * * ("]
 citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/access-modifiers"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["new CookieOptions"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["Secure = true"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["HttpOnly = true"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["SameSite ="]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["[Authorize"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/simple"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".SignInAsync (", "AddAuthentication ("]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/cookie"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["HttpContext.Session"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/app-state"
+source_tag = "curated"

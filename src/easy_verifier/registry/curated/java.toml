@@ -232,3 +232,47 @@ source_tag = "curated"
 value = ["public class", "public interface", "public enum", "public record", "public * class", "public * (", "public * * (", "public * * * ("]
 citation_url = "https://docs.oracle.com/javase/specs/jls/se21/html/jls-6.html#jls-6.6"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["ResponseCookie.from ("]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = [".secure ( true"]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = [".httpOnly ( true"]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = [".sameSite ("]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["@PreAuthorize", "@Secured"]
+citation_url = "https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["HttpSession"]
+citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpsession"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".getSession ("]
+citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpservletrequest"
+source_tag = "curated"

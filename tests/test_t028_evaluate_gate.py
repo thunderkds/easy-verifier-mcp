@@ -24,20 +24,42 @@ from easy_verifier.core.gate import (
     gate_requests,
 )
 from easy_verifier.core.judge import (
+    DOCUMENTATION_RULES,
     RATING_RULES,
     GatedRating,
     Rating,
     RatingAbstention,
     blend,
-    rate,
     rate_overall,
     within_band,
+)
+from easy_verifier.core.judge import (
+    rate as _rate,
 )
 from easy_verifier.core.metrics import WHOLE_SET, Metric, MetricAbstention, MetricSet
 from easy_verifier.core.models import CoverageSummary, SourceMiss
 from easy_verifier.core.report import write_report
+from easy_verifier.core.roles import documentation_present
 from easy_verifier.core.score import score_repository
 from easy_verifier.dimensions import dimension_names
+
+
+def _docs(dimension):
+    """T056: the offboarding rule's results (missing) for ``dimension``."""
+    return tuple(
+        documentation_present(rule, ())
+        for rule in DOCUMENTATION_RULES.get(dimension, ())
+    )
+
+
+def rate(metrics, coverage, **kwargs):
+    """``judge.rate`` with the documentation results a dimension declaring
+    documentation rules requires (T056: security's offboarding rule), unless
+    the test passes its own."""
+    names = {name for name, _score in coverage.per_dimension}
+    if "documentation" not in kwargs and len(names) == 1:
+        kwargs["documentation"] = _docs(names.pop())
+    return _rate(metrics, coverage, **kwargs)
 
 DIMENSIONS = dimension_names()
 REF = "README.md:1-3"
@@ -88,6 +110,7 @@ def _abstention(dimension: str) -> RatingAbstention:
         coverage_floor=_floor(dimension),
         achieved_coverage=0.0,
         sources_missing=(SourceMiss("ARCHITECTURE.md", "not found in target"),),
+        documentation=_docs(dimension),
     )
 
 
@@ -97,9 +120,9 @@ def _floor(dimension: str) -> float:
     return COVERAGE_FLOORS[dimension].value
 
 
-def _rating_60(dimension: str = "code-quality") -> Rating:
-    """R = 60 on code-quality: CCN share, max CCN and type escapes pass
-    (30 + 15 + 15, T040 weights), lint and format config missing (0 + 0);
+def _rating_55(dimension: str = "code-quality") -> Rating:
+    """R = 55 on code-quality: CCN share, max CCN and type escapes pass
+    (25 + 15 + 15, T056 weights), lint and format config missing (0 + 0);
     max CCN sits exactly on 15 → borderline."""
     assert dimension == "code-quality"
     rating = _rating(
@@ -112,7 +135,7 @@ def _rating_60(dimension: str = "code-quality") -> Rating:
             "type_escapes_per_kloc": 0.0,
         },
     )
-    assert type(rating) is Rating and rating.value == 60
+    assert type(rating) is Rating and rating.value == 55
     return rating
 
 
@@ -324,7 +347,7 @@ def test_every_error_is_reported_at_once() -> None:
 
 
 def test_blended_rating_shows_its_parts() -> None:
-    rules = _rating_60("code-quality")
+    rules = _rating_55("code-quality")
     ratings = _ratings(**{"code-quality": rules})
     applied = apply_gate_evaluations(
         {"code-quality": _ev(88, 0.6, rationale="secret reasoning")},
@@ -333,12 +356,12 @@ def test_blended_rating_shows_its_parts() -> None:
     )
     gated = applied[DIMENSIONS.index("code-quality")]
     assert type(gated) is GatedRating
-    assert gated.value == 68
-    assert gated.parts == "68 = rules 60 + agent 88 (w 0.30)"
+    assert gated.value == 65
+    assert gated.parts == "65 = rules 55 + agent 88 (w 0.30)"
     payload = gated.to_dict()
     assert payload["kind"] == "blended_rating"
-    assert payload["value"] == 68
-    assert payload["parts"] == "68 = rules 60 + agent 88 (w 0.30)"
+    assert payload["value"] == 65
+    assert payload["parts"] == "65 = rules 55 + agent 88 (w 0.30)"
     assert payload["rated_by"] == "blended (w 0.30)"
     assert payload["agent"]["weight"] == "0.30"
     assert payload["rules"] == rules.to_dict()
@@ -377,7 +400,7 @@ def test_overall_discloses_each_rating_kind() -> None:
     ratings = _ratings(
         architecture=_abstention("architecture"),
         security=_abstention("security"),
-        **{"code-quality": _rating_60("code-quality")},
+        **{"code-quality": _rating_55("code-quality")},
     )
     applied = apply_gate_evaluations(
         {"security": _ev(70, 0.8), "code-quality": _ev(88, 0.6)}, ratings, _packs()
@@ -390,7 +413,7 @@ def test_overall_discloses_each_rating_kind() -> None:
     assert "solution-fit" not in overall.contributors
     assert "(3 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
     assert "abstained: architecture (below_coverage_floor" in overall.disclosure
-    assert dict(overall.contributor_values)["code-quality"] == 68
+    assert dict(overall.contributor_values)["code-quality"] == 65
     assert dict(overall.rated_by) == {
         **{name: "rules" for name in overall.contributors},
         "code-quality": "blended (w 0.30)",
@@ -411,7 +434,7 @@ def test_ratings_without_agent_input_equal_ratings_with_empty_evaluations() -> N
     """AC8 property: for every ungated dimension, agent input changes nothing."""
     ratings = _ratings(
         architecture=_abstention("architecture"),
-        **{"code-quality": _rating_60("code-quality")},
+        **{"code-quality": _rating_55("code-quality")},
     )
     applied = apply_gate_evaluations({"architecture": _ev(1, 1)}, ratings, _packs())
     gates = detect_evaluate_gates(ratings)

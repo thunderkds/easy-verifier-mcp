@@ -176,3 +176,42 @@ source_tag = "curated"
 value = ["func <A-Z>", "func ( * * ) <A-Z>", "type <A-Z>"]
 citation_url = "https://go.dev/ref/spec#Exported_identifiers"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["http.Cookie {"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["Secure : true"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["HttpOnly : true"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["SameSite :"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = [".BasicAuth ("]
+citation_url = "https://pkg.go.dev/net/http#Request.BasicAuth"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["sessions.NewCookieStore ("]
+citation_url = "https://pkg.go.dev/github.com/gorilla/sessions"
+source_tag = "curated"

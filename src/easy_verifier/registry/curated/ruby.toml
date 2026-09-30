@@ -211,3 +211,42 @@ source_tag = "curated"
 value = ["def self.", "def", "class", "module"]
 citation_url = "https://docs.ruby-lang.org/en/master/syntax/modules_and_classes_rdoc.html#label-Visibility"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".set_cookie ("]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/response.rb"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure : true", ":secure => true"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httponly : true", ":httponly => true"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["same_site :", ":same_site =>"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session [", "reset_session"]
+citation_url = "https://guides.rubyonrails.org/action_controller_overview.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["has_secure_password"]
+citation_url = "https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html"
+source_tag = "curated"

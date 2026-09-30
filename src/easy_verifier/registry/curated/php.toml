@@ -221,3 +221,47 @@ source_tag = "curated"
 value = ["public function", "public static function", "function", "class", "abstract class", "final class", "interface", "trait", "enum"]
 citation_url = "https://www.php.net/manual/en/language.oop5.visibility.php"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["setcookie ("]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["'secure' => true", "\"secure\" => true"]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["'httponly' => true", "\"httponly\" => true"]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["'samesite' =>", "\"samesite\" =>"]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session_start ("]
+citation_url = "https://www.php.net/manual/en/function.session-start.php"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["$_SESSION"]
+citation_url = "https://www.php.net/manual/en/reserved.variables.session.php"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["password_verify ("]
+citation_url = "https://www.php.net/manual/en/function.password-verify.php"
+source_tag = "curated"

@@ -83,6 +83,39 @@ dimension through ``core/metric_tables.py``:
   token ends inside, else the next identifier after it; a token ending in
   ``(`` names the last identifier it matched.
 
+The cookie fields (T056, area #8) are read by the ``security`` dimension
+through ``core/metric_tables.py``:
+
+* ``cookie_calls`` — code tokens starting a statement that sets a cookie,
+  matched after comments and strings are blanked (``".set_cookie ("``). The
+  statement runs to a ``;`` or line end outside brackets; a next line
+  starting with ``.`` continues it;
+* ``cookie_secure`` / ``cookie_httponly`` / ``cookie_samesite`` — tokens that
+  set that flag inside such a statement, matched with comments blanked and
+  strings kept (PHP option keys are strings), e.g. ``"httponly = True"``.
+  The flag fields are optional: a flag a language does not declare is not
+  judged;
+* ``auth_markers`` — code tokens showing authentication or session code
+  (``"session ["``, ``"@PreAuthorize"``), matched like a sink token. They
+  are a gate, never a score: the cookie metric computes only over a pack in
+  which one of them was read (user, 2026-09-29).
+
+The type-checker fields (T056, area #17) are read by the ``code-quality``
+dimension through ``core/metric_tables.py``. All are optional: a language
+without a type checker declares none, and its strict-config rule abstains:
+
+* ``type_config_files`` — a base-name glob of a type-checker configuration
+  file, optionally followed by one space and the INI/TOML section header that
+  holds the type checker's settings in a shared file, e.g.
+  ``"pyproject.toml [tool.mypy]"``. Without a header the whole file is the
+  type checker's (``"tsconfig*.json"``). Only that section is quoted;
+* ``type_strict`` / ``type_strict_off`` — tokens that turn strict checking
+  on / off, e.g. ``'"strict" : true'``, matched anywhere except in a comment
+  line (one starting with ``#``, ``;``, ``//``, ``/*`` or ``*``);
+* ``type_config_extends`` — a token, matched the same way, after which a
+  string, or a ``[...]`` list of strings, names the configuration file(s)
+  this one extends, resolved relative to the file; the last listed wins.
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -200,6 +233,14 @@ _TOKEN_FIELDS = frozenset(
         "network_calls",
         "type_escapes",
         "public_declarations",
+        "cookie_calls",
+        "cookie_secure",
+        "cookie_httponly",
+        "cookie_samesite",
+        "auth_markers",
+        "type_strict",
+        "type_strict_off",
+        "type_config_extends",
     }
 )
 
@@ -224,6 +265,15 @@ ENTRY_FIELDS = (
     "type_escapes",
     "type_stub_names",
     "public_declarations",
+    "cookie_calls",
+    "cookie_secure",
+    "cookie_httponly",
+    "cookie_samesite",
+    "auth_markers",
+    "type_config_files",
+    "type_strict",
+    "type_strict_off",
+    "type_config_extends",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
@@ -255,6 +305,11 @@ _VALUE_SHAPES = {
         "a string opener X and an interpolation opener Y, as X Y",
     ),
     "type_stub_names": (re.compile(r"^[^/]+$"), "a base-name glob, no /"),
+    "type_config_files": (
+        re.compile(r"^[^/\s\[\]]+( \[[^\]\s]+\])?$"),
+        "a base-name glob, optionally followed by one space and a [section] "
+        "header, e.g. pyproject.toml [tool.mypy]",
+    ),
     "frameworks": (
         re.compile(r"^[a-z0-9][a-z0-9-]*=[A-Za-z0-9@][A-Za-z0-9@/._:+-]*$"),
         "<framework>=<dependency>, e.g. express=express",

@@ -23,7 +23,15 @@ from fnmatch import translate
 from pathlib import PurePosixPath
 
 from .judge import Citation
-from .metrics import LanguageTables, Metric, MetricAbstention, MetricSet, SinkPattern
+from .metrics import (
+    COOKIE_FLAGS,
+    LanguageTables,
+    Metric,
+    MetricAbstention,
+    MetricSet,
+    SinkPattern,
+    TypeConfigFile,
+)
 from .models import CombinedPack
 from .registry import (
     AGENT_RESEARCHED,
@@ -57,6 +65,11 @@ def metric_tables(
     sinks: dict[str, tuple[SinkPattern, ...]] = {}
     area: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _AREA_FIELDS}
     public: dict[str, re.Pattern[str]] = {}
+    cookie_calls: dict[str, re.Pattern[str]] = {}
+    cookie_flags: dict[str, dict[str, re.Pattern[str]]] = {}
+    auth: dict[str, re.Pattern[str]] = {}
+    type_configs: list[TypeConfigFile] = []
+    type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
     for entry in entries:
         extensions = _values(entry, "source_extensions")
         compiled = _syntax(entry)
@@ -66,6 +79,28 @@ def metric_tables(
             for name in _AREA_FIELDS:
                 if _values(entry, name):
                     area[name].setdefault(extension, _guarded(_values(entry, name)))
+            if _values(entry, "cookie_calls"):
+                cookie_calls.setdefault(
+                    extension, _guarded(_values(entry, "cookie_calls"))
+                )
+                cookie_flags.setdefault(
+                    extension,
+                    {
+                        flag: _guarded(_values(entry, f"cookie_{flag}"))
+                        for flag in COOKIE_FLAGS
+                        if _values(entry, f"cookie_{flag}")
+                    },
+                )
+            if _values(entry, "auth_markers"):
+                auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
+        for value in _values(entry, "type_config_files"):
+            glob, _space, header = value.partition(" ")
+            type_configs.append(
+                TypeConfigFile(entry.name, re.compile(translate(glob)), header or None)
+            )
+        for name in _TYPE_FIELDS:
+            if _values(entry, name):
+                type_tokens[name][entry.name] = _alternation(_values(entry, name))
         declarations = _values(entry, "public_declarations")
         for extension in extensions if declarations else ():
             public.setdefault(extension, _line_start(declarations))
@@ -112,10 +147,18 @@ def metric_tables(
             re.compile(translate(glob)) for glob in _union(entries, "type_stub_names")
         ),
         public_declarations=public,
+        cookie_calls=cookie_calls,
+        cookie_flags=cookie_flags,
+        auth_markers=auth,
+        type_configs=tuple(type_configs),
+        type_strict=type_tokens["type_strict"],
+        type_strict_off=type_tokens["type_strict_off"],
+        type_config_extends=type_tokens["type_config_extends"],
     )
 
 
 _AREA_FIELDS = ("skip_markers", "network_calls", "type_escapes")
+_TYPE_FIELDS = ("type_strict", "type_strict_off", "type_config_extends")
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -223,22 +266,24 @@ _TYPE_ESCAPES = ("type_escapes_per_kloc",)
 _TODO = ("todo_without_ticket_share",)
 _COMPAT = ("public_symbols_removed",)
 _CO_CHANGE = ("code_commits_with_docs_share",)
+_COOKIES = ("cookie_flags_missing_observed",)
+_STRICT = ("strict_type_config_missing",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
-    + _TYPE_ESCAPES + _TODO + _COMPAT + _CO_CHANGE,
+    + _TYPE_ESCAPES + _TODO + _COMPAT + _CO_CHANGE + _COOKIES,
     "test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE + _TEST_AREA
-    + _NETWORK + _COMPAT + _CO_CHANGE,
+    + _NETWORK + _COMPAT + _CO_CHANGE + _COOKIES,
     "colocated_test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE
-    + _TEST_AREA + _NETWORK + _COMPAT + _CO_CHANGE,
+    + _TEST_AREA + _NETWORK + _COMPAT + _CO_CHANGE + _COOKIES,
     "test_candidates": _TEST_MATCH[1:3],
     "test_declarations": _ASSERTIONS[:1] + _TEST_AREA,
     "assertions": _ASSERTIONS + _TEST_AREA[:1],
     "branch_keywords": _CCN,
     "comment_delimiters": _CCN + _IMPORTS + _SINKS + _TEST_AREA + _NETWORK
-    + _TYPE_ESCAPES + _TODO,
+    + _TYPE_ESCAPES + _TODO + _COOKIES,
     "string_delimiters": _CCN + _IMPORTS + _SINKS + _TEST_AREA + _NETWORK
-    + _TYPE_ESCAPES + _TODO,
+    + _TYPE_ESCAPES + _TODO + _COOKIES,
     "interpolating_strings": _SINKS,
     "function_start": _CCN,
     "import_syntax": _IMPORTS,
@@ -248,6 +293,15 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_escapes": _TYPE_ESCAPES,
     "type_stub_names": _TYPE_ESCAPES,
     "public_declarations": _COMPAT,
+    "cookie_calls": _COOKIES,
+    "cookie_secure": _COOKIES,
+    "cookie_httponly": _COOKIES,
+    "cookie_samesite": _COOKIES,
+    "auth_markers": _COOKIES,
+    "type_config_files": _STRICT,
+    "type_strict": _STRICT,
+    "type_strict_off": _STRICT,
+    "type_config_extends": _STRICT,
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -266,6 +320,17 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
     "colocated_test_name_patterns": "refines test matching alongside "
     "test_name_patterns; python/php/rust omit it by design (T052) and the "
     "directory-first rule still applies without it",
+    **dict.fromkeys(
+        ("cookie_secure", "cookie_httponly", "cookie_samesite"),
+        "refines the cookie metric: a flag a language does not declare is not "
+        "judged, while cookie_calls and auth_markers still compute it (user "
+        "2026-09-29)",
+    ),
+    **dict.fromkeys(
+        ("type_config_files", "type_strict", "type_strict_off", "type_config_extends"),
+        "only languages with a type checker have a type-checker configuration; "
+        "for the rest the strict-config rule abstains (user 2026-09-29)",
+    ),
 }
 """Fields the metric code reads when present but never needs (T037 R1): a
 language without one still gets every metric it feeds, so the reference gate

@@ -23,11 +23,13 @@ from easy_verifier.core.assessment import (
 from easy_verifier.core.findings import MAX_FINDINGS, Finding
 from easy_verifier.core.judge import (
     COVERAGE_FLOORS,
+    DOCUMENTATION_RULES,
     RATING_RULES,
     Rating,
     RatingAbstention,
     RatingInput,
 )
+from easy_verifier.core.roles import documentation_present
 
 DIMENSIONS = tuple(COVERAGE_FLOORS)
 
@@ -85,7 +87,16 @@ def rating(dimension: str, value: int = 100) -> Rating:
         * sum(item.earned_weight for item in inputs)
         / sum(item.weight for item in inputs)
     )
-    return Rating(dimension=dimension, value=computed, inputs=tuple(inputs))
+    return Rating(
+        dimension=dimension,
+        value=computed,
+        inputs=tuple(inputs),
+        # T056: security declares an offboarding documentation rule
+        documentation=tuple(
+            documentation_present(rule, ())
+            for rule in DOCUMENTATION_RULES.get(dimension, ())
+        ),
+    )
 
 
 def ratings(*, abstain: str | None = None):

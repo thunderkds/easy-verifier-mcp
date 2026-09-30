@@ -239,6 +239,15 @@ def test_optional_fields_are_never_required():
         "test_candidates",
         "colocated_test_name_patterns",
         "type_stub_names",  # T040: only TypeScript generates code-suffix stubs
+        # T056 (user 2026-09-29): cookie flags refine the cookie metric, and
+        # only languages with a type checker have its configuration.
+        "cookie_secure",
+        "cookie_httponly",
+        "cookie_samesite",
+        "type_config_files",
+        "type_strict",
+        "type_strict_off",
+        "type_config_extends",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 

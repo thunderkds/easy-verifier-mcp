@@ -242,3 +242,92 @@ source_tag = "curated"
 value = ["def <a-zA-Z>", "async def <a-zA-Z>", "class <a-zA-Z>"]
 citation_url = "https://peps.python.org/pep-0008/#public-and-internal-interfaces"
 source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".set_cookie ("]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure = True"]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httponly = True"]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["samesite ="]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session ["]
+citation_url = "https://flask.palletsprojects.com/en/stable/quickstart/#sessions"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["login_user ("]
+citation_url = "https://flask-login.readthedocs.io/en/latest/"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".session ["]
+citation_url = "https://docs.djangoproject.com/en/5.2/topics/http/sessions/"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["authenticate (", "login_required"]
+citation_url = "https://docs.djangoproject.com/en/5.2/topics/auth/default/"
+source_tag = "curated"
+
+# Type-checker fields (T056, area #17): the configuration files (and, in a
+# shared file, the section) holding the type checker's settings, and the
+# tokens turning strict mode on / off or naming a file extended. Optional:
+# a language without a type checker declares none (syntax in core/registry.py).
+
+[[type_config_files]]
+value = ["mypy.ini [mypy]", ".mypy.ini [mypy]", "setup.cfg [mypy]", "pyproject.toml [tool.mypy]"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[type_config_files]]
+value = ["pyrightconfig.json", "pyproject.toml [tool.pyright]"]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"
+
+[[type_strict]]
+value = ["strict = true", "strict = True"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[type_strict]]
+value = ["\"typeCheckingMode\" : \"strict\"", "typeCheckingMode = \"strict\""]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"
+
+[[type_strict_off]]
+value = ["strict = false", "strict = False"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[type_strict_off]]
+value = ["\"typeCheckingMode\" : \"off\"", "typeCheckingMode = \"off\"", "\"typeCheckingMode\" : \"basic\"", "typeCheckingMode = \"basic\"", "\"typeCheckingMode\" : \"standard\"", "typeCheckingMode = \"standard\""]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"
+
+[[type_config_extends]]
+value = ["\"extends\" :", "extends ="]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"

@@ -285,6 +285,37 @@ class LanguageTables:
     """Source suffix -> the language's public-declaration tokens (T055),
     anchored at a line start; read by the blast-radius dimension, never here."""
 
+    cookie_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    cookie_flags: Mapping[str, Mapping[str, re.Pattern[str]]] = field(
+        default_factory=dict
+    )
+    """Source suffix -> the language's cookie tokens (T056, area #8): a
+    statement that sets a cookie, and per flag of :data:`COOKIE_FLAGS` the
+    language declares, the tokens that set it inside that statement."""
+
+    auth_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's authentication/session tokens (T056):
+    the gate the cookie metric computes behind, never scored itself."""
+
+    type_configs: tuple[TypeConfigFile, ...] = ()
+    type_strict: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    type_strict_off: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    type_config_extends: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Language name -> its type-checker configuration tokens (T056, area
+    #17); only languages with a type checker declare them."""
+
+
+@dataclass(frozen=True)
+class TypeConfigFile:
+    """One registry ``type_config_files`` value, compiled (T056)."""
+
+    language: str
+    name: re.Pattern[str]
+    """Full-match pattern over a base name."""
+    header: str | None
+    """The section header holding the type checker's settings in a shared
+    file (``[tool.mypy]``); ``None`` when the whole file is its."""
+
 
 @dataclass(frozen=True)
 class SinkPattern:
@@ -332,6 +363,183 @@ def sink_hits(path: str, text: str, tables: LanguageTables) -> tuple[SinkHit, ..
             hit = SinkHit(line, end, pattern.cwe, pattern.citation_url)
             found.setdefault((line, pattern.cwe), hit)
     return tuple(found[key] for key in sorted(found))
+
+
+COOKIE_FLAGS = ("secure", "httponly", "samesite")
+"""The cookie attributes OWASP ASVS 5.0.0 V3.3.1, V3.3.4 and V3.3.2 require."""
+
+_CHAINED = re.compile(r"[ \t\r\n]*\.")
+
+
+@dataclass(frozen=True)
+class CookieSite:
+    """One cookie-setting statement (T056): its line span in the text read,
+    and the declared flags it does not set -- ``None`` when the statement runs
+    past the end of that text, so its flags cannot be judged."""
+
+    line: int
+    end_line: int
+    missing: tuple[str, ...] | None
+
+
+def cookie_sites(
+    path: str, text: str, tables: LanguageTables
+) -> tuple[CookieSite, ...]:
+    """Every registry ``cookie_calls`` statement in ``text`` (the contents of
+    ``path``), one per starting line, by line.
+
+    The call token matches code with comments and strings blanked; the
+    statement runs to a ``;`` or a line end outside brackets (a next line
+    starting with ``.`` continues it), or to a closing bracket it did not
+    open; a flag token matches inside it with comments blanked and strings
+    kept. A call starting on a line longer than ``MAX_LINE_CHARS`` is skipped.
+    """
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    calls = tables.cookie_calls.get(suffix)
+    if syntax is None or calls is None:
+        return ()
+    flags = tables.cookie_flags.get(suffix, {})
+    code = strip(text, syntax)
+    kept = strip(text, syntax, keep_strings=True)
+    lines = code.split("\n")
+    found: dict[int, CookieSite] = {}
+    for match in calls.finditer(code):
+        line = _line_of(code, match.start())
+        if line in found or len(lines[line - 1]) > MAX_LINE_CHARS:
+            continue
+        end = _statement_end(code, match.start())
+        if end is None:
+            found[line] = CookieSite(line, len(lines), None)
+            continue
+        statement = kept[match.start() : end]
+        missing = tuple(
+            name
+            for name in COOKIE_FLAGS
+            if name in flags and not flags[name].search(statement)
+        )
+        end_line = _line_of(code, end) if end < len(code) else len(lines)
+        found[line] = CookieSite(line, end_line, missing)
+    return tuple(found[key] for key in sorted(found))
+
+
+def _statement_end(code: str, start: int) -> int | None:
+    """The offset ending the statement that starts at ``start``, or ``None``
+    when brackets are still open at the end of ``code``."""
+    depth = 0
+    for index in range(start, len(code)):
+        char = code[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth < 0:
+                return index
+        elif depth == 0 and (
+            char == ";" or (char == "\n" and not _CHAINED.match(code, index + 1))
+        ):
+            return index
+    return len(code) if depth == 0 else None
+
+
+def auth_lines(path: str, text: str, tables: LanguageTables) -> tuple[int, ...]:
+    """Lines of ``text`` (the contents of ``path``) holding a registry
+    ``auth_markers`` token, matched after comments and strings are blanked;
+    a line longer than ``MAX_LINE_CHARS`` is skipped (it is never quoted)."""
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    markers = tables.auth_markers.get(suffix)
+    if syntax is None or markers is None:
+        return ()
+    code = strip(text, syntax)
+    lines = code.split("\n")
+    found = {_line_of(code, match.start()) for match in markers.finditer(code)}
+    return tuple(
+        sorted(line for line in found if len(lines[line - 1]) <= MAX_LINE_CHARS)
+    )
+
+
+@dataclass(frozen=True)
+class TypeConfigSection:
+    """The type checker's settings in one configuration text (T056): a
+    1-indexed inclusive line span, whole file or one section."""
+
+    language: str
+    line: int
+    end_line: int
+    header: str | None
+
+
+def type_config_sections(
+    path: str, text: str, tables: LanguageTables
+) -> tuple[TypeConfigSection, ...]:
+    """The type-checker sections of ``text`` (the contents of ``path``).
+
+    A declared header opens its section only as a whole line of its own; the
+    section runs to the line before the next line starting with ``[`` (the
+    next INI/TOML header, a TOML sub-table included), else to the end.
+    """
+    name = PurePosixPath(path).name
+    lines = text.split("\n")
+    found: list[TypeConfigSection] = []
+    for config in tables.type_configs:
+        if not config.name.fullmatch(name):
+            continue
+        if config.header is None:
+            found.append(TypeConfigSection(config.language, 1, len(lines), None))
+            continue
+        for index, line in enumerate(lines):
+            if line.strip() != config.header:
+                continue
+            end = next(
+                (j for j in range(index + 1, len(lines)) if lines[j].startswith("[")),
+                len(lines),
+            )
+            found.append(
+                TypeConfigSection(config.language, index + 1, end, config.header)
+            )
+    return tuple(found)
+
+
+_STRING = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
+
+
+def extends_targets(text: str, token: re.Pattern[str]) -> tuple[str, ...]:
+    """The string, or ``[...]`` list of strings, right after each ``token``
+    match in ``text``, in order."""
+    targets: list[str] = []
+    for match in token.finditer(text):
+        rest = text[match.end() :].lstrip(" \t")
+        if rest.startswith("["):
+            close = rest.find("]")
+            rest = rest[: close if close >= 0 else len(rest)]
+            targets.extend(_STRING.findall(rest))
+        else:
+            string = _STRING.match(rest)
+            if string:
+                targets.append(string[1])
+    return tuple(targets)
+
+
+def resolve_extends(path: str, target: str) -> tuple[str, ...]:
+    """Repository paths ``target`` (named by ``path``'s ``extends``) may be,
+    in order: as written, then with ``.json`` appended. ``()`` when it is
+    absolute or leaves the repository; a package name resolves to a path
+    no pack holds (``node_modules`` is never read), so it stays unresolved."""
+    if not target or target.startswith("/") or "\\" in target:
+        return ()
+    parts: list[str] = []
+    for part in (PurePosixPath(path).parent / target).parts:
+        if part == "..":
+            if not parts:
+                return ()
+            parts.pop()
+        elif part != ".":
+            parts.append(part)
+    joined = "/".join(parts)
+    if not joined:
+        return ()
+    return (joined,) if joined.endswith(".json") else (joined, joined + ".json")
 
 
 # ---------------------------------------------------------------------------
@@ -1656,6 +1864,316 @@ def _code_commits_with_docs_share(view: _PackView) -> _Computed:
     )
 
 
+_COOKIE_METHOD = (
+    "a cookie-setting statement is the registry's cookie_calls token (e.g. "
+    ".set_cookie(, res.cookie(, http.Cookie{) matched after comments and "
+    "strings are blanked, through the end of its statement; a flag counts as "
+    "set only when the language's cookie_secure / cookie_httponly / "
+    "cookie_samesite token (a literal true; SameSite with any value) occurs "
+    "inside that statement, so a flag set elsewhere (a later assignment, "
+    "framework configuration or a framework default) is not visible here and "
+    "counts as not set; only source-file excerpts of registry languages are "
+    "read, so this is a lower bound on the repository"
+)
+
+
+def _cookie_flags_missing_observed(view: _PackView) -> _Computed:
+    scanned = 0
+    sites: dict[tuple[str, int], tuple[tuple[str, ...] | None, str]] = {}
+    auth: dict[tuple[str, int], str] = {}
+    for excerpt in view.pack.excerpts:
+        suffix = PurePosixPath(excerpt.path).suffix
+        if suffix not in view.tables.cookie_calls or not _is_source_file(
+            excerpt.path, view.tables
+        ):
+            continue
+        scanned += 1
+        for line in auth_lines(excerpt.path, excerpt.text, view.tables):
+            auth.setdefault((excerpt.path, excerpt.start_line + line - 1), excerpt.ref)
+        for site in cookie_sites(excerpt.path, excerpt.text, view.tables):
+            key = (excerpt.path, excerpt.start_line + site.line - 1)
+            if sites.get(key, (None, ""))[0] is None:
+                sites[key] = (site.missing, excerpt.ref)
+    if not auth:
+        # The gate (user, 2026-09-29): cookie flags are judged only where
+        # authentication or session code was read, so a CLI or a library is
+        # never scored on cookies it has no reason to set.
+        return MetricAbstention(
+            reason=(
+                "no authentication or session code (a registry auth_markers "
+                f"token) was found in {scanned} source-file excerpt(s) of "
+                "registry languages with cookie tokens, so no cookie flag is "
+                "judged: this gate is never scored, and a repository without "
+                "such code (a CLI, a library) is not rated on cookies; "
+                + (
+                    f"{len(sites)} cookie-setting statement(s) were found "
+                    f"({_bounded_sites(sites)})"
+                    if sites
+                    else "no cookie-setting statement was found"
+                )
+                + "; auth tokens are matched after comments and strings are "
+                "blanked, in source files only (not tests). "
+                + _COOKIE_METHOD
+            )
+        )
+    gate = f"authentication or session code was read at {_bounded_sites(auth)}"
+    judged = {key: value for key, value in sites.items() if value[0] is not None}
+    cut = len(sites) - len(judged)
+    if not judged:
+        return MetricAbstention(
+            reason=(
+                f"no cookie-setting statement could be judged in {scanned} "
+                "source-file excerpt(s) of registry languages with cookie tokens"
+                + (
+                    f" ({cut} ran past the end of its excerpt)"
+                    if cut
+                    else ""
+                )
+                + ", so no cookie flag was checked; a cookie a framework sets "
+                "itself (a session middleware's default cookie) is not visible "
+                "in code; that is not the same as cookies with every flag set; "
+                + gate
+                + ". "
+                + _COOKIE_METHOD
+            )
+        )
+    lacking = {key: value for key, value in judged.items() if value[0]}
+    cited = lacking or judged
+    return (
+        len(lacking),
+        tuple(
+            sorted(
+                {ref for _missing, ref in cited.values()} | {auth[min(auth)]}
+            )
+        ),
+        f"{len(lacking)} of {len(judged)} cookie-setting statement(s) leave a "
+        "flag unset: "
+        + (
+            ", ".join(
+                f"{path}:{line} (no {', '.join(missing or ())})"
+                for (path, line), (missing, _ref) in sorted(lacking.items())
+            )
+            or "none"
+        )
+        + (
+            f"; {cut} statement(s) ran past their excerpt and were not judged"
+            if cut
+            else ""
+        )
+        + "; "
+        + gate
+        + "; "
+        + _COOKIE_METHOD,
+    )
+
+
+_MAX_LISTED = 5
+
+
+def _bounded_sites(sites: Mapping[tuple[str, int], object]) -> str:
+    """``path:line`` of the first :data:`_MAX_LISTED` sites, the rest counted."""
+    ordered = sorted(sites)
+    listed = ", ".join(f"{path}:{line}" for path, line in ordered[:_MAX_LISTED])
+    more = len(ordered) - _MAX_LISTED
+    return listed + (f" and {more} more" if more > 0 else "")
+
+
+_STRICT_METHOD = (
+    "a type-checker configuration is a registry type_config_files file (the "
+    "whole file, or in a shared file only its declared section, e.g. "
+    "pyproject.toml [tool.mypy]); strict mode counts as enabled when a "
+    "type_strict token (e.g. strict = true, \"strict\": true) occurs there, "
+    "outside comment lines, after the last type_strict_off token, else "
+    "through the files it extends (the last listed wins); a language counts "
+    "as strict when any of its configurations read is; strictness passed "
+    "as command-line flags (mypy --strict, tsc --strict) is not visible in "
+    "any file, so a repository without such a file abstains rather than "
+    "being rated; only "
+    "configuration files quoted in this pack are read"
+)
+
+_STATE_ORDER = ("strict", "off", "unset", "unseen")
+
+def _last_match(pattern: re.Pattern[str] | None, text: str) -> int:
+    """Offset of ``pattern``'s last match in ``text``; -1 for none."""
+    if pattern is None:
+        return -1
+    return max((match.start() for match in pattern.finditer(text)), default=-1)
+
+
+_CONFIG_COMMENTS = ("#", ";", "//", "/*", "*")
+"""Line-comment openers of the configuration formats type checkers read
+(INI, TOML, JSON with comments): format syntax, not a language's."""
+
+
+def _uncommented(text: str) -> str:
+    """``text`` with every comment line blanked, line count kept."""
+    return "\n".join(
+        "" if line.lstrip().startswith(_CONFIG_COMMENTS) else line
+        for line in text.split("\n")
+    )
+
+
+def _strict_type_config_missing(view: _PackView) -> _Computed:
+    tables = view.tables
+    by_path: dict[str, list[Excerpt]] = {}
+    for excerpt in view.pack.excerpts:
+        by_path.setdefault(excerpt.path, []).append(excerpt)
+
+    def decide(
+        language: str, texts: list[tuple[str, bool]]
+    ) -> tuple[str, tuple[str, ...]]:
+        """The merged strict state of one configuration's quoted texts, and
+        the files it extends."""
+        states = []
+        targets: tuple[str, ...] = ()
+        on = tables.type_strict.get(language)
+        off = tables.type_strict_off.get(language)
+        extends = tables.type_config_extends.get(language)
+        for quoted, clipped in texts:
+            text = _uncommented(quoted)
+            last_on = _last_match(on, text)
+            last_off = _last_match(off, text)
+            if last_on > last_off:
+                states.append("strict")
+            elif clipped:
+                states.append("unseen")
+            else:
+                states.append("off" if last_off >= 0 else "unset")
+            if extends is not None and not targets:
+                targets = extends_targets(text, extends)
+        return min(states, key=_STATE_ORDER.index), targets
+
+    unresolved: list[str] = []
+
+    def resolved(path: str, language: str, state: str, targets, seen) -> str:
+        if state != "unset":
+            return state
+        for target in reversed(targets):
+            base = next(
+                (c for c in resolve_extends(path, target) if c in by_path), None
+            )
+            if base is None or base in seen:
+                unresolved.append(f"{path} extends {target!r}")
+                return "unseen"
+            texts = [(e.text, excerpt_clipped(e.text)) for e in by_path[base]]
+            state, targets = decide(language, texts)
+            inherited = resolved(base, language, state, targets, seen | {base})
+            if inherited != "unset":
+                return inherited
+        return "unset"
+
+    # (language, path, header) -> (state, refs, cited span)
+    roots: dict[tuple[str, str, str | None], tuple[str, set[str], str]] = {}
+    extended: set[str] = set()
+    for path in sorted(by_path):
+        found: dict[tuple[str, str | None], list[tuple[str, bool, str, str]]] = {}
+        for excerpt in by_path[path]:
+            lines = excerpt.text.split("\n")
+            clipped = excerpt_clipped(excerpt.text)
+            for section in type_config_sections(path, excerpt.text, tables):
+                text = "\n".join(lines[section.line - 1 : section.end_line])
+                start = excerpt.start_line + section.line - 1
+                end = min(excerpt.end_line, excerpt.start_line + section.end_line - 1)
+                span = f"{path}:{start}-{end}" + (
+                    f" {section.header}" if section.header else ""
+                )
+                cut = clipped and section.end_line == len(lines)
+                found.setdefault((section.language, section.header), []).append(
+                    (text, cut, excerpt.ref, span)
+                )
+        for (language, header), parts in found.items():
+            state, targets = decide(language, [(t, c) for t, c, _r, _s in parts])
+            extended.update(
+                c for target in targets for c in resolve_extends(path, target)
+            )
+            state = resolved(path, language, state, targets, frozenset({path}))
+            roots[(language, path, header)] = (
+                state,
+                {ref for _t, _c, ref, _s in parts},
+                parts[0][3],
+            )
+
+    # A configuration another one extends is a base, not a project of its
+    # own: it counts only through its extenders (tsconfig.base.json).
+    read = sorted({path for _language, path, _header in roots})
+    roots = {key: value for key, value in roots.items() if key[1] not in extended}
+    if read and not roots:
+        return MetricAbstention(
+            reason=(
+                "every type-checker configuration read ("
+                + ", ".join(read[:_MAX_LISTED])
+                + ") is extended by another, a cycle no type checker accepts, "
+                "so strict mode cannot be judged. " + _STRICT_METHOD
+            )
+        )
+    languages: dict[str, str] = {}
+    for (language, _path, _header), (state, _refs, _span) in roots.items():
+        current = languages.get(language)
+        rank = {"strict": 0, "unseen": 1, "off": 2, "unset": 2}
+        if current is None or rank[state] < rank[current]:
+            languages[language] = state
+    judged = {lang: s for lang, s in languages.items() if s != "unseen"}
+    unseen = sorted(set(languages) - set(judged))
+    if not judged:
+        if not roots:
+            return MetricAbstention(
+                reason=(
+                    "no type-checker configuration was read, so strict mode "
+                    "cannot be judged: strictness may be set by command-line "
+                    "flags that no file shows, and a language without a type "
+                    "checker declares no configuration; that is not the same "
+                    "as a configuration without strict mode. " + _STRICT_METHOD
+                )
+            )
+        return MetricAbstention(
+            reason=(
+                "the type-checker configuration read for "
+                + ", ".join(unseen)
+                + " could not be judged: "
+                + (
+                    "; ".join(sorted(set(unresolved))[:_MAX_LISTED])
+                    + " (not read: a package, or a file outside this pack)"
+                    if unresolved
+                    else "its section runs past the end of its clipped excerpt"
+                )
+                + ". "
+                + _STRICT_METHOD
+            )
+        )
+    lacking = sorted(lang for lang, state in judged.items() if state != "strict")
+    cited = [
+        (key, value)
+        for key, value in sorted(
+            roots.items(), key=lambda item: (*item[0][:2], item[0][2] or "")
+        )
+        if key[0] in (lacking or judged)
+    ]
+
+    def spans(language: str) -> str:
+        return ", ".join(
+            f"{span} ({state})"
+            for (lang, _p, _h), (state, _r, span) in cited
+            if lang == language
+        )
+
+    return (
+        len(lacking),
+        tuple(sorted({ref for _key, (_s, refs, _span) in cited for ref in refs})),
+        f"{len(lacking)} of {len(judged)} language(s) with a type-checker "
+        "configuration read enable no strict mode: "
+        + ("; ".join(f"{lang}: {spans(lang)}" for lang in lacking) or "none")
+        + (
+            "; strict: " + ", ".join(sorted(set(judged) - set(lacking)))
+            if set(judged) - set(lacking)
+            else ""
+        )
+        + ("; not judged: " + ", ".join(unseen) if unseen else "")
+        + "; "
+        + _STRICT_METHOD,
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -1860,6 +2378,18 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
         _code_commits_with_docs_share,
+    ),
+    MetricDefinition(
+        "cookie_flags_missing_observed",
+        FAMILY_SECURITY_SURFACE,
+        EVIDENCE_LOCAL,
+        _cookie_flags_missing_observed,
+    ),
+    MetricDefinition(
+        "strict_type_config_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _strict_type_config_missing,
     ),
 )
 

@@ -16,8 +16,9 @@ from ..core.context import (
     SECRET_BEARING_PATTERNS,
     whole_file_excerpt,
 )
+from ..core.judge import DOCUMENTATION_RULES
 from ..core.metric_tables import curated_metric_tables
-from ..core.metrics import sink_hits
+from ..core.metrics import auth_lines, cookie_sites, sink_hits
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -26,7 +27,7 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import scan
-from ..core.roles import role
+from ..core.roles import _matcher, role
 
 NAME = "security"
 
@@ -56,11 +57,13 @@ SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 MAX_SECURITY_SOURCES = 200
 
 MAX_SINK_EXCERPTS_PER_FILE = 20
-"""Dangerous-sink excerpts quoted from one file (T034); more is warned."""
+"""Dangerous-sink and cookie-statement excerpts quoted from one file (T034,
+T056); more is warned."""
 
 SINK_CAP_WARNING = (
-    "{path}: more than {limit} dangerous-sink excerpts; only the first {limit} "
-    "are quoted, so sink_hits_observed is a lower bound for this file."
+    "{path}: more than {limit} dangerous-sink or cookie-statement excerpts; "
+    "only the first {limit} are quoted, so sink_hits_observed and "
+    "cookie_flags_missing_observed are lower bounds for this file."
 )
 
 #: Declared entries that name a body of evidence rather than a repository path.
@@ -242,6 +245,23 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     if resolved_scope is None:
         return
 
+    # Documentation rules (T056, #8 offboarding) are checked against the files
+    # this pack read, so the first readable in-scope match of each is read
+    # here, before the capped sweep could spend its budget elsewhere.
+    for rule in DOCUMENTATION_RULES.get(NAME, ()):
+        match = _matcher(rule.patterns)
+        for path in sorted(p for p in scope_files if match(p)):
+            if path in probed:
+                break
+            probed.add(path)
+            text = context.read_source(path)
+            if text is None:
+                continue
+            excerpt = whole_file_excerpt(path, text)
+            if excerpt is not None:
+                yield excerpt
+            break
+
     reads = 0
     for rank, source in _ranked_candidates(scope_files):
         if reads >= MAX_SECURITY_SOURCES:
@@ -271,24 +291,32 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
 def _sink_excerpts(
     context: DimensionContext, path: str, text: str, whole: Excerpt | None
 ) -> Iterator[Excerpt]:
-    """The lines of each registry dangerous-sink hit in ``text`` (T034).
+    """The lines of each registry dangerous-sink hit (T034), each
+    cookie-setting statement and the first authentication/session line (the
+    cookie metric's gate; T056, area #8) in ``text``.
 
     Hits the whole-file excerpt ``whole`` already quotes in full are skipped;
     one excerpt spans each hit's own lines, overlapping spans merged.
     """
     after = whole.end_line if whole is not None else 0
     lines = text.split("\n")
+    tables = curated_metric_tables()
+    hits = sorted(
+        [(hit.line, hit.end_line) for hit in sink_hits(path, text, tables)]
+        + [(site.line, site.end_line) for site in cookie_sites(path, text, tables)]
+        + [(line, line) for line in auth_lines(path, text, tables)[:1]]
+    )
     spans: list[list[int]] = []
-    for hit in sink_hits(path, text, curated_metric_tables()):
-        end = min(hit.end_line, hit.line + MAX_EXCERPT_LINES - 1)
+    for start, stop in hits:
+        end = min(stop, start + MAX_EXCERPT_LINES - 1)
         if end <= after or any(
-            len(line) > MAX_LINE_CHARS for line in lines[hit.line - 1 : end]
+            len(line) > MAX_LINE_CHARS for line in lines[start - 1 : end]
         ):
             continue
-        if spans and hit.line <= spans[-1][1]:
+        if spans and start <= spans[-1][1]:
             spans[-1][1] = max(spans[-1][1], end)
         else:
-            spans.append([hit.line, end])
+            spans.append([start, end])
     if len(spans) > MAX_SINK_EXCERPTS_PER_FILE:
         _warn(
             context,
