@@ -623,7 +623,7 @@ def test_an_unknown_language_is_asked_for_public_declarations_too():
     stack = {"languages": ["zz-unknown"], "frameworks": []}
     fields = [i["field"] for i in gate.reference_requests(stack, registry)["requests"]]
     assert "public_declarations" in fields
-    assert len(fields) == 14  # 13 before T055 wired the #5 rule
+    assert len(fields) == 16  # 13 before T055's #5 rule; T056 adds 2
 
 
 # ---------------------------------------------------------------------------

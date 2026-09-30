@@ -158,6 +158,19 @@ _ASVS_SECRETS = Citation("OWASP ASVS 5.0.0 V13.3.1 (secrets management)", _ASVS_
 _ASVS_DEPENDENCIES = Citation(
     "OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)", _ASVS_URL
 )
+_ASVS_COOKIES = Citation(
+    "OWASP ASVS 5.0.0 V3.3 (cookie setup: V3.3.1 Secure, V3.3.2 SameSite, "
+    "V3.3.4 HttpOnly)",
+    _ASVS_URL,
+)
+_MYPY_STRICT = Citation(
+    "mypy configuration file, strict option",
+    "https://mypy.readthedocs.io/en/stable/config_file.html",
+)
+_TS_STRICT = Citation(
+    "TypeScript TSConfig reference, strict",
+    "https://www.typescriptlang.org/tsconfig/#strict",
+)
 _CWE_TOP_25 = Citation(
     "CWE Top 25 (CWE-95, CWE-78, CWE-89)", "https://cwe.mitre.org/top25/"
 )
@@ -267,10 +280,11 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
         ),
     ),
     # Weights re-balanced by T040 for the #17 and #31 rule groups (user
-    # sign-off 2026-09-29).
+    # sign-off 2026-09-29), then by T056 for #17's strict type config (user
+    # sign-off 2026-09-30).
     "code-quality": _rules(
         RatingRule(
-            "functions_over_ccn_10_share", 30, 0.10, "at_most",
+            "functions_over_ccn_10_share", 25, 0.10, "at_most",
             (_MCCABE, _ISO_5055), _NIST_500_235,
             area=AREAS[17],
         ),
@@ -281,7 +295,7 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[17],
         ),
         RatingRule(
-            "lint_config_missing", 15, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
+            "lint_config_missing", 10, 0, "at_most", (_ISO_5055,), PROJECT_DEFAULT,
             area=AREAS[16],
         ),
         RatingRule(
@@ -297,21 +311,38 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             (_ISO_5055,), PROJECT_DEFAULT,
             area=AREAS[30],
         ),
+        # Abstains where no type-checker configuration was read (flags may
+        # be passed on the command line), so it never scores a guess.
+        RatingRule(
+            "strict_type_config_missing", 10, 0, "at_most",
+            (_ISO_5055, _MYPY_STRICT, _TS_STRICT), PROJECT_DEFAULT,
+            area=AREAS[16],
+        ),
     ),
+    # Weights re-balanced by T056 for the #8 rule group (user sign-off
+    # 2026-09-30).
     "security": _rules(
         RatingRule(
-            "redaction_hits_observed", 40, 0, "at_most",
+            "redaction_hits_observed", 35, 0, "at_most",
             (_CWE_798, _ASVS_SECRETS), _ASVS_SECRETS,
             area=AREAS[9],
         ),
         RatingRule(
-            "sink_hits_observed", 40, 0, "at_most", (_CWE_TOP_25,), _CWE_TOP_25,
+            "sink_hits_observed", 35, 0, "at_most", (_CWE_TOP_25,), _CWE_TOP_25,
             area=AREAS[9],
         ),
         RatingRule(
-            "lockfile_missing", 20, 0, "at_most",
+            "lockfile_missing", 15, 0, "at_most",
             (_ASVS_DEPENDENCIES,), _ASVS_DEPENDENCIES,
             area=AREAS[19],
+        ),
+        # Behind the auth gate (user 2026-09-29): abstains where no
+        # authentication or session code was read, so it is never scored 0
+        # against a CLI or a library.
+        RatingRule(
+            "cookie_flags_missing_observed", 15, 0, "at_most",
+            (_ASVS_COOKIES,), PROJECT_DEFAULT,
+            area=AREAS[7],
         ),
     ),
     # Weights re-balanced by T040 for the #16 rule group (user sign-off

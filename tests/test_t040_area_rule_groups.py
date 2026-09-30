@@ -324,12 +324,13 @@ SIGNED_OFF = {
         "network_calls_in_unit_tests_observed": (10, AREAS[15]),
     },
     "code-quality": {
-        "functions_over_ccn_10_share": (30, AREAS[17]),
+        "functions_over_ccn_10_share": (25, AREAS[17]),
         "max_function_ccn": (15, AREAS[17]),
-        "lint_config_missing": (15, AREAS[16]),
+        "lint_config_missing": (10, AREAS[16]),
         "format_config_missing": (10, AREAS[16]),
         "type_escapes_per_kloc": (15, AREAS[16]),
         "todo_without_ticket_share": (15, AREAS[30]),
+        "strict_type_config_missing": (10, AREAS[16]),  # T056, 2026-09-30
     },
 }
 

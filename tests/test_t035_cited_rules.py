@@ -66,23 +66,29 @@ APPROVED = {
          PROJECT_DEFAULT),
     ],
     "code-quality": [
-        # weights re-balanced by T040 (user sign-off 2026-09-29)
-        ("functions_over_ccn_10_share", 30, "at_most", 0.10,
+        # weights re-balanced by T040 (user sign-off 2026-09-29), then T056
+        # (user sign-off 2026-09-30)
+        ("functions_over_ccn_10_share", 25, "at_most", 0.10,
          ("McCabe", "5055"), "NIST SP 500-235"),
         ("max_function_ccn", 15, "at_most", 15,
          ("McCabe", "NIST SP 500-235"), "NIST SP 500-235 (15"),
-        ("lint_config_missing", 15, "at_most", 0, ("5055",), PROJECT_DEFAULT),
+        ("lint_config_missing", 10, "at_most", 0, ("5055",), PROJECT_DEFAULT),
         ("format_config_missing", 10, "at_most", 0, ("5055",), PROJECT_DEFAULT),
         ("type_escapes_per_kloc", 15, "at_most", 5, ("5055",), PROJECT_DEFAULT),
         ("todo_without_ticket_share", 15, "at_most", 0.50, ("5055",),
          PROJECT_DEFAULT),
+        ("strict_type_config_missing", 10, "at_most", 0,
+         ("5055", "mypy", "TypeScript"), PROJECT_DEFAULT),
     ],
     "security": [
-        ("redaction_hits_observed", 40, "at_most", 0,
+        # weights re-balanced by T056 (user sign-off 2026-09-30)
+        ("redaction_hits_observed", 35, "at_most", 0,
          ("CWE-798", f"{_ASVS} V13.3.1"), f"{_ASVS} V13.3.1"),
-        ("sink_hits_observed", 40, "at_most", 0, ("CWE Top 25",), "CWE Top 25"),
-        ("lockfile_missing", 20, "at_most", 0,
+        ("sink_hits_observed", 35, "at_most", 0, ("CWE Top 25",), "CWE Top 25"),
+        ("lockfile_missing", 15, "at_most", 0,
          (f"{_ASVS} V15.1.2",), f"{_ASVS} V15.1.2"),
+        ("cookie_flags_missing_observed", 15, "at_most", 0,
+         (f"{_ASVS} V3.3",), PROJECT_DEFAULT),
     ],
     "test-strategy": [
         # weights re-balanced by T040 (user sign-off 2026-09-29)
@@ -286,10 +292,10 @@ def test_thirty_percent_of_functions_over_ccn_10_earns_0_of_30():
     by_name = {item.metric_name: item for item in unmet.inputs}
     share = by_name["functions_over_ccn_10_share"]
     assert share.metric_value == 0.3
-    assert (share.weight, share.earned_weight, share.passed) == (30, 0, False)
+    assert (share.weight, share.earned_weight, share.passed) == (25, 0, False)
     met_share = {i.metric_name: i for i in met.inputs}["functions_over_ccn_10_share"]
     assert met_share.metric_value == 0.1
-    assert (met_share.earned_weight, met_share.passed) == (30, True)
+    assert (met_share.earned_weight, met_share.passed) == (25, True)
 
 
 # ---------------------------------------------------------------------------

@@ -728,12 +728,13 @@ def test_extends_never_leaves_the_repository(tmp_path):
     assert isinstance(found.outcome, MetricAbstention)
 
 
-# --- AC5: proposed weights (NOT wired: awaiting user sign-off) --------------
+# --- AC5: weights wired after user sign-off (2026-09-30) -------------------
 
 from easy_verifier.core import gate, judge  # noqa: E402
-from easy_verifier.core.metrics import METRIC_NAMES  # noqa: E402
+from easy_verifier.core.judge import Rating  # noqa: E402
+from easy_verifier.core.score import score_repository  # noqa: E402
 
-PROPOSED_WEIGHTS = {
+SIGNED_WEIGHTS = {
     "security": {
         "redaction_hits_observed": 35,
         "sink_hits_observed": 35,
@@ -752,31 +753,75 @@ PROPOSED_WEIGHTS = {
 }
 
 
-@pytest.mark.parametrize("dimension", sorted(PROPOSED_WEIGHTS))
-def test_proposed_weights_sum_to_100_over_real_metrics(dimension):
-    proposed = PROPOSED_WEIGHTS[dimension]
-    assert sum(proposed.values()) == 100
-    assert set(proposed) <= set(METRIC_NAMES)
-    assert set(judge.RATING_RULES[dimension]) <= set(proposed)
+@pytest.mark.parametrize("dimension", sorted(SIGNED_WEIGHTS))
+def test_rating_rules_carry_the_signed_weights_and_sum_to_100(dimension):
+    rules = judge.RATING_RULES[dimension]
+    assert {name: rule.weight for name, rule in rules.items()} == (
+        SIGNED_WEIGHTS[dimension]
+    )
+    assert sum(rule.weight for rule in rules.values()) == 100
 
 
-def test_the_new_rules_are_not_wired_before_sign_off():
-    assert COOKIES not in judge.RATING_RULES["security"]
-    assert STRICT not in judge.RATING_RULES["code-quality"]
+def test_the_new_rules_thresholds_areas_and_citations():
+    cookie = judge.RATING_RULES["security"][COOKIES]
+    assert (cookie.threshold, cookie.comparison, cookie.area) == (
+        0,
+        "at_most",
+        AREAS[7],
+    )
+    assert cookie.threshold_citation == judge.PROJECT_DEFAULT
+    assert any("ASVS 5.0.0 V3.3" in c.label for c in cookie.metric_citation)
+    strict_rule = judge.RATING_RULES["code-quality"][STRICT]
+    assert (strict_rule.threshold, strict_rule.comparison, strict_rule.area) == (
+        0,
+        "at_most",
+        AREAS[16],
+    )
+    assert strict_rule.threshold_citation == judge.PROJECT_DEFAULT
+    labels = " ".join(c.label for c in strict_rule.metric_citation)
+    assert "ISO/IEC 5055" in labels and "mypy" in labels and "TypeScript" in labels
 
 
-def test_wiring_the_proposal_keeps_an_unknown_language_under_the_gate_cap(monkeypatch):
-    rules = {dimension: dict(table) for dimension, table in judge.RATING_RULES.items()}
-    for dimension, name in (("security", COOKIES), ("code-quality", STRICT)):
-        rules[dimension][name] = dataclasses.replace(
-            next(iter(rules[dimension].values())), metric_name=name
-        )
-    monkeypatch.setattr(gate, "RATING_RULES", rules)
+def test_wired_rules_ask_an_unknown_language_for_16_fields():
     required = gate.required_fields()
-    assert len(required) <= gate.MAX_REFERENCE_FIELDS
+    assert len(required) == 16 <= gate.MAX_REFERENCE_FIELDS
     assert {"cookie_calls", AUTH_FIELD} <= set(required)
     assert not {"cookie_secure", "cookie_httponly", "cookie_samesite"} & set(required)
     assert not set(TYPE_FIELDS) & set(required)
+
+
+RATED_APP = {
+    "requirements.txt": "flask==3.0.0\n",
+    "pyproject.toml": '[project]\nname = "app"\n',
+    "Dockerfile": "FROM python:3.12-slim\n",
+    "README.md": "# app\n",
+    "docs/offboarding.md": "# Offboarding\n",
+}
+
+
+def _security_rating(root):
+    ratings = score_repository(root, scope="project").ratings
+    (rating,) = [r for r in ratings if r.dimension == "security"]
+    assert isinstance(rating, Rating), rating  # else the test proves nothing
+    return rating
+
+
+def test_a_closed_auth_gate_leaves_the_cookie_rule_out_never_zero(tmp_path):
+    root = _repo(tmp_path / "r", {**RATED_APP, "src/app/views.py": NO_HTTPONLY})
+    rating = _security_rating(root)
+    assert COOKIES not in {item.metric_name for item in rating.inputs}
+    (reason,) = [why for name, why in rating.unavailable_metrics if name == COOKIES]
+    assert "no authentication or session code" in reason
+
+
+def test_an_open_auth_gate_scores_the_unmet_cookie_rule(tmp_path):
+    root = _repo(
+        tmp_path / "r",
+        {**RATED_APP, "src/app/views.py": NO_HTTPONLY, "src/app/auth.py": AUTH_PY},
+    )
+    rating = _security_rating(root)
+    (cookie,) = [i for i in rating.inputs if i.metric_name == COOKIES]
+    assert (cookie.weight, cookie.earned_weight) == (15, 0)
 
 
 def test_configs_extending_each_other_abstain_without_looping():
