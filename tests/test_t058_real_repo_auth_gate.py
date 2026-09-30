@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from test_t056_auth_and_type_config import COOKIES, metric
 
+from easy_verifier.core.context import RepoContext
 from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.metrics import MetricAbstention, compute_metrics
 from easy_verifier.core.pipeline import run_dimension
@@ -141,12 +141,6 @@ def _bryony_shaped(root: Path) -> Path:
     return _repo(root, files)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="T058 cause 1: selection by content is pending the Supervisor's "
-    "design decision (a pre-screen beyond MAX_SECURITY_SOURCES vs "
-    "Critical Constraint 4a)",
-)
 def test_auth_code_behind_the_read_budget_is_quoted_and_judged(tmp_path):
     root = _bryony_shaped(tmp_path / "r")
     evidence = run_dimension(security.DESCRIPTOR, root, "project")
@@ -164,3 +158,61 @@ def test_a_repo_without_auth_code_still_abstains_behind_decoys(tmp_path):
     (found,) = compute_metrics(evidence, curated_metric_tables()).by_name(COOKIES)
     assert isinstance(found.outcome, MetricAbstention)
 
+
+
+def test_auth_code_behind_the_read_budget_keeps_the_evidence_read_cap(tmp_path):
+    root = _bryony_shaped(tmp_path / "r")
+    evidence = run_dimension(security.DESCRIPTOR, root, "project")
+    swept = [p for p in evidence.files_read if p.startswith("data/")]
+    # 250 decoys, 41 path-tier reads, 1 promoted file: the cap still binds.
+    assert len(swept) < security.MAX_SECURITY_SOURCES
+    assert "data/keywords/k249.json" not in evidence.files_read
+
+
+def test_the_prescreen_cap_warns_when_reached(tmp_path, monkeypatch):
+    files = {f"src/m{i}.js": "module.exports = 1;\n" for i in range(5)}
+    root = _repo(tmp_path / "r", files)
+    monkeypatch.setattr(security, "MAX_PRESCREEN_FILES", 3)
+    evidence = run_dimension(security.DESCRIPTOR, root, "project")
+    assert any("pre-screen" in w and "3 " in w for w in evidence.warnings)
+    below = _repo(tmp_path / "s", {"src/m.js": "module.exports = 1;\n"})
+    assert not any(
+        "pre-screen" in w
+        for w in run_dimension(security.DESCRIPTOR, below, "project").warnings
+    )
+
+
+# --- RepoContext.peek_source ----------------------------------------------------
+
+
+def _context(root: Path) -> RepoContext:
+    return RepoContext(root.resolve(), mode="standalone", scope="project")
+
+
+def test_peek_source_reads_text_and_records_nothing(tmp_path):
+    root = _repo(tmp_path / "r", {"src/app.js": "passport.session();\n"})
+    context = _context(root)
+    assert context.peek_source("src/app.js") == "passport.session();\n"
+    assert context.files_read == []
+    assert context.sources_found == []
+    assert context.sources_missing == []
+
+
+def test_peek_source_refuses_a_secret_bearing_file(tmp_path):
+    root = _repo(tmp_path / "r", {".env": "TOKEN=abc\n", "src/x.js": "1\n"})
+    (root / "src/cfg.js").symlink_to(root / ".env")
+    context = _context(root)
+    assert context.peek_source(".env") is None
+    assert context.peek_source("src/cfg.js") is None
+    assert context.files_read == [] and context.sources_missing == []
+
+
+def test_peek_source_refuses_a_file_outside_the_repository(tmp_path):
+    root = _repo(tmp_path / "r", {"src/x.js": "1\n"})
+    outside = tmp_path / "outside.js"
+    outside.write_text("passport.session();\n")
+    (root / "src/link.js").symlink_to(outside)
+    context = _context(root)
+    assert context.peek_source("src/link.js") is None
+    assert context.peek_source("../outside.js") is None
+    assert context.files_read == [] and context.sources_missing == []

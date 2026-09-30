@@ -295,26 +295,46 @@ class RepoContext:
         bytes are ever touched: reported as ``excluded: secret-bearing``,
         distinct from ``not found`` and ``not examined``, and never opened.
         """
+        text, reason = self._load(relative_path)
+        if reason is not None:
+            self._miss(relative_path, reason)
+            return None
+
+        self.sources_found.append(relative_path)
+        self.files_read.append(relative_path)
+        return text
+
+    def peek_source(self, relative_path: str) -> str | None:
+        """Return a source's text for ranking only (T058), recording nothing.
+
+        The refusals are exactly :meth:`read_source`'s (a secret-bearing file
+        is never opened, and a path resolving outside the repository is not
+        followed); nothing is added to ``files_read``, ``sources_found`` or
+        ``sources_missing``, because nothing peeked is evidence.
+        """
+        return self._load(relative_path, peek=True)[0]
+
+    def _load(
+        self, relative_path: str, *, peek: bool = False
+    ) -> tuple[str | None, str | None]:
+        """``(text, None)`` or ``(None, miss reason)``: the one place a source's
+        bytes are refused or read (Critical Constraint 4a)."""
         candidate = self.repo_path / relative_path
 
         try:
             resolved = candidate.resolve()
         except OSError as exc:
-            self._miss(relative_path, f"path could not be resolved: {exc.strerror}")
-            return None
+            return None, f"path could not be resolved: {exc.strerror}"
 
         # Symlinks pointing outside the repository are not followed.
         if not resolved.is_relative_to(self.repo_path):
-            self._miss(relative_path, "resolves outside the repository; not followed")
-            return None
+            return None, "resolves outside the repository; not followed"
 
         if not resolved.exists():
-            self._miss(relative_path, "not found in the target repository")
-            return None
+            return None, "not found in the target repository"
 
         if not resolved.is_file():
-            self._miss(relative_path, "not a regular file")
-            return None
+            return None, "not a regular file"
 
         # Metadata checks precede exclusion so absent, escaping, and non-file
         # paths retain their truthful reasons. Existing contained regular files
@@ -323,27 +343,23 @@ class RepoContext:
         secret_bearing = _is_secret_bearing(relative_path) or _is_secret_bearing(
             resolved_relative
         )
-        if secret_bearing and relative_path not in self._approved_secret_reads:
-            self._miss(relative_path, "excluded: secret-bearing")
-            return None
+        if secret_bearing and (
+            peek or relative_path not in self._approved_secret_reads
+        ):
+            return None, "excluded: secret-bearing"
 
         try:
             raw = resolved.read_bytes()
         except OSError as exc:
-            self._miss(relative_path, f"unreadable: {exc.strerror}")
-            return None
+            return None, f"unreadable: {exc.strerror}"
 
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             # Skipped rather than decoded with replacement characters, which
             # would put mojibake into a citation.
-            self._miss(relative_path, "not valid UTF-8 text; skipped")
-            return None
-
-        self.sources_found.append(relative_path)
-        self.files_read.append(relative_path)
-        return text
+            return None, "not valid UTF-8 text; skipped"
+        return text, None
 
     def request_secret_source(self, relative_path: str) -> str | None:
         """Request operator approval before reading one excluded secret file.

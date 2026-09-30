@@ -99,6 +99,11 @@ class DimensionContext(Protocol):
 
     def request_secret_source(self, relative_path: str) -> str | None: ...
 
+    def peek_source(self, relative_path: str) -> str | None:
+        """A source's text for ranking only; refused as ``read_source`` refuses,
+        recorded nowhere (T058)."""
+        ...
+
 
 @dataclass(frozen=True)
 class SourceRole:
