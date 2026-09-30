@@ -935,3 +935,10 @@ it clearly wins. No engine change either way.
 - **#17 strict type config uses targeted excerpts, not a new source role.** code-quality reads registry-declared type-checker config files (mypy.ini, setup.cfg, pyproject.toml, pyrightconfig.json, tsconfig*.json) and quotes only the type-checker section. Coverage denominators and floors are unchanged. Languages without type-checker config abstain.
 - **A Python/TS repo with no type-checker config abstains** on the strict-config rule, because strictness may be passed as CLI flags we cannot see.
 - **The cookie flag token fields (`cookie_secure`, `cookie_httponly`, `cookie_samesite`) are optional; `cookie_calls` stays required.** This keeps an unknown language's reference questions under the gate's cap of 20.
+
+### 2026-09-30 — T056 weights and thresholds (user sign-off)
+
+- **security**: redaction_hits_observed 40→35, sink_hits_observed 40→35, lockfile_missing 20→15. New: cookie_flags_missing_observed 15 (≤0, area #8, OWASP ASVS 5.0.0 V3.3.1/V3.3.2/V3.3.4). The rule computes only when the auth gate opens (auth presence is gate-only, never scored).
+- **code-quality**: functions_over_ccn_10_share 30→25, lint_config_missing 15→10; max_function_ccn 15, format_config_missing 10, type_escapes_per_kloc 15, todo_without_ticket_share 15 unchanged. New: strict_type_config_missing 10 (≤0, area #17, ISO/IEC 5055:2021 + mypy/TypeScript `strict` docs).
+- Both new thresholds are project defaults. Wiring both rules raises an unknown language's required reference fields from 14 to 16 (cap 20; `cookie_calls`, `auth_markers`), verified with `gate.required_fields()` by the implementer.
+- Known limits accepted with the sign-off: cookie flags set by framework defaults are invisible and count as unset; the auth gate is pack-wide, not per file.
