@@ -47,15 +47,21 @@
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
 
-- [ ] Phase 1 feedback loop built and running (the bryony trigger above, plus a minimal fixture reproducing both causes)
-- [ ] Bug reproduces deterministically on the loop
-- [ ] 3–5 ranked falsifiable hypotheses listed (consistent with the confirmed mental model)
-- [ ] Correct hypothesis identified via Phase 4 instrumentation
+- [x] Phase 1 feedback loop built and running (the bryony trigger above, plus a minimal fixture reproducing both causes)
+- [x] Bug reproduces deterministically on the loop
+- [x] 3–5 ranked falsifiable hypotheses listed (consistent with the confirmed mental model)
+- [x] Correct hypothesis identified via Phase 4 instrumentation
 
 ### Attempts Log (filled live during diagnosis — required if >1 hypothesis tested)
 
 | # | Hypothesis | Predicted signal | Actual result | Verdict |
 |---|---|---|---|---|
+| H1 | index.js is never *read*: the generic tier is path-ordered and the 200-read sweep (MAX_SECURITY_SOURCES) runs out first | index.js ranks past the last read | harness probe: index.js at position 788 of 1532 candidates (tiers 4/12/3/18/1495); the read cap stops at `backend/data/keywords/json/Shipbuilding.json` | CONFIRMED (cause 1, refined: the binding budget is the 200-read sweep, not the 40-excerpt pack) |
+| H2 | even if read, index.js yields nothing with the current js-ts tokens | auth_lines == () and cookie_sites == () on index.js | `{"auth_lines": [], "cookie_sites": []}` | CONFIRMED (cause 2) |
+| H3 | the pack's evidence budget drops index.js excerpts | truncated true / omitted > 0 | `truncated false, omitted 0, excerpts 40, files_read 225` | REJECTED |
+| H4 | index.js is outside the resolved scope | not in scope files | `in_scope: true, scope_size 2213` | REJECTED |
+| H5 | .js lacks cookie/auth tables | `.js` absent from tables | `cookie_calls: true, auth: true` | REJECTED |
+| - | in-budget alternative: order generic registry-source files first (no content read) | index.js within the ~163 generic reads | index.js is 521st of 1169 registry-source generic files | insufficient: content selection needs reads beyond the cap (design fork, escalated) |
 
 **Stuck checkpoint** (if 2 consecutive hypotheses disproven):
 - [ ] 3 options presented (next hypothesis / widen scope / abandon+escalate)
@@ -64,18 +70,18 @@
 
 ### Fix Gates (Pillar 2)
 
-- [ ] Regression test written before the fix (or no-seam documented): a fixture shaped like bryony, with auth code in a file whose path carries no auth marker, many path-ranked decoys filling the budget, and `session({ cookie: { maxAge } })`
-- [ ] Fix applied; regression test passes
-- [ ] Phase 1 loop no longer reproduces the bug (bryony: gate open, rule unmet at index.js:93)
+- [x] Regression test written before the fix (or no-seam documented): a fixture shaped like bryony, with auth code in a file whose path carries no auth marker, many path-ranked decoys filling the budget, and `session({ cookie: { maxAge } })`
+- [x] Fix applied; regression test passes
+- [x] Phase 1 loop no longer reproduces the bug (bryony: gate open, rule unmet at index.js:93)
 - [ ] Fix matches every "Expected" item 1–6 in the mental model
 - [ ] STOP and report to the Supervisor, without merging, if the real-repo deltas move any other rating by more than 5 points
 
 ### Cleanup Checklist (Pillar 3)
 
-- [ ] All [DEBUG-...] instrumentation removed (grep verified)
-- [ ] Throwaway prototypes deleted
-- [ ] Correct hypothesis stated in the commit message
-- [ ] Post-mortem: what would have prevented this? (Expected: a real-repo run in the T056 acceptance criteria.)
+- [x] All [DEBUG-...] instrumentation removed (grep verified): probes lived in an external harness; `grep -rn "region debug log" src tests` is empty
+- [x] Throwaway prototypes deleted
+- [x] Correct hypothesis stated in the commit message
+- [x] Post-mortem: T056's acceptance criteria had no real-repo run; one `score` on bryony would have shown the closed gate before merge.
 
 ### Evidence (filled by reviewer at Stage 4/5)
 

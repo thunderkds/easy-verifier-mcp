@@ -312,6 +312,26 @@ value = [".cookie ("]
 citation_url = "https://expressjs.com/en/4x/api/response/"
 source_tag = "curated"
 
+# Session middleware configures the session cookie in its options (T058):
+# express-session's cookie: {...}, cookie-session's top-level flags, and
+# Express 3's built-in express.session. A token starting with an identifier
+# may not follow ".", so passport.session() is not one of them.
+
+[[cookie_calls]]
+value = ["session ("]
+citation_url = "https://expressjs.com/en/resources/middleware/session.html"
+source_tag = "curated"
+
+[[cookie_calls]]
+value = ["cookieSession ("]
+citation_url = "https://expressjs.com/en/resources/middleware/cookie-session.html"
+source_tag = "curated"
+
+[[cookie_calls]]
+value = ["express.session ("]
+citation_url = "https://expressjs.com/en/guide/migrating-4.html"
+source_tag = "curated"
+
 [[cookie_secure]]
 value = ["secure : true"]
 citation_url = "https://expressjs.com/en/4x/api/response/"
@@ -339,6 +359,11 @@ source_tag = "curated"
 [[auth_markers]]
 value = ["passport.authenticate ("]
 citation_url = "https://www.passportjs.org/concepts/authentication/middleware/"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["passport.initialize (", "passport.session ("]
+citation_url = "https://github.com/jaredhanson/passport/blob/v0.6.0/README.md"
 source_tag = "curated"
 
 # Type-checker fields (T056, area #17): the configuration files (and, in a

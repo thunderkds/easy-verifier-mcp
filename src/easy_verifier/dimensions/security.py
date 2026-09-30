@@ -18,7 +18,7 @@ from ..core.context import (
 )
 from ..core.judge import DOCUMENTATION_RULES
 from ..core.metric_tables import curated_metric_tables
-from ..core.metrics import auth_lines, cookie_sites, sink_hits
+from ..core.metrics import _is_source_file, auth_lines, cookie_sites, sink_hits
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -64,6 +64,17 @@ SINK_CAP_WARNING = (
     "{path}: more than {limit} dangerous-sink or cookie-statement excerpts; "
     "only the first {limit} are quoted, so sink_hits_observed and "
     "cookie_flags_missing_observed are lower bounds for this file."
+)
+
+MAX_PRESCREEN_FILES = 2000
+"""Generic source files peeked for auth, session or cookie tokens before the
+capped sweep (T058, user 2026-09-30). Peeked files are not evidence and are not
+counted against ``MAX_SECURITY_SOURCES``."""
+
+PRESCREEN_CAP_WARNING = (
+    "The auth/session/cookie pre-screen stopped at its cap of {cap} source "
+    "files; files beyond it were read in path order, so auth code among them "
+    "may not have been read."
 )
 
 #: Declared entries that name a body of evidence rather than a repository path.
@@ -262,8 +273,15 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
                 yield excerpt
             break
 
+    # Content before path (T058): generic files holding a registry auth,
+    # session or cookie token go first in their tier, so the capped sweep
+    # reaches auth code whose path carries no auth marker.
+    ranked = _ranked_candidates(scope_files)
+    hits = _prescreen(context, [s for r, s in ranked if r == _GENERIC_RANK])
+    ranked.sort(key=lambda item: (item[0], item[1] not in hits))
+
     reads = 0
-    for rank, source in _ranked_candidates(scope_files):
+    for rank, source in ranked:
         if reads >= MAX_SECURITY_SOURCES:
             return
         if source in probed:
@@ -325,6 +343,36 @@ def _sink_excerpts(
     for start, end in spans[:MAX_SINK_EXCERPTS_PER_FILE]:
         quoted = "\n".join(line.removesuffix("\r") for line in lines[start - 1 : end])
         yield Excerpt(path=path, start_line=start, end_line=end, text=quoted)
+
+
+def _prescreen(context: DimensionContext, sources: list[str]) -> frozenset[str]:
+    """The ``sources`` whose text holds a registry ``auth_markers`` or
+    ``cookie_calls`` token, peeked (never recorded as read) up to
+    :data:`MAX_PRESCREEN_FILES` registry source files (not tests).
+
+    A raw search, before comments and strings are blanked: a false hit only
+    spends one evidence read, and the read itself is matched precisely.
+    """
+    tables = curated_metric_tables()
+    hits: set[str] = set()
+    peeked = 0
+    for source in sources:
+        suffix = PurePosixPath(source).suffix
+        patterns = [
+            table[suffix]
+            for table in (tables.auth_markers, tables.cookie_calls)
+            if suffix in table
+        ]
+        if not patterns or not _is_source_file(source, tables):
+            continue
+        if peeked >= MAX_PRESCREEN_FILES:
+            _warn(context, PRESCREEN_CAP_WARNING.format(cap=MAX_PRESCREEN_FILES))
+            break
+        peeked += 1
+        text = context.peek_source(source)
+        if text is not None and any(p.search(text) for p in patterns):
+            hits.add(source)
+    return frozenset(hits)
 
 
 def _warn(context: DimensionContext, message: str) -> None:
