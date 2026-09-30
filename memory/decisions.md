@@ -907,3 +907,31 @@ it clearly wins. No engine change either way.
 - **T039: the agent's area labels for the 17 existing rules are accepted.** T040 may revise them. The Requirement Fidelity Gate was signed off on this basis. `lockfile_missing` → "Dependencies, vulns, licenses, obsolescence", not appsec.
 - **T038 P3: `improve_rounds` is capped at 100.** Uncapped, the 101st improve would write a file that fails the load-time bound, the same local-layer-loss class as T038's Stage 4 P1 (surrogate-pair TOML escapes).
 - **Merge order: T038 first, then T039** rebased on it. Both edit `score.py`, `roles.py` and `judge.py`. Re-probe cross-cutting properties after the conflict resolution.
+
+### 2026-09-29 — T040 scope split and citation/skip decisions (user)
+
+- **T040 is split.** T040 keeps #16 (tests without assertions, skipped tests, network in unit tests), #17's type-escape density and #31 (TODO without a ticket): metrics over evidence the packs already carry. **T055** takes #5 (removed or renamed public symbols and destructive migrations, from the git diff) and #27 (single PRD source, docs co-changed with code, from git history). Both need collector and `models.py` pack changes. **T056** takes #8 (cookie flags, auth presence, offboarding documentation) and #17's strict type config. Both need new evidence and carry HITL stops: `type-config` role vs targeted excerpts, and whether auth presence gates or is scored.
+- **#8 cites OWASP ASVS 5.0.0** (V3.3 cookies, V7 sessions, V8 authorization), matching the vendored registry, not the AC's 4.0 "V2–V4" numbering.
+- **#16's skip rule counts every unconditional skip.** The derivation discloses how many carry a reason, because a skipped test gives false confidence whether or not it is explained.
+- **Open for T040:** the agent added curated citation URLs for new registry fields without fetching them, so verify every one before merge.
+
+### 2026-09-29 — T040 weights and thresholds (user sign-off)
+
+- **test-strategy** (all rules in area #16): source_files_without_covering_test_share 35→25 (≤0.20); assertion_density_per_test 35→20 (≥1.0); test_config_and_ci_missing 30→20 (=0). New: tests_without_assertions_share 15 (≤0.10), skipped_test_share 10 (≤0.05), network_calls_in_unit_tests_observed 10 (=0).
+- **code-quality**: functions_over_ccn_10_share 40→30; max_function_ccn 20→15; lint_config_missing 20→15; format_config_missing 20→10. New: type_escapes_per_kloc 15 (≤5 per kloc, area #17), todo_without_ticket_share 15 (≤0.50, area #31).
+- All 5 new thresholds are project defaults; no standard publishes these numbers. **#31 cites ISO/IEC 5055 only.** No verifiable SQALE source was found, and an unverifiable citation is not shipped.
+
+### 2026-09-29 — T055 weights, templates, migration knowledge (user)
+
+- **blast-radius**: max_fan_in_changed 50→35, churn_hotspots_share 50→35. New rules in area #5: public_symbols_removed 15 (=0, SemVer 2.0.0) and destructive_migration_ops 15 (=0, SemVer + Fowler ParallelChange).
+- **requirement-fidelity**: AC_traced_to_code 50→35, AC_traced_to_test 50→35. New rules in area #27: requirements_docs_count 15 (≤1; 0 docs abstains; ISO 26514 + 29148) and code_commits_with_docs_share 15 (≥0.30 over the last 200 non-merge commits; ISO 26514).
+- All thresholds are project defaults. The #5 rules compute only at the changes scope and abstain elsewhere.
+- **Template files are not competing requirements sources.** The requirements-doc role excludes templates, so this repo counts 2 (PRD.md and REQUIREMENT.md).
+- **The migration knowledge stays in the engine (`blast_radius.py`) for now.** This covers migration directory names and destructive DDL/ORM API names, and the pack warning states it. Follow-up T057 moves it into cited registry fields, per DDR-0007.
+
+### 2026-09-29 — T056 design decisions (user)
+
+- **#8 auth code presence is a gate only, never scored.** It decides whether the cookie-flag metric computes, and the abstention names what was and was not found. CLI-only repos are never penalised.
+- **#17 strict type config uses targeted excerpts, not a new source role.** code-quality reads registry-declared type-checker config files (mypy.ini, setup.cfg, pyproject.toml, pyrightconfig.json, tsconfig*.json) and quotes only the type-checker section. Coverage denominators and floors are unchanged. Languages without type-checker config abstain.
+- **A Python/TS repo with no type-checker config abstains** on the strict-config rule, because strictness may be passed as CLI flags we cannot see.
+- **The cookie flag token fields (`cookie_secure`, `cookie_httponly`, `cookie_samesite`) are optional; `cookie_calls` stays required.** This keeps an unknown language's reference questions under the gate's cap of 20.

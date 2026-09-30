@@ -610,3 +610,17 @@ The CLI `score` waits for piped findings on stdin. Inside a Bash tool call stdin
 ### 2026-09-29 — `json.dumps` is not a TOML string encoder (T038)
 
 With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as surrogate pairs (`😀`), which TOML rejects. One emoji in a user comment made a whole local-registry file unloadable. Use `ensure_ascii=False`, escape DEL, and refuse lone surrogates at validation.
+
+### 2026-09-29 — The merge gate reads the main checkout, and any In Progress row blocks everything
+
+`pre_bash_block_unsafe_merge.py` reads `PROJECT_KANBAN.md` and `tasks/` from the main checkout, not from the branch being merged. Any task in In Progress blocks every `git merge`, `push` and `rebase`, not only that task's. A Ready for Review task also needs its verify row filled in the main checkout's copy of `TASK_REVIEW_Txxx.md`, which a branch-only evidence commit does not satisfy. Working flow when merging in sequence: commit the evidence on the branch, move the task to Done on the integration branch, and merge. A sibling task waiting to rebase goes in the Blocked table ("waiting on Txxx merge").
+
+### 2026-09-29 — Excerpts are clipped at 200 lines; a boundary is not a finding (T040)
+
+`context.MAX_EXCERPT_LINES = 200` clips long files and appends a clip marker. Any per-test metric that runs "from a declaration to the next one (or the excerpt end)" misjudges the last test of a clipped excerpt: T040 reported a fully asserting test as having no assertion. This is the miss-list class again, where a limit of what we read is reported as a fact about the code. Use `metrics.excerpt_clipped(text)`, and leave the cut test out of both numerator and denominator with a disclosure. Also, registry declaration patterns start with `^\s*` under MULTILINE, so a match reaches back over blank lines: report the line of the first non-blank character.
+
+### 2026-09-29 — Pack field additions and diff parsing (T055)
+
+- **Additive pack fields stay byte-identical through `models.to_json_dict`.** Unset `compat`/`doc_history` are omitted, not written as `null`, and both adapters must use it. The existing `tests/snapshots/architecture_pack.json` is the cheapest proof.
+- **Parsing `Scope.diff` is a new read path for DDR-0002.** The diff carries hunks of every changed file, secret-bearing ones included. Classify each file with `context._is_secret_bearing` (new, old and rename paths) before parsing any hunk.
+- **Implementer arithmetic about pinned counts is not evidence.** T040 said 16 required reference fields and the real number was 13. Check with the function (`gate.required_fields()`) before copying a number into evidence or memory.
