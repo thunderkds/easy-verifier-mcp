@@ -70,7 +70,7 @@
 
 ### Fix Gates (Pillar 2)
 
-- [ ] Regression test written before the fix (or no-seam documented): a fixture shaped like bryony, with auth code in a file whose path carries no auth marker, many path-ranked decoys filling the budget, and `session({ cookie: { maxAge } })`
+- [x] Regression test written before the fix (or no-seam documented): a fixture shaped like bryony, with auth code in a file whose path carries no auth marker, many path-ranked decoys filling the budget, and `session({ cookie: { maxAge } })`
 - [ ] Fix applied; regression test passes
 - [ ] Phase 1 loop no longer reproduces the bug (bryony: gate open, rule unmet at index.js:93)
 - [ ] Fix matches every "Expected" item 1–6 in the mental model
@@ -78,7 +78,7 @@
 
 ### Cleanup Checklist (Pillar 3)
 
-- [ ] All [DEBUG-...] instrumentation removed (grep verified)
+- [x] All [DEBUG-...] instrumentation removed (grep verified): probes lived in an external harness; `grep -rn "region debug log" src tests` is empty
 - [ ] Throwaway prototypes deleted
 - [ ] Correct hypothesis stated in the commit message
 - [ ] Post-mortem: what would have prevented this? (Expected: a real-repo run in the T056 acceptance criteria.)
