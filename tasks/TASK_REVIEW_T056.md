@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t056_auth_and_type_config.py` (92 tests, written as part of T056): SC1 `test_a_session_cookie_without_httponly_is_unmet_with_file_and_line`; SC2 `test_no_cookie_code_abstains_with_a_bounded_reason_never_zero`, `test_a_cli_only_repo_abstains_naming_both_absences`; AC2 gate `test_cookie_code_without_auth_code_abstains_naming_what_was_found`; SC3 `test_tsconfig_without_strict_is_unmet_and_cited`; AC5 signed tables sum to 100, `gate.required_fields()` == 16, a closed gate leaves the cookie rule out of the rating (never 0). Supervisor run: `1600 passed, 2 skipped in 94.79s` — pass |
+| Verification command run | ☑ pass | Supervisor, 2026-09-30, worktree HEAD 8b647c0: `python -m pytest -q` → `1600 passed, 2 skipped in 94.79s (0:01:34)`; `python -m ruff check src tests` → `All checks passed!` — pass |
+| Negative cases hold | ☑ pass | CLI-only repo (t056b): the cookie metric abstains through the auth gate ("no authentication or session code ... found"), never 0; no type-checker config → the strict metric abstains; `resolve_extends` refuses `../../x.json` beyond the root and absolute paths (probed); `strict_optional = true` / `"alwaysStrict": true` do not match the strict tokens (probed); extends never reads a secret-bearing file (`test_extends_never_reads_a_secret_bearing_file`) — pass |
+| verify | ☑ pass | Supervisor ran `verify`: CLI `score --scope project </dev/null` on t056a → security 70 (cookie_flags_missing_observed value 1, w 15, earned 0, `src/app/auth.py:10 (no httponly)`, gate opened at auth.py:8), code-quality 76 (strict_type_config_missing value 2, w 10: tsconfig.json unset, pyproject [tool.mypy] unset); t056b → the cookie metric abstains via the auth gate, strict = 1 (mypy.ini:1-2). MCP stdio `score` with the same args: payload identical to the CLI except the MCP-only `needs_input` key (DDR-0006, by design) — feature confirmed working, pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor `code-review` over `375a63b..8b647c0`: metrics.py (cookie_sites, auth_lines, type_config_sections, extends_targets, resolve_extends, the two metrics), code_quality._type_config_excerpts, security collect/_sink_excerpts, registry fields, judge RATING_RULES, 9 curated TOMLs, pinned-test updates (T028 60→55 arithmetic checked: the new strict rule fails in the `_rating_*` fixture). Findings: P0 0, P1 0, P2 0, P3 1 (security.py imports the private `roles._matcher`; optional). Security pass (manual; the built-in `security-review` needs an `origin` remote and this repo uses `github`): read_source confines reads to the repo incl. symlinks, secret files are refused unread, tokens are `re.escape`d (no ReDoS), quoted lines go through the redaction seam — no findings. Skipped: unrelated dimensions — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Full suite 1600 passed / 2 skipped (baseline before T056: 1539); the 8 older pins were updated only for the signed weight change and the 14→16 required-field count — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | pure backend task, no UI component |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | pure backend task, no UI component |
+| **UI: Responsiveness at target viewports** | ☐ N/A | pure backend task, no UI component |
 
 ---
 
@@ -87,9 +87,36 @@ No cookie, session, auth, strict-type-config or offboarding metric exists; area 
 and code-quality has no strict-config rule although both fixtures ship a type-checker config without
 `strict`.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**:
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```text
+captured: 2026-09-30T04:38:24Z  worktree HEAD=8b647c0 (Supervisor)
+$ PYTHONPATH=src python -m easy_verifier.adapters.cli score --repo <scratchpad>/t056a --scope project </dev/null
+score exit=0
+code-quality rating 76
+   rule functions_over_ccn_10_share value= 0.0 w= 25 earned= 25 passed= True
+   rule max_function_ccn value= 1 w= 15 earned= 15 passed= True
+   rule lint_config_missing value= 0 w= 10 earned= 10 passed= True
+   rule format_config_missing value= 1 w= 10 earned= 0 passed= False
+   rule type_escapes_per_kloc value= 0.0 w= 15 earned= 15 passed= True
+   rule strict_type_config_missing value= 2 w= 10 earned= 0 passed= False
+     (2 of 2 language(s) ... enable no strict mode: js-ts: tsconfig.json:1-5 (unset); python: pyproject.toml:4-5 [tool.mypy] (unset))
+security rating 70
+   rule redaction_hits_observed value= 0 w= 35 earned= 35 passed= True
+   rule sink_hits_observed value= 0 w= 35 earned= 35 passed= True
+   rule lockfile_missing value= 1 w= 15 earned= 0 passed= False
+   rule cookie_flags_missing_observed value= 1 w= 15 earned= 0 passed= False
+     (1 of 1 cookie-setting statement(s) leave a flag unset: src/app/auth.py:10 (no httponly); authentication or session code was read at src/app/auth.py:8)
+security documentation: [('AuthN/Z, sessions, offboarding', 'present', 'docs/offboarding.md')]
+$ PYTHONPATH=src python -m easy_verifier.adapters.cli score --repo <scratchpad>/t056b --scope project </dev/null
+score exit=0
+code-quality: rating_abstention below_coverage_floor
+security: rating_abstention below_coverage_floor
+code-quality strict_type_config_missing: 1 (python: mypy.ini:1-2 [mypy] (unset))
+cookie_flags_missing_observed: no value: no authentication or session code (a registry auth_markers token) was found ... a repository without such code (a CLI, a library) is not rated on cookies; no cookie-setting statement was found
+security documentation: [('AuthN/Z, sessions, offboarding', 'missing', None)]
+```
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T056x.jsonl`, never the
-implementing agent alone]
+**DELTA**: security now rates session-cookie flags (area #8) only where auth/session code was read and reports offboarding documentation as present/missing, and code-quality rates strict type-checker config (area #17). On t056a, security moves 80→70 and code-quality 88→76, with cited file:line evidence; a CLI-only repo is never scored on cookies.
+
+**WITNESS**: Supervisor (main session), 2026-09-30T04:38Z, independent of the implementing agent's own run.
