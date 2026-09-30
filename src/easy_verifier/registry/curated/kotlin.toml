@@ -219,3 +219,22 @@ source_tag = "curated"
 value = [".sameSite ("]
 citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
 source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["@PreAuthorize", "@Secured"]
+citation_url = "https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["HttpSession"]
+citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpsession"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".getSession ("]
+citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpservletrequest"
+source_tag = "curated"

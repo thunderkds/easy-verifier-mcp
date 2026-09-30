@@ -201,3 +201,17 @@ source_tag = "curated"
 value = ["SameSite :"]
 citation_url = "https://pkg.go.dev/net/http#Cookie"
 source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = [".BasicAuth ("]
+citation_url = "https://pkg.go.dev/net/http#Request.BasicAuth"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["sessions.NewCookieStore ("]
+citation_url = "https://pkg.go.dev/github.com/gorilla/sessions"
+source_tag = "curated"

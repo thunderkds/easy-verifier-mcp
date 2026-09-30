@@ -236,3 +236,17 @@ source_tag = "curated"
 value = ["same_site :", ":same_site =>"]
 citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
 source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session [", "reset_session"]
+citation_url = "https://guides.rubyonrails.org/action_controller_overview.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["has_secure_password"]
+citation_url = "https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html"
+source_tag = "curated"

@@ -67,7 +67,19 @@ def pack(files, *, dimension="security", truncated=False, starts=None):
     )
 
 
-def metric(files, **kwargs):
+AUTH_PY = """\
+from flask import session
+
+
+def remember(uid):
+    session["uid"] = uid
+"""
+"""Session code: opens the auth gate (AC2) for the pack it sits in."""
+
+
+def metric(files, *, auth=True, **kwargs):
+    """``auth`` adds :data:`AUTH_PY` so the cookie metric's gate is open."""
+    files = {**files, "src/app/auth.py": AUTH_PY} if auth else files
     (found,) = compute_metrics(pack(files, **kwargs), curated_metric_tables()).by_name(
         COOKIES
     )
@@ -124,7 +136,7 @@ def test_a_session_cookie_without_httponly_is_unmet_with_file_and_line():
     found = metric({"src/app/views.py": NO_HTTPONLY})
     assert found.outcome == 1
     assert "src/app/views.py:6 (no httponly)" in found.derivation
-    assert found.computed_from == ("src/app/views.py:1-7",)
+    assert found.computed_from == ("src/app/auth.py:1-5", "src/app/views.py:1-7")
 
 
 def test_the_same_cookie_with_every_flag_is_zero():
@@ -147,7 +159,7 @@ def test_no_cookie_code_abstains_with_a_bounded_reason_never_zero():
     found = metric({"src/tool/cli.py": "import argparse\n\n\ndef main():\n    pass\n"})
     assert isinstance(found.outcome, MetricAbstention)
     reason = found.outcome.reason
-    assert "no cookie-setting statement could be judged in 1 source-file" in reason
+    assert "no cookie-setting statement could be judged in 2 source-file" in reason
     assert "not the same as cookies with every flag set" in reason
     assert "framework" in reason
 
@@ -180,6 +192,7 @@ def test_one_statement_quoted_twice_is_counted_once():
         dataclasses.replace(
             pack({"src/app/views.py": NO_HTTPONLY}),
             excerpts=(
+                Excerpt("src/app/auth.py", 1, 5, AUTH_PY),
                 Excerpt("src/app/views.py", 1, 7, NO_HTTPONLY),
                 Excerpt("src/app/views.py", 6, 6, NO_HTTPONLY.split("\n")[5]),
             ),
@@ -268,7 +281,10 @@ def _metric_over(evidence):
 
 def test_security_pack_quotes_a_cookie_statement_outside_auth_paths(tmp_path):
     body = "\n".join(f"X{i} = {i}" for i in range(250)) + "\n" + NO_HTTPONLY
-    root = _repo(tmp_path / "r", {"src/app/views.py": body, "README.md": "# r\n"})
+    root = _repo(
+        tmp_path / "r",
+        {"src/app/views.py": body, "src/app/auth.py": AUTH_PY, "README.md": "# r\n"},
+    )
     evidence = run_dimension(security.DESCRIPTOR, root, "project")
     quoted = [e for e in evidence.excerpts if e.path == "src/app/views.py"]
     line = (
@@ -383,3 +399,404 @@ def test_the_offboarding_document_is_read_even_past_the_capped_sweep(tmp_path):
     )
     (rule,) = DOCUMENTATION_RULES["security"]
     assert documentation_present(rule, evidence.files_read).status == "present"
+
+
+# --- AC2: auth code presence gates the cookie metric, never scored ----------
+# (user decision 2026-09-29: a gate only; CLI-only repos are never penalised)
+
+AUTH_FIELD = "auth_markers"
+
+
+def test_cookie_code_without_auth_code_abstains_naming_what_was_found():
+    found = metric({"src/app/views.py": NO_HTTPONLY}, auth=False)
+    assert isinstance(found.outcome, MetricAbstention)
+    reason = found.outcome.reason
+    assert "no authentication or session code" in reason
+    assert "1 cookie-setting statement(s) were found (src/app/views.py:6)" in reason
+    assert "never scored" in reason
+    assert found.computed_from == ()
+
+
+def test_a_cli_only_repo_abstains_naming_both_absences():
+    found = metric(
+        {"src/tool/cli.py": "import argparse\n\n\ndef main():\n    pass\n"},
+        auth=False,
+    )
+    assert isinstance(found.outcome, MetricAbstention)
+    reason = found.outcome.reason
+    assert "no authentication or session code" in reason
+    assert "no cookie-setting statement was found" in reason
+    assert "in 1 source-file excerpt(s)" in reason
+
+
+def test_auth_code_opens_the_gate_and_is_cited():
+    found = metric({"src/app/views.py": NO_HTTPONLY})
+    assert found.outcome == 1
+    assert "authentication or session code was read at src/app/auth.py:5" in (
+        found.derivation
+    )
+
+
+def test_an_auth_token_in_a_comment_or_string_does_not_open_the_gate():
+    text = '# session["uid"] = 1\nMSG = "login_required"\n'
+    found = metric({"src/app/views.py": NO_HTTPONLY, "src/app/x.py": text}, auth=False)
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+def test_auth_code_in_a_test_file_does_not_open_the_gate():
+    found = metric(
+        {"src/app/views.py": NO_HTTPONLY, "tests/test_auth.py": AUTH_PY}, auth=False
+    )
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+@pytest.mark.parametrize(
+    ("path", "text"),
+    [
+        ("src/auth.ts", "export const uid = req.session.uid;\n"),
+        ("internal/auth.go", "func f(r *http.Request) { u, p, ok := r.BasicAuth() }\n"),
+        ("src/main/java/app/Auth.java", "class Auth { void f(HttpSession s) {} }\n"),
+        ("src/main/kotlin/Auth.kt", '@PreAuthorize("hasRole(\'A\')")\nfun f() {}\n'),
+        ("src/auth.php", "<?php\nsession_start();\n"),
+        ("app/auth.rb", "def logout\n  reset_session\nend\n"),
+        ("src/auth.rs", "let m = SessionMiddleware::new(store, key);\n"),
+        ("src/Auth.cs", "[Authorize]\npublic class A {}\n"),
+    ],
+)
+def test_each_language_opens_the_gate_with_its_registry_tokens(path, text):
+    opened = metric({"src/app/views.py": NO_HTTPONLY, path: text}, auth=False)
+    assert opened.outcome == 1
+    blank = "\n".join("" for _ in text.split("\n"))
+    found = metric({"src/app/views.py": NO_HTTPONLY, path: blank}, auth=False)
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+def test_every_curated_language_declares_auth_markers_with_https_citations():
+    registry = load_registry(known_roles=GENERIC_PATTERNS)
+    for entry in registry.languages.values():
+        cited = entry.fields.get(AUTH_FIELD)
+        assert cited, entry.name
+        assert all(item.citation_url.startswith("https://") for item in cited)
+    assert COOKIES in FIELD_METRICS[AUTH_FIELD]
+
+
+def test_security_pack_quotes_auth_code_past_the_whole_file_excerpt(tmp_path):
+    body = "\n".join(f"X{i} = {i}" for i in range(250)) + "\n" + AUTH_PY
+    root = _repo(
+        tmp_path / "r", {"src/app/views.py": NO_HTTPONLY, "src/app/store.py": body}
+    )
+    found = _metric_over(run_dimension(security.DESCRIPTOR, root, "project"))
+    assert found.outcome == 1, found.derivation
+
+
+# --- AC4: #17 strict type config, from targeted excerpts --------------------
+# (user decision 2026-09-29: no new source role; no type-checker config abstains)
+
+from easy_verifier.core.metric_tables import OPTIONAL_FIELDS  # noqa: E402
+from easy_verifier.dimensions import code_quality  # noqa: E402
+
+STRICT = "strict_type_config_missing"
+STRICT_TS = '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n'
+TYPE_FIELDS = (
+    "type_config_files",
+    "type_strict",
+    "type_strict_off",
+    "type_config_extends",
+)
+
+
+def strict(files, **kwargs):
+    evidence = pack(files, dimension="code-quality", **kwargs)
+    (found,) = compute_metrics(evidence, curated_metric_tables()).by_name(STRICT)
+    return found
+
+
+def test_strict_metric_is_declared_evidence_local():
+    (definition,) = [d for d in METRIC_DEFINITIONS if d.name == STRICT]
+    assert definition.kind == EVIDENCE_LOCAL
+
+
+def test_tsconfig_without_strict_is_unmet_and_cited():
+    text = '{\n  "compilerOptions": {\n    "noEmit": true\n  }\n}\n'
+    found = strict({"tsconfig.json": text})
+    assert found.outcome == 1
+    assert "js-ts" in found.derivation
+    assert "tsconfig.json" in found.derivation
+    assert found.computed_from == ("tsconfig.json:1-5",)
+
+
+def test_tsconfig_with_strict_is_met():
+    text = '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n'
+    assert strict({"tsconfig.json": text}).outcome == 0
+
+
+def test_a_commented_strict_line_does_not_count():
+    text = '{\n  "compilerOptions": {\n    // "strict": true\n  }\n}\n'
+    assert strict({"tsconfig.json": text}).outcome == 1
+
+
+def test_strict_inherited_through_extends_is_met():
+    files = {
+        "tsconfig.json": '{\n  "extends": "./tsconfig.base.json"\n}\n',
+        "tsconfig.base.json": '{\n  "compilerOptions": { "strict": true }\n}\n',
+    }
+    assert strict(files).outcome == 0
+
+
+def test_extends_without_the_json_suffix_and_in_another_directory():
+    files = {
+        "app/tsconfig.json": '{\n  "extends": "../configs/base"\n}\n',
+        "configs/base.json": '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n',
+    }
+    assert strict(files).outcome == 0
+
+
+def test_a_child_turning_strict_off_overrides_its_base():
+    files = {
+        "tsconfig.json": '{\n  "extends": "./tsconfig.base.json",\n'
+        '  "compilerOptions": {\n    "strict": false\n  }\n}\n',
+        "tsconfig.base.json": '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n',
+    }
+    assert strict(files).outcome == 1
+
+
+def test_extends_array_last_entry_wins():
+    files = {
+        "tsconfig.json": '{\n  "extends": ["./a.json", "./b.json"]\n}\n',
+        "a.json": '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n',
+        "b.json": '{\n  "compilerOptions": {\n    "strict": false\n  }\n}\n',
+    }
+    assert strict(files).outcome == 1
+
+
+def test_extends_a_package_config_that_was_not_read_abstains():
+    found = strict({"tsconfig.json": '{\n  "extends": "@tsconfig/strictest"\n}\n'})
+    assert isinstance(found.outcome, MetricAbstention)
+    assert "@tsconfig/strictest" in found.outcome.reason
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "expected"),
+    [
+        ("mypy.ini", "[mypy]\nstrict = True\n", 0),
+        ("mypy.ini", "[mypy]\nwarn_unused_ignores = True\n", 1),
+        (".mypy.ini", "[mypy]\nstrict = true\n", 0),
+        ("setup.cfg", "[metadata]\nname = x\n\n[mypy]\nstrict_optional = True\n", 1),
+        ("setup.cfg", "[mypy]\nstrict = True\n", 0),
+        ("mypy.ini", "[mypy]\n# strict = True\n", 1),
+        ("mypy.ini", "[mypy]\n\n[mypy-pkg.*]\nstrict = True\n", 1),
+        ("pyproject.toml", "[tool.mypy]\nstrict = true\n\n[tool.ruff]\n", 0),
+        ("pyproject.toml", "[tool.mypy]\npython_version = \"3.11\"\n", 1),
+        (
+            "pyproject.toml",
+            "[tool.mypy]\n\n[[tool.mypy.overrides]]\nmodule = \"x\"\nstrict = true\n",
+            1,
+        ),
+        ("pyproject.toml", '[tool.pyright]\ntypeCheckingMode = "strict"\n', 0),
+        ("pyrightconfig.json", '{\n  "typeCheckingMode": "strict"\n}\n', 0),
+        ("pyrightconfig.json", '{\n  "typeCheckingMode": "basic"\n}\n', 1),
+    ],
+)
+def test_python_type_checker_configs(path, text, expected):
+    found = strict({path: text})
+    assert found.outcome == expected, found.derivation
+
+
+def test_a_pyproject_without_a_type_checker_section_abstains():
+    found = strict({"pyproject.toml": '[tool.ruff]\nline-length = 88\n'})
+    assert isinstance(found.outcome, MetricAbstention)
+    reason = found.outcome.reason
+    assert "no type-checker configuration" in reason
+    assert "command-line flags" in reason
+
+
+def test_no_config_at_all_abstains_never_zero():
+    found = strict({"src/app.py": "X = 1\n"})
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+def test_a_clipped_section_without_strict_is_not_judged():
+    body = "[tool.mypy]\n" + "\n".join(f"opt{i} = true" for i in range(199)) + (
+        "\n…[excerpt clipped: showing lines 1–200 of 400]"
+    )
+    found = strict({"pyproject.toml": body})
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+def test_each_language_counts_once():
+    files = {
+        "mypy.ini": "[mypy]\nstrict = True\n",
+        "tsconfig.json": '{\n  "compilerOptions": {}\n}\n',
+    }
+    found = strict(files)
+    assert found.outcome == 1
+    assert "1 of 2 language(s)" in found.derivation
+
+
+def test_any_strict_config_of_a_language_meets_it():
+    files = {
+        "pyproject.toml": '[tool.mypy]\nstrict = true\n\n[tool.pyright]\n'
+        'typeCheckingMode = "basic"\n',
+    }
+    assert strict(files).outcome == 0
+
+
+@pytest.mark.parametrize("field", TYPE_FIELDS)
+def test_type_config_fields_are_optional(field):
+    assert field in OPTIONAL_FIELDS
+    assert STRICT in FIELD_METRICS[field]
+
+
+def test_only_languages_with_a_type_checker_declare_type_config_files():
+    registry = load_registry(known_roles=GENERIC_PATTERNS)
+    assert registry.warnings == ()
+    declaring = sorted(
+        name
+        for name, entry in registry.languages.items()
+        if entry.fields.get("type_config_files")
+    )
+    assert declaring == ["js-ts", "python"]
+
+
+PYPROJECT = """\
+[project]
+name = "demo"
+
+[tool.poetry.source]
+url = "https://example.invalid/simple"
+
+[tool.mypy]
+python_version = "3.11"
+
+[tool.ruff]
+line-length = 88
+"""
+
+
+def test_code_quality_pack_quotes_only_the_type_checker_section(tmp_path):
+    root = _repo(tmp_path / "r", {"pyproject.toml": PYPROJECT, "src/app.py": "X = 1\n"})
+    evidence = run_dimension(code_quality.DESCRIPTOR, root, "project")
+    sections = [
+        e for e in evidence.excerpts
+        if e.path == "pyproject.toml" and e.text.startswith("[tool.mypy]")
+    ]
+    assert [(e.start_line, e.end_line) for e in sections] == [(7, 9)]
+    assert "tool.ruff" not in sections[0].text
+    assert evidence.sources_sought == code_quality.SOURCES_SOUGHT
+    found = compute_metrics(evidence, curated_metric_tables()).by_name(STRICT)[0]
+    assert found.outcome == 1
+    assert "pyproject.toml:7-9" in found.computed_from
+
+
+def test_code_quality_pack_follows_tsconfig_extends(tmp_path):
+    root = _repo(
+        tmp_path / "r",
+        {
+            "tsconfig.json": '{\n  "extends": "./configs/base"\n}\n',
+            "configs/base.json": STRICT_TS,
+            "src/app.ts": "export const x = 1;\n",
+        },
+    )
+    evidence = run_dimension(code_quality.DESCRIPTOR, root, "project")
+    assert "configs/base.json" in evidence.files_read
+    found = compute_metrics(evidence, curated_metric_tables()).by_name(STRICT)[0]
+    assert found.outcome == 0
+
+
+def test_extends_never_reads_a_secret_bearing_file(tmp_path):
+    root = _repo(
+        tmp_path / "r",
+        {
+            "tsconfig.json": '{\n  "extends": "./secrets.json"\n}\n',
+            "secrets.json": '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n',
+        },
+    )
+    evidence = run_dimension(code_quality.DESCRIPTOR, root, "project")
+    assert "secrets.json" not in evidence.files_read
+    assert all(e.path != "secrets.json" for e in evidence.excerpts)
+    found = compute_metrics(evidence, curated_metric_tables()).by_name(STRICT)[0]
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+def test_extends_never_leaves_the_repository(tmp_path):
+    tsconfig = '{\n  "extends": "../../x.json"\n}\n'
+    root = _repo(tmp_path / "r", {"tsconfig.json": tsconfig})
+    (tmp_path / "x.json").write_text('{"compilerOptions": {"strict": true}}\n')
+    evidence = run_dimension(code_quality.DESCRIPTOR, root, "project")
+    assert all(".." not in path for path in evidence.files_read)
+    found = compute_metrics(evidence, curated_metric_tables()).by_name(STRICT)[0]
+    assert isinstance(found.outcome, MetricAbstention)
+
+
+# --- AC5: proposed weights (NOT wired: awaiting user sign-off) --------------
+
+from easy_verifier.core import gate, judge  # noqa: E402
+from easy_verifier.core.metrics import METRIC_NAMES  # noqa: E402
+
+PROPOSED_WEIGHTS = {
+    "security": {
+        "redaction_hits_observed": 35,
+        "sink_hits_observed": 35,
+        "lockfile_missing": 15,
+        COOKIES: 15,
+    },
+    "code-quality": {
+        "functions_over_ccn_10_share": 25,
+        "max_function_ccn": 15,
+        "lint_config_missing": 10,
+        "format_config_missing": 10,
+        "type_escapes_per_kloc": 15,
+        "todo_without_ticket_share": 15,
+        STRICT: 10,
+    },
+}
+
+
+@pytest.mark.parametrize("dimension", sorted(PROPOSED_WEIGHTS))
+def test_proposed_weights_sum_to_100_over_real_metrics(dimension):
+    proposed = PROPOSED_WEIGHTS[dimension]
+    assert sum(proposed.values()) == 100
+    assert set(proposed) <= set(METRIC_NAMES)
+    assert set(judge.RATING_RULES[dimension]) <= set(proposed)
+
+
+def test_the_new_rules_are_not_wired_before_sign_off():
+    assert COOKIES not in judge.RATING_RULES["security"]
+    assert STRICT not in judge.RATING_RULES["code-quality"]
+
+
+def test_wiring_the_proposal_keeps_an_unknown_language_under_the_gate_cap(monkeypatch):
+    rules = {dimension: dict(table) for dimension, table in judge.RATING_RULES.items()}
+    for dimension, name in (("security", COOKIES), ("code-quality", STRICT)):
+        rules[dimension][name] = dataclasses.replace(
+            next(iter(rules[dimension].values())), metric_name=name
+        )
+    monkeypatch.setattr(gate, "RATING_RULES", rules)
+    required = gate.required_fields()
+    assert len(required) <= gate.MAX_REFERENCE_FIELDS
+    assert {"cookie_calls", AUTH_FIELD} <= set(required)
+    assert not {"cookie_secure", "cookie_httponly", "cookie_samesite"} & set(required)
+    assert not set(TYPE_FIELDS) & set(required)
+
+
+def test_configs_extending_each_other_abstain_without_looping():
+    files = {
+        "tsconfig.json": '{\n  "extends": "./tsconfig.b.json"\n}\n',
+        "tsconfig.b.json": '{\n  "extends": "./tsconfig.json"\n}\n',
+    }
+    found = strict(files)
+    assert isinstance(found.outcome, MetricAbstention)
+    assert "cycle" in found.outcome.reason
+
+
+def test_the_type_config_cap_reads_the_root_first_and_warns(tmp_path):
+    files = {
+        f"packages/p{i:02}/tsconfig.json": '{\n  "compilerOptions": {}\n}\n'
+        for i in range(code_quality.MAX_TYPE_CONFIGS + 3)
+    }
+    files["tsconfig.json"] = STRICT_TS
+    evidence = run_dimension(
+        code_quality.DESCRIPTOR, _repo(tmp_path / "r", files), "project"
+    )
+    assert "tsconfig.json" in evidence.files_read
+    assert any("exceed the cap" in warning for warning in evidence.warnings)

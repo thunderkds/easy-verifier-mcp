@@ -246,3 +246,22 @@ source_tag = "curated"
 value = ["'samesite' =>", "\"samesite\" =>"]
 citation_url = "https://www.php.net/manual/en/function.setcookie.php"
 source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session_start ("]
+citation_url = "https://www.php.net/manual/en/function.session-start.php"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["$_SESSION"]
+citation_url = "https://www.php.net/manual/en/reserved.variables.session.php"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["password_verify ("]
+citation_url = "https://www.php.net/manual/en/function.password-verify.php"
+source_tag = "curated"

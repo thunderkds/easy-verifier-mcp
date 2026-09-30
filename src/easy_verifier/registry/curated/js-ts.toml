@@ -326,3 +326,42 @@ source_tag = "curated"
 value = ["sameSite :"]
 citation_url = "https://expressjs.com/en/4x/api/response/"
 source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["req.session"]
+citation_url = "https://expressjs.com/en/resources/middleware/session.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["passport.authenticate ("]
+citation_url = "https://www.passportjs.org/concepts/authentication/middleware/"
+source_tag = "curated"
+
+# Type-checker fields (T056, area #17): the configuration files (and, in a
+# shared file, the section) holding the type checker's settings, and the
+# tokens turning strict mode on / off or naming a file extended. Optional:
+# a language without a type checker declares none (syntax in core/registry.py).
+
+[[type_config_files]]
+value = ["tsconfig*.json"]
+citation_url = "https://www.typescriptlang.org/tsconfig/"
+source_tag = "curated"
+
+[[type_strict]]
+value = ["\"strict\" : true"]
+citation_url = "https://www.typescriptlang.org/tsconfig/#strict"
+source_tag = "curated"
+
+[[type_strict_off]]
+value = ["\"strict\" : false"]
+citation_url = "https://www.typescriptlang.org/tsconfig/#strict"
+source_tag = "curated"
+
+[[type_config_extends]]
+value = ["\"extends\" :"]
+citation_url = "https://www.typescriptlang.org/tsconfig/#extends"
+source_tag = "curated"

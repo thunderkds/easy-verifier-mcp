@@ -186,3 +186,12 @@ source_tag = "curated"
 value = [".same_site ("]
 citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
 source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["SessionMiddleware", "session.insert ("]
+citation_url = "https://docs.rs/actix-session/latest/actix_session/"
+source_tag = "curated"

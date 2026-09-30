@@ -18,7 +18,7 @@ from ..core.context import (
 )
 from ..core.judge import DOCUMENTATION_RULES
 from ..core.metric_tables import curated_metric_tables
-from ..core.metrics import cookie_sites, sink_hits
+from ..core.metrics import auth_lines, cookie_sites, sink_hits
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -291,8 +291,9 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
 def _sink_excerpts(
     context: DimensionContext, path: str, text: str, whole: Excerpt | None
 ) -> Iterator[Excerpt]:
-    """The lines of each registry dangerous-sink hit (T034) and each
-    cookie-setting statement (T056, area #8) in ``text``.
+    """The lines of each registry dangerous-sink hit (T034), each
+    cookie-setting statement and the first authentication/session line (the
+    cookie metric's gate; T056, area #8) in ``text``.
 
     Hits the whole-file excerpt ``whole`` already quotes in full are skipped;
     one excerpt spans each hit's own lines, overlapping spans merged.
@@ -303,6 +304,7 @@ def _sink_excerpts(
     hits = sorted(
         [(hit.line, hit.end_line) for hit in sink_hits(path, text, tables)]
         + [(site.line, site.end_line) for site in cookie_sites(path, text, tables)]
+        + [(line, line) for line in auth_lines(path, text, tables)[:1]]
     )
     spans: list[list[int]] = []
     for start, stop in hits:

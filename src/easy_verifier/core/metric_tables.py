@@ -30,6 +30,7 @@ from .metrics import (
     MetricAbstention,
     MetricSet,
     SinkPattern,
+    TypeConfigFile,
 )
 from .models import CombinedPack
 from .registry import (
@@ -66,6 +67,9 @@ def metric_tables(
     public: dict[str, re.Pattern[str]] = {}
     cookie_calls: dict[str, re.Pattern[str]] = {}
     cookie_flags: dict[str, dict[str, re.Pattern[str]]] = {}
+    auth: dict[str, re.Pattern[str]] = {}
+    type_configs: list[TypeConfigFile] = []
+    type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
     for entry in entries:
         extensions = _values(entry, "source_extensions")
         compiled = _syntax(entry)
@@ -87,6 +91,16 @@ def metric_tables(
                         if _values(entry, f"cookie_{flag}")
                     },
                 )
+            if _values(entry, "auth_markers"):
+                auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
+        for value in _values(entry, "type_config_files"):
+            glob, _space, header = value.partition(" ")
+            type_configs.append(
+                TypeConfigFile(entry.name, re.compile(translate(glob)), header or None)
+            )
+        for name in _TYPE_FIELDS:
+            if _values(entry, name):
+                type_tokens[name][entry.name] = _alternation(_values(entry, name))
         declarations = _values(entry, "public_declarations")
         for extension in extensions if declarations else ():
             public.setdefault(extension, _line_start(declarations))
@@ -135,10 +149,16 @@ def metric_tables(
         public_declarations=public,
         cookie_calls=cookie_calls,
         cookie_flags=cookie_flags,
+        auth_markers=auth,
+        type_configs=tuple(type_configs),
+        type_strict=type_tokens["type_strict"],
+        type_strict_off=type_tokens["type_strict_off"],
+        type_config_extends=type_tokens["type_config_extends"],
     )
 
 
 _AREA_FIELDS = ("skip_markers", "network_calls", "type_escapes")
+_TYPE_FIELDS = ("type_strict", "type_strict_off", "type_config_extends")
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -247,6 +267,7 @@ _TODO = ("todo_without_ticket_share",)
 _COMPAT = ("public_symbols_removed",)
 _CO_CHANGE = ("code_commits_with_docs_share",)
 _COOKIES = ("cookie_flags_missing_observed",)
+_STRICT = ("strict_type_config_missing",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
@@ -276,6 +297,11 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "cookie_secure": _COOKIES,
     "cookie_httponly": _COOKIES,
     "cookie_samesite": _COOKIES,
+    "auth_markers": _COOKIES,
+    "type_config_files": _STRICT,
+    "type_strict": _STRICT,
+    "type_strict_off": _STRICT,
+    "type_config_extends": _STRICT,
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -294,6 +320,17 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
     "colocated_test_name_patterns": "refines test matching alongside "
     "test_name_patterns; python/php/rust omit it by design (T052) and the "
     "directory-first rule still applies without it",
+    **dict.fromkeys(
+        ("cookie_secure", "cookie_httponly", "cookie_samesite"),
+        "refines the cookie metric: a flag a language does not declare is not "
+        "judged, while cookie_calls and auth_markers still compute it (user "
+        "2026-09-29)",
+    ),
+    **dict.fromkeys(
+        ("type_config_files", "type_strict", "type_strict_off", "type_config_extends"),
+        "only languages with a type checker have a type-checker configuration; "
+        "for the rest the strict-config rule abstains (user 2026-09-29)",
+    ),
 }
 """Fields the metric code reads when present but never needs (T037 R1): a
 language without one still gets every metric it feeds, so the reference gate
