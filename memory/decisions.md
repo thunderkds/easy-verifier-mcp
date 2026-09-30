@@ -942,3 +942,9 @@ it clearly wins. No engine change either way.
 - **code-quality**: functions_over_ccn_10_share 30→25, lint_config_missing 15→10; max_function_ccn 15, format_config_missing 10, type_escapes_per_kloc 15, todo_without_ticket_share 15 unchanged. New: strict_type_config_missing 10 (≤0, area #17, ISO/IEC 5055:2021 + mypy/TypeScript `strict` docs).
 - Both new thresholds are project defaults. Wiring both rules raises an unknown language's required reference fields from 14 to 16 (cap 20; `cookie_calls`, `auth_markers`), verified with `gate.required_fields()` by the implementer.
 - Known limits accepted with the sign-off: cookie flags set by framework defaults are invisible and count as unset; the auth gate is pack-wide, not per file.
+
+### 2026-09-30 — T058 content pre-screen design (user)
+
+- **Option A, capped.** A new `RepoContext.peek_source` applies exactly the same refusals as `read_source` (secret-bearing per DDR-0002, outside the repo, symlinks) but records nothing, so `files_read` stays evidence-only. Critical Constraint 4a is read as "enforced in RepoContext". Security pre-screens generic source files for registry auth/session/cookie tokens and moves hits to the front of the generic tier. Evidence reads stay ≤ `MAX_SECURITY_SOURCES` (200, unchanged). The pre-screen is capped at 2000 files, with a warning when the cap is reached.
+- Rejected: B (pre-screen via `read_source` would inflate `files_read` about 6x and shift metrics on every repo); C (a second 4a enforcement site); D (type-only ordering fails the confirmed Expected items without raising the cap).
+- Root cause (T058 diagnosis): the 200-read cap hid bryony's index.js (rank 788 of 1532); the 40-excerpt pack was never truncated.
