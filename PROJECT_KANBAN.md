@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-28
+**Last updated**: 2026-09-30
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -57,14 +57,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T058** — Bugfix (T056 defect): #8 cookie rule never computes on real Express/Passport repo (bryony) — content-targeted security excerpts + session-middleware cookie config + wider auth_markers | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-09-30 (worktree ../easy-verifier-mcp-T058)
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
-- [x] **T056** — Area rule groups needing new evidence: #8 cookies/auth-gate/offboarding (ASVS 5.0.0) + #17 strict type config | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 (cookie_flags_missing_observed gated by auth_markers, never scored when no auth code; offboarding DocumentationRule; strict_type_config_missing via targeted excerpts with tsconfig extends; user-signed weights security 35/35/15/15, code-quality 25/15/10/10/15/15/10; required reference fields 16; 1600 passed; CLI + MCP verify pass; code-review P3 only)
+- [x] **T056** — Area rule groups needing new evidence: #8 cookies/auth-gate/offboarding (ASVS 5.0.0) + #17 strict type config | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 — ⚠️ defect on real repos, fixed by T058 (cookie_flags_missing_observed gated by auth_markers, never scored when no auth code; offboarding DocumentationRule; strict_type_config_missing via targeted excerpts with tsconfig extends; user-signed weights security 35/35/15/15, code-quality 25/15/10/10/15/15/10; required reference fields 16; 1600 passed; CLI + MCP verify pass; code-review P3 only)
 - [x] **T055** — Area rule groups needing git evidence: #5 backward compat + #27 doc source of truth | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (4 metrics + rules, user-signed weights; templates excluded from requirements-doc role; Stage 4 P2 DDR-0002 secret-file diff exclusion fixed; 1506 passed; changes + project scope CLI verify pass; follow-up T057)
 - [x] **T040** — Area rule groups in existing dimensions (#16, #17 density, #31; #5/#27 → T055, #8/#17 strict → T056) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (5 metrics + rules, user-signed weights; Stage 4 P1 cut-test judged + P2 line fixed; 1450 passed; six-area fixture verify pass)
 - [x] **T039** — Shared documentation-present rule, overall over N dimensions, area labels | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (doc-only dimensions never scored nor gated (user); agent area labels accepted, T040 may revise; Stage 4 P0/P1 none; rebased on T038, 1415 passed; CLI + report + T038 cross-probe verify pass)
