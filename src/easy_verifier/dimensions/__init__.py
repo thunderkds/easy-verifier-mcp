@@ -6,7 +6,7 @@ silently missing because its module was never imported.
 
 The security descriptor landed in T008, test-strategy in T009, blast-radius in
 T010 — all seven of FR-010's dimensions are wired here explicitly; reliability
-(T043) is the first of DDR-0008's new dimensions.
+(T043) and supply-chain (T041) are DDR-0008's new dimensions.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from . import (
     requirement_fidelity,
     security,
     solution_fit,
+    supply_chain,
     test_strategy,
 )
 
@@ -36,6 +37,7 @@ DIMENSIONS: dict[str, DimensionDescriptor] = {
     test_strategy.NAME: test_strategy.DESCRIPTOR,
     blast_radius.NAME: blast_radius.DESCRIPTOR,
     reliability.NAME: reliability.DESCRIPTOR,
+    supply_chain.NAME: supply_chain.DESCRIPTOR,
 }
 
 

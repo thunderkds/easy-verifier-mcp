@@ -167,6 +167,7 @@ expected_tools = {
     "requirement-fidelity",
     "security",
     "solution-fit",
+    "supply-chain",
     "test-strategy",
     "reliability",
     "list_dimensions",

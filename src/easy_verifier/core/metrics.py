@@ -321,6 +321,27 @@ class LanguageTables:
     """Source suffix -> the language's T043 reliability tokens (areas #6, #12,
     #13, #15), present only where ``syntax`` is and the language declares the
     field; read through :func:`reliability_findings`."""
+    ci_files: Callable[[str], bool] | None = None
+    release_files: Callable[[str], bool] | None = None
+    """Path matchers for the ``ci-workflow`` and ``release-config`` roles
+    (T041): which excerpts of a supply-chain pack are CI or release files."""
+
+    lockfile_install: re.Pattern[str] | None = None
+    """The registry's ``lockfile_install`` tokens, all languages, as one
+    alternation; ``None`` when no language declares any."""
+
+    action_reference: re.Pattern[str] | None = None
+    """Generic layer: an external step reference, group 1 being the reference
+    (``uses: actions/checkout@v4`` -> ``actions/checkout@v4``)."""
+
+    pinned_reference: tuple[re.Pattern[str], ...] = ()
+    local_reference: tuple[str, ...] = ()
+    """Generic layer: a reference is pinned when a pattern matches it, and is
+    not an external dependency when it starts with a local prefix."""
+
+    provenance_steps: re.Pattern[str] | None = None
+    """Generic layer: tokens showing an SBOM, signing or provenance step,
+    matched case-insensitively."""
 
 
 @dataclass(frozen=True)
@@ -2683,6 +2704,201 @@ def _strict_type_config_missing(view: _PackView) -> _Computed:
     )
 
 
+# ---------------------------------------------------------------------------
+# Supply-chain CI evidence (T041, areas #20-#22). Computed only over the
+# supply-chain pack; every token and pattern is the registry's or the generic
+# layer's (core/roles.py GENERIC_CI_FACTS), never this module's.
+# ---------------------------------------------------------------------------
+
+SUPPLY_CHAIN = "supply-chain"
+
+_SUPPLY_CHAIN_ONLY = (
+    "only the supply-chain pack quotes CI and release configuration, and this "
+    "is the {dimension!r} pack"
+)
+
+
+def _ci_lines(
+    view: _PackView, match: Callable[[str], bool] | None
+) -> tuple[list[tuple[str, int, str]], list[str], list[str]]:
+    """``(lines, files, clipped)`` over the excerpts whose path ``match``
+    accepts: each non-comment line with its path and line number (a trailing
+    `` #`` comment removed), the distinct paths, and the paths whose excerpt
+    ends in the line-cap clip marker."""
+    lines: list[tuple[str, int, str]] = []
+    files: dict[str, None] = {}
+    clipped: dict[str, None] = {}
+    for excerpt in view.pack.excerpts if match is not None else ():
+        if not match(excerpt.path):
+            continue
+        files.setdefault(excerpt.path)
+        if excerpt_clipped(excerpt.text):
+            clipped.setdefault(excerpt.path)
+        for offset, line in enumerate(excerpt.text.splitlines()):
+            code = line.split(" #", 1)[0]
+            if code.lstrip().startswith("#"):
+                continue
+            lines.append((excerpt.path, excerpt.start_line + offset, code))
+    return lines, list(files), list(clipped)
+
+
+def _ci_abstention(view: _PackView) -> MetricAbstention | None:
+    if view.pack.dimension != SUPPLY_CHAIN:
+        return MetricAbstention(
+            reason=_SUPPLY_CHAIN_ONLY.format(dimension=view.pack.dimension)
+        )
+    return None
+
+
+def _no_ci_file(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            f"no CI workflow file was quoted in this pack, so there is no {what} "
+            "to examine; that is not the same as a pipeline without one "
+            "(the ci-workflow role's miss is in sources_missing)"
+        )
+    )
+
+
+def _ci_actions_unpinned_share(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    lines, files, clipped = _ci_lines(view, tables.ci_files)
+    if not files:
+        return _no_ci_file("action reference")
+    if clipped:
+        return MetricAbstention(
+            reason=(
+                "a CI workflow excerpt was clipped at the line cap ("
+                + ", ".join(clipped)
+                + "), so references beyond it were never read"
+            )
+        )
+    if tables.action_reference is None:
+        return MetricAbstention(reason="no action-reference token is declared")
+    external: list[tuple[str, int, str]] = []
+    for path, number, line in lines:
+        found = tables.action_reference.search(line)
+        if found and not found[1].startswith(tables.local_reference):
+            external.append((path, number, found[1]))
+    if not external:
+        return MetricAbstention(
+            reason=(
+                "no external action reference (uses: owner/repo@ref) appears in "
+                "the quoted CI workflows, so there is nothing to pin; that is a "
+                "zero denominator, not a share of 0"
+            )
+        )
+    unpinned = [
+        item
+        for item in external
+        if not any(pattern.search(item[2]) for pattern in tables.pinned_reference)
+    ]
+    return (
+        len(unpinned) / len(external),
+        tuple(sorted({path for path, _n, _r in external})),
+        f"{len(unpinned)} of {len(external)} external action reference(s) in "
+        f"{len(files)} CI workflow file(s) are not pinned to a full commit SHA "
+        "or image digest: "
+        + (", ".join(f"{p}:{n} {r}" for p, n, r in unpinned[:5]) or "none")
+        + (f", and {len(unpinned) - 5} more" if len(unpinned) > 5 else "")
+        + "; a reference is any `uses:` value outside the repository (not "
+        "starting ./), pinned when it matches the generic layer's pinned-"
+        "reference patterns",
+    )
+
+
+def _ci_lockfile_install_missing(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    lines, files, clipped = _ci_lines(view, tables.ci_files)
+    if not files:
+        return _no_ci_file("install command")
+    if tables.lockfile_install is None:
+        return MetricAbstention(reason="no lockfile-install token is declared")
+    hits = [
+        (path, number)
+        for path, number, line in lines
+        if tables.lockfile_install.search(line)
+    ]
+    if not hits and clipped:
+        return MetricAbstention(
+            reason=(
+                "no lockfile-faithful install command was found, but a CI "
+                "workflow excerpt was clipped at the line cap ("
+                + ", ".join(clipped)
+                + "), so it may sit beyond what was read"
+            )
+        )
+    cited = sorted({path for path, _n in hits}) or sorted(files)
+    return (
+        0 if hits else 1,
+        tuple(cited),
+        (
+            f"{len(hits)} CI line(s) run a lockfile-faithful install: "
+            + ", ".join(f"{p}:{n}" for p, n in hits[:5])
+            if hits
+            else f"no line of {len(files)} quoted CI workflow file(s) runs a "
+            "lockfile-faithful install"
+        )
+        + "; 0 when any does, else 1 (missing); the commands are the "
+        "registry's lockfile_install tokens (per language) matched in "
+        "non-comment CI lines",
+    )
+
+
+def _ci_provenance_step_missing(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    ci_lines, ci_files, ci_clipped = _ci_lines(view, tables.ci_files)
+    rel_lines, rel_files, rel_clipped = _ci_lines(view, tables.release_files)
+    files = [*ci_files, *(f for f in rel_files if f not in ci_files)]
+    if not files:
+        return MetricAbstention(
+            reason=(
+                "no CI workflow or release configuration file was quoted in "
+                "this pack, so there is nothing to look for an SBOM, signing or "
+                "provenance step in (the roles' misses are in sources_missing)"
+            )
+        )
+    if tables.provenance_steps is None:
+        return MetricAbstention(reason="no provenance-step token is declared")
+    hits = [
+        (path, number)
+        for path, number, line in (*ci_lines, *rel_lines)
+        if tables.provenance_steps.search(line)
+    ]
+    clipped = [*ci_clipped, *rel_clipped]
+    if not hits and clipped:
+        return MetricAbstention(
+            reason=(
+                "no SBOM, signing or provenance step was found, but an excerpt "
+                "was clipped at the line cap (" + ", ".join(clipped) + "), so "
+                "it may sit beyond what was read"
+            )
+        )
+    cited = sorted({path for path, _n in hits}) or sorted(files)
+    return (
+        0 if hits else 1,
+        tuple(cited),
+        (
+            f"{len(hits)} line(s) show an SBOM, signing or provenance step: "
+            + ", ".join(f"{p}:{n}" for p, n in hits[:5])
+            if hits
+            else f"no line of {len(files)} quoted CI or release file(s) shows one"
+        )
+        + "; 0 when any does, else 1 (missing); the tokens are the generic "
+        "layer's (slsa, provenance, attest, sbom, cyclonedx, spdx, cosign, "
+        "sigstore, syft), matched case-insensitively in non-comment lines",
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -2971,6 +3187,30 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         MetricDefinition(name, FAMILY_SECURITY_SURFACE, EVIDENCE_LOCAL, _pack_only)
         for names in PACK_METRICS.values()
         for name in names
+    ),
+    MetricDefinition(
+        "licence_file_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("licence-file"),
+    ),
+    MetricDefinition(
+        "ci_actions_unpinned_share",
+        FAMILY_SECURITY_SURFACE,
+        WHOLE_SET,
+        _ci_actions_unpinned_share,
+    ),
+    MetricDefinition(
+        "ci_lockfile_install_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        WHOLE_SET,
+        _ci_lockfile_install_missing,
+    ),
+    MetricDefinition(
+        "ci_provenance_step_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        WHOLE_SET,
+        _ci_provenance_step_missing,
     ),
 )
 

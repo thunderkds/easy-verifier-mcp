@@ -22,10 +22,11 @@ EXPECTED_NAMES = {
     "blast-radius",
     "code-quality",
     "reliability",  # T043
+    "supply-chain",
 }
 
 
-def test_discovery_returns_all_seven_descriptor_records() -> None:
+def test_discovery_returns_all_eight_descriptor_records() -> None:
     discovered = list_dimensions()
 
     assert {item.name for item in discovered} == EXPECTED_NAMES

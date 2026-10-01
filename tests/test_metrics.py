@@ -304,6 +304,12 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
     needs_imports |= {"todo_without_ticket_share"}
     # T074 (DDR-0011): the layer rule needs imports between classified files.
     needs_imports |= {"layer_direction_violations"}
+    # T041: the CI metrics quote only the supply-chain pack.
+    needs_imports |= {
+        "ci_actions_unpinned_share",
+        "ci_lockfile_install_missing",
+        "ci_provenance_step_missing",
+    }
     for metric in whole_set:
         if not truncated and metric.name in needs_imports:
             continue
@@ -345,6 +351,8 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "outbound_calls_without_timeout_observed",
         "retries_without_backoff_observed",
         "queries_in_loops_observed",
+        # T041: the fixture does not declare the licence-file role.
+        "licence_file_missing",
     }
 
     # AC #5: unaffected by truncation, both ways.

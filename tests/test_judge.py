@@ -456,7 +456,7 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
     all_seven = rate_overall(strong + (weak_rating,))
     with_abstention = rate_overall(strong + (weak_abstention,))
 
-    # 7 x 50 + 0 over 8 = 43.75, rounded once (T043 added the eighth).
+    # 8 x 50 + 0 over 9 = 44.4, rounded once (T043 and T041 added two).
     assert isinstance(all_seven, OverallRating) and all_seven.value == 44
     assert isinstance(with_abstention, OverallRating) and with_abstention.value == 50
     assert with_abstention.value > all_seven.value

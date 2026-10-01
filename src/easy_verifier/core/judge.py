@@ -329,6 +329,26 @@ _NIST_800_144 = Citation(
     "in public cloud computing)",
     "https://csrc.nist.gov/pubs/sp/800/144/final",
 )
+_SCORECARD_PINNED = Citation(
+    "OpenSSF Scorecard, Pinned-Dependencies check",
+    "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+)
+_SCORECARD_LICENSE = Citation(
+    "OpenSSF Scorecard, License check; SPDX license identifiers",
+    "https://github.com/ossf/scorecard/blob/main/docs/checks.md#license",
+)
+_SLSA = Citation(
+    "SLSA v1.0 (build track: provenance)", "https://slsa.dev/spec/v1.0/levels"
+)
+_SBOM = Citation(
+    "CycloneDX specification overview; SPDX specification",
+    "https://cyclonedx.org/specification/overview/",
+)
+_SRE_RELEASE = Citation(
+    "Google SRE book, Release Engineering (a release process includes the "
+    "ability to roll back)",
+    "https://sre.google/sre-book/release-engineering/",
+)
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
     "https://www.iso.org/standard/78176.html",
@@ -583,6 +603,36 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "ledger_rows_mutated_observed", 25, 0, "at_most",
             (_SEC_17A4, _FOWLER_REVERSAL), PROJECT_DEFAULT,
             area=AREAS[2],
+        ),
+    ),
+    # T041: the supply-chain dimension (areas #20-#22). Weights are a proposal
+    # awaiting user sign-off. Live vulnerability status is not verifiable
+    # offline and has no rule.
+    "supply-chain": _rules(
+        RatingRule(
+            "lockfile_missing", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[19],
+        ),
+        RatingRule(
+            "licence_file_missing", 15, 0, "at_most",
+            (_SCORECARD_LICENSE,), _SCORECARD_LICENSE,
+            area=AREAS[19],
+        ),
+        RatingRule(
+            "ci_actions_unpinned_share", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[20],
+        ),
+        RatingRule(
+            "ci_lockfile_install_missing", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[20],
+        ),
+        RatingRule(
+            "ci_provenance_step_missing", 25, 0, "at_most",
+            (_SLSA, _SBOM), _SLSA,
+            area=AREAS[21],
         ),
     ),
 }
@@ -2107,4 +2157,17 @@ DOCUMENTATION_RULES["healthcare"] = (
     DocumentationRule(
         AREAS[27], _keyword_docs("residency", "data-location"), (_NIST_800_144,)
     ),
+)
+
+
+# #22 rollback (T041): whether a release can be rolled back is a process no
+# repository can show, so only its document is checked.
+_ROLLBACK_PATTERNS = tuple(
+    f"**/*{variant}*{suffix}"
+    for keyword in ("rollback", "roll-back", "roll_back")
+    for variant in (keyword, keyword.capitalize(), keyword.upper())
+    for suffix in (".md", ".rst", ".adoc")
+)
+DOCUMENTATION_RULES["supply-chain"] = (
+    DocumentationRule(AREAS[21], _ROLLBACK_PATTERNS, (_SRE_RELEASE,)),
 )

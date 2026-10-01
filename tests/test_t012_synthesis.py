@@ -20,11 +20,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------
-# AC #1, #8 — runs each named dimension, all seven works and stays bounded
+# AC #1, #8 — runs each named dimension, all eight work and stays bounded
 # ---------------------------------------------------------------------------
 
 
-def test_all_seven_dimensions_return_a_slot_each() -> None:
+def test_all_eight_dimensions_return_a_slot_each() -> None:
     result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
     assert len(result.slots) == 8

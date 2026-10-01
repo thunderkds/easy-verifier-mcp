@@ -156,10 +156,20 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | finance *(optional pack)* | `float_money_observed` | 50 | = 0 | pack fields `money_names`, `money_excluded_words`, `money_declarations`, `float_types`, `persistence_float_types`, `persistence_paths`, `schema_paths`; source files as reliability plus schema files; abstains with no money-named declaration |
 | | `ledger_tables_without_audit_columns_observed` | 25 | = 0 | pack fields `ledger_names`, `non_ledger_heads`, `name_suffixes`, `ledger_declarations`, `entity_classes`, `entity_markers`, `audit_columns`; abstains with no ledger |
 | | `ledger_rows_mutated_observed` | 25 | = 0 | pack field `ledger_mutations` against the declared ledgers; abstains with no ledger |
+| supply-chain | `lockfile_missing` | 20 | = 0 | `roles.lockfile` |
+| | `licence_file_missing` | 15 | = 0 | none (generic `licence-file` role patterns) |
+| | `ci_actions_unpinned_share` | 20 | = 0 | none (generic CI facts in `core/roles.py`); abstains where no external `uses:` reference is quoted |
+| | `ci_lockfile_install_missing` | 20 | = 0 | `lockfile_install` *(opt)*; abstains where no CI workflow is quoted |
+| | `ci_provenance_step_missing` | 25 | = 0 | none (generic CI facts in `core/roles.py`); looks in CI workflows and release configuration |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
+supply-chain also carries one documentation rule (area #22, rollback): a document named for
+rollback is *present* (with its file) or *missing*, never a number. Live vulnerability status
+(CVE feeds) is not verifiable offline and has no rule.
+
 Every threshold carries a citation in the output: ISO/IEC 42010, 29148, 26514, 5055, 29119,
-McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, Henry–Kafura,
+McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, OpenSSF Scorecard,
+SLSA, CycloneDX/SPDX, Henry–Kafura,
 Nagappan–Ball, SemVer, ISO 22301 (documentation rule), HIPAA 45 CFR §164.514 (healthcare pack;
 §164.316, §164.504(e), NIST FIPS 199 and SP 800-144 for its documentation rules), CWE-1339,
 PostgreSQL numeric types, NIST SP 800-53 AU-3, SEC Rule 17a-4(f) and Fowler's Reversal Adjustment
@@ -168,6 +178,8 @@ PostgreSQL numeric types, NIST SP 800-53 AU-3, SEC Rule 17a-4(f) and Fowler's Re
 
 ### Fields that feed no rule directly
 
+- `lockfile_install` feeds `ci_lockfile_install_missing` only and is optional: a language without a
+  frozen-lockfile install mode (Java, Kotlin) declares none (T041).
 - `manifests` detects the language and switches on its `roles.*` globs.
 - `frameworks` detects framework entries. A framework can only add `test_name_patterns`,
   `test_declarations`, `assertions`, `security_sinks`, `roles.test-config`, and

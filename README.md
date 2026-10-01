@@ -33,6 +33,7 @@ Each dimension is a separate, independently callable unit — not one monolithic
 | `test-strategy` | What is and isn't covered by tests |
 | `blast-radius` | What else in the repo depends on, or is touched by, the change |
 | `reliability` | Error handling, outbound-call deadlines, retry backoff and queries in loops; transaction and idempotency code quoted for the agent; business-continuity document present or missing |
+| `supply-chain` | Dependency pinning and licences, CI reproducibility, and provenance, SBOM and signing steps; live vulnerability status is not verifiable offline |
 
 ## Scopes
 
@@ -190,6 +191,11 @@ every rule shipped in the package), and the HTML report shows them as links.
 | `finance` | `float_money_observed` | ≤ 0 | 50 | [CWE-1339 Insufficient Precision or Accuracy of a Real Number](https://cwe.mitre.org/data/definitions/1339.html); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html); [PostgreSQL documentation, Numeric Types (numeric is recommended for monetary amounts; float types are inexact)](https://www.postgresql.org/docs/current/datatype-numeric.html) | project-default |
 | `finance` | `ledger_tables_without_audit_columns_observed` | ≤ 0 | 25 | [NIST SP 800-53 Rev. 5 AU-3 Content of Audit Records (when the event occurred and the identity associated with it)](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final); [SEC Rule 17a-4(f)(2)(i) (records kept with a time-stamped audit trail of every modification and deletion, or non-rewriteable and non-erasable)](https://www.ecfr.gov/current/title-17/chapter-II/part-240/section-240.17a-4) | project-default |
 | `finance` | `ledger_rows_mutated_observed` | ≤ 0 | 25 | [SEC Rule 17a-4(f)(2)(i) (records kept with a time-stamped audit trail of every modification and deletion, or non-rewriteable and non-erasable)](https://www.ecfr.gov/current/title-17/chapter-II/part-240/section-240.17a-4); [Fowler, Reversal Adjustment (an accounting entry is corrected by a reversing entry, not edited)](https://martinfowler.com/eaaDev/ReversalAdjustment.html) | project-default |
+| `supply-chain` | `lockfile_missing` | ≤ 0 | 20 | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) |
+| `supply-chain` | `licence_file_missing` | ≤ 0 | 15 | [OpenSSF Scorecard, License check; SPDX license identifiers](https://github.com/ossf/scorecard/blob/main/docs/checks.md#license) | [OpenSSF Scorecard, License check; SPDX license identifiers](https://github.com/ossf/scorecard/blob/main/docs/checks.md#license) |
+| `supply-chain` | `ci_actions_unpinned_share` | ≤ 0 | 20 | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) |
+| `supply-chain` | `ci_lockfile_install_missing` | ≤ 0 | 20 | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) |
+| `supply-chain` | `ci_provenance_step_missing` | ≤ 0 | 25 | [SLSA v1.0 (build track: provenance)](https://slsa.dev/spec/v1.0/levels); [CycloneDX specification overview; SPDX specification](https://cyclonedx.org/specification/overview/) | [SLSA v1.0 (build track: provenance)](https://slsa.dev/spec/v1.0/levels) |
 <!-- rating-rules:end -->
 
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
