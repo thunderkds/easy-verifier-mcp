@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-26
+**Last updated**: 2026-09-30
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,7 +11,23 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive rewrites ordinary repo paths (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths), making citations to them unresolvable. Found by T026; guide not yet written (run `bugfix` skill) | backend-developer | C2 | Risk: High | P1
+
+**Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
+
+**Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
+- [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
+- [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T044** — New dimension: api (#7) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T045** — New dimension: data (#4) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2
+- [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2
+- [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
+
+**Deferred ideas (revisit after T029–T049 are done — no guide yet, not pickable)**
+- 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev".
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
@@ -41,7 +57,6 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-
 _(empty)_
 
 ### Ready for Review
@@ -49,6 +64,26 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T058** — Bugfix (T056 defect): #8 cookie rule never computed on real Express/Passport repo | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 (root cause: 200-read path-ordered security sweep never reached bryony's index.js + js-ts tokens missed session-middleware cookie config; fix: RepoContext.peek_source content pre-screen capped at 2000 (user option A) + cited express-session/cookie-session/passport tokens; real repos: bryony security 59→50 (cookie rule unmet at dashboard/index.js:93 +2), kitchd/ai-training unchanged; 1615 passed; follow-up: NestJS/JWT auth_markers gap on kitchd)
+- [x] **T056** — Area rule groups needing new evidence: #8 cookies/auth-gate/offboarding (ASVS 5.0.0) + #17 strict type config | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 — ⚠️ defect on real repos, fixed by T058 (cookie_flags_missing_observed gated by auth_markers, never scored when no auth code; offboarding DocumentationRule; strict_type_config_missing via targeted excerpts with tsconfig extends; user-signed weights security 35/35/15/15, code-quality 25/15/10/10/15/15/10; required reference fields 16; 1600 passed; CLI + MCP verify pass; code-review P3 only)
+- [x] **T055** — Area rule groups needing git evidence: #5 backward compat + #27 doc source of truth | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (4 metrics + rules, user-signed weights; templates excluded from requirements-doc role; Stage 4 P2 DDR-0002 secret-file diff exclusion fixed; 1506 passed; changes + project scope CLI verify pass; follow-up T057)
+- [x] **T040** — Area rule groups in existing dimensions (#16, #17 density, #31; #5/#27 → T055, #8/#17 strict → T056) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (5 metrics + rules, user-signed weights; Stage 4 P1 cut-test judged + P2 line fixed; 1450 passed; six-area fixture verify pass)
+- [x] **T039** — Shared documentation-present rule, overall over N dimensions, area labels | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (doc-only dimensions never scored nor gated (user); agent area labels accepted, T040 may revise; Stage 4 P0/P1 none; rebased on T038, 1415 passed; CLI + report + T038 cross-probe verify pass)
+- [x] **T038** — User review gate: good / needs improvement / reject | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-29 (reject = remembered rejection record, Option A; Stage 4 P1 invalid-TOML write fixed + P3 round cap fixed; 1389 passed; MCP review gate + CLI replay byte-equal verify pass)
+- [x] **T054** — Bugfix: reference gate asks for colocated_test_name_patterns (T037 × T052 merge regression) | backend-developer | C1 | Risk: Med | P0 | ✅ Done 2026-09-28 (merge regression fixed; 1342 passed; gate verify pass)
+- [x] **T052** — Make requirement-fidelity and blast-radius rate: AC tracing + churn-hotspot evidence (T035 sign-off follow-up) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-28 (Stage 4 P1s fixed; 1236 passed; kitchd CLI verify pass)
+- [x] **T053** — Remaining redaction noise (versioned URL paths, commit SHAs, checksum lines) + API_TOKEN detector gap (T051 follow-up) | backend-developer | C2 | Risk: High | P1 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1277 passed; probes pass; AC5 partial accepted)
+- [x] **T037** — MCP reference gate: framework detection + `needs_input` for missing fields only (≤20) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-09-28 (Stage 4 R1/R2 fixed; 1237 passed; CLI + MCP-path verify pass)
+- [x] **T051** — Redaction false positives: content hashes, long identifiers, git-ignored files (T035 sign-off follow-up) | backend-developer | C2 | Risk: High | P0 | ✅ Done 2026-09-28 (Stage 4 P0 safe-git fixed; 1175 passed; Docker verify pass; follow-up T053)
+- [x] **T036** — Local layer `~/.easy-verifier-sot/`, `registry_entries` intake, replay parity, Docker mount | backend-developer | C2 | Risk: High | P1 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1157 passed; intake probes + Docker verify pass)
+- [x] **T035** — Per-dimension cited rules for the existing 7 dimensions (HITL: real-repo sign-off) | backend-developer | C3 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1127 passed; user signed off 4-repo table; follow-ups T051, T052)
+- [x] **T034** — Security sink patterns per language (CWE-95/78/89) + metric | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 1084 passed; CLI Node sink verify pass)
+- [x] **T050** — Code-quality and architecture packs gather code evidence (source excerpts, import lines); added at T033 Stage 4, blocks T035 | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1022 passed; CLI CCN 11 / cycles 1 verify pass)
+- [x] **T033** — Registry-driven token metrics: approximate CCN, imports, fan-in, cycles | backend-developer | C3 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 1008 passed; CCN spot-check pass; code evidence gap → T050)
+- [x] **T031** — Metrics read test naming, declarations and assertions from the registry (Kotlin/PHP/Go/RSpec/C# gaps) | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 926 passed; CLI Kotlin verify pass)
+- [x] **T032** — Build-time vendoring of Linguist, OWASP ASVS, MITRE CWE (version-pinned, no runtime network) | common-infrastructure | C1 | Risk: Low | P1 | ✅ Done 2026-09-28 (Stage 4 P1 fixed; 840 passed; --check pass)
+- [x] **T030** — Registry schema, loader, curated entries for 9 languages; discovery reads from it | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 812 passed; CLI Go verify pass)
+- [x] **T029** — Bugfix: `redact.py` `high_entropy_string` false positive on ordinary filenames (e.g. `BRAINSTORMING_LOG_source-discovery.md` → `BRAI…****:54e5675171d4.md`; 4 of 156 tracked paths) breaks citations; prerequisite for Wave 10 (guide written 2026-09-28) | backend-developer | C2 | Risk: High | P0 | ✅ Done 2026-09-28 (Stage 4 P0/P1 none; 758 passed; CLI verify pass)
 
 - [x] **T028** — MCP evaluate gate: abstain/±10% triggers (threshold 0 never borderline), validated `gate_evaluations`, capped blend `w=0.5·c`, agent-rated label, rating provenance + overall disclosure | ✅ Done 2026-09-26 — Stage 4 P1 threshold-0 over-gating + P2 unbounded refs fixed `38c4b3f`; 740 passed/2 skipped; live Docker MCP 3-call flow: kitchd, bryony, ai-training all 7/7. Evidence: `tasks/TASK_REVIEW_T028.md`
 
@@ -110,7 +145,7 @@ _(empty)_
 | 0.5 Brainstorming | ✅ Done |
 | 1 Environment Setup | ✅ Done |
 | 1.5 Sub-Agent Architecture | ✅ Done |
-| 2 Planning (/plan) | ✅ Done |
-| 3 Execution | 🔄 In Progress (17/22 done) |
+| 2 Planning (/plan) | ✅ Done (Waves 10–11 planned 2026-09-28) |
+| 3 Execution | 🔄 In Progress (20/22 original done; Waves 10–11: 0/21) |
 | 4 Review | 🔄 In Progress |
 | 5 Integration & Verify | 🔄 In Progress |

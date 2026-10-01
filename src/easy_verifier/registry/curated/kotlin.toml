@@ -1,0 +1,240 @@
+# Kotlin — curated reference registry entry (T030, DDR-0007).
+# Kotlin shares Gradle's build files with Java, so both entries activate on them.
+
+[[manifests]]
+value = ["build.gradle.kts", "build.gradle"]
+citation_url = "https://kotlinlang.org/docs/gradle.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/build.gradle.kts", "**/build.gradle"]
+citation_url = "https://kotlinlang.org/docs/gradle.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/settings.gradle.kts", "**/settings.gradle"]
+citation_url = "https://docs.gradle.org/current/userguide/settings_file_basics.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/detekt.yml", "**/detekt.yaml", "**/detekt-config.yml", "**/config/detekt/*.yml"]
+citation_url = "https://detekt.dev/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/build.gradle.kts", "**/build.gradle"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[roles.test-file]]
+value = ["**/src/test/**"]
+citation_url = "https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_project_layout"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".kt"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*Test.kt"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[colocated_test_name_patterns]]
+value = ["?*Test.kt"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}Test{ext}"]
+citation_url = "https://kotlinlang.org/docs/jvm-test-using-junit.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["@Test"]
+citation_url = "https://kotlinlang.org/api/core/kotlin-test/kotlin.test/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert<A-Z>*"]
+citation_url = "https://kotlinlang.org/api/core/kotlin-test/kotlin.test/"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "for", "while"]
+citation_url = "https://kotlinlang.org/docs/control-flow.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://kotlinlang.org/docs/exceptions.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://kotlinlang.org/docs/booleans.html"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://kotlinlang.org/docs/basic-syntax.html#comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\"", "\""]
+citation_url = "https://kotlinlang.org/docs/strings.html"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["'"]
+citation_url = "https://kotlinlang.org/docs/characters.html"
+source_tag = "curated"
+
+[[function_start]]
+value = ["fun"]
+citation_url = "https://kotlinlang.org/docs/functions.html"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://kotlinlang.org/docs/packages.html#imports"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = [".eval ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Runtime.getRuntime ( ) .exec ("]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".executeQuery ( +", ".rawQuery ( +", ".execSQL ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" $", "\"\"\" $"]
+citation_url = "https://kotlinlang.org/docs/strings.html#string-templates"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".rawQuery ( <INTERP>", ".execSQL ( <INTERP>", ".executeQuery ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["@Disabled"]
+citation_url = "https://docs.junit.org/current/api/org.junit.jupiter.api/org/junit/jupiter/api/Disabled.html"
+source_tag = "curated"
+
+[[skip_markers]]
+value = ["@Ignore"]
+citation_url = "https://kotlinlang.org/api/core/kotlin-test/kotlin.test/-ignore/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["HttpClient.newHttpClient ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpClient.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = [".openConnection ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/URL.html#openConnection()"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["Socket ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/Socket.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["HttpClient ("]
+citation_url = "https://ktor.io/docs/client-create-and-configure.html"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@Suppress"]
+citation_url = "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-suppress/"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["!!"]
+citation_url = "https://kotlinlang.org/docs/null-safety.html#not-null-assertion-operator"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["fun", "suspend fun", "open fun", "inline fun", "public fun", "class", "public class", "open class", "abstract class", "data class", "enum class", "sealed class", "interface", "object", "typealias"]
+citation_url = "https://kotlinlang.org/docs/visibility-modifiers.html"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["ResponseCookie.from ("]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = [".secure ( true"]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = [".httpOnly ( true"]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = [".sameSite ("]
+citation_url = "https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseCookie.ResponseCookieBuilder.html"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["@PreAuthorize", "@Secured"]
+citation_url = "https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["HttpSession"]
+citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpsession"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".getSession ("]
+citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpservletrequest"
+source_tag = "curated"

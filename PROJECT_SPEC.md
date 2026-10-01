@@ -78,12 +78,19 @@ src/easy_verifier/
 | **Fingerprint** | The non-reversible replacement for a detected secret: masked prefix + hash prefix. Applied at the evidence layer, before anything leaves the engine. |
 | **Excerpt** | A single citable unit: file path, line range, text. `collect` yields these lazily as `Iterable[Excerpt]`. |
 | **Source role** | A named kind of source a dimension seeks (e.g. *lockfile*, *requirements doc*, *CI workflow*), declared as static data with the glob patterns that fill it. Filled by any matching file in any language. Every role counts in every repository (DDR-0006). |
-| **Ecosystem pattern set** | Extra patterns for existing roles (v1: Python, JS/TS, Rust, Java), auto-activated by manifest files. Data, never a boundary: it may add patterns, never add, remove, or exempt a role. |
+| **Ecosystem pattern set** | Extra patterns for existing roles, now held in the reference registry (T030: Python, JS/TS, Rust, Java, Go, Kotlin, C#, Ruby, PHP), auto-activated by manifest files. Data, never a boundary: it may add patterns, never add, remove, or exempt a role. |
 | **Agent input** | The caller's optional input document to `score`: `picks` (role → files) and `gate_evaluations`. Part of the input for parity (FR-022); replayable via CLI `--agent-input`. |
 | **Hard gate** | A point where rules cannot settle the answer and MCP `score` asks the calling agent via `needs_input`: *detect* (an unfilled role has candidate files) or *evaluate* (rules abstain, or a metric is within ±10% of its threshold). |
 | **Gate evaluation** | The agent's answer at an evaluate gate: score 0–100, confidence 0–1, ≥1 resolving evidence ref. Accepted only for a gated dimension. |
 | **Capped blend** | `w = 0.5 × confidence`, `final = rating·(1−w) + agent·w`. Always shown with its parts. |
 | **Agent-rated** | A dimension whose rules abstained but which has a valid gate evaluation; its number is the agent's, labelled as such, with the abstention detail kept beside it. |
+| **Reference registry** | The single cited source of truth for language/framework patterns and rule data (DDR-0007). Every field = value + citation link + source tag. Two layers: *curated* (shipped, wins) and *local* (`~/.easy-verifier-sot/`). |
+| **Registry entry** | One language's or framework's set of registry fields. A framework entry only adds to its language entry. |
+| **Source tag** | Where a rule input's data came from: `curated` / `agent-researched (unreviewed)` / `agent-researched (user-approved)` / `user-supplied`. Always shown with its link. |
+| **Reference gate** | MCP-only hard gate: detected language/framework lacks registry fields the rules consume → `needs_input` names only those fields (≤20). |
+| **Rule group** | The rules of one of the 32 evaluation areas, labelled by area, inside one dimension (DDR-0008). |
+| **Documentation rule** | Rule type for areas not verifiable from a repo: *present* (cited file) / *missing*; never a number. |
+| **Pack** | Optional rule set (healthcare, finance, frontend-a11y) active only via detect pick or `.easy-verifier.toml`. |
 
 ---
 
@@ -98,7 +105,7 @@ src/easy_verifier/
 4a. **Never read the contents of a secret-bearing file** (DDR-0002) — `.env*`, `*.pem`, `*.key`, `id_rsa`, `.netrc`, `.pgpass`, `credentials`, `.npmrc`, `secrets.*` and the rest of the DDR's list. Enforced in `RepoContext.read_source()` so no dimension can bypass it.
    Existence is still reported as `excluded: secret-bearing` — distinct from `not found` and `not examined`; only the bytes are withheld. T008 alone may request such contents, via an operator HITL approval defaulting to refuse.
    **Complements constraint 4, does not replace it**: secrets also appear in files we cannot refuse to read, so exclusion shrinks the intake and redaction covers the residue.
-5. **Write nothing outside the target repo's `reports/`.** Never execute code from the target repo (NFR-007).
+5. **Write nothing outside the target repo's `reports/`**, with one exception: the local reference-registry layer at `$EASY_VERIFIER_SOT` or `~/.easy-verifier-sot/` (DDR-0007, FR-042), which must never be inside the target repo. Never execute code from the target repo (NFR-007).
 6. **stdio is the default and required transport** (FR-019a). HTTP/SSE is opt-in and must bind `127.0.0.1` only — never `0.0.0.0`, including inside a container (FR-019b, NFR-012).
 7. **Adapters stay thin.** No evaluation, context-loading, or rendering logic in `adapters/` (FR-021).
 8. **Shared extraction helper serves the four document-shaped dimensions only.** `security`, `test-strategy` and `blast-radius` stay bespoke — forcing them into the helper is the mistake that sank Option A.
@@ -145,6 +152,32 @@ Authoritative task state lives in `PROJECT_KANBAN.md`. This table is the plannin
 | T026 | Any-language source roles, `.easy-verifier.toml`, agent-input picks replay | Todo | backend-developer | C3 | High | P1 |
 | T027 | MCP detect gate — `needs_input.picks` candidates | Todo | backend-developer | C2 | Medium | P1 |
 | T028 | MCP evaluate gate — gate evaluations, capped blend, rating provenance | Todo | backend-developer | C3 | High | P1 |
+| T029 | Bugfix: redact.py false positive on ordinary filenames | Todo | backend-developer | C2 | High | P0 |
+| T030 | Registry schema, loader, curated 9 languages | Todo | backend-developer | C2 | Medium | P0 |
+| T031 | Metrics tables from registry | Todo | backend-developer | C2 | Medium | P0 |
+| T032 | Vendoring Linguist/ASVS/CWE | Todo | common-infrastructure | C1 | Low | P1 |
+| T033 | Token metrics: CCN, imports, fan-in, cycles | Todo | backend-developer | C3 | Medium | P0 |
+| T034 | Security sink patterns (CWE-95/78/89) | Todo | backend-developer | C2 | Medium | P0 |
+| T035 | Per-dimension cited rules (existing 7) | Todo | backend-developer | C3 | Medium | P0 |
+| T036 | Local layer ~/.easy-verifier-sot/, registry_entries, replay | Todo | backend-developer | C2 | High | P1 |
+| T037 | MCP reference gate | Todo | backend-developer | C2 | Medium | P1 |
+| T038 | User review gate | Todo | backend-developer | C2 | Medium | P1 |
+| T039 | Documentation-present rule, N-dim overall, area labels | Todo | backend-developer | C2 | Medium | P1 |
+| T040 | Area rule groups in existing dimensions | Todo | backend-developer | C3 | Medium | P1 |
+| T041 | Dimension: supply-chain | Todo | backend-developer | C2 | Medium | P1 |
+| T042 | Dimension: infrastructure | Todo | backend-developer | C3 | Medium | P1 |
+| T043 | Dimension: reliability | Todo | backend-developer | C3 | Medium | P1 |
+| T044 | Dimension: api | Todo | backend-developer | C2 | Medium | P1 |
+| T045 | Dimension: data | Todo | backend-developer | C2 | Medium | P1 |
+| T046 | Dimension: operations | Todo | backend-developer | C2 | Medium | P1 |
+| T047 | Pack mechanism + healthcare pack | Todo | backend-developer | C2 | Medium | P2 |
+| T048 | Finance pack | Todo | backend-developer | C2 | Medium | P2 |
+| T049 | Frontend accessibility pack | Todo | backend-developer | C2 | Medium | P2 |
+| T050 | Code evidence in code-quality/architecture packs (blocks T035) | Todo | backend-developer | C2 | Medium | P0 |
+| T051 | Redaction false positives (hashes, identifiers, git-ignored) | Todo | backend-developer | C2 | High | P0 |
+| T052 | requirement-fidelity AC tracing + blast-radius churn evidence | Todo | backend-developer | C3 | Medium | P1 |
+| T053 | Remaining redaction noise + API_TOKEN detector gap | Todo | backend-developer | C2 | High | P1 |
+| T054 | Bugfix: gate asks colocated_test_name_patterns (merge regression) | Todo | backend-developer | C1 | Medium | P0 |
 
 ---
 

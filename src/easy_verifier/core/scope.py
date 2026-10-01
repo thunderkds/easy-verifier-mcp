@@ -18,10 +18,11 @@ refusal, not a fallback.
 from __future__ import annotations
 
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .context import git_ignore_filter
+from .git import run_git_text
 from .redact import redact
 
 KIND_TASK = "task"
@@ -130,9 +131,11 @@ def _resolve_project(repo: Path) -> Scope:
 
     A plain filesystem walk rather than ``git ls-files``, so this works
     identically whether or not ``repo`` is a git repository (Edge Case
-    Checklist, AC #9).
+    Checklist, AC #9). Where git is available, files it ignores are dropped
+    (T051) — decided once here, see :func:`context.git_ignore_filter`.
     """
-    files = sorted(_walk_files(repo, repo))
+    skip = git_ignore_filter(repo)
+    files = sorted(path for path in _walk_files(repo, repo) if not skip(path))
     return Scope(kind=KIND_PROJECT, files=tuple(files))
 
 
@@ -416,14 +419,7 @@ def _git_required_scope(kind: str) -> Scope:
 def _run_git(repo: Path, args: list[str]) -> tuple[bool, str, str]:
     """Run a read-only git subcommand. Never ``shell=True``; the caller passes
     an explicit argument list. Only read-only subcommands are ever invoked
-    here — no ``fetch``, ``pull``, ``ls-remote`` or ``clone`` (NFR-012)."""
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repo), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except FileNotFoundError:
-        return False, "", "git binary not found on PATH"
-    return result.returncode == 0, result.stdout, result.stderr.strip()
+    here — no ``fetch``, ``pull``, ``ls-remote`` or ``clone`` (NFR-012). Goes
+    through :func:`.git.run_git_text`, which disarms repo-config-driven
+    execution (NFR-007)."""
+    return run_git_text(repo, args)

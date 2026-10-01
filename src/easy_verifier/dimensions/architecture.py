@@ -16,7 +16,7 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.roles import role
-from . import _doc_extract
+from . import _code_extract, _doc_extract
 
 NAME = "architecture"
 
@@ -48,8 +48,13 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     reached, so sources after that point are never even opened. Extraction is
     shared with the other three document-shaped dimensions via ``_doc_extract``
     — this module supplies only the declared sources and markers.
+
+    Import-statement lines of in-scope source files follow as the last tier
+    (T050), so the import graph is measurable from this pack.
     """
+    sources = _code_extract.source_candidates(context, "import excerpts")
     yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
+    yield from _code_extract.import_excerpts(context, sources)
 
 
 DESCRIPTOR = DimensionDescriptor(

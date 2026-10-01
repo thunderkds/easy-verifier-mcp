@@ -173,6 +173,10 @@ def run_dimension(
         # every response and every report without any adapter opting in.
         warnings=warnings,
         approval_requests=tuple(context.approval_requests),
+        trace_search=getattr(context, "trace_search", None),
+        reach=getattr(context, "reach", None),
+        compat=getattr(context, "compat", None),
+        doc_history=getattr(context, "doc_history", None),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),

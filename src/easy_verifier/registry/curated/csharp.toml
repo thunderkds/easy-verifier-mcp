@@ -1,0 +1,260 @@
+# C# (.NET) — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["*.csproj"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview"
+source_tag = "curated"
+
+[[manifests]]
+value = ["*.sln"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/ide/solutions-and-projects-in-visual-studio"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/*.csproj"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/*.sln"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/ide/solutions-and-projects-in-visual-studio"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Directory.Build.props"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Directory.Packages.props"]
+citation_url = "https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management"
+source_tag = "curated"
+
+[[roles.lockfile]]
+value = ["**/packages.lock.json"]
+citation_url = "https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.editorconfig", "**/*.globalconfig"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-files"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/stylecop.json"]
+citation_url = "https://github.com/DotNetAnalyzers/StyleCopAnalyzers/blob/master/documentation/Configuration.md"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/*.runsettings"]
+citation_url = "https://learn.microsoft.com/en-us/visualstudio/test/configure-unit-tests-by-using-a-dot-runsettings-file"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/xunit.runner.json"]
+citation_url = "https://xunit.net/docs/configuration-files"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".cs"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*Test.cs", "?*Tests.cs"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test"
+source_tag = "curated"
+
+[[colocated_test_name_patterns]]
+value = ["?*Tests.cs"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}Test{ext}", "{stem}Tests{ext}"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["[Fact", "[Theory"]
+citation_url = "https://xunit.net/docs/getting-started/netcore/cmdline"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["[Test"]
+citation_url = "https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["[TestMethod"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-writing-tests-attributes"
+source_tag = "curated"
+
+[[assertions]]
+value = ["Assert.?*"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.assert"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "case"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/selection-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for", "foreach", "while"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/iteration-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/boolean-logical-operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/lexical-structure"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/reference-types"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\""]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/raw-string"
+source_tag = "curated"
+
+[[function_start]]
+value = ["public * * (", "private * * (", "protected * * (", "internal * * (", "public static * * (", "private static * * (", "internal static * * (", "public override * * (", "protected override * * (", "public async * * (", "private async * * (", "static * * (", "void * ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/methods"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["using"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/using-directive"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["CSharpScript.EvaluateAsync ("]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Process.Start ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = ["new SqlCommand ( $", "new SqlCommand ( +", ".CommandText = $", ".CommandText = +", ".ExecuteSqlRaw ( $", ".ExecuteSqlRaw ( +", ".FromSqlRaw ( $", ".FromSqlRaw ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["[Ignore"]
+citation_url = "https://docs.nunit.org/articles/nunit/writing-tests/attributes/ignore.html"
+source_tag = "curated"
+
+[[skip_markers]]
+value = ["Skip ="]
+citation_url = "https://api.xunit.net/v3/2.0.0/Xunit.FactAttribute.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["new HttpClient ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httpclient"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["WebRequest.Create ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.net.webrequest.create"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["new TcpClient ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.tcpclient"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["dynamic"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/interop/using-type-dynamic"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["# pragma warning disable"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/preprocessor-directives#pragma-warning"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["public class", "public interface", "public enum", "public struct", "public record", "public * class", "public * (", "public * * (", "public * * * ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/access-modifiers"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["new CookieOptions"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["Secure = true"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["HttpOnly = true"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["SameSite ="]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.http.cookieoptions"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["[Authorize"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/security/authorization/simple"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".SignInAsync (", "AddAuthentication ("]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/cookie"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["HttpContext.Session"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/app-state"
+source_tag = "curated"

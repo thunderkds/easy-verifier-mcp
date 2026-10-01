@@ -14,26 +14,55 @@ abstained or sit within the declared band of a threshold, and applies the
 caller's validated gate evaluations as :class:`GatedRating` values. The
 agent input is untrusted: every field is type-checked, and every cited ref
 must resolve in that dimension's own pack (FR-015a).
+
+The reference gate (T037, FR-044 to FR-046) names, per detected language and
+framework, the registry fields the rating rules consume that neither the
+curated nor the local layer holds — at most :data:`MAX_REFERENCE_FIELDS`,
+languages first — with fixed research instructions. Stack detection itself
+(:func:`detect_stack`) is shared: both adapters list the detected stack.
+
+The review gate (T038, FR-047) lists each local registry entry awaiting the
+user's review once — value and link — for the agent to show the user; the
+answers come back as ``agent_input.reviews``. An ``improve`` answer and a
+rejected field with no data left return through the reference gate.
 """
 
 from __future__ import annotations
 
+import json
 import math
+import re
 from collections.abc import Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from ..dimensions import _doc_extract
 from .context import _is_secret_bearing, _resolved_repo, _walk
 from .judge import (
     BORDERLINE_BAND,
     COVERAGE_FLOORS,
+    RATING_RULES,
     GatedRating,
     Rating,
     RatingAbstention,
     within_band,
 )
+from .metric_tables import FIELD_METRICS, OPTIONAL_FIELDS, ROLE_METRICS
 from .redact import redact
-from .roles import GENERIC_PATTERNS, RoleInputError, resolve, role
+from .registry import (
+    ENTRY_FIELDS,
+    Registry,
+    RegistryEntry,
+    _manifest_matches,
+    awaiting_review,
+    local_items,
+)
+from .roles import (
+    GENERIC_PATTERNS,
+    MAX_ROLE_WALK_FILES,
+    RoleInputError,
+    resolve,
+    role,
+)
 
 MAX_CANDIDATES_PER_ROLE = 20
 """FR-035, NFR-009: bounded payload; overflow is disclosed, never silent."""
@@ -220,12 +249,14 @@ def detect_evaluate_gates(
     ``abstained`` when the rules abstained; ``borderline: <metric>, ...``
     when any rule input's value lies within the declared band of its
     threshold. Every other dimension is absent: outside a gate the agent
-    never changes a number.
+    never changes a number. A ``documentation_only`` abstention is never
+    gated: its areas are documentation present/missing, never scored (E3).
     """
     gates: dict[str, str] = {}
     for item in ratings:
         if type(item) is RatingAbstention:
-            gates[item.dimension] = "abstained"
+            if item.reason_code != "documentation_only":
+                gates[item.dimension] = "abstained"
         elif type(item) is Rating:
             near = [
                 entry.metric_name
@@ -282,11 +313,23 @@ def apply_gate_evaluations(
             ],
         )
     gates = detect_evaluate_gates(ratings)
+    documentation_only = {
+        item.dimension
+        for item in ratings
+        if type(item) is RatingAbstention and item.reason_code == "documentation_only"
+    }
     accepted: dict[str, tuple[int | float, int | float, tuple[str, ...]]] = {}
     for name, entry in document.items():
         field = f"gate_evaluations.{redact(str(name))}"
         if name not in COVERAGE_FLOORS:
             errors.append(f"{field}: unknown dimension")
+            continue
+        if name in documentation_only:
+            errors.append(
+                f"{field}: declares only documentation rules, which report "
+                "present or missing and are never scored, so no evaluation is "
+                "accepted for it"
+            )
             continue
         if name not in gates:
             errors.append(
@@ -368,11 +411,354 @@ def _pack_refs(pack: object) -> list[str]:
     return list(dict.fromkeys(excerpt.ref for excerpt in pack.excerpts))
 
 
+# ---------------------------------------------------------------------------
+# stack detection and reference gate (T037)
+
+MAX_MANIFESTS = 100
+"""Manifests read for framework detection, in path order; the rest are
+counted in ``manifests_omitted``, never silently skipped."""
+
+MAX_MANIFEST_BYTES = 256 * 1024
+"""Bytes read from one manifest; a larger one is read up to this bound."""
+
+MAX_REFERENCE_FIELDS = 20
+"""FR-045: fields asked per call; the rest are counted in ``omitted``."""
+
+_JSON_DEPENDENCY_SECTIONS = (
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+    "require",
+    "require-dev",
+)
+"""Where a JSON manifest declares dependencies: npm ``package.json``
+(https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies)
+and Composer ``composer.json`` (https://getcomposer.org/doc/04-schema.md#require).
+Only these keys count, so a word in ``description`` or ``scripts`` never
+detects a framework. Other manifests are matched textually (a whole
+dependency token, case-insensitive)."""
+
+FRAMEWORK_FIELDS = frozenset(
+    {
+        "test_name_patterns",
+        "test_declarations",
+        "assertions",
+        "security_sinks",
+        "roles.test-config",
+        "roles.lint-config",
+    }
+)
+"""Fields a framework can meaningfully add to its language (T037 R2,
+Supervisor ruling): test naming/declaration/assertion forms, sinks, and the
+role globs frameworks extend. Language syntax (extensions, delimiters,
+branch/function/import tokens) is never asked for a framework."""
+
+REFERENCE_INSTRUCTIONS = (
+    "Each request names a registry field the rating rules read that this "
+    "language or framework lacks. For each, in order: do at most 2 lookups, "
+    "official documentation first. If found, send it on the next score call "
+    "as an agent_input.registry_entries item: {language or framework (with "
+    "extends), field, value: [...], citation_url: a clear https link to the "
+    'primary source, source_tag: "agent-researched"}. If 2 lookups do not '
+    "find it, ask the user, one question at a time, giving your recommended "
+    'answer, and send their answer with source_tag "user-supplied" and the '
+    "https link they confirm. Until answered, every listed field and the "
+    "omitted count of further missing fields are scored with generic "
+    "patterns only; omitted fields are listed once these are answered. A "
+    "request carrying improve is the user's needs-improvement answer on the "
+    "listed value: research again with the comment and send the replacement "
+    "the same way; when it also carries ask_user (after 2 improve rounds), "
+    "ask the user for the value directly instead. A request carrying "
+    "rejected lists values the user rejected: never send those again; until "
+    "a replacement arrives, the rules that need the field abstain."
+)
+"""Fixed text sent with every reference gate (FR-046, decision B2)."""
+
+
+def detect_stack(repo_path: str | Path, registry: Registry) -> dict:
+    """Languages and frameworks detected from manifests, deterministically.
+
+    A language is detected by a manifest anywhere in the (bounded, excluded
+    directories skipped) walk, as ``roles.resolve`` does; a framework when
+    one of its language's manifests — nested workspace packages included —
+    declares one of the language's ``frameworks`` detection keys. Returns
+    ``{"languages": [...], "frameworks": [{"name", "language"}, ...]}`` plus
+    ``manifests_omitted`` when :data:`MAX_MANIFESTS` was exceeded.
+    """
+    root = _resolved_repo(repo_path)
+    walked = []
+    for path in _walk(root, root, extensions=None, contained_only=True):
+        if len(walked) >= MAX_ROLE_WALK_FILES:
+            break
+        walked.append(path)
+    languages = registry.active_languages({PurePosixPath(p).name for p in walked})
+
+    patterns = {
+        language: [
+            pattern
+            for cited in registry.languages[language].manifests
+            for pattern in cited.value
+        ]
+        for language in languages
+    }
+    manifests = [
+        path
+        for path in walked
+        if any(
+            _manifest_matches(pattern, {PurePosixPath(path).name})
+            for found in patterns.values()
+            for pattern in found
+        )
+        and _eligible(root, path)
+    ]
+    omitted = max(0, len(manifests) - MAX_MANIFESTS)
+    texts = {path: _read_manifest(root, path) for path in manifests[:MAX_MANIFESTS]}
+
+    frameworks: dict[tuple[str, str], None] = {}
+    for language in languages:
+        keys = registry.detection_keys(language)
+        if not keys:
+            continue
+        declared: set[str] = set()
+        for path, text in texts.items():
+            name = PurePosixPath(path).name
+            if any(_manifest_matches(p, {name}) for p in patterns[language]):
+                declared |= _declared(name, text, [key for _, key in keys])
+        for framework, key in keys:
+            if key in declared:
+                frameworks[(framework, language)] = None
+    stack: dict = {
+        "languages": list(languages),
+        "frameworks": [
+            {"name": name, "language": language}
+            for name, language in sorted(frameworks)
+        ],
+    }
+    if omitted:
+        stack["manifests_omitted"] = omitted
+    return stack
+
+
+def _read_manifest(root: Path, relative_path: str) -> str:
+    try:
+        with (root / relative_path).resolve().open("rb") as handle:
+            raw = handle.read(MAX_MANIFEST_BYTES)
+    except OSError:
+        return ""
+    return raw.decode("utf-8", errors="replace")
+
+
+def _declared(name: str, text: str, keys: Sequence[str]) -> set[str]:
+    """The detection ``keys`` that manifest ``name`` declares."""
+    if name.endswith(".json"):
+        try:
+            data = json.loads(text)
+        except (ValueError, RecursionError):  # hostile nesting too
+            return set()
+        if not isinstance(data, dict):
+            return set()
+        names = {
+            dependency
+            for section in _JSON_DEPENDENCY_SECTIONS
+            if isinstance(data.get(section), dict)
+            for dependency in data[section]
+        }
+        return {key for key in keys if key in names}
+    return {
+        key
+        for key in keys
+        if re.search(
+            r"(?<![\w.@/-])" + re.escape(key) + r"(?![\w./-])", text, re.IGNORECASE
+        )
+    }
+
+
+def required_fields() -> dict[str, str]:
+    """Registry field -> the rules that consume it, derived from the rule
+    table and the field/role -> metric maps (never hand-listed).
+
+    A ``roles.<role>`` field counts only when the role has no generic,
+    language-free pattern: otherwise the generic patterns already serve it.
+    :data:`OPTIONAL_FIELDS` never count: the metrics compute without them.
+    """
+    consumers: dict[str, list[str]] = {}
+    for dimension, rules in RATING_RULES.items():
+        for rule in rules.values():
+            consumers.setdefault(rule.metric_name, []).append(
+                f"{dimension}.{rule.metric_name}"
+            )
+    fields = {field: FIELD_METRICS.get(field, ()) for field in ENTRY_FIELDS}
+    fields.update(
+        {
+            f"roles.{name}": metrics
+            for name, metrics in ROLE_METRICS.items()
+            if not GENERIC_PATTERNS.get(name)
+        }
+    )
+    result = {}
+    for field, metrics in fields.items():
+        if field in OPTIONAL_FIELDS:
+            continue
+        rules = sorted({r for metric in metrics for r in consumers.get(metric, ())})
+        if rules:
+            result[field] = "rules: " + ", ".join(rules)
+    return result
+
+
+def reference_requests(stack: Mapping, registry: Registry) -> dict | None:
+    """``needs_input.reference``: missing fields, fields with an open
+    ``improve`` answer and rejected fields with no data left (T038),
+    languages first, at most :data:`MAX_REFERENCE_FIELDS`; ``None`` when
+    nothing is asked."""
+    required = required_fields()
+    missing: list[dict] = []
+    for language in stack["languages"]:
+        entry = registry.languages.get(language)
+        for request in _field_requests(entry, required):
+            missing.append({"language": language, **request})
+    framework_required = {
+        field: why for field, why in required.items() if field in FRAMEWORK_FIELDS
+    }
+    for item in stack["frameworks"]:
+        entry = registry.frameworks.get(item["name"])
+        if entry is not None and entry.extends != item["language"]:
+            entry = None
+        for request in _field_requests(entry, framework_required):
+            missing.append(
+                {"framework": item["name"], "extends": item["language"], **request}
+            )
+    if not missing:
+        return None
+    return {
+        "requests": missing[:MAX_REFERENCE_FIELDS],
+        "omitted": max(0, len(missing) - MAX_REFERENCE_FIELDS),
+        "instructions": REFERENCE_INSTRUCTIONS,
+    }
+
+
+MAX_IMPROVE_ROUNDS = 2
+"""Improve answers on one field before the agent asks the user directly."""
+
+
+def _field_requests(
+    entry: RegistryEntry | None, required: Mapping[str, str]
+) -> list[dict]:
+    """The reference requests for one entry: required fields it lacks, then
+    fields with an open ``improve`` answer or a rejection and no data."""
+    if entry is None:
+        return [{"field": field, "why": why} for field, why in required.items()]
+    improving = {
+        field: cited
+        for field, cited_values in _live_items(entry)
+        for cited in cited_values
+        if cited.review_comment is not None
+    }
+    rejected = {
+        field: [value for cited in values for value in cited.value]
+        for field, values in entry.rejected.items()
+        if not _has(entry, field)
+    }
+    fields = [f for f in required if not _has(entry, f)]
+    fields += sorted((set(improving) | set(rejected)) - set(fields))
+    requests = []
+    for field in fields:
+        why = required.get(field) or (
+            "rejected by the user" if field in rejected else "needs improvement"
+        )
+        request: dict = {"field": field, "why": why}
+        if field in improving:
+            cited = improving[field]
+            request["improve"] = {
+                "value": list(cited.value),
+                "comment": cited.review_comment,
+                "rounds": cited.improve_rounds,
+            }
+            if cited.improve_rounds >= MAX_IMPROVE_ROUNDS:
+                request["ask_user"] = True
+        if field in rejected:
+            request["rejected"] = rejected[field]
+        requests.append(request)
+    return requests
+
+
+def _live_items(entry: RegistryEntry):
+    yield "manifests", entry.manifests
+    yield from entry.fields.items()
+    yield from ((f"roles.{role}", values) for role, values in entry.roles.items())
+
+
+# ---------------------------------------------------------------------------
+# review gate (T038)
+
+MAX_REVIEW_ENTRIES = 20
+"""Entries listed per call; the rest are counted in ``omitted``."""
+
+REVIEW_INSTRUCTIONS = (
+    "Each entry is registry data researched on this machine that the user "
+    "has not reviewed; it already counts toward the score. Show each one to "
+    "the user once, with its value and link, and ask: is it good, does it "
+    "need improvement, or should it be rejected? Send the answers on the "
+    "next score call as agent_input.reviews: {entry_id: \"good\" | "
+    "\"reject\" | {\"answer\": \"improve\", \"comment\": \"what to fix\"}}. "
+    "good approves it (tag agent-researched (user-approved)); improve keeps "
+    "it scoring and returns the comment in the reference gate for that "
+    "field; reject deletes it, and the rules that need the field abstain "
+    "until a replacement is researched. An answered entry is never asked "
+    "again."
+)
+"""Fixed text sent with every review gate (FR-047)."""
+
+
+def review_requests(root: Path, known_roles) -> dict | None:
+    """``needs_input.review``: each local entry awaiting review, once, at
+    most :data:`MAX_REVIEW_ENTRIES` in id order; ``None`` when none is."""
+    entries = []
+    for item in local_items(root, known_roles):
+        cited = item.pop("cited")
+        if not awaiting_review(cited):
+            continue
+        item.update(
+            value=list(cited.value),
+            citation_url=cited.citation_url,
+            source_tag=cited.source_tag,
+        )
+        if cited.cwe:
+            item["cwe"] = cited.cwe
+        entries.append(item)
+    if not entries:
+        return None
+    return {
+        "entries": entries[:MAX_REVIEW_ENTRIES],
+        "omitted": max(0, len(entries) - MAX_REVIEW_ENTRIES),
+        "instructions": REVIEW_INSTRUCTIONS,
+    }
+
+
+def _has(entry, field: str) -> bool:
+    if field == "manifests":
+        return bool(entry.manifests)
+    if field.startswith("roles."):
+        return bool(entry.roles.get(field.removeprefix("roles.")))
+    return bool(entry.fields.get(field))
+
+
 __all__ = [
+    "FRAMEWORK_FIELDS",
     "MAX_CANDIDATES_PER_ROLE",
+    "MAX_IMPROVE_ROUNDS",
+    "MAX_REVIEW_ENTRIES",
+    "REVIEW_INSTRUCTIONS",
+    "MAX_MANIFESTS",
+    "MAX_REFERENCE_FIELDS",
+    "REFERENCE_INSTRUCTIONS",
     "MAX_EVIDENCE_REFS_PER_GATE",
     "apply_gate_evaluations",
     "detect_evaluate_gates",
     "detect_pick_gates",
+    "detect_stack",
     "gate_requests",
+    "reference_requests",
+    "required_fields",
+    "review_requests",
 ]

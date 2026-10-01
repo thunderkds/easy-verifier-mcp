@@ -23,11 +23,13 @@ from easy_verifier.core.assessment import (
 from easy_verifier.core.findings import MAX_FINDINGS, Finding
 from easy_verifier.core.judge import (
     COVERAGE_FLOORS,
+    DOCUMENTATION_RULES,
     RATING_RULES,
     Rating,
     RatingAbstention,
     RatingInput,
 )
+from easy_verifier.core.roles import documentation_present
 
 DIMENSIONS = tuple(COVERAGE_FLOORS)
 
@@ -50,9 +52,10 @@ def finding(
 
 
 def rating(dimension: str, value: int = 100) -> Rating:
-    passed_count = round(value * len(RATING_RULES) / 100)
+    rules = RATING_RULES[dimension]
+    passed_count = round(value * len(rules) / 100)
     inputs = []
-    for index, (name, rule) in enumerate(RATING_RULES.items()):
+    for index, (name, rule) in enumerate(rules.items()):
         passed = index < passed_count
         metric_value = (
             rule.threshold
@@ -73,6 +76,10 @@ def rating(dimension: str, value: int = 100) -> Rating:
                 passed=passed,
                 earned_weight=rule.weight if passed else 0,
                 computed_from=(f"{dimension}.py:1-1",),
+                metric_citation=rule.metric_citation,
+                threshold_citation=rule.threshold_citation,
+                source_tag=rule.source_tag,
+                area=rule.area,
             )
         )
     computed = round(
@@ -80,7 +87,16 @@ def rating(dimension: str, value: int = 100) -> Rating:
         * sum(item.earned_weight for item in inputs)
         / sum(item.weight for item in inputs)
     )
-    return Rating(dimension=dimension, value=computed, inputs=tuple(inputs))
+    return Rating(
+        dimension=dimension,
+        value=computed,
+        inputs=tuple(inputs),
+        # T056: security declares an offboarding documentation rule
+        documentation=tuple(
+            documentation_present(rule, ())
+            for rule in DOCUMENTATION_RULES.get(dimension, ())
+        ),
+    )
 
 
 def ratings(*, abstain: str | None = None):
@@ -91,6 +107,12 @@ def ratings(*, abstain: str | None = None):
             failure="collector failed",
         )
         if name == abstain
+        else RatingAbstention(
+            dimension=name,
+            reason_code="no_static_rule",
+            coverage_floor=COVERAGE_FLOORS[name].value,
+        )
+        if not RATING_RULES[name]
         else rating(name)
         for name in DIMENSIONS
     )

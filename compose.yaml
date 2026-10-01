@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     image: easy-verifier-mcp:0.1.0
     stdin_open: true
+    init: true
     read_only: true
     network_mode: none
     cap_drop:
@@ -15,6 +16,7 @@ services:
       - /tmp:rw,noexec,nosuid,nodev,size=16m
     environment:
       PYTHONUNBUFFERED: "1"
+      EASY_VERIFIER_SOT: /sot
     volumes:
       - type: bind
         source: ${EASY_VERIFIER_REPO:-.}
@@ -23,3 +25,11 @@ services:
       - type: bind
         source: ${EASY_VERIFIER_REPORTS:-./reports}
         target: /workspace/reports
+      # Local reference registry (T036): research saved from registry_entries,
+      # shared with the host CLI. Unwritable or absent -> curated data only,
+      # and the score response says research cannot be saved.
+      - type: bind
+        source: ${EASY_VERIFIER_SOT:-~/.easy-verifier-sot}
+        target: /sot
+        bind:
+          create_host_path: true

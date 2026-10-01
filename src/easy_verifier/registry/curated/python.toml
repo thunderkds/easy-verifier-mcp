@@ -1,0 +1,333 @@
+# Python — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["pyproject.toml"]
+citation_url = "https://packaging.python.org/en/latest/specifications/pyproject-toml/"
+source_tag = "curated"
+
+[[manifests]]
+value = ["setup.py", "setup.cfg"]
+citation_url = "https://setuptools.pypa.io/en/latest/userguide/quickstart.html"
+source_tag = "curated"
+
+[[manifests]]
+value = ["requirements.txt"]
+citation_url = "https://pip.pypa.io/en/stable/reference/requirements-file-format/"
+source_tag = "curated"
+
+[[manifests]]
+value = ["Pipfile"]
+citation_url = "https://pipenv.pypa.io/en/latest/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/pyproject.toml"]
+citation_url = "https://packaging.python.org/en/latest/specifications/pyproject-toml/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/setup.py", "**/setup.cfg"]
+citation_url = "https://setuptools.pypa.io/en/latest/userguide/quickstart.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/requirements*.txt"]
+citation_url = "https://pip.pypa.io/en/stable/reference/requirements-file-format/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Pipfile"]
+citation_url = "https://pipenv.pypa.io/en/latest/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/ruff.toml", "**/.ruff.toml", "**/pyproject.toml"]
+citation_url = "https://docs.astral.sh/ruff/configuration/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.flake8", "**/setup.cfg"]
+citation_url = "https://flake8.pycqa.org/en/latest/user/configuration.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/pylintrc"]
+citation_url = "https://pylint.readthedocs.io/en/stable/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/mypy.ini"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/pytest.ini", "**/tox.ini", "**/pyproject.toml", "**/setup.cfg"]
+citation_url = "https://docs.pytest.org/en/stable/reference/customize.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/conftest.py"]
+citation_url = "https://docs.pytest.org/en/stable/reference/fixtures.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/noxfile.py"]
+citation_url = "https://nox.thea.codes/en/stable/config.html"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".py"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["test_?*.py", "?*_test.py"]
+citation_url = "https://docs.pytest.org/en/stable/explanation/goodpractices.html#conventions-for-python-test-discovery"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["test_{stem}{ext}", "{stem}_test{ext}"]
+citation_url = "https://docs.pytest.org/en/stable/explanation/goodpractices.html#conventions-for-python-test-discovery"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["def test* (", "async def test* ("]
+citation_url = "https://docs.pytest.org/en/stable/explanation/goodpractices.html#conventions-for-python-test-discovery"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert"]
+citation_url = "https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert<A-Z>*"]
+citation_url = "https://docs.python.org/3/library/unittest.html#assert-methods"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert_?*"]
+citation_url = "https://docs.python.org/3/library/unittest.mock.html#unittest.mock.Mock.assert_called"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "elif", "for", "while", "except"]
+citation_url = "https://docs.python.org/3/reference/compound_stmts.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["and", "or"]
+citation_url = "https://docs.python.org/3/reference/expressions.html#boolean-operations"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["#"]
+citation_url = "https://docs.python.org/3/reference/lexical_analysis.html#comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"\"\" \"\"\"", "''' '''", "\"", "'"]
+citation_url = "https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["def"]
+citation_url = "https://docs.python.org/3/reference/compound_stmts.html#function-definitions"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import", "from"]
+citation_url = "https://docs.python.org/3/reference/simple_stmts.html#the-import-statement"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( ?", "exec ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["os.system ( ?", "os.system ( +", "os.popen ( ?", "shell = True"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".execute ( f", ".execute ( %", ".execute ( +", ".execute ( .format ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["django=django"]
+citation_url = "https://docs.djangoproject.com/en/stable/topics/install/"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["flask=flask"]
+citation_url = "https://flask.palletsprojects.com/en/stable/installation/"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["fastapi=fastapi"]
+citation_url = "https://fastapi.tiangolo.com/#installation"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["@pytest.mark.skip", "pytest.skip ("]
+citation_url = "https://docs.pytest.org/en/stable/how-to/skipping.html"
+source_tag = "curated"
+
+[[skip_markers]]
+value = ["@unittest.skip", "self.skipTest ("]
+citation_url = "https://docs.python.org/3/library/unittest.html#skipping-tests-and-expected-failures"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["urllib.request.urlopen (", "urlopen ("]
+citation_url = "https://docs.python.org/3/library/urllib.request.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["http.client.HTTPConnection (", "http.client.HTTPSConnection ("]
+citation_url = "https://docs.python.org/3/library/http.client.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["socket.create_connection ("]
+citation_url = "https://docs.python.org/3/library/socket.html#socket.create_connection"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["requests.get (", "requests.post (", "requests.put (", "requests.patch (", "requests.delete (", "requests.head (", "requests.request ("]
+citation_url = "https://requests.readthedocs.io/en/latest/api/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["httpx.get (", "httpx.post (", "httpx.request (", "httpx.Client (", "httpx.AsyncClient ("]
+citation_url = "https://www.python-httpx.org/api/"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["type : ignore"]
+citation_url = "https://mypy.readthedocs.io/en/stable/common_issues.html#spurious-errors-and-locally-silencing-the-checker"
+source_tag = "curated"
+
+[[type_escapes]]
+value = [": Any", "-> Any", "typing.Any"]
+citation_url = "https://docs.python.org/3/library/typing.html#the-any-type"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["def <a-zA-Z>", "async def <a-zA-Z>", "class <a-zA-Z>"]
+citation_url = "https://peps.python.org/pep-0008/#public-and-internal-interfaces"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".set_cookie ("]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure = True"]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httponly = True"]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["samesite ="]
+citation_url = "https://docs.djangoproject.com/en/5.2/ref/request-response/#django.http.HttpResponse.set_cookie"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session ["]
+citation_url = "https://flask.palletsprojects.com/en/stable/quickstart/#sessions"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["login_user ("]
+citation_url = "https://flask-login.readthedocs.io/en/latest/"
+source_tag = "curated"
+
+[[auth_markers]]
+value = [".session ["]
+citation_url = "https://docs.djangoproject.com/en/5.2/topics/http/sessions/"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["authenticate (", "login_required"]
+citation_url = "https://docs.djangoproject.com/en/5.2/topics/auth/default/"
+source_tag = "curated"
+
+# Type-checker fields (T056, area #17): the configuration files (and, in a
+# shared file, the section) holding the type checker's settings, and the
+# tokens turning strict mode on / off or naming a file extended. Optional:
+# a language without a type checker declares none (syntax in core/registry.py).
+
+[[type_config_files]]
+value = ["mypy.ini [mypy]", ".mypy.ini [mypy]", "setup.cfg [mypy]", "pyproject.toml [tool.mypy]"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[type_config_files]]
+value = ["pyrightconfig.json", "pyproject.toml [tool.pyright]"]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"
+
+[[type_strict]]
+value = ["strict = true", "strict = True"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[type_strict]]
+value = ["\"typeCheckingMode\" : \"strict\"", "typeCheckingMode = \"strict\""]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"
+
+[[type_strict_off]]
+value = ["strict = false", "strict = False"]
+citation_url = "https://mypy.readthedocs.io/en/stable/config_file.html"
+source_tag = "curated"
+
+[[type_strict_off]]
+value = ["\"typeCheckingMode\" : \"off\"", "typeCheckingMode = \"off\"", "\"typeCheckingMode\" : \"basic\"", "typeCheckingMode = \"basic\"", "\"typeCheckingMode\" : \"standard\"", "typeCheckingMode = \"standard\""]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"
+
+[[type_config_extends]]
+value = ["\"extends\" :", "extends ="]
+citation_url = "https://microsoft.github.io/pyright/#/configuration"
+source_tag = "curated"

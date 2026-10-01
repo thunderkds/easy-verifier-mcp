@@ -9,9 +9,15 @@ this module deliberately does **not** do:
   ``RepoContext`` import, and nothing here reaches the filesystem, a
   subprocess or the network. That is structural, not a convention: the module
   imports only :mod:`dataclasses`, :mod:`json`, :mod:`re`,
-  :mod:`pathlib.PurePosixPath` (a pure string type that touches no disk) and
-  this package's own plain-data models. A metric that could read a file could
-  cite evidence the pack never gathered, which is the whole point of FR-027;
+  :mod:`pathlib.PurePosixPath` (a pure string type that touches no disk),
+  this package's own plain-data models and its pure tokenizer
+  (:mod:`~easy_verifier.core.tokens`, string work only). A metric that
+  could read a file could cite evidence the pack never gathered, which is
+  the whole point of FR-027.
+  Language knowledge (which suffixes are code, how tests are named, declared
+  and assert) is the reference registry's (DDR-0007, FR-041), and arrives as a
+  :class:`LanguageTables` argument the caller built from the already-loaded
+  registry (``core/metric_tables.py``) -- this module holds no copy of it;
 * **rate, threshold, weight or judge anything.** A metric is a fact, never an
   opinion. Rules over these metrics are T020's job (``core/judge.py``);
 * **invent a metric for a dimension that failed.** A
@@ -44,11 +50,18 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
 from .models import CombinedPack, EvidencePack, Excerpt
+from .tokens import (
+    MAX_LINE_CHARS,
+    LanguageSyntax,
+    approximate_ccn,
+    import_statements,
+    strip,
+)
 
 WHOLE_SET = "whole_set"
 """A ratio, density or aggregate share: it describes the whole set it was
@@ -221,6 +234,314 @@ def _serializable(metric: Metric) -> dict:
     }
 
 
+@dataclass(frozen=True)
+class LanguageTables:
+    """The registry's language knowledge, as plain compiled data (T031).
+
+    Built by ``core/metric_tables.py`` from the loaded reference registry and
+    handed to :func:`compute_metrics`; never loaded here, so this module still
+    reads nothing. Treat it as immutable.
+    """
+
+    source_suffixes: frozenset[str]
+    """File suffixes (dot included) of files that are code."""
+
+    test_name_patterns: tuple[re.Pattern[str], ...]
+    """Full-match patterns over a base name that make it a test file."""
+
+    colocated_test_patterns: tuple[re.Pattern[str], ...]
+    """Full-match patterns over a base name that make it a test file even
+    under a source-root directory (T052); a subset of test names."""
+
+    test_candidates: Mapping[str, tuple[str, ...]]
+    """Source suffix -> test base-name templates with ``{stem}``/``{ext}``. A
+    template starting ``./`` only matches a test in the source's directory."""
+
+    test_declarations: tuple[re.Pattern[str], ...]
+    """Each counts test declarations independently (``findall``)."""
+
+    assertions: re.Pattern[str]
+    """One alternation; its non-overlapping matches are the assertions."""
+
+    syntax: Mapping[str, LanguageSyntax] = field(default_factory=dict)
+    """Source suffix -> the language's structure tokens (T033); a suffix
+    absent here gets no CCN or import evidence."""
+
+    sinks: Mapping[str, tuple[SinkPattern, ...]] = field(default_factory=dict)
+    """Source suffix -> the language's dangerous-sink tokens (T034); matched
+    only where ``syntax`` can blank that language's comments and strings."""
+
+    skip_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    network_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    type_escapes: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T040 area tokens (FR-051), present
+    only where ``syntax`` is: skip markers and network calls are matched in
+    test code, type escapes in source code with its comments kept."""
+
+    type_stub_patterns: tuple[re.Pattern[str], ...] = ()
+    """Full-match base-name patterns of generated type stubs (``*.d.ts``)."""
+
+    public_declarations: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's public-declaration tokens (T055),
+    anchored at a line start; read by the blast-radius dimension, never here."""
+
+    cookie_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    cookie_flags: Mapping[str, Mapping[str, re.Pattern[str]]] = field(
+        default_factory=dict
+    )
+    """Source suffix -> the language's cookie tokens (T056, area #8): a
+    statement that sets a cookie, and per flag of :data:`COOKIE_FLAGS` the
+    language declares, the tokens that set it inside that statement."""
+
+    auth_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's authentication/session tokens (T056):
+    the gate the cookie metric computes behind, never scored itself."""
+
+    type_configs: tuple[TypeConfigFile, ...] = ()
+    type_strict: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    type_strict_off: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    type_config_extends: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Language name -> its type-checker configuration tokens (T056, area
+    #17); only languages with a type checker declare them."""
+
+
+@dataclass(frozen=True)
+class TypeConfigFile:
+    """One registry ``type_config_files`` value, compiled (T056)."""
+
+    language: str
+    name: re.Pattern[str]
+    """Full-match pattern over a base name."""
+    header: str | None
+    """The section header holding the type checker's settings in a shared
+    file (``[tool.mypy]``); ``None`` when the whole file is its."""
+
+
+@dataclass(frozen=True)
+class SinkPattern:
+    """One registry ``security_sinks`` token, compiled (T034)."""
+
+    cwe: str
+    token: str
+    citation_url: str
+    regex: re.Pattern[str]
+
+
+@dataclass(frozen=True)
+class SinkHit:
+    """One sink match: 1-indexed lines within the text it was found in."""
+
+    line: int
+    end_line: int
+    cwe: str
+    citation_url: str
+
+
+def sink_hits(path: str, text: str, tables: LanguageTables) -> tuple[SinkHit, ...]:
+    """Every registry sink token matching ``text`` (the contents of ``path``).
+
+    Tokens match code only: comments and strings are blanked first
+    (``core/tokens.py``), so a sink named in a comment or a string is no hit;
+    a string that interpolates leaves one mark, which ``<INTERP>`` matches.
+    A match starting on a line longer than ``MAX_LINE_CHARS`` (generated or
+    minified code) is ignored. One hit per starting line and CWE, by line.
+    """
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    patterns = tables.sinks.get(suffix, ())
+    if syntax is None or not patterns:
+        return ()
+    code = strip(text, syntax, mark_interpolation=True)
+    lines = code.split("\n")
+    found: dict[tuple[int, str], SinkHit] = {}
+    for pattern in patterns:
+        for match in pattern.regex.finditer(code):
+            line = code.count("\n", 0, match.start()) + 1
+            if len(lines[line - 1]) > MAX_LINE_CHARS:
+                continue
+            end = line + code.count("\n", match.start(), match.end())
+            hit = SinkHit(line, end, pattern.cwe, pattern.citation_url)
+            found.setdefault((line, pattern.cwe), hit)
+    return tuple(found[key] for key in sorted(found))
+
+
+COOKIE_FLAGS = ("secure", "httponly", "samesite")
+"""The cookie attributes OWASP ASVS 5.0.0 V3.3.1, V3.3.4 and V3.3.2 require."""
+
+_CHAINED = re.compile(r"[ \t\r\n]*\.")
+
+
+@dataclass(frozen=True)
+class CookieSite:
+    """One cookie-setting statement (T056): its line span in the text read,
+    and the declared flags it does not set -- ``None`` when the statement runs
+    past the end of that text, so its flags cannot be judged."""
+
+    line: int
+    end_line: int
+    missing: tuple[str, ...] | None
+
+
+def cookie_sites(
+    path: str, text: str, tables: LanguageTables
+) -> tuple[CookieSite, ...]:
+    """Every registry ``cookie_calls`` statement in ``text`` (the contents of
+    ``path``), one per starting line, by line.
+
+    The call token matches code with comments and strings blanked; the
+    statement runs to a ``;`` or a line end outside brackets (a next line
+    starting with ``.`` continues it), or to a closing bracket it did not
+    open; a flag token matches inside it with comments blanked and strings
+    kept. A call starting on a line longer than ``MAX_LINE_CHARS`` is skipped.
+    """
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    calls = tables.cookie_calls.get(suffix)
+    if syntax is None or calls is None:
+        return ()
+    flags = tables.cookie_flags.get(suffix, {})
+    code = strip(text, syntax)
+    kept = strip(text, syntax, keep_strings=True)
+    lines = code.split("\n")
+    found: dict[int, CookieSite] = {}
+    for match in calls.finditer(code):
+        line = _line_of(code, match.start())
+        if line in found or len(lines[line - 1]) > MAX_LINE_CHARS:
+            continue
+        end = _statement_end(code, match.start())
+        if end is None:
+            found[line] = CookieSite(line, len(lines), None)
+            continue
+        statement = kept[match.start() : end]
+        missing = tuple(
+            name
+            for name in COOKIE_FLAGS
+            if name in flags and not flags[name].search(statement)
+        )
+        end_line = _line_of(code, end) if end < len(code) else len(lines)
+        found[line] = CookieSite(line, end_line, missing)
+    return tuple(found[key] for key in sorted(found))
+
+
+def _statement_end(code: str, start: int) -> int | None:
+    """The offset ending the statement that starts at ``start``, or ``None``
+    when brackets are still open at the end of ``code``."""
+    depth = 0
+    for index in range(start, len(code)):
+        char = code[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth < 0:
+                return index
+        elif depth == 0 and (
+            char == ";" or (char == "\n" and not _CHAINED.match(code, index + 1))
+        ):
+            return index
+    return len(code) if depth == 0 else None
+
+
+def auth_lines(path: str, text: str, tables: LanguageTables) -> tuple[int, ...]:
+    """Lines of ``text`` (the contents of ``path``) holding a registry
+    ``auth_markers`` token, matched after comments and strings are blanked;
+    a line longer than ``MAX_LINE_CHARS`` is skipped (it is never quoted)."""
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    markers = tables.auth_markers.get(suffix)
+    if syntax is None or markers is None:
+        return ()
+    code = strip(text, syntax)
+    lines = code.split("\n")
+    found = {_line_of(code, match.start()) for match in markers.finditer(code)}
+    return tuple(
+        sorted(line for line in found if len(lines[line - 1]) <= MAX_LINE_CHARS)
+    )
+
+
+@dataclass(frozen=True)
+class TypeConfigSection:
+    """The type checker's settings in one configuration text (T056): a
+    1-indexed inclusive line span, whole file or one section."""
+
+    language: str
+    line: int
+    end_line: int
+    header: str | None
+
+
+def type_config_sections(
+    path: str, text: str, tables: LanguageTables
+) -> tuple[TypeConfigSection, ...]:
+    """The type-checker sections of ``text`` (the contents of ``path``).
+
+    A declared header opens its section only as a whole line of its own; the
+    section runs to the line before the next line starting with ``[`` (the
+    next INI/TOML header, a TOML sub-table included), else to the end.
+    """
+    name = PurePosixPath(path).name
+    lines = text.split("\n")
+    found: list[TypeConfigSection] = []
+    for config in tables.type_configs:
+        if not config.name.fullmatch(name):
+            continue
+        if config.header is None:
+            found.append(TypeConfigSection(config.language, 1, len(lines), None))
+            continue
+        for index, line in enumerate(lines):
+            if line.strip() != config.header:
+                continue
+            end = next(
+                (j for j in range(index + 1, len(lines)) if lines[j].startswith("[")),
+                len(lines),
+            )
+            found.append(
+                TypeConfigSection(config.language, index + 1, end, config.header)
+            )
+    return tuple(found)
+
+
+_STRING = re.compile(r'"((?:[^"\\\n]|\\.)*)"')
+
+
+def extends_targets(text: str, token: re.Pattern[str]) -> tuple[str, ...]:
+    """The string, or ``[...]`` list of strings, right after each ``token``
+    match in ``text``, in order."""
+    targets: list[str] = []
+    for match in token.finditer(text):
+        rest = text[match.end() :].lstrip(" \t")
+        if rest.startswith("["):
+            close = rest.find("]")
+            rest = rest[: close if close >= 0 else len(rest)]
+            targets.extend(_STRING.findall(rest))
+        else:
+            string = _STRING.match(rest)
+            if string:
+                targets.append(string[1])
+    return tuple(targets)
+
+
+def resolve_extends(path: str, target: str) -> tuple[str, ...]:
+    """Repository paths ``target`` (named by ``path``'s ``extends``) may be,
+    in order: as written, then with ``.json`` appended. ``()`` when it is
+    absolute or leaves the repository; a package name resolves to a path
+    no pack holds (``node_modules`` is never read), so it stays unresolved."""
+    if not target or target.startswith("/") or "\\" in target:
+        return ()
+    parts: list[str] = []
+    for part in (PurePosixPath(path).parent / target).parts:
+        if part == "..":
+            if not parts:
+                return ()
+            parts.pop()
+        elif part != ".":
+            parts.append(part)
+    joined = "/".join(parts)
+    if not joined:
+        return ()
+    return (joined,) if joined.endswith(".json") else (joined, joined + ".json")
+
+
 # ---------------------------------------------------------------------------
 # The pack view a metric computation is handed. Plain data derived from the
 # pack -- no I/O, no lazy callables, nothing that could reach outside it.
@@ -238,18 +559,20 @@ class _PackView:
     source_files: tuple[str, ...]
     test_files: tuple[str, ...]
     test_excerpts: tuple[Excerpt, ...]
+    tables: LanguageTables
 
 
-def _view(pack: EvidencePack) -> _PackView:
+def _view(pack: EvidencePack, tables: LanguageTables) -> _PackView:
     files = _dedup(pack.files_read)
     return _PackView(
         pack=pack,
         files=files,
-        source_files=tuple(path for path in files if _is_source_file(path)),
-        test_files=tuple(path for path in files if _is_test_file(path)),
+        source_files=tuple(path for path in files if _is_source_file(path, tables)),
+        test_files=tuple(path for path in files if _is_test_file(path, tables)),
         test_excerpts=tuple(
-            excerpt for excerpt in pack.excerpts if _is_test_file(excerpt.path)
+            excerpt for excerpt in pack.excerpts if _is_test_file(excerpt.path, tables)
         ),
+        tables=tables,
     )
 
 
@@ -305,7 +628,7 @@ def _sources_without_covering_test(view: _PackView) -> _Computed:
                 "nothing whose test correspondence could be checked. " + _CLASSIFIED_BY
             )
         )
-    _matched, unmatched = _correspondence(view.files, view.test_files)
+    _matched, unmatched = _correspondence(view.files, view.test_files, view.tables)
     return (
         len(unmatched),
         tuple(sorted(view.source_files)),
@@ -326,7 +649,7 @@ def _assertion_density_per_test(view: _PackView) -> _Computed:
                 "assertions in. " + _CLASSIFIED_BY
             )
         )
-    tests = sum(_count_test_functions(e.text) for e in view.test_excerpts)
+    tests = sum(_count_test_functions(e.text, view.tables) for e in view.test_excerpts)
     if not tests:
         return MetricAbstention(
             reason=(
@@ -335,7 +658,7 @@ def _assertion_density_per_test(view: _PackView) -> _Computed:
                 "denominator; that is not the same as a density of 0"
             )
         )
-    assertions = sum(_count_assertions(e.text) for e in view.test_excerpts)
+    assertions = sum(_count_assertions(e.text, view.tables) for e in view.test_excerpts)
     return (
         assertions / tests,
         tuple(sorted(e.ref for e in view.test_excerpts)),
@@ -353,7 +676,7 @@ def _assertions_observed(view: _PackView) -> _Computed:
                 "assertion in. " + _CLASSIFIED_BY
             )
         )
-    assertions = sum(_count_assertions(e.text) for e in view.test_excerpts)
+    assertions = sum(_count_assertions(e.text, view.tables) for e in view.test_excerpts)
     return (
         assertions,
         tuple(sorted(e.ref for e in view.test_excerpts)),
@@ -472,6 +795,1385 @@ def _source_file_share(view: _PackView) -> _Computed:
     )
 
 
+_SINK_METHOD = (
+    "dangerous sinks are the registry's security_sinks tokens (each citing "
+    "its CWE page), matched textually after the registry's comment and string "
+    "delimiters are blanked (a string that interpolates keeps one mark at its "
+    "start) -- no data flow is traced, so a hit is a place to "
+    "look, not a proven vulnerability; test-path hits are counted and tagged; "
+    "a lower bound on the repository, since only these excerpts were read"
+)
+
+
+def _sink_hits_observed(view: _PackView) -> _Computed:
+    scanned = [
+        excerpt
+        for excerpt in view.pack.excerpts
+        if view.tables.sinks.get(PurePosixPath(excerpt.path).suffix)
+        and PurePosixPath(excerpt.path).suffix in view.tables.syntax
+    ]
+    if not scanned:
+        return MetricAbstention(
+            reason=(
+                "no excerpt in this pack is from a registry language with sink "
+                "patterns, so no code was scanned; that is not the same as code "
+                "without sinks. " + _SINK_METHOD
+            )
+        )
+    hits: dict[tuple[str, int, str], tuple[str, str]] = {}
+    for excerpt in scanned:
+        for hit in sink_hits(excerpt.path, excerpt.text, view.tables):
+            line = excerpt.start_line + hit.line - 1
+            key = (excerpt.path, line, hit.cwe)
+            hits.setdefault(key, (excerpt.ref, hit.citation_url))
+    cited = sorted({ref for ref, _url in hits.values()}) or sorted(
+        {e.ref for e in scanned}
+    )
+    listed = ", ".join(
+        f"{path}:{line} {cwe} ({url})"
+        + (" [test path]" if _is_test_file(path, view.tables) else "")
+        for (path, line, cwe), (_ref, url) in sorted(hits.items())
+    )
+    return (
+        len(hits),
+        tuple(cited),
+        f"{len(hits)} dangerous-sink hit(s) in {len(scanned)} excerpt(s): "
+        + (listed or "none")
+        + "; "
+        + _SINK_METHOD,
+    )
+
+
+def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
+    if not view.source_files:
+        return MetricAbstention(
+            reason=(
+                "no file in this pack classifies as source, so the share has a "
+                "zero denominator; that is not the same as a share of 0. "
+                + _CLASSIFIED_BY
+            )
+        )
+    _matched, unmatched = _correspondence(view.files, view.test_files, view.tables)
+    return (
+        len(unmatched) / len(view.source_files),
+        tuple(sorted(view.source_files)),
+        f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
+        "conventionally named test file in the same project inside this pack: "
+        + (", ".join(sorted(unmatched)) or "(none)")
+        + "; "
+        + _CLASSIFIED_BY,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Role-missing metrics (T035): a source role this dimension declares is
+# filled only when one of its files was actually read (core/pipeline.py), so
+# a filled role is a fact. An unfilled role on a truncated pack may be a file
+# the budget never read, so there it abstains instead of reporting 1. The
+# metric counts the missing role (1) against an at-most-0 rule rather than
+# presence against at-least-1: a threshold of 0 is never borderline (FR-036),
+# so a filled role does not put its dimension at the evaluate gate.
+# ---------------------------------------------------------------------------
+
+
+def _role_presence(*roles: str) -> Callable[[_PackView], _Computed]:
+    named = " or ".join(repr(role) for role in roles)
+
+    def compute(view: _PackView) -> _Computed:
+        sought = [role for role in roles if role in view.pack.sources_sought]
+        if not sought:
+            return MetricAbstention(
+                reason=(
+                    f"this {view.pack.dimension!r} pack does not declare the "
+                    f"{named} source role, so its presence was never sought here"
+                )
+            )
+        filled = [role for role in sought if role in view.pack.sources_found]
+        if not filled and view.pack.truncated:
+            return MetricAbstention(
+                reason=(
+                    f"no {named} role file was read, but the byte budget "
+                    "truncated this pack, so the role file may be one the "
+                    "budget never read; that is not the same as absent"
+                )
+            )
+        if not view.files:
+            return _no_files()
+        return (
+            0 if filled else 1,
+            tuple(sorted(view.files)),
+            f"source role {named} is "
+            + (f"filled ({', '.join(filled)})" if filled else "not filled")
+            + " in this pack's sources_found: 0 when a file matching the role "
+            "was read, else 1 (missing); role matching is by the registry's "
+            "glob patterns (list-dimensions prints them), over the files listed "
+            "here",
+        )
+
+    return compute
+
+
+# ---------------------------------------------------------------------------
+# Acceptance-criteria trace shares (T052, FR-043). The requirement-fidelity
+# pack quotes each criterion's line and the code lines naming its
+# identifiers; ``pack.trace_search`` says what the search put in, so a
+# criterion or trace line the byte budget dropped is noticed instead of
+# reading as "untraced". These are shares over the *criteria* set, which is
+# verified complete here, so they do not abstain merely because a later
+# requirement-doc excerpt did not fit (they are EVIDENCE_LOCAL for that
+# reason, and check their own completeness below).
+# ---------------------------------------------------------------------------
+
+REQUIREMENT_FIDELITY = "requirement-fidelity"
+
+_TRACE_METHOD = (
+    "criteria are the data rows of each tasks/TASK_GUIDE_Txxx.md 'Acceptance "
+    "Criteria' table (id Txxx#row) and each FR-xxx defined in a requirements "
+    "document; a criterion is traced when one of its keys (its task ID or an "
+    "FR-xxx ID in its row) appears as a whole word in a quoted line of a code "
+    "file; " + _CLASSIFIED_BY + "; documents never count"
+)
+
+
+def trace_key_pattern(keys: Iterable[str]) -> re.Pattern[str]:
+    """Whole-word alternation over trace keys; ``-`` counts as a word char, so
+    ``FR-027`` does not match inside ``FR-027a``. Shared with the dimension so
+    both sides match identically."""
+    ordered = sorted(set(keys), key=lambda key: (-len(key), key))
+    return re.compile(
+        r"(?<![\w-])(?:" + "|".join(re.escape(k) for k in ordered) + r")(?![\w-])"
+    )
+
+
+def code_kind(path: str, tables: LanguageTables) -> str | None:
+    """``"test"``, ``"source"`` or ``None`` (not code), by path convention."""
+    if _is_test_file(path, tables):
+        return "test"
+    if _is_source_file(path, tables):
+        return "source"
+    return None
+
+
+def _ac_traced_share(kind: str) -> Callable[[_PackView], _Computed]:
+    target = "code" if kind == "source" else "a test"
+
+    def compute(view: _PackView) -> _Computed:
+        search = view.pack.trace_search
+        if search is None:
+            if view.pack.dimension != REQUIREMENT_FIDELITY:
+                why = (
+                    f"only the requirement-fidelity pack extracts acceptance "
+                    f"criteria, and this is the {view.pack.dimension!r} pack"
+                )
+            else:
+                why = (
+                    "no acceptance-criteria search was run for this pack: only "
+                    "kit-aware mode reads task guides and requirements documents "
+                    f"as ground truth (this pack is {view.pack.mode}), and "
+                    "criteria are never inferred, so there is no criterion to trace"
+                )
+            return MetricAbstention(reason=why)
+        if search.incomplete:
+            return MetricAbstention(
+                reason="the acceptance-criteria search is incomplete: "
+                + search.incomplete
+            )
+        if not search.criteria:
+            return MetricAbstention(
+                reason=(
+                    "no acceptance criterion was found: no task guide has an "
+                    "'Acceptance Criteria' table row and no requirements document "
+                    "defines an FR-xxx ID"
+                )
+            )
+        if kind == "source":
+            traced, listed, omitted = (
+                search.traced_to_code,
+                search.untraced_code,
+                search.untraced_code_omitted,
+            )
+        else:
+            traced, listed, omitted = (
+                search.traced_to_test,
+                search.untraced_test,
+                search.untraced_test_omitted,
+            )
+        present = {e.ref for e in view.pack.excerpts}
+        lines = [
+            e for e in view.pack.excerpts if code_kind(e.path, view.tables) is not None
+        ]
+        missing = [c.ref for c in listed if c.ref not in present]
+        missing_lines = max(0, search.trace_lines - len(lines))
+        if missing or missing_lines:
+            dropped = len(missing) + missing_lines
+            return MetricAbstention(
+                reason=(
+                    f"{dropped} cited criterion or trace line(s) the search found "
+                    "are not in this pack (the byte budget dropped them), so the "
+                    "share could not be shown with its evidence"
+                ),
+                omitted_lower_bound=dropped,
+            )
+        refs = {e.ref for e in lines if code_kind(e.path, view.tables) == kind}
+        refs |= {c.ref for c in listed}
+        untraced = search.criteria - traced
+        return (
+            traced / search.criteria,
+            tuple(sorted(refs)),
+            f"{traced} of {search.criteria} acceptance criteria are traced to "
+            f"{target} (searched {search.files_searched} code file(s)); "
+            f"{untraced} untraced: "
+            + (", ".join(c.id for c in listed[:15]) or "none")
+            + (f", and {untraced - min(15, len(listed))} more" if untraced > 15 else "")
+            + f" (the first {len(listed)} are cited, {omitted} counted only); "
+            + f"{search.trace_lines} trace line(s) quoted, "
+            + f"{search.trace_lines_omitted} more found and counted only; "
+            + _TRACE_METHOD,
+        )
+
+    return compute
+
+
+# ---------------------------------------------------------------------------
+# Churn hotspot share (T052): the ranking is local git history, which no
+# file excerpt can carry, so the blast-radius dimension records it in
+# ``pack.reach``; the share is over the changed files the pack read.
+# ---------------------------------------------------------------------------
+
+
+def _changed_files_in_churn_hotspots_share(view: _PackView) -> _Computed:
+    reach = view.pack.reach
+    if reach is None or view.pack.dimension != BLAST_RADIUS:
+        return MetricAbstention(
+            reason=(
+                "a churn-hotspot share needs the changed files of a narrow scope "
+                "and a repository-wide ranking; only the blast-radius pack at "
+                "changes, worktree or task scope gathers them (at project scope "
+                "every file is in scope, so the share would be 10% by "
+                f"construction), and this is the {view.pack.dimension!r} pack "
+                f"at {view.pack.scope!r} scope"
+            )
+        )
+    if reach.churn_unavailable:
+        return MetricAbstention(reason=reach.churn_unavailable)
+    allowed = set(view.pack.files_read)
+    changed = [path for path in reach.changed if path in allowed]
+    if not changed:
+        return MetricAbstention(
+            reason="no changed file of this scope could be read, so there is no "
+            "changed file to place in the churn ranking"
+        )
+    hot = [path for path in changed if path in reach.hotspots_changed]
+    return (
+        len(hot) / len(changed),
+        tuple(sorted(changed)),
+        f"{len(hot)} of {len(changed)} changed file(s) are in the repository's "
+        f"top 10% by churn: " + (", ".join(hot) or "none") + f". Churn = number "
+        f"of the last {reach.commits} local commits touching a file; the top 10% "
+        f"is the first {reach.hotspot_count} of the {reach.ranked_files} tracked "
+        "file(s) with any commit in that window, ordered by churn then path, "
+        "whatever the scope (Tornhill, hotspots by change frequency)",
+    )
+
+
+_SWEEP_CAPPED = (
+    "the reference sweep stopped at its file ceiling before reaching every "
+    "repository file, so files importing a changed file may never have been "
+    "opened; the fan-in would be a lower bound, not the value"
+)
+
+
+# ---------------------------------------------------------------------------
+# Structure metrics (T033): registry-driven tokens over the pack's excerpts,
+# never over a file the pack did not quote (core/tokens.py).
+# ---------------------------------------------------------------------------
+
+CCN_THRESHOLD = 10
+"""``functions_over_ccn_10_share`` counts functions with CCN above this."""
+
+BLAST_RADIUS = "blast-radius"
+
+_CCN_METHOD = (
+    "approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch "
+    "keywords per function, counted after the registry's comment and string "
+    "delimiters are blanked; a function starts at a registry function-start "
+    "token and ends before the next non-blank line indented no deeper, and a "
+    "function whose excerpt ends first counts only the lines quoted; only "
+    "source-file excerpts of registry languages are read"
+)
+
+_IMPORT_METHOD = (
+    "import statements are the registry's import tokens, found textually in "
+    "excerpts of registry-language files; a statement names a file when it "
+    "contains the file's stem (a package's __init__-style file: its "
+    "directory) as a whole word -- a textual match, not a resolved import"
+)
+
+
+def _observed_functions(view: _PackView) -> list[tuple[Excerpt, int, int]]:
+    """``(excerpt, absolute line, ccn)`` per function, one per start line."""
+    best: dict[tuple[str, int], tuple[Excerpt, int, int]] = {}
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None or not _is_source_file(excerpt.path, view.tables):
+            continue
+        for function in approximate_ccn(excerpt.text, syntax):
+            line = excerpt.start_line + function.line - 1
+            key = (excerpt.path, line)
+            if key not in best or function.ccn > best[key][2]:
+                best[key] = (excerpt, line, function.ccn)
+    return [best[key] for key in sorted(best)]
+
+
+def _no_functions() -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            "no source-file excerpt in this pack contains a function start the "
+            "registry recognises, so no function was observed; that is not the "
+            "same as functions of low complexity. " + _CCN_METHOD
+        )
+    )
+
+
+def _functions_over_ccn_10_share(view: _PackView) -> _Computed:
+    functions = _observed_functions(view)
+    if not functions:
+        return _no_functions()
+    over = [(e.path, line, ccn) for e, line, ccn in functions if ccn > CCN_THRESHOLD]
+    return (
+        len(over) / len(functions),
+        tuple(sorted({e.ref for e, _line, _ccn in functions})),
+        f"{len(over)} of {len(functions)} observed function(s) have approximate "
+        f"CCN > {CCN_THRESHOLD}: "
+        + (", ".join(f"{path}:{line} ({ccn})" for path, line, ccn in over) or "none")
+        + "; "
+        + _CCN_METHOD,
+    )
+
+
+def _max_function_ccn(view: _PackView) -> _Computed:
+    functions = _observed_functions(view)
+    if not functions:
+        return _no_functions()
+    top = max(ccn for _e, _line, ccn in functions)
+    at = [(e, line) for e, line, ccn in functions if ccn == top]
+    return (
+        top,
+        tuple(sorted({e.ref for e, _line in at})),
+        f"the highest approximate CCN among {len(functions)} observed "
+        f"function(s) is {top}, at "
+        + ", ".join(f"{e.path}:{line}" for e, line in at)
+        + "; a lower bound on the repository; "
+        + _CCN_METHOD,
+    )
+
+
+def _statements(
+    view: _PackView, *, source_only: bool
+) -> list[tuple[Excerpt, str]]:
+    found = []
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None:
+            continue
+        if source_only and not _is_source_file(excerpt.path, view.tables):
+            continue
+        for _line, text in import_statements(excerpt.text, syntax):
+            found.append((excerpt, text))
+    return found
+
+
+def _no_imports(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            f"no import statement was found in this pack's {what} excerpts, so "
+            "there is no import graph to measure; that is not the same as a "
+            "graph without edges. " + _IMPORT_METHOD
+        )
+    )
+
+
+def _names_pattern(names: Sequence[str]) -> re.Pattern[str]:
+    ordered = sorted(set(names), key=lambda name: (-len(name), name))
+    return re.compile(r"\b(?:" + "|".join(re.escape(n) for n in ordered) + r")\b")
+
+
+def _file_name(path: str) -> str:
+    pure = PurePosixPath(path)
+    return pure.parent.name if pure.stem.startswith("__") else pure.stem
+
+
+def _max_fan_in_changed(view: _PackView) -> _Computed:
+    if view.pack.dimension != BLAST_RADIUS:
+        return MetricAbstention(
+            reason=(
+                "only the blast-radius pack says which files changed: its "
+                "reference search quotes only lines naming in-scope files, and "
+                f"this is the {view.pack.dimension!r} pack"
+            )
+        )
+    reach = view.pack.reach
+    if reach is not None and reach.sweep_capped:
+        return MetricAbstention(reason=_SWEEP_CAPPED)
+    statements = _statements(view, source_only=False)
+    if not statements:
+        return _no_imports("code-file")
+    fan_in: dict[str, list[Excerpt]] = {}
+    targets = reach.changed if reach is not None and reach.changed else view.files
+    for target in targets:
+        name = _file_name(target)
+        if PurePosixPath(target).suffix not in view.tables.syntax or not name:
+            continue
+        pattern = _names_pattern([name])
+        importers: dict[str, Excerpt] = {}
+        for excerpt, text in statements:
+            if excerpt.path != target and pattern.search(text):
+                importers.setdefault(excerpt.path, excerpt)
+        if importers:
+            fan_in[target] = list(importers.values())
+    if not fan_in:
+        return (
+            0,
+            tuple(sorted({e.ref for e, _text in statements})),
+            f"none of the {len(statements)} import statement(s) quoted here "
+            "names a file read by this pack; " + _IMPORT_METHOD,
+        )
+    top = max(len(importers) for importers in fan_in.values())
+    targets = sorted(path for path, found in fan_in.items() if len(found) == top)
+    refs = {e.ref for path in targets for e in fan_in[path]} | set(targets)
+    return (
+        top,
+        tuple(sorted(refs)),
+        f"{', '.join(targets)} is named by import statements in {top} distinct "
+        "file(s); the files counted are those named by the import statements "
+        "this pack's reference search quoted, which quotes only lines naming "
+        "in-scope (changed) files; a lower bound, since the search is capped; "
+        + _IMPORT_METHOD,
+    )
+
+
+def _top_level_import_cycles(view: _PackView) -> _Computed:
+    statements = _statements(view, source_only=True)
+    if not statements:
+        return _no_imports("source-file")
+    files = sorted(
+        {
+            e.path
+            for e in view.pack.excerpts
+            if _is_source_file(e.path, view.tables)
+            and PurePosixPath(e.path).suffix in view.tables.syntax
+        }
+    )
+    prefix = _common_directory(files)
+
+    def module_of(path: str) -> str:
+        parts = PurePosixPath(path).parts[len(prefix) :]
+        return parts[0] if len(parts) > 1 else PurePosixPath(path).stem
+
+    modules = sorted({module_of(path) for path in files})
+    patterns = {module: _names_pattern([module]) for module in modules}
+    edges: dict[str, set[str]] = {module: set() for module in modules}
+    edge_refs: dict[tuple[str, str], set[str]] = {}
+    for excerpt, text in statements:
+        source = module_of(excerpt.path)
+        for module in modules:
+            if module != source and patterns[module].search(text):
+                edges[source].add(module)
+                edge_refs.setdefault((source, module), set()).add(excerpt.ref)
+
+    cycles = _cycles(edges)
+    refs = {
+        ref
+        for cycle in cycles
+        for (a, b), found in edge_refs.items()
+        if a in cycle and b in cycle
+        for ref in found
+    } or {e.ref for e, _text in statements}
+    where = "/".join(prefix) or "the repository root"
+    return (
+        len(cycles),
+        tuple(sorted(refs)),
+        f"{len(cycles)} import cycle(s) among {len(modules)} top-level module(s) "
+        f"under {where}: "
+        + ("; ".join(" <-> ".join(cycle) for cycle in cycles) or "none")
+        + f". A top-level module is the first directory under the deepest "
+        f"directory shared by the {len(files)} source file(s) quoted here (a file "
+        "directly there is its own module); a cycle is a set of two or more "
+        "modules each reaching the others, counted once; only the import "
+        "statements quoted in this pack are seen; " + _IMPORT_METHOD,
+    )
+
+
+def _common_directory(files: Sequence[str]) -> tuple[str, ...]:
+    parents = [PurePosixPath(path).parent.parts for path in files]
+    common: list[str] = []
+    for parts in zip(*parents, strict=False):
+        if len(set(parts)) != 1:
+            break
+        common.append(parts[0])
+    return tuple(common)
+
+
+def _cycles(edges: Mapping[str, set[str]]) -> list[list[str]]:
+    def reach(start: str) -> set[str]:
+        seen: set[str] = set()
+        stack = list(edges[start])
+        while stack:
+            node = stack.pop()
+            if node not in seen:
+                seen.add(node)
+                stack.extend(edges[node])
+        return seen
+
+    reachable = {node: reach(node) for node in edges}
+    cycles: list[list[str]] = []
+    assigned: set[str] = set()
+    for node in sorted(edges):
+        if node in assigned:
+            continue
+        component = {node} | {m for m in reachable[node] if node in reachable[m]}
+        assigned |= component
+        if len(component) > 1:
+            cycles.append(sorted(component))
+    return cycles
+
+
+# ---------------------------------------------------------------------------
+# Area rule-group metrics (T040, FR-051): #16 false confidence and isolation,
+# #17 type escapes, #31 debt markers. Language tokens are the registry's;
+# every match runs over code with comments and strings blanked (type escapes
+# keep comments, TODO scanning reads only comments), so a marker quoted in a
+# string is never counted. Each derivation says which excerpts bounded it.
+# ---------------------------------------------------------------------------
+
+_ISOLATION_SEGMENTS = frozenset({"integration", "e2e", "end-to-end", "functional"})
+
+_TEST_AREA_METHOD = (
+    "tests are the registry's test declarations in test-file excerpts; a test "
+    "runs from its declaration to the next one (or the excerpt end); markers "
+    "and assertions are the registry's tokens, matched after comments and "
+    "strings are blanked; only excerpts of registry languages are read, so "
+    "this describes the quoted tests, not the repository"
+)
+
+
+def _line_of(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
+def _code_test_excerpts(view: _PackView) -> list[tuple[Excerpt, LanguageSyntax]]:
+    found = []
+    for excerpt in view.test_excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is not None:
+            found.append((excerpt, syntax))
+    return found
+
+
+def _declarations(text: str, tables: LanguageTables) -> list[int]:
+    """Offsets of each test declaration's first non-blank character: the
+    registry patterns start with ``^\\s*``, which can reach back over blank
+    lines, so ``match.start()`` alone would name the line before."""
+    starts = {
+        m.start() + len(m.group()) - len(m.group().lstrip())
+        for p in tables.test_declarations
+        for m in p.finditer(text)
+    }
+    return sorted(starts)
+
+
+_CLIPPED = re.compile(r"\n…\[excerpt clipped: showing lines [^\n]*\]\Z")
+
+
+def excerpt_clipped(text: str) -> bool:
+    """Whether an excerpt ends in the line-cap clip marker that
+    ``context.whole_file_excerpt`` and ``_code_extract`` append: its last
+    quoted line is not the end of what it quotes. The marker text is pinned
+    against both producers by a test, since this module may not import them."""
+    return _CLIPPED.search(text) is not None
+
+
+def _no_tests(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            "no test declaration the registry recognises was found in a "
+            "test-file excerpt of a registry language, so there is no test "
+            f"to {what}; that is a zero denominator, not a share of 0. "
+            + _TEST_AREA_METHOD
+        )
+    )
+
+
+def _tests_without_assertions_share(view: _PackView) -> _Computed:
+    tests = 0
+    cut = 0
+    empty: list[str] = []
+    refs: set[str] = set()
+    for excerpt, syntax in _code_test_excerpts(view):
+        starts = _declarations(excerpt.text, view.tables)
+        code = strip(excerpt.text, syntax)
+        clipped = excerpt_clipped(excerpt.text)
+        for index, start in enumerate(starts):
+            last = index + 1 == len(starts)
+            if last and clipped:
+                # its body runs past the excerpt line limit: not fully quoted
+                cut += 1
+                continue
+            end = len(code) if last else starts[index + 1]
+            tests += 1
+            refs.add(excerpt.ref)
+            if not view.tables.assertions.search(code, start, end):
+                line = excerpt.start_line + _line_of(excerpt.text, start) - 1
+                empty.append(f"{excerpt.path}:{line}")
+    if not tests and cut:
+        return MetricAbstention(
+            reason=(
+                f"the only {cut} observed test(s) are cut by the excerpt line "
+                "limit (the last test of a clipped excerpt is not fully quoted), "
+                "so no test could be judged; that is not a share of 0. "
+                + _TEST_AREA_METHOD
+            )
+        )
+    if not tests:
+        return _no_tests("check for assertions")
+    return (
+        len(empty) / tests,
+        tuple(sorted(refs)),
+        f"{len(empty)} of {tests} observed test(s) contain no assertion: "
+        + (", ".join(empty) or "none")
+        + (
+            f"; {cut} test(s) cut by the excerpt line limit were not judged "
+            "(the last test of a clipped excerpt is not fully quoted)"
+            if cut
+            else ""
+        )
+        + "; "
+        + _TEST_AREA_METHOD,
+    )
+
+
+def _skipped_test_share(view: _PackView) -> _Computed:
+    tests = 0
+    hits: list[tuple[str, bool]] = []
+    refs: set[str] = set()
+    for excerpt, syntax in _code_test_excerpts(view):
+        text = excerpt.text
+        declared = [_line_of(text, start) for start in _declarations(text, view.tables)]
+        tests += len(declared)
+        if declared:
+            refs.add(excerpt.ref)
+        pattern = view.tables.skip_markers.get(PurePosixPath(excerpt.path).suffix)
+        if pattern is None:
+            continue
+        raw_lines = text.split("\n")
+        code = strip(text, syntax)
+        code_lines = code.split("\n")
+        kept_lines = strip(text, syntax, keep_strings=True).split("\n")
+        for match in pattern.finditer(code):
+            number = _line_of(code, match.start())
+            if _skip_declares_a_test(number, declared, raw_lines):
+                tests += 1
+            # a reason is a string literal on the marker's own line
+            reason = kept_lines[number - 1] != code_lines[number - 1]
+            line = excerpt.start_line + number - 1
+            hits.append((f"{excerpt.path}:{line}", reason))
+            refs.add(excerpt.ref)
+    if not tests:
+        return _no_tests("compare skip markers against")
+    with_reason = sum(1 for _where, reason in hits if reason)
+    return (
+        len(hits) / tests,
+        tuple(sorted(refs)),
+        f"{len(hits)} unconditional skip/disable marker(s) against {tests} "
+        f"observed test(s) ({with_reason} with a reason, "
+        f"{len(hits) - with_reason} without): "
+        + (
+            ", ".join(
+                where + (" (reason)" if reason else " (no reason)")
+                for where, reason in hits
+            )
+            or "none"
+        )
+        + "; conditional skips (skipif) are not markers; a marker annotates "
+        "the test declared on its line, or below it across lines of the same "
+        "attribute syntax (@..., #[...], [...]), or skips from inside the body "
+        "of a test declared less indented above it; any other marker declares "
+        "a skipped test itself (it.skip, xit) and is counted as one; "
+        + _TEST_AREA_METHOD,
+    )
+
+
+def _skip_declares_a_test(number: int, declared: list[int], lines: list[str]) -> bool:
+    """Whether the skip marker on line ``number`` is a test of its own."""
+    if number in declared:
+        return False
+    marker = lines[number - 1].strip()
+    below = [line for line in declared if line > number]
+    if below and marker[:1] and not _word_char(marker[0]):
+        between = [lines[i - 1].strip() for i in range(number + 1, below[0])]
+        if all(item[:1] == marker[0] for item in between):
+            return False
+    above = [line for line in declared if line < number]
+    if not above:
+        return True
+    return _indent_of(lines[number - 1]) <= _indent_of(lines[above[-1] - 1])
+
+
+def _word_char(char: str) -> bool:
+    return char.isalnum() or char == "_"
+
+
+def _indent_of(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def _network_calls_in_unit_tests_observed(view: _PackView) -> _Computed:
+    scanned = []
+    for excerpt, syntax in _code_test_excerpts(view):
+        segments = set(PurePosixPath(excerpt.path).parent.parts)
+        pattern = view.tables.network_calls.get(PurePosixPath(excerpt.path).suffix)
+        if pattern is not None and not segments & _ISOLATION_SEGMENTS:
+            scanned.append((excerpt, syntax, pattern))
+    if not scanned:
+        return MetricAbstention(
+            reason=(
+                "no unit-test excerpt of a registry language with network-call "
+                "tokens is in this pack (tests under an integration, e2e, "
+                "end-to-end or functional directory are not unit tests), so no "
+                "unit test was scanned; that is not the same as isolated tests"
+            )
+        )
+    hits: dict[tuple[str, int], str] = {}
+    for excerpt, syntax, pattern in scanned:
+        code = strip(excerpt.text, syntax)
+        for match in pattern.finditer(code):
+            line = excerpt.start_line + _line_of(code, match.start()) - 1
+            hits.setdefault((excerpt.path, line), excerpt.ref)
+    cited = sorted(set(hits.values())) or sorted({e.ref for e, _s, _p in scanned})
+    return (
+        len(hits),
+        tuple(cited),
+        f"{len(hits)} line(s) calling the network in {len(scanned)} unit-test "
+        "excerpt(s): "
+        + (", ".join(f"{path}:{line}" for path, line in sorted(hits)) or "none")
+        + "; network calls are the registry's network_calls tokens matched "
+        "after comments and strings are blanked; tests under integration, "
+        "e2e, end-to-end or functional directories are excluded; a lower "
+        "bound on the repository, since only these excerpts were read",
+    )
+
+
+_TYPE_ESCAPE_METHOD = (
+    "type escapes are the registry's type_escapes tokens (Any, type: ignore, "
+    "@ts-ignore, ...), matched in source-file excerpts of registry languages "
+    "after string literals are blanked (comments are kept, since most "
+    "escapes are comments); generated type stubs (the registry's "
+    "type_stub_names) are not read; per 1000 quoted source lines"
+)
+
+
+def _type_escapes_per_kloc(view: _PackView) -> _Computed:
+    lines = 0
+    hits: list[str] = []
+    refs: set[str] = set()
+    for excerpt in view.pack.excerpts:
+        path = PurePosixPath(excerpt.path)
+        pattern = view.tables.type_escapes.get(path.suffix)
+        syntax = view.tables.syntax.get(path.suffix)
+        if (
+            pattern is None
+            or syntax is None
+            or not _is_source_file(excerpt.path, view.tables)
+            or any(p.fullmatch(path.name) for p in view.tables.type_stub_patterns)
+        ):
+            continue
+        lines += _excerpt_lines(excerpt)
+        refs.add(excerpt.ref)
+        text = _strings_blanked(excerpt.text, syntax)
+        for match in pattern.finditer(text):
+            line = excerpt.start_line + _line_of(text, match.start()) - 1
+            hits.append(f"{excerpt.path}:{line}")
+    if not lines:
+        return MetricAbstention(
+            reason=(
+                "no source-file excerpt of a registry language with type-escape "
+                "tokens is in this pack, so no code was scanned; that is not the "
+                "same as code without escapes. " + _TYPE_ESCAPE_METHOD
+            )
+        )
+    return (
+        len(hits) / lines * 1000,
+        tuple(sorted(refs)),
+        f"{len(hits)} type escape(s) in {lines} quoted source line(s): "
+        + (", ".join(hits) or "none")
+        + "; "
+        + _TYPE_ESCAPE_METHOD,
+    )
+
+
+def _strings_blanked(text: str, syntax: LanguageSyntax) -> str:
+    """``text`` with string literals blanked and comments kept."""
+    code = strip(text, syntax)
+    without_comments = strip(text, syntax, keep_strings=True)
+    return "".join(
+        raw if kept != raw else blank
+        for raw, kept, blank in zip(text, without_comments, code, strict=True)
+    )
+
+
+_DEBT_MARKER = re.compile(r"\b(?:TODO|FIXME|XXX|HACK)\b")
+_TICKET_REF = re.compile(r"\b[A-Z][A-Z0-9]+-\d+\b|#\d+\b|https?://\S+")
+
+_TODO_METHOD = (
+    "debt markers are TODO, FIXME, XXX or HACK as whole words inside comments "
+    "(the registry's comment delimiters; a marker in a string is not a "
+    "comment); a marker has a ticket when its comment names a KEY-123 issue "
+    "key, a #123 reference or a URL; only source-file excerpts of registry "
+    "languages are read, so this describes the quoted code, not the repository"
+)
+
+
+def _todo_without_ticket_share(view: _PackView) -> _Computed:
+    markers: list[tuple[str, bool]] = []
+    refs: set[str] = set()
+    scanned = 0
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None or not _is_source_file(excerpt.path, view.tables):
+            continue
+        scanned += 1
+        kept = strip(excerpt.text, syntax, keep_strings=True)
+        comments = "".join(
+            raw if raw != other or raw == "\n" else " "
+            for raw, other in zip(excerpt.text, kept, strict=True)
+        )
+        for number, line in enumerate(comments.split("\n"), start=1):
+            if _DEBT_MARKER.search(line):
+                where = f"{excerpt.path}:{excerpt.start_line + number - 1}"
+                markers.append((where, bool(_TICKET_REF.search(line))))
+                refs.add(excerpt.ref)
+    if not markers:
+        return MetricAbstention(
+            reason=(
+                f"no debt marker was found in the comments of {scanned} "
+                "source-file excerpt(s), so the share has a zero denominator; "
+                "that is not a share of 0. " + _TODO_METHOD
+            )
+        )
+    without = [where for where, ticket in markers if not ticket]
+    return (
+        len(without) / len(markers),
+        tuple(sorted(refs)),
+        f"{len(without)} of {len(markers)} debt marker(s) name no ticket: "
+        + (", ".join(without) or "none")
+        + "; "
+        + _TODO_METHOD,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Backward compatibility (T055, area #5): read by the blast-radius dimension
+# from the diff of a changes scope into ``pack.compat``; each listed item is
+# a pack excerpt, so a count is shown only with all of its listed evidence.
+# ---------------------------------------------------------------------------
+
+
+def _compat_count(kind: str) -> Callable[[_PackView], _Computed]:
+    what = (
+        "removed or renamed public declaration(s)"
+        if kind == "symbols"
+        else "destructive migration operation(s)"
+    )
+
+    def compute(view: _PackView) -> _Computed:
+        pack = view.pack
+        facts = pack.compat
+        if pack.dimension != BLAST_RADIUS:
+            return MetricAbstention(
+                reason=(
+                    "only the blast-radius pack reads the diff of a change, and "
+                    f"this is the {pack.dimension!r} pack"
+                )
+            )
+        if facts is None:
+            why = (
+                "the changes scope could not be resolved (its ref was not "
+                "supplied), so there is no diff to read"
+                if pack.scope == "changes"
+                else f"this pack is at {pack.scope!r} scope, which carries no "
+                "diff; backward compatibility is read only from the diff of a "
+                "'changes' scope (a commit, range or branch)"
+            )
+            return MetricAbstention(reason=why)
+        if facts.unavailable:
+            return MetricAbstention(reason=facts.unavailable)
+        if facts.incomplete:
+            return MetricAbstention(
+                reason="the diff could not be read completely: " + facts.incomplete
+            )
+        items, total = (
+            (facts.removed_symbols, facts.removed_symbols_total)
+            if kind == "symbols"
+            else (facts.destructive_ops, facts.destructive_ops_total)
+        )
+        present = {e.ref for e in pack.excerpts}
+        dropped = [item.ref for item in items if item.ref not in present]
+        if dropped:
+            return MetricAbstention(
+                reason=(
+                    f"{len(dropped)} quoted diff line(s) the count rests on are not "
+                    "in this pack (the byte budget dropped them), so the count "
+                    "could not be shown with its evidence"
+                ),
+                omitted_lower_bound=len(dropped),
+            )
+        # The quoted lines when there are any; a count of 0 cites the changed
+        # files that were read, since it is a statement about them.
+        refs = {item.ref for item in items} or {
+            path for path in facts.examined if path in set(pack.files_read)
+        }
+        if not refs:
+            return MetricAbstention(
+                reason="no changed file of this diff could be read or quoted, so "
+                "there is no evidence to cite"
+            )
+        listed = ", ".join(f"{item.ref} {item.detail}" for item in items) or "none"
+        more = total - len(items)
+        renamed = (
+            f"; {len(facts.renamed_code_files)} code file(s) renamed, not counted "
+            "(whether a file path is public API depends on the language): "
+            + ", ".join(facts.renamed_code_files[:5])
+            if kind == "symbols" and facts.renamed_code_files
+            else ""
+        )
+        secret = (
+            f"; {len(facts.secret_excluded)} secret-bearing file(s) excluded: "
+            + ", ".join(facts.secret_excluded[:5])
+            + " (existence only; contents withheld and never parsed, DDR-0002)"
+            if facts.secret_excluded
+            else ""
+        )
+        return (
+            total,
+            tuple(sorted(refs)),
+            f"{total} {what} in the diff of {len(facts.examined)} changed "
+            f"file(s): {listed}"
+            + (f", and {more} more counted, not quoted" if more > 0 else "")
+            + renamed
+            + secret
+            + ". Method: "
+            + _COMPAT_METHOD,
+        )
+
+    return compute
+
+
+_COMPAT_METHOD = (
+    "textual, over the changes scope's diff (see the pack warning): removed "
+    "lines of non-test code starting with a registry public_declarations "
+    "token, unless the same name is declared again in the change; added "
+    "destructive operations in migration files outside down sections"
+)
+
+
+# ---------------------------------------------------------------------------
+# Documentation source of truth (T055, area #27): recorded by the
+# requirement-fidelity dimension in ``pack.doc_history``.
+# ---------------------------------------------------------------------------
+
+
+def _no_doc_history(view: _PackView) -> MetricAbstention | None:
+    pack = view.pack
+    if pack.dimension != REQUIREMENT_FIDELITY:
+        return MetricAbstention(
+            reason=(
+                "only the requirement-fidelity pack records documentation "
+                f"source-of-truth facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    if pack.doc_history is None:
+        return MetricAbstention(
+            reason=(
+                f"the {pack.scope} scope could not be resolved, so no "
+                "documentation facts were gathered"
+            )
+        )
+    return None
+
+
+def _requirements_docs_count(view: _PackView) -> _Computed:
+    absent = _no_doc_history(view)
+    if absent is not None:
+        return absent
+    facts = view.pack.doc_history
+    refs = [path for path in facts.requirements_docs if path in view.files]
+    if not facts.requirements_docs_total or not refs:
+        return MetricAbstention(
+            reason=(
+                "no readable file fills the requirements-doc role, so there is no "
+                "requirements source to count; the role's miss is in this pack's "
+                "sources_missing"
+            )
+        )
+    more = facts.requirements_docs_total - len(facts.requirements_docs)
+    return (
+        facts.requirements_docs_total,
+        tuple(sorted(refs)),
+        f"{facts.requirements_docs_total} file(s) fill the requirements-doc role "
+        "(PRD*.md or a document named for requirements, anywhere): "
+        + ", ".join(facts.requirements_docs)
+        + (f", and {more} more" if more > 0 else "")
+        + "; more than one is several competing requirements sources rather than "
+        "one canonical document",
+    )
+
+
+def _code_commits_with_docs_share(view: _PackView) -> _Computed:
+    absent = _no_doc_history(view)
+    if absent is not None:
+        return absent
+    facts = view.pack.doc_history
+    if facts.history_unavailable:
+        return MetricAbstention(reason=facts.history_unavailable)
+    if not facts.code_commits:
+        return MetricAbstention(
+            reason=(
+                f"none of the {facts.commits_scanned} non-merge local commit(s) "
+                f"read (window {facts.window}) changed a code file, so the share "
+                "has a zero denominator; that is not a share of 0"
+            )
+        )
+    cited = {*facts.docs_cited, *facts.requirements_docs}
+    refs = sorted(path for path in cited if path in view.files)
+    if not refs:
+        return MetricAbstention(
+            reason="no document of this pack was read, so there is no evidence "
+            "to cite beside the share"
+        )
+    return (
+        facts.code_commits_with_docs / facts.code_commits,
+        tuple(refs),
+        f"{facts.code_commits_with_docs} of {facts.code_commits} code-changing "
+        f"commit(s) also changed documentation, among the last "
+        f"{facts.commits_scanned} non-merge local commit(s) read (window "
+        f"{facts.window}); co-changed documents cited: "
+        + (", ".join(facts.docs_cited) or "none")
+        + "; code = a file the registry classifies as source or test code; "
+        "documentation = a .md/.rst/.adoc/.txt file or a file under doc/ or "
+        "docs/",
+    )
+
+
+_COOKIE_METHOD = (
+    "a cookie-setting statement is the registry's cookie_calls token (e.g. "
+    ".set_cookie(, res.cookie(, http.Cookie{) matched after comments and "
+    "strings are blanked, through the end of its statement; a flag counts as "
+    "set only when the language's cookie_secure / cookie_httponly / "
+    "cookie_samesite token (a literal true; SameSite with any value) occurs "
+    "inside that statement, so a flag set elsewhere (a later assignment, "
+    "framework configuration or a framework default) is not visible here and "
+    "counts as not set; only source-file excerpts of registry languages are "
+    "read, so this is a lower bound on the repository"
+)
+
+
+def _cookie_flags_missing_observed(view: _PackView) -> _Computed:
+    scanned = 0
+    sites: dict[tuple[str, int], tuple[tuple[str, ...] | None, str]] = {}
+    auth: dict[tuple[str, int], str] = {}
+    for excerpt in view.pack.excerpts:
+        suffix = PurePosixPath(excerpt.path).suffix
+        if suffix not in view.tables.cookie_calls or not _is_source_file(
+            excerpt.path, view.tables
+        ):
+            continue
+        scanned += 1
+        for line in auth_lines(excerpt.path, excerpt.text, view.tables):
+            auth.setdefault((excerpt.path, excerpt.start_line + line - 1), excerpt.ref)
+        for site in cookie_sites(excerpt.path, excerpt.text, view.tables):
+            key = (excerpt.path, excerpt.start_line + site.line - 1)
+            if sites.get(key, (None, ""))[0] is None:
+                sites[key] = (site.missing, excerpt.ref)
+    if not auth:
+        # The gate (user, 2026-09-29): cookie flags are judged only where
+        # authentication or session code was read, so a CLI or a library is
+        # never scored on cookies it has no reason to set.
+        return MetricAbstention(
+            reason=(
+                "no authentication or session code (a registry auth_markers "
+                f"token) was found in {scanned} source-file excerpt(s) of "
+                "registry languages with cookie tokens, so no cookie flag is "
+                "judged: this gate is never scored, and a repository without "
+                "such code (a CLI, a library) is not rated on cookies; "
+                + (
+                    f"{len(sites)} cookie-setting statement(s) were found "
+                    f"({_bounded_sites(sites)})"
+                    if sites
+                    else "no cookie-setting statement was found"
+                )
+                + "; auth tokens are matched after comments and strings are "
+                "blanked, in source files only (not tests). "
+                + _COOKIE_METHOD
+            )
+        )
+    gate = f"authentication or session code was read at {_bounded_sites(auth)}"
+    judged = {key: value for key, value in sites.items() if value[0] is not None}
+    cut = len(sites) - len(judged)
+    if not judged:
+        return MetricAbstention(
+            reason=(
+                f"no cookie-setting statement could be judged in {scanned} "
+                "source-file excerpt(s) of registry languages with cookie tokens"
+                + (
+                    f" ({cut} ran past the end of its excerpt)"
+                    if cut
+                    else ""
+                )
+                + ", so no cookie flag was checked; a cookie a framework sets "
+                "itself (a session middleware's default cookie) is not visible "
+                "in code; that is not the same as cookies with every flag set; "
+                + gate
+                + ". "
+                + _COOKIE_METHOD
+            )
+        )
+    lacking = {key: value for key, value in judged.items() if value[0]}
+    cited = lacking or judged
+    return (
+        len(lacking),
+        tuple(
+            sorted(
+                {ref for _missing, ref in cited.values()} | {auth[min(auth)]}
+            )
+        ),
+        f"{len(lacking)} of {len(judged)} cookie-setting statement(s) leave a "
+        "flag unset: "
+        + (
+            ", ".join(
+                f"{path}:{line} (no {', '.join(missing or ())})"
+                for (path, line), (missing, _ref) in sorted(lacking.items())
+            )
+            or "none"
+        )
+        + (
+            f"; {cut} statement(s) ran past their excerpt and were not judged"
+            if cut
+            else ""
+        )
+        + "; "
+        + gate
+        + "; "
+        + _COOKIE_METHOD,
+    )
+
+
+_MAX_LISTED = 5
+
+
+def _bounded_sites(sites: Mapping[tuple[str, int], object]) -> str:
+    """``path:line`` of the first :data:`_MAX_LISTED` sites, the rest counted."""
+    ordered = sorted(sites)
+    listed = ", ".join(f"{path}:{line}" for path, line in ordered[:_MAX_LISTED])
+    more = len(ordered) - _MAX_LISTED
+    return listed + (f" and {more} more" if more > 0 else "")
+
+
+_STRICT_METHOD = (
+    "a type-checker configuration is a registry type_config_files file (the "
+    "whole file, or in a shared file only its declared section, e.g. "
+    "pyproject.toml [tool.mypy]); strict mode counts as enabled when a "
+    "type_strict token (e.g. strict = true, \"strict\": true) occurs there, "
+    "outside comment lines, after the last type_strict_off token, else "
+    "through the files it extends (the last listed wins); a language counts "
+    "as strict when any of its configurations read is; strictness passed "
+    "as command-line flags (mypy --strict, tsc --strict) is not visible in "
+    "any file, so a repository without such a file abstains rather than "
+    "being rated; only "
+    "configuration files quoted in this pack are read"
+)
+
+_STATE_ORDER = ("strict", "off", "unset", "unseen")
+
+def _last_match(pattern: re.Pattern[str] | None, text: str) -> int:
+    """Offset of ``pattern``'s last match in ``text``; -1 for none."""
+    if pattern is None:
+        return -1
+    return max((match.start() for match in pattern.finditer(text)), default=-1)
+
+
+_CONFIG_COMMENTS = ("#", ";", "//", "/*", "*")
+"""Line-comment openers of the configuration formats type checkers read
+(INI, TOML, JSON with comments): format syntax, not a language's."""
+
+
+def _uncommented(text: str) -> str:
+    """``text`` with every comment line blanked, line count kept."""
+    return "\n".join(
+        "" if line.lstrip().startswith(_CONFIG_COMMENTS) else line
+        for line in text.split("\n")
+    )
+
+
+def _strict_type_config_missing(view: _PackView) -> _Computed:
+    tables = view.tables
+    by_path: dict[str, list[Excerpt]] = {}
+    for excerpt in view.pack.excerpts:
+        by_path.setdefault(excerpt.path, []).append(excerpt)
+
+    def decide(
+        language: str, texts: list[tuple[str, bool]]
+    ) -> tuple[str, tuple[str, ...]]:
+        """The merged strict state of one configuration's quoted texts, and
+        the files it extends."""
+        states = []
+        targets: tuple[str, ...] = ()
+        on = tables.type_strict.get(language)
+        off = tables.type_strict_off.get(language)
+        extends = tables.type_config_extends.get(language)
+        for quoted, clipped in texts:
+            text = _uncommented(quoted)
+            last_on = _last_match(on, text)
+            last_off = _last_match(off, text)
+            if last_on > last_off:
+                states.append("strict")
+            elif clipped:
+                states.append("unseen")
+            else:
+                states.append("off" if last_off >= 0 else "unset")
+            if extends is not None and not targets:
+                targets = extends_targets(text, extends)
+        return min(states, key=_STATE_ORDER.index), targets
+
+    unresolved: list[str] = []
+
+    def resolved(path: str, language: str, state: str, targets, seen) -> str:
+        if state != "unset":
+            return state
+        for target in reversed(targets):
+            base = next(
+                (c for c in resolve_extends(path, target) if c in by_path), None
+            )
+            if base is None or base in seen:
+                unresolved.append(f"{path} extends {target!r}")
+                return "unseen"
+            texts = [(e.text, excerpt_clipped(e.text)) for e in by_path[base]]
+            state, targets = decide(language, texts)
+            inherited = resolved(base, language, state, targets, seen | {base})
+            if inherited != "unset":
+                return inherited
+        return "unset"
+
+    # (language, path, header) -> (state, refs, cited span)
+    roots: dict[tuple[str, str, str | None], tuple[str, set[str], str]] = {}
+    extended: set[str] = set()
+    for path in sorted(by_path):
+        found: dict[tuple[str, str | None], list[tuple[str, bool, str, str]]] = {}
+        for excerpt in by_path[path]:
+            lines = excerpt.text.split("\n")
+            clipped = excerpt_clipped(excerpt.text)
+            for section in type_config_sections(path, excerpt.text, tables):
+                text = "\n".join(lines[section.line - 1 : section.end_line])
+                start = excerpt.start_line + section.line - 1
+                end = min(excerpt.end_line, excerpt.start_line + section.end_line - 1)
+                span = f"{path}:{start}-{end}" + (
+                    f" {section.header}" if section.header else ""
+                )
+                cut = clipped and section.end_line == len(lines)
+                found.setdefault((section.language, section.header), []).append(
+                    (text, cut, excerpt.ref, span)
+                )
+        for (language, header), parts in found.items():
+            state, targets = decide(language, [(t, c) for t, c, _r, _s in parts])
+            extended.update(
+                c for target in targets for c in resolve_extends(path, target)
+            )
+            state = resolved(path, language, state, targets, frozenset({path}))
+            roots[(language, path, header)] = (
+                state,
+                {ref for _t, _c, ref, _s in parts},
+                parts[0][3],
+            )
+
+    # A configuration another one extends is a base, not a project of its
+    # own: it counts only through its extenders (tsconfig.base.json).
+    read = sorted({path for _language, path, _header in roots})
+    roots = {key: value for key, value in roots.items() if key[1] not in extended}
+    if read and not roots:
+        return MetricAbstention(
+            reason=(
+                "every type-checker configuration read ("
+                + ", ".join(read[:_MAX_LISTED])
+                + ") is extended by another, a cycle no type checker accepts, "
+                "so strict mode cannot be judged. " + _STRICT_METHOD
+            )
+        )
+    languages: dict[str, str] = {}
+    for (language, _path, _header), (state, _refs, _span) in roots.items():
+        current = languages.get(language)
+        rank = {"strict": 0, "unseen": 1, "off": 2, "unset": 2}
+        if current is None or rank[state] < rank[current]:
+            languages[language] = state
+    judged = {lang: s for lang, s in languages.items() if s != "unseen"}
+    unseen = sorted(set(languages) - set(judged))
+    if not judged:
+        if not roots:
+            return MetricAbstention(
+                reason=(
+                    "no type-checker configuration was read, so strict mode "
+                    "cannot be judged: strictness may be set by command-line "
+                    "flags that no file shows, and a language without a type "
+                    "checker declares no configuration; that is not the same "
+                    "as a configuration without strict mode. " + _STRICT_METHOD
+                )
+            )
+        return MetricAbstention(
+            reason=(
+                "the type-checker configuration read for "
+                + ", ".join(unseen)
+                + " could not be judged: "
+                + (
+                    "; ".join(sorted(set(unresolved))[:_MAX_LISTED])
+                    + " (not read: a package, or a file outside this pack)"
+                    if unresolved
+                    else "its section runs past the end of its clipped excerpt"
+                )
+                + ". "
+                + _STRICT_METHOD
+            )
+        )
+    lacking = sorted(lang for lang, state in judged.items() if state != "strict")
+    cited = [
+        (key, value)
+        for key, value in sorted(
+            roots.items(), key=lambda item: (*item[0][:2], item[0][2] or "")
+        )
+        if key[0] in (lacking or judged)
+    ]
+
+    def spans(language: str) -> str:
+        return ", ".join(
+            f"{span} ({state})"
+            for (lang, _p, _h), (state, _r, span) in cited
+            if lang == language
+        )
+
+    return (
+        len(lacking),
+        tuple(sorted({ref for _key, (_s, refs, _span) in cited for ref in refs})),
+        f"{len(lacking)} of {len(judged)} language(s) with a type-checker "
+        "configuration read enable no strict mode: "
+        + ("; ".join(f"{lang}: {spans(lang)}" for lang in lacking) or "none")
+        + (
+            "; strict: " + ", ".join(sorted(set(judged) - set(lacking)))
+            if set(judged) - set(lacking)
+            else ""
+        )
+        + ("; not judged: " + ", ".join(unseen) if unseen else "")
+        + "; "
+        + _STRICT_METHOD,
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -541,13 +2243,166 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     MetricDefinition(
         "source_file_share", FAMILY_CODE_SHAPE, WHOLE_SET, _source_file_share
     ),
+    MetricDefinition(
+        "functions_over_ccn_10_share",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _functions_over_ccn_10_share,
+    ),
+    MetricDefinition(
+        "max_function_ccn", FAMILY_CODE_SHAPE, EVIDENCE_LOCAL, _max_function_ccn
+    ),
+    MetricDefinition(
+        "top_level_import_cycles",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _top_level_import_cycles,
+    ),
+    MetricDefinition(
+        "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
+    ),
+    MetricDefinition(
+        "sink_hits_observed",
+        FAMILY_SECURITY_SURFACE,
+        EVIDENCE_LOCAL,
+        _sink_hits_observed,
+    ),
+    MetricDefinition(
+        "source_files_without_covering_test_share",
+        FAMILY_TEST_STRENGTH,
+        WHOLE_SET,
+        _source_files_without_covering_test_share,
+    ),
+    MetricDefinition(
+        "lint_config_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("lint-config"),
+    ),
+    MetricDefinition(
+        "format_config_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("format-config"),
+    ),
+    MetricDefinition(
+        "lockfile_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("lockfile"),
+    ),
+    MetricDefinition(
+        "test_config_and_ci_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("test-config", "ci-workflow"),
+    ),
+    MetricDefinition(
+        "architecture_description_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("architecture-doc"),
+    ),
+    MetricDefinition(
+        "decision_records_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("decision-record"),
+    ),
+    MetricDefinition(
+        "acceptance_criteria_traced_to_code_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        # checks its own evidence is complete (see its compute function)
+        EVIDENCE_LOCAL,
+        _ac_traced_share("source"),
+    ),
+    MetricDefinition(
+        "acceptance_criteria_traced_to_test_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        # checks its own evidence is complete (see its compute function)
+        EVIDENCE_LOCAL,
+        _ac_traced_share("test"),
+    ),
+    MetricDefinition(
+        "changed_files_in_churn_hotspots_share",
+        FAMILY_CODE_SHAPE,
+        # checks its own evidence is complete (see its compute function)
+        EVIDENCE_LOCAL,
+        _changed_files_in_churn_hotspots_share,
+    ),
+    MetricDefinition(
+        "tests_without_assertions_share",
+        FAMILY_TEST_STRENGTH,
+        WHOLE_SET,
+        _tests_without_assertions_share,
+    ),
+    MetricDefinition(
+        "skipped_test_share", FAMILY_TEST_STRENGTH, WHOLE_SET, _skipped_test_share
+    ),
+    MetricDefinition(
+        "network_calls_in_unit_tests_observed",
+        FAMILY_TEST_STRENGTH,
+        EVIDENCE_LOCAL,
+        _network_calls_in_unit_tests_observed,
+    ),
+    MetricDefinition(
+        "type_escapes_per_kloc", FAMILY_CODE_SHAPE, WHOLE_SET, _type_escapes_per_kloc
+    ),
+    MetricDefinition(
+        "todo_without_ticket_share",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _todo_without_ticket_share,
+    ),
+    # T055: each checks its own evidence is complete (see its compute function)
+    MetricDefinition(
+        "public_symbols_removed",
+        FAMILY_CODE_SHAPE,
+        EVIDENCE_LOCAL,
+        _compat_count("symbols"),
+    ),
+    MetricDefinition(
+        "destructive_migration_ops",
+        FAMILY_CODE_SHAPE,
+        EVIDENCE_LOCAL,
+        _compat_count("ops"),
+    ),
+    MetricDefinition(
+        "requirements_docs_count",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _requirements_docs_count,
+    ),
+    MetricDefinition(
+        "code_commits_with_docs_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _code_commits_with_docs_share,
+    ),
+    MetricDefinition(
+        "cookie_flags_missing_observed",
+        FAMILY_SECURITY_SURFACE,
+        EVIDENCE_LOCAL,
+        _cookie_flags_missing_observed,
+    ),
+    MetricDefinition(
+        "strict_type_config_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _strict_type_config_missing,
+    ),
 )
 
 METRIC_NAMES: tuple[str, ...] = tuple(d.name for d in METRIC_DEFINITIONS)
 
 
-def compute_metrics(pack: EvidencePack | CombinedPack) -> MetricSet:
+def compute_metrics(
+    pack: EvidencePack | CombinedPack, tables: LanguageTables
+) -> MetricSet:
     """Compute every declared metric over ``pack``.
+
+    ``tables`` is the registry's language knowledge (:class:`LanguageTables`),
+    built by the caller; see ``core/metric_tables.py``.
 
     Accepts a single :class:`~easy_verifier.core.models.EvidencePack` or the
     :class:`~easy_verifier.core.models.CombinedPack` T012 produces; a combined
@@ -563,7 +2418,7 @@ def compute_metrics(pack: EvidencePack | CombinedPack) -> MetricSet:
 
     metrics: list[Metric] = []
     for dimension, evidence in packs:
-        view = _view(evidence)
+        view = _view(evidence, tables)
         truncated, omitted = _truncation_of(evidence)
         allowed = allowed_refs(evidence)
         for definition in METRIC_DEFINITIONS:
@@ -687,6 +2542,11 @@ def _excerpt_lines(excerpt: Excerpt) -> int:
 # residue on T019, to be closed by lifting these predicates into a pure module
 # both import.
 #
+# Since T031 the language tables it used (source suffixes, test names, test
+# candidates, the Go same-directory rule) come from the reference registry via
+# LanguageTables; the algorithm -- deepest directory segment wins, project
+# boundaries -- is unchanged.
+#
 # Everything below is string work over PurePosixPath. No path is resolved, no
 # file is opened, and nothing here touches the filesystem.
 # ---------------------------------------------------------------------------
@@ -708,36 +2568,6 @@ _TEST_DIR_SEGMENTS = frozenset({"test", "tests", "__tests__", "spec", "specs"})
 #: Nothing here special-cases a literal path.
 _SOURCE_DIR_SEGMENTS = frozenset(
     {"app", "cmd", "internal", "lib", "pkg", "source", "sources", "src"}
-)
-
-_TEST_NAME_PATTERNS = (
-    re.compile(r"^test_.+\.py$"),
-    re.compile(r"^.+_test\.py$"),
-    re.compile(r"^.+_test\.go$"),
-    re.compile(r"^.+_test\.rs$"),
-    re.compile(r"^.+_spec\.rb$"),
-    re.compile(r"^test_.+\.rb$"),
-    re.compile(r"^.+\.(test|spec)\.[cm]?[jt]sx?$"),
-    re.compile(r"^.+Test\.java$"),
-    re.compile(r"^Test.+\.java$"),
-    re.compile(r"^.+Tests?\.cs$"),
-)
-
-_SOURCE_SUFFIXES = frozenset(
-    {
-        ".cs",
-        ".go",
-        ".java",
-        ".js",
-        ".jsx",
-        ".kt",
-        ".php",
-        ".py",
-        ".rb",
-        ".rs",
-        ".ts",
-        ".tsx",
-    }
 )
 
 _MANIFEST_NAMES = frozenset(
@@ -779,7 +2609,7 @@ def _parent(path: str) -> str:
     return PurePosixPath(path).parent.as_posix()
 
 
-def _is_test_file(path: str) -> bool:
+def _is_test_file(path: str, tables: LanguageTables) -> bool:
     """True when ``path`` is a test file under :data:`_CLASSIFIED_BY`'s rule.
 
     Directory evidence first and deepest-wins, name evidence only as a
@@ -788,14 +2618,19 @@ def _is_test_file(path: str) -> bool:
     ``tests/data/sample.json`` is neither test nor source.
     """
     name = PurePosixPath(path).name
-    if PurePosixPath(name).suffix not in _SOURCE_SUFFIXES:
+    if PurePosixPath(name).suffix not in tables.source_suffixes:
         return False
+
+    # An unambiguous colocated test name (``app.spec.ts``, ``x_test.go``) is a
+    # test wherever it sits (T052); only ambiguous names defer to directories.
+    if any(pattern.match(name) for pattern in tables.colocated_test_patterns):
+        return True
 
     directory = _directory_evidence(path)
     if directory is not None:
         return directory
 
-    return any(pattern.match(name) for pattern in _TEST_NAME_PATTERNS)
+    return any(pattern.match(name) for pattern in tables.test_name_patterns)
 
 
 def _directory_evidence(path: str) -> bool | None:
@@ -814,13 +2649,15 @@ def _directory_evidence(path: str) -> bool | None:
     return None
 
 
-def _is_source_file(path: str) -> bool:
+def _is_source_file(path: str, tables: LanguageTables) -> bool:
     """A file the correspondence rule can be asked about: code, not a test."""
-    return PurePosixPath(path).suffix in _SOURCE_SUFFIXES and not _is_test_file(path)
+    return PurePosixPath(path).suffix in tables.source_suffixes and not _is_test_file(
+        path, tables
+    )
 
 
 def _correspondence(
-    files: tuple[str, ...], tests: tuple[str, ...]
+    files: tuple[str, ...], tests: tuple[str, ...], tables: LanguageTables
 ) -> tuple[dict[str, tuple[str, ...]], tuple[str, ...]]:
     """Map each source file to its conventionally named, project-local tests."""
     by_name: dict[str, list[str]] = {}
@@ -832,15 +2669,15 @@ def _correspondence(
     matched: dict[str, tuple[str, ...]] = {}
     unmatched: list[str] = []
     for source in files:
-        if not _is_source_file(source):
+        if not _is_source_file(source, tables):
             continue
         source_project = _project_boundary(source, boundaries)
         hits: list[str] = []
-        for name in _expected_test_names(source):
+        for name, same_directory in expected_test_names(source, tables):
             for test in by_name.get(name, ()):
                 if _project_boundary(test, boundaries) != source_project:
                     continue
-                if source.endswith(".go") and _parent(test) != _parent(source):
+                if same_directory and _parent(test) != _parent(source):
                     continue
                 hits.append(test)
         if hits:
@@ -884,62 +2721,41 @@ def _is_ancestor(candidate: str, directory: str) -> bool:
     return directory == candidate or directory.startswith(f"{candidate}/")
 
 
-def _expected_test_names(source: str) -> tuple[str, ...]:
+def expected_test_names(
+    source: str, tables: LanguageTables
+) -> tuple[tuple[str, bool], ...]:
+    """``(test base name, must share the source's directory)`` per template."""
     name = PurePosixPath(source).name
     stem = PurePosixPath(name).stem
     suffix = PurePosixPath(name).suffix
-
-    if suffix == ".py":
-        return (f"test_{stem}.py", f"{stem}_test.py")
-    if suffix == ".go":
-        return (f"{stem}_test.go",)
-    if suffix in {".js", ".jsx", ".ts", ".tsx"}:
-        return (
-            f"{stem}.test{suffix}",
-            f"{stem}.spec{suffix}",
-            f"{stem}_test{suffix}",
+    values = {"stem": stem, "ext": suffix}
+    return tuple(
+        (
+            _PLACEHOLDER.sub(
+                lambda match: values[match[1]], template.removeprefix("./")
+            ),
+            template.startswith("./"),
         )
-    if suffix == ".rb":
-        return (f"{stem}_spec.rb", f"test_{stem}.rb")
-    if suffix == ".java":
-        return (f"{stem}Test.java", f"Test{stem}.java")
-    if suffix == ".cs":
-        return (f"{stem}Test.cs", f"{stem}Tests.cs")
-    return ()
+        for template in tables.test_candidates.get(suffix, ())
+    )
+
+
+_PLACEHOLDER = re.compile(r"\{(stem|ext)\}")
 
 
 # ---------------------------------------------------------------------------
 # Textual assertion / test-declaration counting.
 #
 # Textual on purpose: nothing here parses or executes target code (NFR-007).
-# The recognised forms are listed explicitly, so a repository using a shape not
-# listed is *under*-counted rather than guessed at -- and both metrics that use
-# these say so in their derivation.
+# The recognised forms are the registry's, listed explicitly per language, so a
+# repository using a shape not listed is *under*-counted rather than guessed at
+# -- and both metrics that use these say so in their derivation.
 # ---------------------------------------------------------------------------
 
-_ASSERTION_PATTERN = re.compile(
-    r"(?:\bassert\b"  # python, java, js, rust (assert!)
-    r"|\bassert!"
-    r"|\bassert_[a-z_]+\b"  # rust assert_eq!, python unittest assert_called
-    r"|\bassert[A-Z]\w*"  # junit/xunit assertEquals, assertTrue
-    r"|\bexpect\s*\("  # jest, chai
-    r"|\.should\b"  # rspec, chai
-    r"|\bAssert\.\w+"  # xunit / nunit
-    r")"
-)
 
-_TEST_DECLARATION_PATTERNS = (
-    re.compile(r"^\s*(?:async\s+)?def\s+test\w*\s*\(", re.MULTILINE),
-    re.compile(r"^\s*func\s+Test\w*\s*\(", re.MULTILINE),
-    re.compile(r"^\s*(?:it|test)\s*\(\s*[\"'`]", re.MULTILINE),
-    re.compile(r"^\s*@Test\b", re.MULTILINE),
-    re.compile(r"^\s*#\[test\]", re.MULTILINE),
-)
+def _count_assertions(text: str, tables: LanguageTables) -> int:
+    return len(tables.assertions.findall(text))
 
 
-def _count_assertions(text: str) -> int:
-    return len(_ASSERTION_PATTERN.findall(text))
-
-
-def _count_test_functions(text: str) -> int:
-    return sum(len(pattern.findall(text)) for pattern in _TEST_DECLARATION_PATTERNS)
+def _count_test_functions(text: str, tables: LanguageTables) -> int:
+    return sum(len(pattern.findall(text)) for pattern in tables.test_declarations)

@@ -101,6 +101,60 @@ python -m easy_verifier.adapters.cli score --repo . --scope project
 Pass optional findings through `--findings PATH` or stdin to add the caller-derived assessments and
 rating-to-assessment divergences to the same JSON output.
 
+#### How each dimension is rated
+
+Full rule table (thresholds, weights, coverage floors, and the registry fields each rule reads):
+[`docs/SCORING_RULES.md`](docs/SCORING_RULES.md).
+
+Each dimension has its own rules, declared as data in `judge.RATING_RULES`. A rule compares one
+metric with a threshold. A met rule earns its weight and an unmet rule earns zero. The weights in
+each dimension add up to 100. A metric that abstains is left out of both the earned and the total
+weight, and if every metric abstains the dimension abstains (`all_metrics_abstained`). Each rule
+cites its **metric** source and its **threshold** source separately. `project-default` means the
+standard names the measure but publishes no number, so the number is ours. Every rating input in
+the `score` output carries `metric_citation`, `threshold_citation` and `source_tag` (`curated` for
+every rule shipped in the package), and the HTML report shows them as links.
+
+<!-- rating-rules:start -->
+| Dimension | Metric | Rule | Weight | Metric cites | Threshold cites |
+|---|---|---|---|---|---|
+| `architecture` | `architecture_description_missing` | ≤ 0 | 30 | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) |
+| `architecture` | `decision_records_missing` | ≤ 0 | 30 | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) | [ISO/IEC/IEEE 42010:2022 (architecture description)](https://www.iso.org/standard/74393.html) |
+| `architecture` | `top_level_import_cycles` | ≤ 0 | 40 | [Martin 1996, Granularity (Acyclic Dependencies Principle)](https://web.archive.org/web/2015/http://www.objectmentor.com/resources/articles/granularity.pdf) | [Martin 1996, Granularity (Acyclic Dependencies Principle)](https://web.archive.org/web/2015/http://www.objectmentor.com/resources/articles/granularity.pdf) |
+| `solution-fit` | — (no static rule: abstains as `no_static_rule`, rated only at the evaluate gate) | — | — | [ISO/IEC 25010:2023 (functional suitability)](https://www.iso.org/standard/78176.html) | — |
+| `requirement-fidelity` | `acceptance_criteria_traced_to_code_share` | ≥ 0.8 | 35 | [ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)](https://www.iso.org/standard/72089.html) | project-default |
+| `requirement-fidelity` | `acceptance_criteria_traced_to_test_share` | ≥ 0.8 | 35 | [ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)](https://www.iso.org/standard/72089.html) | project-default |
+| `requirement-fidelity` | `requirements_docs_count` | ≤ 1 | 15 | [ISO/IEC/IEEE 26514:2022 (design and development of information for users)](https://www.iso.org/standard/77451.html); [ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)](https://www.iso.org/standard/72089.html) | project-default |
+| `requirement-fidelity` | `code_commits_with_docs_share` | ≥ 0.3 | 15 | [ISO/IEC/IEEE 26514:2022 (design and development of information for users)](https://www.iso.org/standard/77451.html) | project-default |
+| `code-quality` | `functions_over_ccn_10_share` | ≤ 0.1 | 25 | [McCabe 1976, A Complexity Measure](https://doi.org/10.1109/TSE.1976.233837); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | [NIST SP 500-235 (Watson & McCabe 1996)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication500-235.pdf) |
+| `code-quality` | `max_function_ccn` | ≤ 15 | 15 | [McCabe 1976, A Complexity Measure](https://doi.org/10.1109/TSE.1976.233837); [NIST SP 500-235 (Watson & McCabe 1996)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication500-235.pdf) | [NIST SP 500-235 (15 with justification)](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication500-235.pdf) |
+| `code-quality` | `lint_config_missing` | ≤ 0 | 10 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `code-quality` | `format_config_missing` | ≤ 0 | 10 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `code-quality` | `type_escapes_per_kloc` | ≤ 5 | 15 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `code-quality` | `todo_without_ticket_share` | ≤ 0.5 | 15 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `code-quality` | `strict_type_config_missing` | ≤ 0 | 10 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html); [mypy configuration file, strict option](https://mypy.readthedocs.io/en/stable/config_file.html); [TypeScript TSConfig reference, strict](https://www.typescriptlang.org/tsconfig/#strict) | project-default |
+| `security` | `redaction_hits_observed` | ≤ 0 | 35 | [CWE-798 Use of Hard-coded Credentials](https://cwe.mitre.org/data/definitions/798.html); [OWASP ASVS 5.0.0 V13.3.1 (secrets management)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) | [OWASP ASVS 5.0.0 V13.3.1 (secrets management)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) |
+| `security` | `sink_hits_observed` | ≤ 0 | 35 | [CWE Top 25 (CWE-95, CWE-78, CWE-89)](https://cwe.mitre.org/top25/) | [CWE Top 25 (CWE-95, CWE-78, CWE-89)](https://cwe.mitre.org/top25/) |
+| `security` | `lockfile_missing` | ≤ 0 | 15 | [OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) | [OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) |
+| `security` | `cookie_flags_missing_observed` | ≤ 0 | 15 | [OWASP ASVS 5.0.0 V3.3 (cookie setup: V3.3.1 Secure, V3.3.2 SameSite, V3.3.4 HttpOnly)](https://github.com/OWASP/ASVS/blob/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json) | project-default |
+| `test-strategy` | `source_files_without_covering_test_share` | ≤ 0.2 | 25 | [ISO/IEC/IEEE 29119-4:2021 (test techniques, coverage)](https://www.iso.org/standard/79430.html) | project-default |
+| `test-strategy` | `assertion_density_per_test` | ≥ 1 | 20 | [Kudrjavets, Nagappan & Ball 2006, Assessing the Relationship between Software Assertions and Faults](https://doi.org/10.1109/ISSRE.2006.13) | project-default |
+| `test-strategy` | `test_config_and_ci_missing` | ≤ 0 | 20 | [ISO/IEC/IEEE 29119-2:2021 (test processes, test environment)](https://www.iso.org/standard/79428.html) | project-default |
+| `test-strategy` | `tests_without_assertions_share` | ≤ 0.1 | 15 | [ISO/IEC/IEEE 29119-4:2021 (test techniques, coverage)](https://www.iso.org/standard/79430.html); [Kudrjavets, Nagappan & Ball 2006, Assessing the Relationship between Software Assertions and Faults](https://doi.org/10.1109/ISSRE.2006.13) | project-default |
+| `test-strategy` | `skipped_test_share` | ≤ 0.05 | 10 | [ISO/IEC/IEEE 29119-2:2021 (test processes, test environment)](https://www.iso.org/standard/79428.html) | project-default |
+| `test-strategy` | `network_calls_in_unit_tests_observed` | ≤ 0 | 10 | [ISO/IEC/IEEE 29119-2:2021 (test processes, test environment)](https://www.iso.org/standard/79428.html) | project-default |
+| `blast-radius` | `max_fan_in_changed` | ≤ 20 | 35 | [Henry & Kafura 1981, Software Structure Metrics Based on Information Flow](https://doi.org/10.1109/TSE.1981.231113) | project-default |
+| `blast-radius` | `changed_files_in_churn_hotspots_share` | ≤ 0.2 | 35 | [Nagappan & Ball 2005, Use of Relative Code Churn Measures to Predict System Defect Density](https://doi.org/10.1145/1062455.1062514) | project-default |
+| `blast-radius` | `public_symbols_removed` | ≤ 0 | 15 | [Semantic Versioning 2.0.0 (backward-incompatible public API changes)](https://semver.org/spec/v2.0.0.html) | project-default |
+| `blast-radius` | `destructive_migration_ops` | ≤ 0 | 15 | [Semantic Versioning 2.0.0 (backward-incompatible public API changes)](https://semver.org/spec/v2.0.0.html); [Fowler, Parallel Change (expand and contract)](https://martinfowler.com/bliki/ParallelChange.html) | project-default |
+<!-- rating-rules:end -->
+
+The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
+file read, else 0. On a truncated pack an unfilled role abstains, because the budget may have
+dropped the file. The requirement-fidelity metrics and `changed_files_in_churn_hotspots_share`
+cannot be derived from a read-only pack, so they always abstain with a stated reason. That makes
+requirement-fidelity and project-scope blast-radius abstain and go to the evaluate gate.
+
 #### Source roles — any language, no configuration required
 
 Each dimension seeks **source roles** rather than exact filenames: a `lockfile`, a
@@ -144,7 +198,7 @@ and HTML report carries a sources provenance line: `rules`, `rules + config`, or
 exact filenames.
 
 **Hard gates (MCP `score` only).** The CLI never asks. Over MCP, `score` may return `needs_input`
-with at most one question per response, and at most two extra rounds:
+with at most one of picks or gate evaluations per response, and at most two extra rounds:
 
 1. `needs_input.picks`: some roles are unfilled but the repository has candidate files.
 2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
@@ -152,6 +206,13 @@ with at most one question per response, and at most two extra rounds:
    dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
    within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
    borderline). Only reference ids are listed, at most 20 per dimension.
+3. `needs_input.reference` rides along with either question and adds no round. It lists only
+   the registry fields the rules read that a language or framework in `detected_stack` lacks
+   (`{language | framework + extends, field, why}`; frameworks are asked only test naming, test
+   declarations, assertions and security sinks; optional fields never), at most 20 per call, languages first, plus
+   an `omitted` count. Its fixed instructions: at most 2 lookups per field, official docs first,
+   a clear https link; otherwise ask the user one question at a time with a recommended answer
+   and submit it as `user-supplied`. Answers return as `registry_entries`.
 
 A valid evaluation cites at least one ref from that dimension's pack. It blends into the rules
 rating R with `w = 0.5 × confidence`, so `final = R·(1−w) + A·w`, rounded half up. If the rules
@@ -182,6 +243,11 @@ manage: your MCP client starts the server on demand. An HTTP/SSE opt-in exists, 
 
 Setup for Claude Code, Claude Desktop, Cursor, and other clients:
 [`docs/LOCAL_MCP_GUIDE.md`](docs/LOCAL_MCP_GUIDE.md).
+
+How a scoring session runs, round by round (diagram):
+[`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md).
+The rules, thresholds, weights, and registry fields behind every rating:
+[`docs/SCORING_RULES.md`](docs/SCORING_RULES.md).
 
 ### Docker — read-only target, writable reports only
 
@@ -220,6 +286,16 @@ at itself). Nothing is overwritten; filenames are unique per scope and timestamp
 Each full seven-dimension report includes a score panel with the rule-based rating, optional caller
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
 an abstention with its coverage boundary, never as zero or a low score.
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [`docs/LOCAL_MCP_GUIDE.md`](docs/LOCAL_MCP_GUIDE.md) | Install locally and register the stdio MCP server with Claude Code, Claude Desktop, Cursor |
+| [`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md) | Run the hardened container as an MCP server, one registration for every repository, troubleshooting |
+| [`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md) | Round-by-round flow of an MCP scoring session (diagram) |
+| [`docs/SCORING_RULES.md`](docs/SCORING_RULES.md) | Every rating rule: threshold, weight, coverage floor, registry fields read |
+| [`docs/RELEASE_GUIDE.md`](docs/RELEASE_GUIDE.md) | Release process |
 
 ## License
 

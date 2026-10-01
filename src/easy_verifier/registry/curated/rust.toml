@@ -1,0 +1,197 @@
+# Rust — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["Cargo.toml"]
+citation_url = "https://doc.rust-lang.org/cargo/reference/manifest.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Cargo.toml"]
+citation_url = "https://doc.rust-lang.org/cargo/reference/manifest.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/clippy.toml", "**/.clippy.toml"]
+citation_url = "https://doc.rust-lang.org/clippy/configuration.html"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/rustfmt.toml", "**/.rustfmt.toml"]
+citation_url = "https://rust-lang.github.io/rustfmt/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/Cargo.toml"]
+citation_url = "https://doc.rust-lang.org/cargo/commands/cargo-test.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/.config/nextest.toml"]
+citation_url = "https://nexte.st/"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".rs"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*_test.rs"]
+citation_url = "https://doc.rust-lang.org/book/ch11-03-test-organization.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["#[test]"]
+citation_url = "https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert"]
+citation_url = "https://doc.rust-lang.org/std/macro.assert.html"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert_?*"]
+citation_url = "https://doc.rust-lang.org/std/macro.assert_eq.html"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/if-expr.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for", "while"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/loop-expr.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["=>"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/match-expr.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://doc.rust-lang.org/reference/expressions/operator-expr.html#lazy-boolean-operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://doc.rust-lang.org/reference/comments.html"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\""]
+citation_url = "https://doc.rust-lang.org/reference/tokens.html#string-literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["fn"]
+citation_url = "https://doc.rust-lang.org/reference/items/functions.html"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["use"]
+citation_url = "https://doc.rust-lang.org/reference/items/use-declarations.html"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["Command::new ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".execute ( & format! (", ".query ( & format! (", "sqlx::query ( & format! (", "sql_query ( format! ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["actix-web=actix-web"]
+citation_url = "https://actix.rs/docs/getting-started/"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["#[ignore"]
+citation_url = "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["reqwest::get (", "reqwest::Client", "reqwest::blocking::get ("]
+citation_url = "https://docs.rs/reqwest/latest/reqwest/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["TcpStream::connect ("]
+citation_url = "https://doc.rust-lang.org/std/net/struct.TcpStream.html#method.connect"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["unsafe {"]
+citation_url = "https://doc.rust-lang.org/reference/unsafe-keyword.html"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["mem::transmute"]
+citation_url = "https://doc.rust-lang.org/std/mem/fn.transmute.html"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["pub fn", "pub async fn", "pub const fn", "pub unsafe fn", "pub struct", "pub enum", "pub trait", "pub type", "pub const", "pub static", "pub mod", "pub union"]
+citation_url = "https://doc.rust-lang.org/reference/visibility-and-privacy.html"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["Cookie::build ("]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = [".secure ( true"]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = [".http_only ( true"]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = [".same_site ("]
+citation_url = "https://docs.rs/cookie/latest/cookie/struct.CookieBuilder.html"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["SessionMiddleware", "session.insert ("]
+citation_url = "https://docs.rs/actix-session/latest/actix_session/"
+source_tag = "curated"

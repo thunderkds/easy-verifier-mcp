@@ -49,5 +49,7 @@
     "omitted_count": 0,
     "truncated": false
   },
-  "warnings": []
+  "warnings": [],
+  "trace_search": null,
+  "reach": null
 }

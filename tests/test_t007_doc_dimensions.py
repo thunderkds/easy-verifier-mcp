@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.core.context import MODE_KIT_AWARE, MODE_STANDALONE
-from easy_verifier.core.models import EvidencePack
+from easy_verifier.core.models import EvidencePack, to_json_dict
 from easy_verifier.core.pipeline import run_dimension
 from easy_verifier.dimensions import (
     architecture,
@@ -72,8 +72,18 @@ def test_standalone_docs_prevent_code_fallback(tmp_path: Path, module) -> None:
 
     pack = run_dimension(module.DESCRIPTOR, tmp_path)
 
-    assert pack.files_read == ("README.md",)
-    assert {excerpt.path for excerpt in pack.excerpts} == {"README.md"}
+    # T050: code-quality and architecture read in-scope source once more, in
+    # their own trailing code tier (a function / its import lines); the doc
+    # fallback firing would read it a second time or quote it whole.
+    code_tier = module.NAME in ("code-quality", "architecture")
+    assert pack.files_read == (
+        ("README.md", "implementation.py") if code_tier else ("README.md",)
+    )
+    assert {excerpt.ref for excerpt in pack.excerpts} == (
+        {"README.md:1-1", "implementation.py:1-2"}
+        if module.NAME == "code-quality"
+        else {"README.md:1-1"}
+    )
 
 
 def test_standalone_code_discovery_is_bounded(tmp_path: Path) -> None:
@@ -241,7 +251,9 @@ def test_architecture_pack_matches_pre_refactor_snapshot(tmp_path: Path) -> None
         Path(__file__).resolve().parent / "snapshots" / "architecture_pack.json"
     )
     expected = json.loads(snapshot_path.read_text(encoding="utf-8"))
-    actual = json.loads(json.dumps(dataclasses.asdict(pack)))
+    # T055: the adapters' serializer; the snapshot predates T055, so this also
+    # proves unused new pack facts leave the JSON byte-identical (DDR-0005).
+    actual = json.loads(json.dumps(to_json_dict(pack)))
 
     assert actual == expected
 

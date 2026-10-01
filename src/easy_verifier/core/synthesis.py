@@ -34,7 +34,7 @@ from .pipeline import (
     RepoPathError,
     run_dimension,
 )
-from .roles import validate_agent_input
+from .roles import apply_registry_entries, parse_agent_input, validate_agent_input
 
 BUDGET_MODEL = "per-dimension"
 
@@ -93,6 +93,10 @@ def combined_pack(
         if agent_input is not None
         else None
     )
+    # Validated registry entries are saved and the registry reloaded before
+    # any dimension runs, so this call already uses them (T036).
+    if agent_input is not None:
+        apply_registry_entries(parse_agent_input(agent_input), repo_path)
 
     # Canonical, deterministic order regardless of the order requested (AC #10).
     ordered_names = tuple(name for name in available_names if name in requested)

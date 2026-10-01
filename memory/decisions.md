@@ -709,3 +709,242 @@ After T026 moved coverage to roles (3,2,3,3,7,4,4 roles per dimension), the user
 `judge.COVERAGE_FLOORS` unchanged ("keep the thresholds as is"), despite structural caps
 (security max 5/7 roles, test-strategy 3/4, blast-radius project-scope 2/4). Also: threshold 0 is
 never borderline for the evaluate gate (Supervisor decision at T028 Stage 4; FR-036 amended).
+
+## 2026-09-28 — PROPOSED: cited reference registry as the scoring source of truth (user, pre-Stage 0.5)
+
+**Status: proposed, not locked.** Direction agreed in conversation with the user and carried into
+Stage 0.5 (`grill-with-docs mode=requirement` → `brainstorming`). Becomes a DDR + PRD amendment
+only after grilling locks it. Not yet a task.
+
+**Trigger.** User asked which methodology/standard the score rests on ("like Pythagoras for the
+number"). Answer on record: **none**. `judge.RATING_RULES` (11 binary threshold rules, weights sum
+100) and `judge.COVERAGE_FLOORS` are our own declared choices; `PRD.md`, `PROJECT_SPEC.md`,
+`memory/decisions.md` and `docs/` cite no external standard (grep for ISO 25010/5055, OWASP, CWE,
+SQALE, CISQ, McCabe: zero hits). Scores are reproducible and auditable but not validated. The
+method most resembles GQM + an OpenSSF-Scorecard-style weighted checklist, uncited.
+Also noted: the same 11 rules apply to all seven dimensions — dimensions differ only by coverage
+floor and gathered evidence, so the rating mostly measures test discipline, secret hygiene and
+evidence volume, not dimension-specific quality.
+
+**Candidate standards per dimension (discussed, not chosen):**
+architecture → ISO/IEC/IEEE 42010 + Martin package metrics (instability, abstractness, distance,
+cycles); solution-fit → ISO/IEC 25010 functional suitability; requirement-fidelity → ISO/IEC/IEEE
+29148 + bidirectional traceability (AC → code + test); code-quality → ISO/IEC 5055 (CISQ), McCabe
+≤10 (NIST SP 500-235), cognitive complexity, SQALE; security → OWASP ASVS, CWE Top 25, ISO 5055
+security measures; test-strategy → ISO/IEC/IEEE 29119, test pyramid, assertion density
+(Kudrjavets et al. 2006); blast-radius → change impact analysis (Bohner & Arnold), fan-in/fan-out
+(Henry & Kafura), relative churn (Nagappan & Ball 2005). ISO 5055 is the strongest single anchor
+(built for automated static measurement). Line/branch coverage and mutation testing are
+**infeasible** — they need target-code execution, which is forbidden.
+
+**Language-pattern inconsistency found (code read, not yet reproduced by a run):** three
+separate tables disagree — `core/roles.py` ECOSYSTEM_PATTERNS (Python, JS/TS, Rust, Java + generic),
+`core/metrics.py` `_SOURCE_SUFFIXES` (12 extensions), and `metrics.py` test-name / test-declaration /
+assertion regexes (partial Py/Go/JS/Java/Rust/Ruby/C#). Concrete gaps:
+- Kotlin, PHP counted as source but `_candidate_test_names` returns `()` → every source file
+  "without covering test" → the 15-weight rule fails even in a well-tested repo.
+- Idiomatic Go (`t.Errorf`, no `assert`) → 0 assertions → assertion-density rule fails
+  (testify is fine).
+- RSpec `it "x" do` (no paren) and C# `[Fact]`/`[Test]` not matched as test declarations.
+- C/C++/Swift/Scala/Elixir/Dart not in `_SOURCE_SUFFIXES` → test ratio abstains.
+- security dimension = secret/redaction only; no injection/CWE patterns in any language.
+
+**Agreed direction (user):**
+1. **One reference registry** — per language/tech, every pattern in one place (manifests, source
+   extensions, test naming, test declaration, assertion syntax, lint/format config), each field
+   with a citation. Every rule cites a standard.
+2. **Pre-evaluate hard gate (MCP-only), a third gate beside detect/evaluate.** The **engine**
+   detects the stack deterministically (e.g. `package.json` → Node.js) — the LLM does NOT detect,
+   or the same repo could get a different stack per run. Engine checks the registry; missing fields
+   → `needs_input` before scoring. The calling LLM supplies them from official docs or its own
+   research session (engine has no network), submitted as cited, `agent-proposed` entries, saved
+   add-only (like `.easy-verifier.toml`), replayable via CLI `--agent-input`. Engine still computes
+   the score; the LLM supplies reference data only. NFR-001 holds.
+3. **Token discipline (user: "do not overwhelm the research, it will waste the token").** Request
+   only fields the existing rules consume; only the ones missing (never "research Node.js");
+   capped fields per request (like detect's ≤20 picks); filled once and reused across runs/repos.
+4. **No RAG.** User proposed RAG / an online database; Supervisor pushed back: lookups are exact-key,
+   not semantic; a vector DB or live DB breaks "no outbound network" and "no model in the engine".
+   Instead **vendor structured sources offline at build time, version-pinned**: GitHub Linguist
+   `languages.yml` (extensions/filenames — closes Kotlin/C++/Swift gaps with zero LLM research),
+   OWASP ASVS JSON, MITRE CWE XML, Semgrep rules (LGPL — licence check), OpenSSF Scorecard checks.
+   The LLM may research online only for what these do not cover.
+5. **Guardrails against invented standards/thresholds.** Agent-proposed entries must carry a
+   citation and `agent-proposed` provenance; until human-approved their rules get capped weight or
+   abstain-only; the curated registry always wins (agent adds, never overrides).
+6. **Do not overwhelm the tech stacks (user).** Scope the registry to the languages already in play
+   (Python, JS/TS/Node, Rust, Java, plus those the metrics table already names: Go, Kotlin, C#, Ruby,
+   PHP). No "support 500 languages" goal — Linguist is a data source, not a support promise.
+   Anything else stays on generic patterns + the pre-evaluate gate.
+
+Open for Stage 0.5: registry file format and location; which standard per dimension actually
+changes a rule vs. is a citation only; whether rules become per-dimension (vs. today's shared 11);
+approval workflow for agent-proposed entries; vendoring script + licence review; interaction with
+unchanged COVERAGE_FLOORS (2026-09-26 decision); T029 redact.py false positive is a prerequisite.
+
+### 2026-09-28 — Stage 0.5 grilling, locked answers (registry proposal)
+
+- **G1 Scope: complete design now.** User: "currently, we are implementation, not using this for
+  now. So I think we should complete all the idea for now." → registry **and** per-dimension
+  standard-backed rules in one design; no backward-compatibility constraint on scores (no users yet).
+- **G2 Storage: inside the verifier.** User: "create the folder in the local verifier."
+  `registry/curated/` (shipped with the verifier, changes only on a release) + `registry/local/`
+  (LLM-researched on this machine, git-ignored, reused across all repos → research once).
+  Implications to carry into PRD: README "never write into this repo" gains one exception for
+  `registry/local/` (NFR-007 on the target repo unchanged); Docker needs a volume for
+  `registry/local/` or research is lost per run; each report embeds the registry entries it used so
+  `--agent-input` replay reproduces the score on another machine.
+- **G3 No manual copy/promotion.** User rejected "copy by hand to curated". Replaced by a **user
+  review gate**: LLM shows the researched entry → user answers *good* (→ approved) / *needs
+  improvement* (→ LLM re-researches with the comment, asks again) / *reject* (→ entry deleted, its
+  rules abstain). Asked once per entry; answer remembered.
+- **G4 Pending entries score immediately.** User: "just scored by your research first, and we can
+  use the flag, tag or anything to show that score depend on any resource." → no abstention while
+  pending; every rule input carries a **source tag**: `curated` / `agent-researched (unreviewed)` /
+  `agent-researched (user-approved)`, plus its citation, visible in `score` output and the report.
+  Supersedes the earlier "capped weight until approved" guardrail idea.
+- **G5 Curated standards per dimension (user chose the recommended set).** code-quality: ISO/IEC
+  5055 + McCabe ≤10 (NIST SP 500-235); security: OWASP ASVS + CWE Top 25; test-strategy: ISO/IEC/IEEE
+  29119 + assertion density; architecture: ISO/IEC/IEEE 42010 + Martin package metrics;
+  requirement-fidelity: ISO/IEC/IEEE 29148 traceability (AC → code + test); solution-fit: ISO/IEC
+  25010 functional suitability; blast-radius: fan-in/fan-out (Henry & Kafura) + relative churn
+  (Nagappan & Ball). Selection criterion: measurable by reading code only (no execution).
+- **G6 Curated languages at ship time (user chose recommended): 9** — Python, JS/TS (Node), Rust,
+  Java, Go, Kotlin, C#, Ruby, PHP (every language the code already half-supports). Linguist data
+  only supplies file extensions for others — data, not a support promise. Others: generic patterns +
+  on-demand LLM research.
+- **G7 Granularity: language + framework (user chose over the recommended language-only).** Separate
+  entries for frameworks (React, Django, Spring…). Overwhelm risk noted by Supervisor: entries and
+  research multiply — bounding rule to be settled in G8.
+- **G8 Frameworks on demand only (user chose recommended).** Curated ships the 9 languages only. A
+  framework entry exists only when the engine detects the framework in a repo manifest (e.g.
+  `"react"` in `package.json` dependencies) → researched once, missing fields only, reused after.
+  A framework entry only **adds** to its language entry, never replaces it.
+- **G9 Research is bounded; fall back to asking the user (user).** User: "we should have limitation
+  about researching, don't prefer the search to take long time to complete; if can not search, ask
+  the users to identify what they are working on. Like the grill skill." → per score call at most
+  **20 missing fields**, language fields before framework fields, with a short effort/time bound;
+  anything left waits for the next call (generic patterns meanwhile, labelled). If the LLM cannot
+  find a field quickly, it stops researching and asks the user **one question at a time**,
+  grill-style, with a recommended answer; the user's answer becomes the entry, tagged
+  `user-supplied`. Exact time/effort bound → brainstorming.
+
+### 2026-09-28 — Stage 0.5 brainstorming, locked (registry proposal) → BRAINSTORMING_LOG_reference-registry.md
+
+- **B1 Structure measured by registry-driven tokens** (user chose A over lizard / tree-sitter): each
+  language entry declares branch keywords, comment/string delimiters, function-start and import
+  syntax; engine computes lizard-style approximate CCN and import-based fan-in. No new dependency.
+- **B2 Research bound: ≤2 lookups per field**, official docs first, else ask the user. User: "please
+  note that we will refer to the link to evaluate, look like the clear source" → every field cites a
+  clear https link to the primary source, shown beside the rule; engine validates presence +
+  well-formed URL only (no network, cannot fetch).
+- **B3 Vendored sources: Linguist (MIT), OWASP ASVS (CC BY-SA 4.0), MITRE CWE.** No Semgrep
+  (2023 licence restricts reuse; unverified detail, rejected on risk). Per-language sink patterns
+  are ours, each citing CWE/ASVS.
+- **B4 Local registry at `~/.easy-verifier-sot/`** (override `EASY_VERIFIER_SOT`). User: "easy-verifier-sot
+  for the right purpose." Reason: site-packages not writable, image `read_only` + `network_mode: none`.
+  Docker bind-mounts the same host folder → CLI and MCP share research. **Supersedes G2's
+  `registry/local/` path** and removes the need for a README "never write into this repo" exception.
+  `registry/curated/` stays in the package, read-only.
+- **B5 Per-dimension rule table approved as proposed** (log section "Proposed per-dimension rules").
+  Metric citation and threshold citation are separate; thresholds no standard publishes are tagged
+  `project-default`. solution-fit has no rule → abstains by design → FR-036 evaluate gate.
+  Martin abstractness/distance dropped (not reliable with tokens).
+- Path chosen: **Option A — data registry (TOML) + token metrics.** Prerequisite: T029.
+
+### 2026-09-28 — 32 evaluation areas (user list) → BRAINSTORMING_LOG_evaluation-areas.md
+
+User supplied 32 evaluation areas (architecture direction … business continuity) to apply the
+registry criteria to. Classified S (static rule, ~16) / mixed (~11) / G (gate) / X (not verifiable
+from a repo, ~7: incident response, BAA/vendor, capacity/cost, DR restore, BCP, parts of
+auth/PHI/observability/deps/Terraform drift).
+- **E1 Domain: optional packs (user chose recommended).** Verifier stays general-purpose;
+  healthcare (PHI #9, BAA/residency #28), finance (#3) and frontend a11y (#19) are packs active only
+  when detected or configured — a detect-gate pick or `.easy-verifier.toml`, never guessed.
+- **E2 Structure: Option B (user chose recommended).** 13 dimensions = 7 existing + 6 new (data,
+  api, reliability, infrastructure, supply-chain, operations). Each of the 32 areas is a named
+  **rule group** inside one dimension (mapping table in the log), so all 32 labels appear in reports.
+  New dimensions need their own coverage floors (2026-09-26 "keep floors" covers the existing 7 only).
+- **E3 Unverifiable (X) areas: "documentation present/missing" (user chose recommended).** One shared
+  rule type, cited file when present, **never a quality score**; kept visible so all 32 labels show.
+
+## 2026-09-28 — DEFERRED: TypeSafe AI "Jev" (System One model) — investigate after Waves 10–11
+
+User asked to evaluate integrating Jev (https://typesafe.ai/blog/introducing-system-one-models-and-jev)
+to make source-of-truth research faster. Findings (from the announcement only, unverified):
+cloud API, early access (console.typesafe.ai); text-described state in → typed choice + calibrated
+probability out; claims 70–500 ms, $0.042/MTok input, output free; **cannot generate strings**;
+choice cardinality ≤255; vendor admits its eval gains are "higher end of real world".
+
+**Not adopted into the engine**: breaks NFR-001 (no model call) and no-network container; cannot
+produce registry values or citation links, so it cannot do SOT research; ships repo content to a
+third party (PHI risk with the healthcare pack).
+
+**Possible fit (agent side only, optional tool for the calling agent)**: detect-gate picks (≤20
+candidates), optional-pack selection, pre-screening whether a researched citation link looks like
+an official source before the user review gate; its calibrated confidence maps to FR-037
+`confidence`.
+
+**Revisit trigger (user, 2026-09-28): after all current tasks (T029–T049) are done.** Plan then: with
+early access, run a small agent-side experiment comparing Jev vs the LLM on detect-gate picks
+(accuracy + latency on kitchd/bryony/ai-training); adopt only as a documented optional agent tool if
+it clearly wins. No engine change either way.
+
+### 2026-09-28 — T035 sign-off (user)
+
+- User signed off the new per-dimension cited rules ('Merge + fix tasks') after seeing the 4-repo before/after table and three caveats (4/7 contributors, security noise, test-strategy presence-driven). Follow-ups T051 (redaction false positives, P0/High) and T052 (AC tracing + churn evidence, P1) added.
+
+### 2026-09-29 — T038 reject semantics (user)
+
+- **Problem**: AC3 says "reject → entry deleted, its rules abstain", but a missing field already scores with generic patterns (FR-045), so deleting the entry alone never abstains. An abstention driven only by local state would also break replay parity (DDR-0005).
+- **Decision: Option A, remembered rejection.** Reject removes the value and writes a `[[rejected.<field>]]` record in the local `<name>.toml`. While that record exists and no other curated/local data covers the field, the metrics that use it abstain with a reason naming `<lang>.<field>` as rejected by the user. The reference gate re-asks, and a new entry clears the record. The record is embedded in score `registry_entries` and accepted on replay as a `review_status: "rejected"` item, so replay stays byte-equal.
+- **Rejected alternatives**: B, abstain only on the call that carries the reject (the abstention disappears one call later); C, delete only (contradicts AC3/SC2).
+- **Also accepted**: entry id = `<name>.<field>.<12-hex sha256(value+citation_url+cwe)>`. T036 entries with no status load as `pending`. User-supplied entries keep the `user-supplied` tag on approval. Registry input accepts the `agent-researched (user-approved)` tag for replay. Improve keeps the entry pending, and at `improve_rounds>=2` the agent asks the user directly. An identical resubmit keeps its status. An unknown review id is ignored with a note in `registry_notes`. Scope widened to judge.py, metric_tables.py, score.py, adapters/mcp_server.py, and possibly synthesis.py.
+
+### 2026-09-29 — T038/T039 Stage 4 decisions (user)
+
+- **T039: dimensions made only of documentation rules are never offered to the agent evaluate gate** (E3, "never scored"). A `documentation_only` abstention stays an abstention. A supplied `gate_evaluations` entry for such a dimension is refused instead of producing a number.
+- **T039: the agent's area labels for the 17 existing rules are accepted.** T040 may revise them. The Requirement Fidelity Gate was signed off on this basis. `lockfile_missing` → "Dependencies, vulns, licenses, obsolescence", not appsec.
+- **T038 P3: `improve_rounds` is capped at 100.** Uncapped, the 101st improve would write a file that fails the load-time bound, the same local-layer-loss class as T038's Stage 4 P1 (surrogate-pair TOML escapes).
+- **Merge order: T038 first, then T039** rebased on it. Both edit `score.py`, `roles.py` and `judge.py`. Re-probe cross-cutting properties after the conflict resolution.
+
+### 2026-09-29 — T040 scope split and citation/skip decisions (user)
+
+- **T040 is split.** T040 keeps #16 (tests without assertions, skipped tests, network in unit tests), #17's type-escape density and #31 (TODO without a ticket): metrics over evidence the packs already carry. **T055** takes #5 (removed or renamed public symbols and destructive migrations, from the git diff) and #27 (single PRD source, docs co-changed with code, from git history). Both need collector and `models.py` pack changes. **T056** takes #8 (cookie flags, auth presence, offboarding documentation) and #17's strict type config. Both need new evidence and carry HITL stops: `type-config` role vs targeted excerpts, and whether auth presence gates or is scored.
+- **#8 cites OWASP ASVS 5.0.0** (V3.3 cookies, V7 sessions, V8 authorization), matching the vendored registry, not the AC's 4.0 "V2–V4" numbering.
+- **#16's skip rule counts every unconditional skip.** The derivation discloses how many carry a reason, because a skipped test gives false confidence whether or not it is explained.
+- **Open for T040:** the agent added curated citation URLs for new registry fields without fetching them, so verify every one before merge.
+
+### 2026-09-29 — T040 weights and thresholds (user sign-off)
+
+- **test-strategy** (all rules in area #16): source_files_without_covering_test_share 35→25 (≤0.20); assertion_density_per_test 35→20 (≥1.0); test_config_and_ci_missing 30→20 (=0). New: tests_without_assertions_share 15 (≤0.10), skipped_test_share 10 (≤0.05), network_calls_in_unit_tests_observed 10 (=0).
+- **code-quality**: functions_over_ccn_10_share 40→30; max_function_ccn 20→15; lint_config_missing 20→15; format_config_missing 20→10. New: type_escapes_per_kloc 15 (≤5 per kloc, area #17), todo_without_ticket_share 15 (≤0.50, area #31).
+- All 5 new thresholds are project defaults; no standard publishes these numbers. **#31 cites ISO/IEC 5055 only.** No verifiable SQALE source was found, and an unverifiable citation is not shipped.
+
+### 2026-09-29 — T055 weights, templates, migration knowledge (user)
+
+- **blast-radius**: max_fan_in_changed 50→35, churn_hotspots_share 50→35. New rules in area #5: public_symbols_removed 15 (=0, SemVer 2.0.0) and destructive_migration_ops 15 (=0, SemVer + Fowler ParallelChange).
+- **requirement-fidelity**: AC_traced_to_code 50→35, AC_traced_to_test 50→35. New rules in area #27: requirements_docs_count 15 (≤1; 0 docs abstains; ISO 26514 + 29148) and code_commits_with_docs_share 15 (≥0.30 over the last 200 non-merge commits; ISO 26514).
+- All thresholds are project defaults. The #5 rules compute only at the changes scope and abstain elsewhere.
+- **Template files are not competing requirements sources.** The requirements-doc role excludes templates, so this repo counts 2 (PRD.md and REQUIREMENT.md).
+- **The migration knowledge stays in the engine (`blast_radius.py`) for now.** This covers migration directory names and destructive DDL/ORM API names, and the pack warning states it. Follow-up T057 moves it into cited registry fields, per DDR-0007.
+
+### 2026-09-29 — T056 design decisions (user)
+
+- **#8 auth code presence is a gate only, never scored.** It decides whether the cookie-flag metric computes, and the abstention names what was and was not found. CLI-only repos are never penalised.
+- **#17 strict type config uses targeted excerpts, not a new source role.** code-quality reads registry-declared type-checker config files (mypy.ini, setup.cfg, pyproject.toml, pyrightconfig.json, tsconfig*.json) and quotes only the type-checker section. Coverage denominators and floors are unchanged. Languages without type-checker config abstain.
+- **A Python/TS repo with no type-checker config abstains** on the strict-config rule, because strictness may be passed as CLI flags we cannot see.
+- **The cookie flag token fields (`cookie_secure`, `cookie_httponly`, `cookie_samesite`) are optional; `cookie_calls` stays required.** This keeps an unknown language's reference questions under the gate's cap of 20.
+
+### 2026-09-30 — T056 weights and thresholds (user sign-off)
+
+- **security**: redaction_hits_observed 40→35, sink_hits_observed 40→35, lockfile_missing 20→15. New: cookie_flags_missing_observed 15 (≤0, area #8, OWASP ASVS 5.0.0 V3.3.1/V3.3.2/V3.3.4). The rule computes only when the auth gate opens (auth presence is gate-only, never scored).
+- **code-quality**: functions_over_ccn_10_share 30→25, lint_config_missing 15→10; max_function_ccn 15, format_config_missing 10, type_escapes_per_kloc 15, todo_without_ticket_share 15 unchanged. New: strict_type_config_missing 10 (≤0, area #17, ISO/IEC 5055:2021 + mypy/TypeScript `strict` docs).
+- Both new thresholds are project defaults. Wiring both rules raises an unknown language's required reference fields from 14 to 16 (cap 20; `cookie_calls`, `auth_markers`), verified with `gate.required_fields()` by the implementer.
+- Known limits accepted with the sign-off: cookie flags set by framework defaults are invisible and count as unset; the auth gate is pack-wide, not per file.
+
+### 2026-09-30 — T058 content pre-screen design (user)
+
+- **Option A, capped.** A new `RepoContext.peek_source` applies exactly the same refusals as `read_source` (secret-bearing per DDR-0002, outside the repo, symlinks) but records nothing, so `files_read` stays evidence-only. Critical Constraint 4a is read as "enforced in RepoContext". Security pre-screens generic source files for registry auth/session/cookie tokens and moves hits to the front of the generic tier. Evidence reads stay ≤ `MAX_SECURITY_SOURCES` (200, unchanged). The pre-screen is capped at 2000 files, with a warning when the cap is reached.
+- Rejected: B (pre-screen via `read_source` would inflate `files_read` about 6x and shift metrics on every repo); C (a second 4a enforcement site); D (type-only ordering fails the confirmed Expected items without raising the cap).
+- Root cause (T058 diagnosis): the 200-read cap hid bryony's index.js (rank 788 of 1532); the 40-excerpt pack was never truncated.

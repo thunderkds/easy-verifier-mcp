@@ -1,0 +1,252 @@
+# Ruby — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["Gemfile"]
+citation_url = "https://bundler.io/guides/gemfile.html"
+source_tag = "curated"
+
+[[manifests]]
+value = ["*.gemspec"]
+citation_url = "https://guides.rubygems.org/specification-reference/"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/Gemfile"]
+citation_url = "https://bundler.io/guides/gemfile.html"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/*.gemspec"]
+citation_url = "https://guides.rubygems.org/specification-reference/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.rubocop.yml", "**/.rubocop_todo.yml"]
+citation_url = "https://docs.rubocop.org/rubocop/configuration.html"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.standard.yml"]
+citation_url = "https://github.com/standardrb/standard"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/.rspec", "**/spec_helper.rb", "**/rails_helper.rb"]
+citation_url = "https://rspec.info/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/test_helper.rb"]
+citation_url = "https://guides.rubyonrails.org/testing.html"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".rb"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*_spec.rb"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[colocated_test_name_patterns]]
+value = ["?*_spec.rb"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["test_?*.rb"]
+citation_url = "https://docs.seattlerb.org/minitest/"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}_spec{ext}"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["test_{stem}{ext}"]
+citation_url = "https://docs.seattlerb.org/minitest/"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ['it "', "it '"]
+citation_url = "https://rspec.info/features/3-13/rspec-core/example-groups/basic-structure/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["expect (", ".should"]
+citation_url = "https://rspec.info/features/3-13/rspec-expectations/built-in-matchers/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert", "assert_?*"]
+citation_url = "https://docs.seattlerb.org/minitest/Minitest/Assertions.html"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if", "elsif", "unless", "while", "until", "for", "when"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/control_expressions_rdoc.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["rescue"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/exceptions_rdoc.html"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||", "and", "or"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/precedence_rdoc.html"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["#"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/comments_rdoc.html"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/literals_rdoc.html"
+source_tag = "curated"
+
+[[function_start]]
+value = ["def"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/methods_rdoc.html"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["require", "require_relative"]
+citation_url = "https://docs.ruby-lang.org/en/master/Kernel.html#method-i-require"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( ?", "eval ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["system ( ?", "IO.popen ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".where ( +", ".execute ( +", ".find_by_sql ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" #{"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/literals_rdoc.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".where ( <INTERP>", ".execute ( <INTERP>", ".find_by_sql ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["rails=rails"]
+citation_url = "https://guides.rubyonrails.org/getting_started.html"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["xit", "skip"]
+citation_url = "https://rspec.info/features/3-12/rspec-core/pending-and-skipped-examples/"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["Net::HTTP.get (", "Net::HTTP.start (", "Net::HTTP.post (", "Net::HTTP.new ("]
+citation_url = "https://docs.ruby-lang.org/en/master/Net/HTTP.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["HTTParty.get (", "HTTParty.post ("]
+citation_url = "https://github.com/jnunemaker/httparty"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["Faraday.get (", "Faraday.new ("]
+citation_url = "https://lostisland.github.io/faraday/"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["T.untyped", "T.unsafe"]
+citation_url = "https://sorbet.org/docs/untyped"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["typed : false", "typed : ignore"]
+citation_url = "https://sorbet.org/docs/static"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["def self.", "def", "class", "module"]
+citation_url = "https://docs.ruby-lang.org/en/master/syntax/modules_and_classes_rdoc.html#label-Visibility"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".set_cookie ("]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/response.rb"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure : true", ":secure => true"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httponly : true", ":httponly => true"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["same_site :", ":same_site =>"]
+citation_url = "https://github.com/rack/rack/blob/main/lib/rack/utils.rb"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session [", "reset_session"]
+citation_url = "https://guides.rubyonrails.org/action_controller_overview.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["has_secure_password"]
+citation_url = "https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html"
+source_tag = "curated"

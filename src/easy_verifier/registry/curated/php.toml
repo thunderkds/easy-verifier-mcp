@@ -1,0 +1,267 @@
+# PHP — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["composer.json"]
+citation_url = "https://getcomposer.org/doc/04-schema.md"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/composer.json"]
+citation_url = "https://getcomposer.org/doc/04-schema.md"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/phpstan.neon", "**/phpstan.neon.dist", "**/phpstan.dist.neon"]
+citation_url = "https://phpstan.org/config-reference"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/psalm.xml", "**/psalm.xml.dist"]
+citation_url = "https://psalm.dev/docs/running_psalm/configuration/"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/phpcs.xml", "**/phpcs.xml.dist", "**/.phpcs.xml", "**/.phpcs.xml.dist"]
+citation_url = "https://github.com/PHPCSStandards/PHP_CodeSniffer"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/.php-cs-fixer.php", "**/.php-cs-fixer.dist.php"]
+citation_url = "https://cs.symfony.com/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/phpunit.xml", "**/phpunit.xml.dist", "**/phpunit.dist.xml"]
+citation_url = "https://docs.phpunit.de/en/10.5/configuration.html"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".php"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*Test.php"]
+citation_url = "https://docs.phpunit.de/en/10.5/writing-tests-for-phpunit.html"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}Test{ext}"]
+citation_url = "https://docs.phpunit.de/en/10.5/writing-tests-for-phpunit.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["public function test* ("]
+citation_url = "https://docs.phpunit.de/en/10.5/writing-tests-for-phpunit.html"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["#[Test"]
+citation_url = "https://docs.phpunit.de/en/10.5/attributes.html#test"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert<A-Z>*"]
+citation_url = "https://docs.phpunit.de/en/10.5/assertions.html"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://www.php.net/manual/en/control-structures.if.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["elseif"]
+citation_url = "https://www.php.net/manual/en/control-structures.elseif.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for"]
+citation_url = "https://www.php.net/manual/en/control-structures.for.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["foreach"]
+citation_url = "https://www.php.net/manual/en/control-structures.foreach.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["while"]
+citation_url = "https://www.php.net/manual/en/control-structures.while.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://www.php.net/manual/en/control-structures.switch.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://www.php.net/manual/en/language.exceptions.php"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||", "and", "or"]
+citation_url = "https://www.php.net/manual/en/language.operators.logical.php"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "#", "/* */"]
+citation_url = "https://www.php.net/manual/en/language.basic-syntax.comments.php"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://www.php.net/manual/en/language.types.string.php"
+source_tag = "curated"
+
+[[function_start]]
+value = ["function"]
+citation_url = "https://www.php.net/manual/en/functions.user-defined.php"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["use"]
+citation_url = "https://www.php.net/manual/en/language.namespaces.importing.php"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["require", "require_once"]
+citation_url = "https://www.php.net/manual/en/function.require.php"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["include", "include_once"]
+citation_url = "https://www.php.net/manual/en/function.include.php"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( $", "create_function ("]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["shell_exec ( $", "system ( $", "exec ( $", "passthru ( $"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = ["->query ( .", "->exec ( .", "mysqli_query ( $* , ."]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["\" $"]
+citation_url = "https://www.php.net/manual/en/language.types.string.php#language.types.string.parsing"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = ["->query ( <INTERP>", "mysqli_query ( $* , <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["laravel=laravel/framework"]
+citation_url = "https://packagist.org/packages/laravel/framework"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["-> markTestSkipped (", "-> markTestIncomplete ("]
+citation_url = "https://docs.phpunit.de/en/10.5/writing-tests-for-phpunit.html#skipping-tests"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["curl_exec ("]
+citation_url = "https://www.php.net/manual/en/function.curl-exec.php"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["fsockopen ("]
+citation_url = "https://www.php.net/manual/en/function.fsockopen.php"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@phpstan-ignore"]
+citation_url = "https://phpstan.org/user-guide/ignoring-errors"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@psalm-suppress"]
+citation_url = "https://psalm.dev/docs/running_psalm/dealing_with_code_issues/"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["public function", "public static function", "function", "class", "abstract class", "final class", "interface", "trait", "enum"]
+citation_url = "https://www.php.net/manual/en/language.oop5.visibility.php"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["setcookie ("]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["'secure' => true", "\"secure\" => true"]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["'httponly' => true", "\"httponly\" => true"]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["'samesite' =>", "\"samesite\" =>"]
+citation_url = "https://www.php.net/manual/en/function.setcookie.php"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["session_start ("]
+citation_url = "https://www.php.net/manual/en/function.session-start.php"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["$_SESSION"]
+citation_url = "https://www.php.net/manual/en/reserved.variables.session.php"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["password_verify ("]
+citation_url = "https://www.php.net/manual/en/function.password-verify.php"
+source_tag = "curated"

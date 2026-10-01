@@ -27,6 +27,7 @@ HTML (AC #2, FR-018).
 from __future__ import annotations
 
 import html
+import json
 import os
 from collections.abc import Iterable
 from datetime import UTC, datetime
@@ -418,7 +419,8 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         return (
             '<section class="score-panel"><h2>Quality score</h2>'
             '<p class="score-unavailable">Overall and per-dimension ratings are '
-            "unavailable because this report does not contain all seven dimensions."
+            "unavailable because this report does not contain all declared "
+            "dimensions."
             "</p></section>"
         )
 
@@ -464,7 +466,44 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         "confidence) or stand alone as agent-rated, always shown with its parts. "
         "An assessment appears only when caller findings were submitted; divergence "
         "is shown separately and never blended.</p>"
-        f'{overall_html}<div class="score-grid">{cards}</div></section>'
+        f'{overall_html}<div class="score-grid">{cards}</div>'
+        f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
+    )
+
+
+def _render_registry_entries(ctx: _Ctx, entries) -> str:
+    """The local-layer registry data behind these ratings, tag and link on
+    every item (FR-048), plus the same items as replayable agent input: add
+    them to ``--agent-input`` to reproduce this score on any machine."""
+    if not entries:
+        return ""
+    items = "".join(
+        f'<li><span class="source-tag">{ctx.agent_text(item["source_tag"])}</span> '
+        + (
+            "<strong>rejected by the user: not used; rules needing it abstain"
+            "</strong> "
+            if item.get("review_status") == "rejected"
+            else ""
+        )
+        + f"<code>{ctx.agent_text(item.get('language') or item.get('framework'))}"
+        f".{ctx.agent_text(item['field'])}</code> = "
+        + ", ".join(f"<code>{ctx.agent_text(v)}</code>" for v in item["value"])
+        + f' — <a href="{html.escape(str(item["citation_url"]), quote=True)}" '
+        f'rel="noreferrer">{ctx.agent_text(item["citation_url"])}</a></li>'
+        for item in entries
+    )
+    replay = json.dumps(
+        {"registry_entries": [dict(item) for item in entries]},
+        sort_keys=True,
+        indent=2,
+    )
+    return (
+        '<section class="registry-entries"><h3>Registry data from the local '
+        "layer</h3><p>These rule inputs come from research saved on the "
+        "scoring machine, not from the curated registry. Add the block below "
+        "to <code>--agent-input</code> to reproduce this score anywhere.</p>"
+        f'<ul>{items}</ul><pre class="registry-replay">{ctx.agent_text(replay)}'
+        "</pre></section>"
     )
 
 
@@ -491,7 +530,7 @@ def _render_score_card(
         rating = rating.rules
     label = "Rules rating" if gated else "Rating"
     if type(rating) is Rating:
-        inputs = "".join(_render_rating_input(ctx, item) for item in rating.inputs)
+        areas = _render_areas(ctx, rating.inputs, rating.documentation)
         unavailable = "".join(
             f"<li><code>{ctx.esc(name)}</code> — {ctx.esc(reason)}</li>"
             for name, reason in rating.unavailable_metrics
@@ -505,7 +544,7 @@ def _render_score_card(
         rating_html = (
             f'<p class="rating-value">{label} {ctx.esc(rating.value)}/100</p>'
             f'<p class="rating-method">{ctx.esc(rating.method)}</p>'
-            f'<ol class="rating-inputs">{inputs}</ol>{unavailable_block}'
+            f"{areas}{unavailable_block}"
         )
         css = "score-card"
     else:
@@ -530,6 +569,7 @@ def _render_score_card(
             f'<p class="rating-withheld">{label} withheld</p>'
             f"<p>{ctx.esc(rating.reason_code)} — {ctx.esc(rating.reason)}</p>"
             f'{coverage}{failure}<ul class="miss-list">{misses}</ul>'
+            f"{_render_areas(ctx, (), rating.documentation)}"
         )
         css = f"score-card rating-abstention rating-{rating.reason_code}"
 
@@ -537,6 +577,34 @@ def _render_score_card(
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
         f"{_render_divergence(ctx, divergence)}</article>"
+    )
+
+
+def _render_areas(ctx: _Ctx, inputs, documentation) -> str:
+    """Rule results grouped by area (FR-051), inside their dimension's card,
+    in declared order. Documentation results carry no number (FR-052)."""
+    groups: dict[str, list[str]] = {}
+    for item in inputs:
+        groups.setdefault(item.area, []).append(_render_rating_input(ctx, item))
+    for item in documentation:
+        groups.setdefault(item.area, []).append(_render_documentation(ctx, item))
+    return "".join(
+        f'<h4 class="rating-area">{ctx.esc(area)}</h4>'
+        f'<ol class="rating-inputs">{"".join(rows)}</ol>'
+        for area, rows in groups.items()
+    )
+
+
+def _render_documentation(ctx: _Ctx, item) -> str:
+    cited = ", ".join(_render_citation(ctx, c) for c in item.citation)
+    if item.status == "present":
+        detail = f"<code>{ctx.path(item.file)}</code>"
+    else:
+        detail = ctx.esc(item.reason)
+    return (
+        f'<li class="documentation-{ctx.esc(item.status)}">Documentation '
+        f"{ctx.esc(item.status)} (not scored): {detail}"
+        f'<p class="rating-citation">Standard: {cited}</p></li>'
     )
 
 
@@ -549,7 +617,27 @@ def _render_rating_input(ctx: _Ctx, item) -> str:
         f"<code>{ctx.esc(item.metric_name)}</code> = {ctx.esc(item.metric_value)}; "
         f"{ctx.esc(item.comparison)} {ctx.esc(item.threshold)}; weight "
         f"{ctx.esc(item.weight)}; earned {ctx.esc(item.earned_weight)}"
+        '<p class="rating-citation">Metric: '
+        + ", ".join(_render_citation(ctx, c) for c in item.metric_citation)
+        + "; threshold: "
+        + _render_citation(ctx, item.threshold_citation)
+        + f"; source: {ctx.esc(item.source_tag)}"
+        + "".join(
+            f"; registry data: {_render_citation(ctx, c)}"
+            for c in item.registry_citations
+        )
+        + "</p>"
         f"<ul>{refs}</ul></li>"
+    )
+
+
+def _render_citation(ctx: _Ctx, citation) -> str:
+    """A cited source as a link (FR-048); ``project-default`` stays text."""
+    if isinstance(citation, str):
+        return ctx.esc(citation)
+    return (
+        f'<a href="{html.escape(citation.url, quote=True)}" rel="noreferrer">'
+        f"{ctx.esc(citation.label)}</a>"
     )
 
 

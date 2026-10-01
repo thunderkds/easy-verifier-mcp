@@ -521,3 +521,106 @@ not secret-bearing by given *or* resolved name. `contained_only=False` is for li
 a pool (bryony 8.3 KB → 2.1 KB). Measure `needs_input` bytes on real repos at every review.
 Kanban hygiene: a hook appears to append duplicate Todo rows for new TASK_GUIDEs; grep for
 duplicate `**Txxx**` rows before moving a task.
+
+## 2026-09-26 — T028: a zero-width band is not "borderline"; bound every caller-sized list
+
+- **Spec error caught at review**: AC1 said "threshold 0 → exact equality". For `at_most 0`
+  rules a clean repo sits at exactly 0 — the rule's best outcome — so the evaluate gate fired on
+  clean dimensions (3 of 4 gates on ai-training), spending agent tokens where rules had decided.
+  Threshold 0 is now never borderline (FR-036 amended). Lesson: when writing a band rule, test it
+  against a *clean* real repo, not only synthetic edges.
+- **Caller-sized inputs need caps on both sides**: 100k bogus `evidence_refs` produced a 9 MB error
+  returned over MCP. Cap list lengths (20 refs) and error lines (`roles.MAX_ERROR_LINES` = 20).
+- **`docker compose build` retags `easy-verifier-mcp:0.1.0`** with whatever branch is checked out —
+  after verifying an unreleased branch, the local `0.1.0` image is no longer the release.
+
+## 2026-09-28 — T029: entropy exemptions tie to position + piece shape; merge hook needs Done first
+
+- **Exempt by where the token sits and what each piece looks like, never by lowering a bar**: the
+  long-token rule skips a candidate only if it is directly followed by a file suffix, has ≥2 pieces,
+  and every piece is a single-case/Capitalized letters-only word. Key-material and hex rules still
+  run on exempt tokens. Give each guard a sabotage test (forcing it open must fail a test).
+- Residual accepted: a letters-only single-case secret joined by `_`/`-`/`/` right before `.ext`.
+- Guide counts go stale fast (T029 guide said 156 paths / 4 hits; real 205 / 6) — sweep tests should
+  read `git ls-files` live, as T029's does.
+- **Pipeline gate**: `pre_bash` blocks `git merge` while the task shows In Progress on the KANBAN.
+  Order is: evidence ready → KANBAN Done commit → evidence commit → merge (T028 precedent).
+
+## 2026-09-28 — T030: registry landed; carry-forwards for T036
+
+- `core/roles.py::_registry()` is `lru_cache(maxsize=1)` — a long-running MCP server loads the
+  registry once. **T036 must invalidate it on every local-layer write** (or read local per call).
+- The loader accepts only `source_tag = "curated"` and does not bound glob *shape*; T036 must widen
+  tags and add `.easy-verifier.toml`-style glob limits before accepting user/agent files
+  (patterns feed a backtracking regex).
+- Kotlin activates on `build.gradle(.kts)`, so Gradle Java repos also get Kotlin patterns — add-only,
+  accepted.
+- Removing a symbol "while keeping existing tests unchanged" is contradictory when tests import it;
+  ruling: repoint structural tests, keep every behavioural fixture untouched.
+- The project `.venv` has no setuptools; wheel/build checks need `/usr/bin/python3`.
+- **Merge gate is global**: the pre_bash hook refuses a merge while *any* task is In Progress on the KANBAN, not only the one being merged; parallel tasks merge together after the last closes. The hook also matches the literal merge command text anywhere in a Bash command, including inside heredocs.
+
+## 2026-09-28 — T031/T032: shared tables must reach the real surface
+
+- A table swap in core/metrics.py was invisible at the CLI because dimensions/test_strategy.py held a second copy and never read sources. Always verify a metrics change with a real CLI score run, not only hand-built packs.
+- Sabotage pairs can pass for the wrong reason when another rule (e.g. the project boundary) already separates the files; vary only the pinned predicate.
+- metric_tables.curated_metric_tables() is the one compiled table set; metrics.py stays pure (tables passed in).
+- Vendored snapshots (Linguist d0921d10, ASVS v5.0.0, CWE 4.20) live in registry/vendored/; ASVS has one canonical URL for all requirements, cite by requirement id.
+- Merged branch after T031+T032: 954 passed, 2 skipped.
+
+## 2026-09-28 — T033: metrics need the evidence to exist in that dimension's pack
+
+- T033 CCN/cycle metrics were correct but abstained on code-quality/architecture packs, which hold no code. Before writing rules over a metric, confirm the dimension's pack actually carries the evidence at the real surface. Follow-up T050 added (blocks T035).
+- Carry-forward P2s: blast-radius scan cap not reported as truncation (fan-in silent lower bound); Go imports matched by stem; JS class methods, generic-return Java/C# methods, Ruby blocks not detected as functions; ternary, ?? and Kotlin when not counted.
+- tokens: function end by indentation for all languages; syntax table keyed by file extension (curated_metric_tables().syntax['.py']).
+
+## 2026-09-28 — T034/T050 closed; CLI verify gotcha
+
+- CLI score reads findings from stdin when stdin is not a TTY; in the Bash tool stdin is an open pipe, so a verify run hangs. Always run the CLI with </dev/null.
+- Clear .claude/hooks/.state/active_task as soon as a task closes, or the step-limit hook counts Supervisor calls against it.
+- T034: interpolating strings are blanked but leave a NUL placeholder (strip(mark_interpolation=True), sink matching only); registry tokens reference it as <INTERP>. P2 carried: require('child_process').exec / destructured exec, fully qualified calls, bracket-less Ruby calls not matched.
+- T050: code-quality carries whole functions (most complex first), architecture carries import lines; all-or-none 200-file cap, so large repos abstain at project scope (raise at T035 sign-off).
+- Merged branch after T033/T034/T050: 1098 passed, 2 skipped.
+
+## 2026-09-28 — T035 signed off by user; follow-ups T051/T052
+
+- User chose 'Merge + fix tasks'. 4-repo overall before→after: easy-verifier 60→75, kitchd 51→90, bryony 63→78, ai-training 61→70, all 4/7 contributors.
+- Overall rose mainly because solution-fit (by design), requirement-fidelity (no AC extraction) and blast-radius (project scope) abstain; T052 fixes the latter two.
+- Security redaction hits were mostly false positives (sha256 hashes in lock files, long test identifiers, git-ignored .claude/ scanned); T051 fixes before security scores can be trusted.
+- Rulings: X-present rules implemented as *_missing metrics with <=0 (a >=1 rule would sit on its threshold and always hit the evaluate gate); report citations are https anchors with rel=noreferrer, T013 oracle distinguishes navigation from resource loads.
+
+## 2026-09-28 — T036/T051 merged
+
+- NFR-007 hole found in review: git honours repo config (core.fsmonitor, filter clean/smudge, diff.external, textconv, hooks), so reading a hostile repo could execute code. All git now goes through core/git.py run_git (overrides, filter blanking, --no-ext-diff/--no-textconv, no shell, stdin closed, timeout, env without HOME). Any new git call must use it (grep test enforces).
+- T036: per-input source tags come from a static field→metric map (metric_tables FIELD_METRICS/ROLE_METRICS); keep it updated when a metric starts reading a new registry field.
+- Docker CLI inside the image needs --entrypoint easy-verifier (default entrypoint is the MCP server).
+- Merged after T036+T051: 1205 passed, 2 skipped.
+
+## 2026-09-28 — T037/T052/T053/T054 merged
+
+- Parallel-merge regression (again): T052 added a consumed-but-optional registry field while T037 derived required gate fields from FIELD_METRICS; both green alone, red together. Guard test now forces every FIELD_METRICS field to be curated for all 9 languages or declared in OPTIONAL_FIELDS. Always run the full suite after merging parallel tasks, before starting the next wave.
+- Reference gate token cost on real repos: ~1.3 KB for one framework (4 fields), 0 for curated-only repos.
+- Colocated test names (*.spec.ts, *_test.go, *Test.java...) now beat source dirs via registry colocated_test_name_patterns; Python test_*.py keeps directory-first.
+- Merged after Wave 10 core: 1342 passed, 2 skipped.
+
+### 2026-09-29 — CLI `score` hangs on an open stdin pipe (T039)
+
+The CLI `score` waits for piped findings on stdin. Inside a Bash tool call stdin is an open pipe that never closes, so the command blocks forever. With `</dev/null` it finishes in about 1s. Always redirect stdin when probing the CLI from an agent. The same applies to pytest runs that reach the CLI.
+
+### 2026-09-29 — `json.dumps` is not a TOML string encoder (T038)
+
+With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as surrogate pairs (`😀`), which TOML rejects. One emoji in a user comment made a whole local-registry file unloadable. Use `ensure_ascii=False`, escape DEL, and refuse lone surrogates at validation.
+
+### 2026-09-29 — The merge gate reads the main checkout, and any In Progress row blocks everything
+
+`pre_bash_block_unsafe_merge.py` reads `PROJECT_KANBAN.md` and `tasks/` from the main checkout, not from the branch being merged. Any task in In Progress blocks every `git merge`, `push` and `rebase`, not only that task's. A Ready for Review task also needs its verify row filled in the main checkout's copy of `TASK_REVIEW_Txxx.md`, which a branch-only evidence commit does not satisfy. Working flow when merging in sequence: commit the evidence on the branch, move the task to Done on the integration branch, and merge. A sibling task waiting to rebase goes in the Blocked table ("waiting on Txxx merge").
+
+### 2026-09-29 — Excerpts are clipped at 200 lines; a boundary is not a finding (T040)
+
+`context.MAX_EXCERPT_LINES = 200` clips long files and appends a clip marker. Any per-test metric that runs "from a declaration to the next one (or the excerpt end)" misjudges the last test of a clipped excerpt: T040 reported a fully asserting test as having no assertion. This is the miss-list class again, where a limit of what we read is reported as a fact about the code. Use `metrics.excerpt_clipped(text)`, and leave the cut test out of both numerator and denominator with a disclosure. Also, registry declaration patterns start with `^\s*` under MULTILINE, so a match reaches back over blank lines: report the line of the first non-blank character.
+
+### 2026-09-29 — Pack field additions and diff parsing (T055)
+
+- **Additive pack fields stay byte-identical through `models.to_json_dict`.** Unset `compat`/`doc_history` are omitted, not written as `null`, and both adapters must use it. The existing `tests/snapshots/architecture_pack.json` is the cheapest proof.
+- **Parsing `Scope.diff` is a new read path for DDR-0002.** The diff carries hunks of every changed file, secret-bearing ones included. Classify each file with `context._is_secret_bearing` (new, old and rename paths) before parsing any hunk.
+- **Implementer arithmetic about pinned counts is not evidence.** T040 said 16 required reference fields and the real number was 13. Check with the function (`gate.required_fields()`) before copying a number into evidence or memory.

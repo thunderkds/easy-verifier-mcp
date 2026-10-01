@@ -20,6 +20,7 @@ from pathlib import Path
 
 import pytest
 
+from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.metrics import (
     EVIDENCE_LOCAL,
     FAMILIES,
@@ -31,8 +32,8 @@ from easy_verifier.core.metrics import (
     MetricCitationError,
     allowed_refs,
     check_citations,
-    compute_metrics,
 )
+from easy_verifier.core.metrics import compute_metrics as _compute_metrics
 from easy_verifier.core.models import (
     CombinedPack,
     CoverageSummary,
@@ -44,6 +45,12 @@ from easy_verifier.core.models import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def compute_metrics(pack):
+    """T031: language tables are handed in, built from the curated registry."""
+    return _compute_metrics(pack, curated_metric_tables())
+
 
 TEST_BODY = """
 def test_one():
@@ -154,6 +161,7 @@ def test_metrics_module_imports_nothing_that_reads_the_filesystem():
         "dataclasses",
         "pathlib",
         ".models",
+        ".tokens",  # T033: pure string tokenizer, whitelisted in test_t033
     }
     assert "Path" not in imported_names, "PurePosixPath is pure; Path is not"
     assert "RepoContext" not in imported_names
@@ -282,15 +290,52 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
     local = [m for m in metrics if m.kind == EVIDENCE_LOCAL]
     assert whole_set and local, "both kinds must exist or this test proves nothing"
 
+    # T033: these two need import statements / a blast-radius pack, which this
+    # fixture lacks, so they abstain for that reason here; their own truncation
+    # pair is in tests/test_t033_token_metrics.py.
+    needs_imports = {"top_level_import_cycles", "max_fan_in_changed"}
+    # T040: the fixture has no TODO/FIXME comment, so this share has a zero
+    # denominator here; its truncation pair is in tests/test_t040_*.
+    needs_imports |= {"todo_without_ticket_share"}
     for metric in whole_set:
+        if not truncated and metric.name in needs_imports:
+            continue
         assert metric.abstained is truncated, metric.name
         if truncated:
             assert metric.abstention.omitted_lower_bound == 40
             assert "40" in metric.abstention.reason
             assert "lower bound" in metric.abstention.reason
 
+    # T035: the role-missing metrics abstain because this fixture pack does not
+    # declare their roles, and the AC-trace / churn-share metrics are never
+    # derivable; neither reason depends on truncation, so it is the same both ways.
+    not_applicable = {
+        "lint_config_missing",
+        "format_config_missing",
+        "lockfile_missing",
+        "test_config_and_ci_missing",
+        "architecture_description_missing",
+        "decision_records_missing",
+        "acceptance_criteria_traced_to_code_share",
+        "acceptance_criteria_traced_to_test_share",
+        "changed_files_in_churn_hotspots_share",
+        # T055: #5 needs a blast-radius diff, #27 a requirement-fidelity pack.
+        "public_symbols_removed",
+        "destructive_migration_ops",
+        "requirements_docs_count",
+        "code_commits_with_docs_share",
+        # T056: the fixture sets no cookie, so this count has nothing to judge.
+        "cookie_flags_missing_observed",
+        # T056: the fixture quotes no type-checker configuration.
+        "strict_type_config_missing",
+    }
+
     # AC #5: unaffected by truncation, both ways.
     for metric in local:
+        if metric.name in not_applicable:
+            assert metric.abstained, metric.name
+            assert "budget" not in metric.abstention.reason, metric.name
+            continue
         assert not metric.abstained, metric.name
         assert metric.numeric_value is not None
 
@@ -435,6 +480,7 @@ def test_metrics_are_byte_identical_across_two_processes():
     script = (
         "import json;"
         "from easy_verifier.core.metrics import compute_metrics;"
+        "from easy_verifier.core.metric_tables import curated_metric_tables;"
         "from easy_verifier.core.models import EvidencePack, Excerpt, TruncationRecord;"
         "pack = EvidencePack(dimension='test-strategy', mode='kit-aware',"
         " scope='project', files_read=('src/widget.py','tests/test_widget.py'),"
@@ -443,7 +489,7 @@ def test_metrics_are_byte_identical_across_two_processes():
         " sources_sought=('a','b'), sources_found=('a',), sources_missing=(),"
         " coverage_score=0.5, truncated=False, omitted_count=0,"
         " truncation=TruncationRecord(False, 0));"
-        "print(compute_metrics(pack).serialize())"
+        "print(compute_metrics(pack, curated_metric_tables()).serialize())"
     )
     runs = [
         subprocess.run(

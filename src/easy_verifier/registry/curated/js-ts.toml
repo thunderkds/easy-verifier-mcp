@@ -1,0 +1,392 @@
+# JavaScript / TypeScript (Node) — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["package.json"]
+citation_url = "https://docs.npmjs.com/cli/configuring-npm/package-json"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/package.json"]
+citation_url = "https://docs.npmjs.com/cli/configuring-npm/package-json"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/pnpm-workspace.yaml"]
+citation_url = "https://pnpm.io/pnpm-workspace_yaml"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/eslint.config.*", "**/.eslintrc*"]
+citation_url = "https://eslint.org/docs/latest/use/configure/configuration-files"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/biome.json", "**/biome.jsonc"]
+citation_url = "https://biomejs.dev/reference/configuration/"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/.prettierrc*", "**/prettier.config.*"]
+citation_url = "https://prettier.io/docs/en/configuration.html"
+source_tag = "curated"
+
+[[roles.format-config]]
+value = ["**/biome.json"]
+citation_url = "https://biomejs.dev/reference/configuration/"
+source_tag = "curated"
+
+[[roles.lockfile]]
+value = ["**/npm-shrinkwrap.json"]
+citation_url = "https://docs.npmjs.com/cli/configuring-npm/npm-shrinkwrap-json"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/jest.config.*"]
+citation_url = "https://jestjs.io/docs/configuration"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/vitest.config.*", "**/vitest.workspace.*"]
+citation_url = "https://vitest.dev/config/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/playwright.config.*"]
+citation_url = "https://playwright.dev/docs/test-configuration"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/cypress.config.*"]
+citation_url = "https://docs.cypress.io/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/karma.conf.*"]
+citation_url = "https://karma-runner.github.io/latest/config/configuration-file.html"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/.mocharc*"]
+citation_url = "https://mochajs.org/#configuring-mocha-nodejs"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["package.json"]
+citation_url = "https://docs.npmjs.com/cli/using-npm/scripts"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".js", ".jsx", ".ts", ".tsx"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*.test.js", "?*.spec.js", "?*.test.jsx", "?*.spec.jsx", "?*.test.ts", "?*.spec.ts", "?*.test.tsx", "?*.spec.tsx"]
+citation_url = "https://jestjs.io/docs/configuration#testmatch-arraystring"
+source_tag = "curated"
+
+[[colocated_test_name_patterns]]
+value = ["?*.test.js", "?*.spec.js", "?*.test.jsx", "?*.spec.jsx", "?*.test.ts", "?*.spec.ts", "?*.test.tsx", "?*.spec.tsx"]
+citation_url = "https://jestjs.io/docs/configuration#testmatch-arraystring"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}.test{ext}", "{stem}.spec{ext}"]
+citation_url = "https://jestjs.io/docs/configuration#testmatch-arraystring"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["{stem}_test{ext}"]
+citation_url = "https://nodejs.org/api/test.html#running-tests-from-the-command-line"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ['it ( "', "it ( '", "it ( `", 'test ( "', "test ( '", "test ( `"]
+citation_url = "https://jestjs.io/docs/api#testname-fn-timeout"
+source_tag = "curated"
+
+[[assertions]]
+value = ["expect ("]
+citation_url = "https://jestjs.io/docs/expect"
+source_tag = "curated"
+
+[[assertions]]
+value = [".should"]
+citation_url = "https://www.chaijs.com/api/bdd/"
+source_tag = "curated"
+
+[[assertions]]
+value = ["assert"]
+citation_url = "https://nodejs.org/api/assert.html"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://tc39.es/ecma262/#sec-if-statement"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for", "while"]
+citation_url = "https://tc39.es/ecma262/#sec-iteration-statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://tc39.es/ecma262/#sec-switch-statement"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["catch"]
+citation_url = "https://tc39.es/ecma262/#sec-try-statement"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://tc39.es/ecma262/#sec-binary-logical-operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://tc39.es/ecma262/#sec-comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "'"]
+citation_url = "https://tc39.es/ecma262/#sec-literals-string-literals"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["` `"]
+citation_url = "https://tc39.es/ecma262/#sec-template-literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["function"]
+citation_url = "https://tc39.es/ecma262/#sec-function-definitions"
+source_tag = "curated"
+
+[[function_start]]
+value = ["const * = (", "const * = async ("]
+citation_url = "https://tc39.es/ecma262/#sec-arrow-function-definitions"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://tc39.es/ecma262/#sec-imports"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["require ("]
+citation_url = "https://nodejs.org/api/modules.html#requireid"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-95"
+value = ["eval ( ?", "new Function ("]
+citation_url = "https://cwe.mitre.org/data/definitions/95.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["child_process.exec (", "child_process.execSync (", "shell : true"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".query ( +", ".execute ( +"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Interpolating strings (T034): a literal opened by X embeds an expression
+# where Y occurs; core/tokens.py leaves one mark (<INTERP> in a token) for it.
+
+[[interpolating_strings]]
+value = ["` ${"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".query ( <INTERP>", ".execute ( <INTERP>"]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["express=express"]
+citation_url = "https://expressjs.com/en/starter/installing.html"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["react=react"]
+citation_url = "https://react.dev/learn/add-react-to-an-existing-project"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["next=next"]
+citation_url = "https://nextjs.org/docs/app/getting-started/installation"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["vue=vue"]
+citation_url = "https://vuejs.org/guide/quick-start.html"
+source_tag = "curated"
+
+[[frameworks]]
+value = ["angular=@angular/core"]
+citation_url = "https://angular.dev/reference/configs/npm-packages"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["it.skip (", "test.skip (", "describe.skip (", "xit (", "xtest (", "xdescribe ("]
+citation_url = "https://jestjs.io/docs/api"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["fetch ("]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["http.request (", "http.get ("]
+citation_url = "https://nodejs.org/api/http.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["https.request (", "https.get ("]
+citation_url = "https://nodejs.org/api/https.html"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["axios (", "axios.get (", "axios.post (", "axios.put (", "axios.patch (", "axios.delete (", "axios.request ("]
+citation_url = "https://axios-http.com/docs/api_intro"
+source_tag = "curated"
+
+[[type_escapes]]
+value = [": any", "as any"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#any"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["@ts-ignore", "@ts-nocheck"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/intro-to-js-ts.html#ts-check"
+source_tag = "curated"
+
+[[type_stub_names]]
+value = ["?*.d.ts"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["export function", "export async function", "export default function", "export default class", "export default", "export class", "export abstract class", "export const", "export let", "export var", "export interface", "export type", "export enum", "export namespace"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = [".cookie ("]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+# Session middleware configures the session cookie in its options (T058):
+# express-session's cookie: {...}, cookie-session's top-level flags, and
+# Express 3's built-in express.session. A token starting with an identifier
+# may not follow ".", so passport.session() is not one of them.
+
+[[cookie_calls]]
+value = ["session ("]
+citation_url = "https://expressjs.com/en/resources/middleware/session.html"
+source_tag = "curated"
+
+[[cookie_calls]]
+value = ["cookieSession ("]
+citation_url = "https://expressjs.com/en/resources/middleware/cookie-session.html"
+source_tag = "curated"
+
+[[cookie_calls]]
+value = ["express.session ("]
+citation_url = "https://expressjs.com/en/guide/migrating-4.html"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["secure : true"]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["httpOnly : true"]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["sameSite :"]
+citation_url = "https://expressjs.com/en/4x/api/response/"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = ["req.session"]
+citation_url = "https://expressjs.com/en/resources/middleware/session.html"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["passport.authenticate ("]
+citation_url = "https://www.passportjs.org/concepts/authentication/middleware/"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["passport.initialize (", "passport.session ("]
+citation_url = "https://github.com/jaredhanson/passport/blob/v0.6.0/README.md"
+source_tag = "curated"
+
+# Type-checker fields (T056, area #17): the configuration files (and, in a
+# shared file, the section) holding the type checker's settings, and the
+# tokens turning strict mode on / off or naming a file extended. Optional:
+# a language without a type checker declares none (syntax in core/registry.py).
+
+[[type_config_files]]
+value = ["tsconfig*.json"]
+citation_url = "https://www.typescriptlang.org/tsconfig/"
+source_tag = "curated"
+
+[[type_strict]]
+value = ["\"strict\" : true"]
+citation_url = "https://www.typescriptlang.org/tsconfig/#strict"
+source_tag = "curated"
+
+[[type_strict_off]]
+value = ["\"strict\" : false"]
+citation_url = "https://www.typescriptlang.org/tsconfig/#strict"
+source_tag = "curated"
+
+[[type_config_extends]]
+value = ["\"extends\" :"]
+citation_url = "https://www.typescriptlang.org/tsconfig/#extends"
+source_tag = "curated"

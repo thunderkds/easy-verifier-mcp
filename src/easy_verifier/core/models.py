@@ -15,7 +15,7 @@ not the quality of the target repository.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
 
@@ -98,6 +98,11 @@ class DimensionContext(Protocol):
     def read_source(self, relative_path: str) -> str | None: ...
 
     def request_secret_source(self, relative_path: str) -> str | None: ...
+
+    def peek_source(self, relative_path: str) -> str | None:
+        """A source's text for ranking only; refused as ``read_source`` refuses,
+        recorded nowhere (T058)."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -228,6 +233,183 @@ class EvidencePack:
     """Where this pack's role sources came from (FR-039, sources half):
     ``rules``, then ``+ config`` when ``.easy-verifier.toml`` contributed a file
     and ``+ agent picks (N files)`` when picks did. Never agent text."""
+
+    trace_search: TraceSearch | None = field(default=None)
+    """What the requirement-fidelity trace search set out to put in the pack
+    (T052). ``None`` for every other dimension and in standalone mode."""
+
+    reach: ReachFacts | None = field(default=None)
+    """Blast-radius facts that are not file text (T052): which changed files
+    were read, which of them are repository churn hotspots, and whether the
+    reference sweep hit its ceiling. ``None`` for every other dimension."""
+
+    compat: CompatFacts | None = field(default=None)
+    """Backward-compatibility facts read from the diff of a ``changes`` scope
+    (T055, area #5). ``None`` for every other dimension and scope, and then
+    left out of the serialized pack (:func:`to_json_dict`)."""
+
+    doc_history: DocHistory | None = field(default=None)
+    """Documentation source-of-truth facts (T055, area #27): the requirements
+    documents and the code/doc co-change of recent local history. ``None`` for
+    every other dimension, and then left out of the serialized pack."""
+
+
+@dataclass(frozen=True)
+class AcceptanceCriterion:
+    """One acceptance criterion found in a kit document (T052), and the pack
+    excerpt (``ref``) quoting the line that states it."""
+
+    id: str
+    """``T052#1`` for a task-guide AC row, ``FR-043`` for a PRD requirement."""
+
+    ref: str
+
+
+@dataclass(frozen=True)
+class TraceSearch:
+    """Compact result of the requirement-fidelity trace search (T052).
+
+    Counted over every criterion the search found; only a bounded,
+    deterministic list of untraced criteria rides along (NFR-009). Every
+    trace line and every listed criterion is also a pack excerpt, so a metric
+    can check the byte budget kept all of them before it reports a share.
+    """
+
+    criteria: int
+    traced_to_code: int
+    traced_to_test: int
+    trace_lines: int
+    """Trace lines quoted in the pack (one code-file line each)."""
+
+    trace_lines_omitted: int
+    """Trace lines found beyond the quoted ones (counted, not quoted)."""
+
+    untraced_code: tuple[AcceptanceCriterion, ...]
+    untraced_code_omitted: int
+    """Untraced-to-code criteria beyond the listed ones."""
+
+    untraced_test: tuple[AcceptanceCriterion, ...]
+    untraced_test_omitted: int
+    files_searched: int
+    incomplete: str | None = None
+    """Why extraction or the search stopped early (a cap), else ``None``."""
+
+
+@dataclass(frozen=True)
+class ReachFacts:
+    """Git-derived and sweep facts of one blast-radius pack (T052)."""
+
+    changed: tuple[str, ...] = ()
+    """Scope (changed) files this pack read, redacted like ``files_read``."""
+
+    hotspots_changed: tuple[str, ...] = ()
+    """The subset of ``changed`` in the repository-wide top 10% by churn."""
+
+    commits: int = 0
+    """Local commits the churn ranking was counted over."""
+
+    ranked_files: int = 0
+    """Tracked files with at least one commit in that window."""
+
+    hotspot_count: int = 0
+    """How many files the top 10% is: ``ceil(ranked_files / 10)``."""
+
+    churn_unavailable: str | None = None
+    """Why no churn ranking was built (shallow clone, little history), else
+    ``None``."""
+
+    sweep_capped: bool = False
+    """The reference sweep stopped at its file ceiling before finishing."""
+
+
+@dataclass(frozen=True)
+class DiffItem:
+    """One #5 observation in a change's diff (T055): the pack excerpt quoting
+    the line (``ref``) and what was seen there."""
+
+    ref: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class CompatFacts:
+    """#5 facts of one blast-radius pack at ``changes`` scope (T055).
+
+    Counted over the whole diff; only the first items are listed, and each
+    listed item is also a pack excerpt, so a metric can check the byte budget
+    kept every one before it reports a count.
+    """
+
+    removed_symbols: tuple[DiffItem, ...] = ()
+    """Public declarations removed or renamed (old-side line of the diff)."""
+
+    removed_symbols_total: int = 0
+    destructive_ops: tuple[DiffItem, ...] = ()
+    """Destructive operations added to migration files (new-side line)."""
+
+    destructive_ops_total: int = 0
+    examined: tuple[str, ...] = ()
+    """Changed files whose diff was read for #5, redacted like ``files_read``."""
+
+    renamed_code_files: tuple[str, ...] = ()
+    """Code files git reports as renamed; not counted (see the metric)."""
+
+    secret_excluded: tuple[str, ...] = ()
+    """Secret-bearing files in the diff (DDR-0002): existence only; their
+    hunks were never parsed or quoted."""
+
+    unavailable: str | None = None
+    """Why the change carries no diff to read, else ``None``."""
+
+    incomplete: str | None = None
+    """Why the diff could not be read completely (clipped, a language without
+    public-declaration tokens), else ``None``."""
+
+
+@dataclass(frozen=True)
+class DocHistory:
+    """#27 facts of one requirement-fidelity pack (T055)."""
+
+    requirements_docs: tuple[str, ...] = ()
+    """Files filling the requirements-doc role that this pack read (listed)."""
+
+    requirements_docs_total: int = 0
+    commits_scanned: int = 0
+    """Non-merge local commits read, at most the window."""
+
+    window: int = 0
+    code_commits: int = 0
+    """Scanned commits that changed a code file."""
+
+    code_commits_with_docs: int = 0
+    """Code-changing commits that also changed a document."""
+
+    docs_cited: tuple[str, ...] = ()
+    """Documents co-changed with code in the window that this pack read."""
+
+    history_unavailable: str | None = None
+    """Why no co-change window was read (no git, shallow clone), else ``None``."""
+
+
+_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history"})
+"""Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
+of the serialized pack while unset, so every pack that does not use them
+serializes byte-for-byte as before."""
+
+
+def _json_fields(items: list[tuple[str, object]]) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in items
+        if not (key in _OMITTED_WHEN_ABSENT and value is None)
+    }
+
+
+def to_json_dict(value: object) -> dict:
+    """``dataclasses.asdict`` for anything carrying packs, as the adapters emit
+    it: identical except that an unset :data:`_OMITTED_WHEN_ABSENT` field is
+    left out rather than written as ``null``."""
+    return asdict(value, dict_factory=_json_fields)
 
 
 @dataclass(frozen=True)

@@ -266,6 +266,16 @@ class _ReferenceScanner(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag == "script":
             self.scripts.append(tag)
+        attributes = dict(attrs)
+        if (
+            tag == "a"
+            and (attributes.get("href") or "").startswith("https://")
+            and "noreferrer" in (attributes.get("rel") or "")
+        ):
+            # A cited standard (FR-048) is a navigational link the reader
+            # follows, never a resource the document loads (T013's rule);
+            # T056's offboarding documentation rule renders one here.
+            return
         for name, value in attrs:
             if name in {"src", "href", "srcset", "poster", "data"} and value:
                 self.urls.append(value)

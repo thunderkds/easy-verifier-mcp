@@ -35,20 +35,30 @@ reachable and how it was discovered, and the calling agent judges the reach.
 
 from __future__ import annotations
 
+import math
 import re
-import subprocess
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 
+from ..core.context import _is_secret_bearing
+from ..core.git import run_git_text
+from ..core.metric_tables import curated_metric_tables
+from ..core.metrics import code_kind
 from ..core.models import (
+    CompatFacts,
+    DiffItem,
     DimensionContext,
     DimensionDescriptor,
     Excerpt,
+    ReachFacts,
     SourceMiss,
     SourceRole,
 )
 from ..core.redact import redact
 from ..core.roles import role
+from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS
+from ..core.tokens import MAX_LINE_CHARS
 
 NAME = "blast-radius"
 
@@ -61,7 +71,7 @@ PURPOSE = (
 
 REFERENCES_SOURCE = "referencing files (textual reference search over repository code)"
 CO_CHANGE_SOURCE = "git co-change history (local `git log --name-only`)"
-HOTSPOT_SOURCE = "repository change hotspots (local git history, project scope)"
+HOTSPOT_SOURCE = "repository change hotspots (local git history)"
 
 #: The role whose files are the packaging manifests that declare downstream
 #: entry points. Probed in every scope, narrow ones included: an entry point
@@ -98,6 +108,8 @@ MAX_NAMED_FILES = 15
 _HISTORY_COMMITS = "200"
 _HOTSPOT_COMMITS = "400"
 MIN_STEM_LENGTH = 3
+MIN_CHURN_COMMITS = 20
+"""Fewer local commits than this is too little history to rank churn on."""
 
 METHOD_WARNING = (
     "Method: reference evidence in this pack comes from a textual search for "
@@ -161,9 +173,10 @@ PROJECT_SCOPE_REASON = (
     "file is quadratic, so project scope reports repository-wide hotspots instead"
 )
 
-NARROW_SCOPE_HOTSPOT_REASON = (
-    "not examined: repository-wide hotspots are gathered for project scope only; "
-    "this run reported co-change history for the scope files instead"
+CHURN_WARNING = (
+    "Churn ranking: the top 10% of the {ranked} tracked file(s) committed in the "
+    "last {commits} local commit(s) is the first {top} by commit count (ties by "
+    "path), whatever the scope; changed files in it: {hot}."
 )
 
 EMPTY_SCOPE_REASON = "examined: the resolved {kind} scope named no files"
@@ -252,8 +265,6 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         yield from _entry_point_excerpts(context)
         return
 
-    _miss(context, HOTSPOT_SOURCE, NARROW_SCOPE_HOTSPOT_REASON)
-
     all_scope_files = tuple(getattr(resolved_scope, "files", ()) or ())
     scope_files = all_scope_files[:MAX_SCOPE_FILES]
     if len(all_scope_files) > len(scope_files):
@@ -271,7 +282,10 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         yield from _entry_point_excerpts(context)
         return
 
+    compat_excerpts = _compat_evidence(context, resolved_scope)
     _co_change_history(context, repo, scope_files)
+    _churn_ranking(context, repo, scope_files)
+    yield from compat_excerpts
     yield from _entry_point_excerpts(context)
     yield from _reference_excerpts(context, scope_files)
 
@@ -331,6 +345,9 @@ def _reference_excerpts(
     # place this dimension is asked to be honest (AC #5: it may over-report,
     # but it may not go silent).
     capped = scanned >= MAX_SCAN_FILES
+    reach = getattr(context, "reach", None)
+    if reach is not None:
+        context.reach = replace(reach, sweep_capped=capped)
     if capped:
         _warn(context, SCAN_CAP_WARNING.format(cap=MAX_SCAN_FILES))
 
@@ -528,6 +545,90 @@ def _project_history(context: DimensionContext, repo: Path) -> None:
     _note_shallow(context, repo)
 
 
+def _churn_ranking(
+    context: DimensionContext, repo: Path, scope_files: tuple[str, ...]
+) -> None:
+    """Place the scope files in the repository-wide churn ranking (T052).
+
+    The ranking is over every tracked file, never the scope, so the share of
+    changed files in the top 10% is a measurement rather than 10% by
+    construction. Computed once per context: the budget calls ``collect`` once
+    per tier pass, and the answer cannot change between passes.
+    """
+    if getattr(context, "reach", None) is not None:
+        return
+    changed = []
+    for path in scope_files:
+        if context.read_source(path) is not None:
+            changed.append(redact(path))
+    unavailable = _churn_unavailable(repo)
+    if unavailable is not None:
+        context.reach = ReachFacts(
+            changed=tuple(changed), churn_unavailable=unavailable
+        )
+        _miss(context, HOTSPOT_SOURCE, unavailable)
+        return
+
+    counts: dict[str, int] = {}
+    commits = 0
+    for names in _commit_file_sets(repo, _HOTSPOT_COMMITS):
+        commits += 1
+        for name in names:
+            counts[name] = counts.get(name, 0) + 1
+    if commits < MIN_CHURN_COMMITS:
+        reason = (
+            f"examined: only {commits} local commit(s), fewer than the "
+            f"{MIN_CHURN_COMMITS} a churn ranking needs, so no file is called a "
+            "hotspot"
+        )
+        context.reach = ReachFacts(changed=tuple(changed), churn_unavailable=reason)
+        _miss(context, HOTSPOT_SOURCE, reason)
+        return
+
+    ok, out, _ = _run_git(repo, ["ls-files"])
+    tracked = set(out.splitlines()) if ok else set()
+    ranked = sorted(
+        (name for name in counts if name in tracked),
+        key=lambda name: (-counts[name], name),
+    )
+    top = math.ceil(len(ranked) / 10)
+    hot = {redact(name) for name in ranked[:top]}
+    hot_changed = tuple(path for path in changed if path in hot)
+    context.reach = ReachFacts(
+        changed=tuple(changed),
+        hotspots_changed=hot_changed,
+        commits=commits,
+        ranked_files=len(ranked),
+        hotspot_count=top,
+    )
+    context.sources_found.append(HOTSPOT_SOURCE)
+    _warn(
+        context,
+        CHURN_WARNING.format(
+            ranked=len(ranked),
+            commits=commits,
+            top=top,
+            hot=", ".join(hot_changed) or "none",
+        ),
+    )
+
+
+def _churn_unavailable(repo: Path) -> str | None:
+    """Why no churn ranking can be built here, or ``None``."""
+    if not _is_git_repo(repo):
+        return (
+            "not examined: the target is not a git repository, so there is no "
+            "local history to rank churn on"
+        )
+    ok, out, _ = _run_git(repo, ["rev-parse", "--is-shallow-repository"])
+    if ok and out.strip() == "true":
+        return (
+            "not examined: this is a shallow clone, so local history is partial "
+            "and a churn ranking over it would be a guess"
+        )
+    return None
+
+
 def _commit_file_sets(repo: Path, limit: str) -> Iterator[frozenset[str]]:
     """Yield the file set of each of the last ``limit`` local commits.
 
@@ -585,20 +686,297 @@ def _is_git_repo(repo: Path) -> bool:
 def _run_git(repo: Path, args: list[str]) -> tuple[bool, str, str]:
     """Run one read-only git subcommand against the target repository.
 
-    Never ``shell=True``, always an explicit argument list, and only ``log`` and
-    ``rev-parse`` are ever asked for — nothing here contacts a remote (NFR-012),
-    and nothing from the target repository is executed (NFR-007).
+    Never ``shell=True``, always an explicit argument list, and only ``log``,
+    ``ls-files`` and ``rev-parse`` are ever asked for — nothing here contacts a
+    remote (NFR-012), and nothing from the target repository is executed
+    (NFR-007) — the shared
+    :func:`~easy_verifier.core.git.run_git_text` disarms repo-config programs.
     """
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repo), *args],
-            capture_output=True,
-            text=True,
-            check=False,
+    return run_git_text(repo, args)
+
+
+# --------------------------------------------------------------------------
+# backward compatibility (T055, area #5) — read from the scope's diff
+# --------------------------------------------------------------------------
+
+MAX_COMPAT_LISTED = 20
+"""#5 items quoted per kind; the rest are counted, not quoted (NFR-009)."""
+
+MIGRATION_DIRS = frozenset(
+    {"migrations", "migration", "migrate", "alembic", "changelog"}
+)
+"""Directory names (any case) that make a file a schema migration: Django,
+Laravel, Prisma, Knex and golang-migrate ``migrations/``, Flyway
+``db/migration/``, Rails ``db/migrate/``, Alembic ``alembic/``, Liquibase
+``db/changelog/``."""
+
+_DESTRUCTIVE = re.compile(
+    r"\bdrop\s+(?:table|column|schema|database)\b"
+    r"|\brename\s+(?:column|to)\b"
+    r"|\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?"
+    r"(?:_?if_?exists)?\b"
+    r"|\bdrop_?if_?exists\b",
+    re.IGNORECASE,
+)
+"""SQL DDL (``DROP TABLE``/``COLUMN``, ``RENAME COLUMN``/``TO``) and the
+migration APIs named after it: ``drop_table``/``remove_column`` (Rails,
+Alembic), ``RemoveField``/``DeleteModel``/``RenameField`` (Django),
+``dropColumn``/``renameColumn``/``dropIfExists`` (Knex, Laravel, Sequelize),
+``DropColumn``/``RenameTable`` (EF Core)."""
+
+_DOWN_START = re.compile(r"\b(?:down|downgrade)\b\s*(?:[=(:]|$)", re.IGNORECASE)
+_UP_START = re.compile(r"\b(?:up|upgrade|change)\b\s*(?:[=(:]|$)", re.IGNORECASE)
+_COMMENT_LINE = re.compile(r"^\s*(?:--|#|//|/\*|\*)")
+_HUNK = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+_IDENT = re.compile(r"[\w$]+")
+
+COMPAT_METHOD = (
+    "Backward-compatibility evidence (#5) is read from the diff of the changes "
+    "scope, textually: a removed line of a non-test code file that starts with "
+    "one of its language's registry public_declarations tokens is a removed "
+    "public declaration unless a public declaration of the same name is added "
+    "anywhere in the change (moved or re-signatured), and 'renamed' when its "
+    "hunk adds a public declaration under a new name; renamed files are not "
+    "counted. An added line of a migration file (a directory named "
+    "migrations, migration, migrate, alembic or changelog) naming a destructive "
+    "operation (DROP TABLE/COLUMN, RENAME COLUMN/TO, drop_table, remove_column, "
+    "RemoveField, DeleteModel, RenameField, dropColumn, dropIfExists, ...) is a "
+    "destructive migration operation, except in comment lines, in a "
+    "down/downgrade section and in a *.down.* or Flyway undo file. A "
+    "secret-bearing file (DDR-0002) is named, never parsed or quoted."
+)
+
+
+def _compat_evidence(context: DimensionContext, scope: object) -> tuple[Excerpt, ...]:
+    """Read the #5 facts from the scope's diff once, and return their excerpts.
+
+    Cached on the context: the budget calls ``collect`` once per tier pass.
+    Only ``changes`` scope carries a diff; every other scope leaves
+    ``context.compat`` unset and the metric names the scope.
+    """
+    cached = getattr(context, "_compat_excerpts", None)
+    if cached is not None:
+        return cached
+    excerpts: tuple[Excerpt, ...] = ()
+    if getattr(scope, "kind", None) == KIND_CHANGES:
+        diff = getattr(scope, "diff", None)
+        if diff is None:
+            notes = "; ".join(getattr(scope, "notes", ()) or ()) or "git diff failed"
+            context.compat = CompatFacts(
+                unavailable=f"the changes scope carries no diff ({redact(notes)})"
+            )
+        else:
+            clipped = any("clipped" in note for note in getattr(scope, "notes", ()))
+            context.compat, excerpts = _read_diff(diff, clipped=clipped)
+            _warn(context, COMPAT_METHOD)
+    context._compat_excerpts = excerpts
+    return excerpts
+
+
+def _read_diff(
+    diff: str, *, clipped: bool
+) -> tuple[CompatFacts, tuple[Excerpt, ...]]:
+    tables = curated_metric_tables()
+    parsed = _diff_files(diff)
+    secret = tuple(redact(item["path"]) for item in parsed if item["secret"])
+    files = [item for item in parsed if not item["secret"]]
+    added_names: set[str] = set()
+    removed: list[tuple[str, int, str, str, int]] = []
+    ops: list[tuple[str, int, str, str]] = []
+    renamed: list[str] = []
+    undeclared: list[str] = []
+    for item in files:
+        path = item["path"]
+        kind = code_kind(path, tables)
+        if item["renamed"] and kind is not None:
+            renamed.append(redact(path))
+        if kind == "source":
+            pattern = tables.public_declarations.get(PurePosixPath(path).suffix)
+            if pattern is None:
+                if item["lines"]:
+                    undeclared.append(redact(path))
+                continue
+            for sign, number, text, hunk in item["lines"]:
+                name = _declared_name(pattern, text)
+                if name is None:
+                    continue
+                if sign == "+":
+                    added_names.add(name)
+                elif sign == "-":
+                    removed.append((item["old_path"], number, text, name, hunk))
+        if _is_migration(path):
+            ops.extend(_destructive_ops(item))
+
+    hunks_adding: dict[int, set[str]] = {}
+    for item in files:
+        pattern = tables.public_declarations.get(PurePosixPath(item["path"]).suffix)
+        for sign, _number, text, hunk in item["lines"] if pattern else ():
+            if sign == "+" and (name := _declared_name(pattern, text)):
+                hunks_adding.setdefault(hunk, set()).add(name)
+    removed_names = {name for _p, _n, _t, name, _h in removed}
+    gone = [entry for entry in removed if entry[3] not in added_names]
+    symbol_items, symbol_excerpts = [], []
+    for path, number, text, name, hunk in gone[:MAX_COMPAT_LISTED]:
+        renamed_to = sorted(hunks_adding.get(hunk, set()) - removed_names)
+        how = f"renamed (to {renamed_to[0]})" if renamed_to else "removed"
+        excerpt = Excerpt(path, number, number, _clip("-" + text))
+        symbol_excerpts.append(excerpt)
+        symbol_items.append(
+            DiffItem(ref=_safe_ref(excerpt), detail=redact(f"{name} {how}"))
         )
-    except (FileNotFoundError, OSError):
-        return False, "", "git binary not available"
-    return result.returncode == 0, result.stdout, result.stderr.strip()
+    op_items, op_excerpts = [], []
+    for path, number, text, status in ops[:MAX_COMPAT_LISTED]:
+        excerpt = Excerpt(path, number, number, _clip("+" + text))
+        op_excerpts.append(excerpt)
+        op_items.append(DiffItem(ref=_safe_ref(excerpt), detail=status))
+
+    incomplete = None
+    if clipped:
+        incomplete = (
+            f"the diff was clipped at its ceiling of {MAX_DIFF_CHARS} characters, "
+            "so lines beyond it were never read"
+        )
+    elif undeclared:
+        incomplete = (
+            f"{len(undeclared)} changed code file(s) are in a language whose "
+            "registry entry declares no public_declarations, so their removed "
+            "declarations could not be recognised: " + ", ".join(undeclared[:5])
+        )
+    facts = CompatFacts(
+        removed_symbols=tuple(symbol_items),
+        removed_symbols_total=len(gone),
+        destructive_ops=tuple(op_items),
+        destructive_ops_total=len(ops),
+        examined=tuple(redact(item["path"]) for item in files),
+        renamed_code_files=tuple(renamed),
+        secret_excluded=secret,
+        incomplete=incomplete,
+    )
+    return facts, (*symbol_excerpts, *op_excerpts)
+
+
+def _diff_files(diff: str) -> list[dict]:
+    """Per file of a unified ``git diff``: paths, status and hunk lines.
+
+    Each line is ``(sign, line number, text, hunk id)``: the old-side number
+    for a removed line, the new-side number otherwise. ``---``/``+++`` are
+    headers only before a file's first hunk: inside one, ``--- x`` is a
+    removed ``-- x`` (an SQL comment).
+    """
+    files: list[dict] = []
+    current: dict | None = None
+    old = new = hunk = 0
+    for line in diff.split("\n"):
+        if line.startswith("diff --git "):
+            a, _, b = line[len("diff --git ") :].partition(" b/")
+            path = b.strip('"')
+            old_path = a.strip('"').removeprefix("a/")
+            current = {
+                "path": path,
+                "old_path": old_path,
+                "status": "modified",
+                "renamed": False,
+                "lines": [],
+                "in_hunk": False,
+                # DDR-0002: a secret-bearing file's hunks are never read.
+                "secret": _is_secret_bearing(path) or _is_secret_bearing(old_path),
+            }
+            files.append(current)
+            continue
+        if current is None:
+            continue
+        if not current["in_hunk"]:
+            if line.startswith("new file mode"):
+                current["status"] = "added"
+            elif line.startswith("deleted file mode"):
+                current["status"] = "deleted"
+            elif line.startswith("rename from "):
+                current["renamed"] = True
+                current["old_path"] = line[len("rename from ") :]
+                current["secret"] = current["secret"] or _is_secret_bearing(
+                    current["old_path"]
+                )
+        match = _HUNK.match(line)
+        if match:
+            old, new = int(match[1]), int(match[2])
+            hunk += 1
+            current["in_hunk"] = True
+            continue
+        if current["secret"] or not current["in_hunk"] or line.startswith("\\"):
+            continue
+        if line.startswith("-"):
+            current["lines"].append(("-", old, line[1:], hunk))
+            old += 1
+        elif line.startswith("+"):
+            current["lines"].append(("+", new, line[1:], hunk))
+            new += 1
+        elif line.startswith(" "):
+            current["lines"].append((" ", new, line[1:], hunk))
+            old += 1
+            new += 1
+    return files
+
+
+def _declared_name(pattern: re.Pattern[str], text: str) -> str | None:
+    """The name a public-declaration token declares on ``text``, or ``None``.
+
+    The identifier the token ends inside, else the next one after it; a token
+    ending in ``(`` (``public * * (``) names the last identifier it matched.
+    """
+    if len(text) > MAX_LINE_CHARS:
+        return None
+    match = pattern.match(text)
+    if match is None:
+        return None
+    matched, end = match.group(0), match.end()
+    inside = _IDENT.findall(matched)
+    if matched.endswith("("):
+        return inside[-1] if inside else None
+    if end < len(text) and _IDENT.match(text, end) and _IDENT.match(matched[-1:]):
+        start = end
+        while start > 0 and _IDENT.match(text[start - 1]):
+            start -= 1
+        return _IDENT.match(text, start).group(0)
+    following = _IDENT.match(text[end:].lstrip())
+    if following:
+        return following.group(0)
+    return inside[-1] if inside else None
+
+
+def _is_migration(path: str) -> bool:
+    pure = PurePosixPath(path)
+    if ".down." in pure.name or re.match(r"U\d", pure.name):
+        return False
+    return any(part.lower() in MIGRATION_DIRS for part in pure.parts[:-1])
+
+
+def _destructive_ops(item: dict) -> list[tuple[str, int, str, str]]:
+    """Destructive operations on added lines, outside down sections."""
+    status = (
+        "in a new migration file"
+        if item["status"] == "added"
+        else "in an edited migration file (an existing migration was changed)"
+    )
+    found = []
+    down = False
+    for sign, number, text, _hunk in item["lines"]:
+        if sign == "-":
+            continue
+        if _DOWN_START.search(text):
+            down = True
+        elif _UP_START.search(text):
+            down = False
+        if sign != "+" or down or _COMMENT_LINE.match(text):
+            continue
+        hit = _DESTRUCTIVE.search(text)
+        if hit:
+            found.append((item["path"], number, text, f"{hit.group(0)} {status}"))
+    return found
+
+
+def _safe_ref(excerpt: Excerpt) -> str:
+    """The ref this excerpt carries in the pack, after path redaction."""
+    return f"{redact(excerpt.path)}:{excerpt.start_line}-{excerpt.end_line}"
 
 
 # --------------------------------------------------------------------------

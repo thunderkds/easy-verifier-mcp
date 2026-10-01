@@ -335,7 +335,11 @@ def test_the_last_relevance_pass_is_abandoned_and_reads_stay_bounded(
 
     assert result.truncation.truncated is True
     assert collect.drained[-1] is False
-    assert len(set(context.files_read)) <= blast_radius.MAX_SCAN_FILES
+    # T052: the changed files themselves are read too (churn share cites
+    # them), bounded by MAX_SCOPE_FILES on top of the sweep's own ceiling.
+    assert len(set(context.files_read)) <= (
+        blast_radius.MAX_SCAN_FILES + blast_radius.MAX_SCOPE_FILES
+    )
     assert len(set(context.files_read)) < 500
 
 
@@ -423,7 +427,10 @@ def test_only_read_only_git_subcommands_are_ever_invoked(
 
 def test_subprocess_is_reached_only_through_the_single_read_only_helper() -> None:
     source = inspect.getsource(blast_radius)
-    assert source.count("subprocess.run(") == 1
+    # T051: the one helper now lives in core/git.py (shared, config-hardened);
+    # `_run_git` here only delegates to it.
+    assert source.count("subprocess.run(") == 0
+    assert "return run_git_text(repo, args)" in inspect.getsource(blast_radius._run_git)
     assert "shell=True," not in source
     assert "exec(" not in source
     assert "eval(" not in source

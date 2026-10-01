@@ -11,17 +11,20 @@ import pytest
 
 from easy_verifier.core.judge import (
     COVERAGE_FLOORS,
+    DOCUMENTATION_RULES,
     RATING_RULES,
     CoverageFloor,
+    GatedRating,
     OverallRating,
     Rating,
     RatingAbstained,
     RatingAbstention,
     RatingInput,
-    RatingRule,
     _serialize,
-    rate,
     rate_overall,
+)
+from easy_verifier.core.judge import (
+    rate as _rate,
 )
 from easy_verifier.core.metrics import (
     WHOLE_SET,
@@ -30,7 +33,26 @@ from easy_verifier.core.metrics import (
     MetricSet,
 )
 from easy_verifier.core.models import CoverageSummary, SourceMiss
+from easy_verifier.core.roles import documentation_present
 from easy_verifier.dimensions import dimension_names
+
+
+def _docs(dimension):
+    """T056: the offboarding rule's results (missing) for ``dimension``."""
+    return tuple(
+        documentation_present(rule, ())
+        for rule in DOCUMENTATION_RULES.get(dimension, ())
+    )
+
+
+def rate(metrics, coverage, **kwargs):
+    """``judge.rate`` with the documentation results a dimension declaring
+    documentation rules requires (T056: security's offboarding rule), unless
+    the test passes its own."""
+    names = {name for name, _score in coverage.per_dimension}
+    if "documentation" not in kwargs and len(names) == 1:
+        kwargs["documentation"] = _docs(names.pop())
+    return _rate(metrics, coverage, **kwargs)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIMENSIONS = tuple(COVERAGE_FLOORS)
@@ -60,9 +82,10 @@ def _numeric_metrics(
     *,
     passing_names: set[str] | None = None,
 ) -> MetricSet:
-    passing_names = set(RATING_RULES) if passing_names is None else passing_names
+    rules = RATING_RULES[dimension]
+    passing_names = set(rules) if passing_names is None else passing_names
     items = []
-    for name, rule in RATING_RULES.items():
+    for name, rule in rules.items():
         passing = name in passing_names
         if rule.comparison == "at_least":
             value = rule.threshold if passing else rule.threshold - 1
@@ -88,23 +111,48 @@ def _coverage(
     )
 
 
-def _rating_with_value(dimension: str, value: int) -> Rating:
-    weights = [rule.weight for rule in RATING_RULES.values()]
-    assert sum(weights) == 100
-    chosen: set[str] = set()
-    remaining = value
-    for name, rule in RATING_RULES.items():
-        if rule.weight <= remaining:
-            chosen.add(name)
-            remaining -= rule.weight
-    assert remaining == 0
-    result = rate(
-        _numeric_metrics(dimension, passing_names=chosen),
-        _coverage(dimension, score=max(COVERAGE_FLOORS[dimension].value, 0.88)),
-    )
-    assert isinstance(result, Rating)
-    assert result.value == value
-    return result
+def _rating_with_value(dimension: str, value: int) -> Rating | GatedRating:
+    """A rules Rating of exactly ``value`` built through ``rate``, choosing
+    which rule metrics pass and which abstain. solution-fit declares no rule
+    (T035), so it can only contribute agent-rated at the evaluate gate."""
+    rules = RATING_RULES[dimension]
+    coverage = _coverage(dimension, score=max(COVERAGE_FLOORS[dimension].value, 0.88))
+    if not rules:
+        abstention = rate(_numeric_metrics(dimension), coverage)
+        assert isinstance(abstention, RatingAbstention)
+        return GatedRating(abstention, value, 1, ("PRD.md:1-2",))
+    names = tuple(rules)
+    for mask in range(1, 3 ** len(names)):
+        states = [(mask // 3**index) % 3 for index in range(len(names))]
+        available = [n for n, state in zip(names, states, strict=True) if state]
+        if not available:
+            continue
+        earned = sum(
+            rules[n].weight for n, st in zip(names, states, strict=True) if st == 2
+        )
+        total = sum(rules[n].weight for n in available)
+        if round(100 * earned / total) != value:
+            continue
+        metrics = []
+        for name, state in zip(names, states, strict=True):
+            if state == 0:
+                metrics.append(
+                    _metric(name, MetricAbstention("unavailable"), dimension=dimension)
+                )
+                continue
+            rule = rules[name]
+            step = 0 if state == 2 else 1
+            outcome = (
+                rule.threshold - step
+                if rule.comparison == "at_least"
+                else rule.threshold + step
+            )
+            metrics.append(_metric(name, outcome, dimension=dimension))
+        result = rate(MetricSet(tuple(metrics)), coverage)
+        assert isinstance(result, Rating)
+        assert result.value == value
+        return result
+    raise AssertionError(f"{dimension} cannot rate exactly {value}")
 
 
 def test_floor_table_is_complete_static_data_and_matches_live_discovery():
@@ -128,36 +176,6 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "blast-radius": 0.25,
     }
     assert all(floor.boundary == "inclusive" for floor in COVERAGE_FLOORS.values())
-
-
-def test_rule_table_is_complete_static_data_over_existing_metric_names():
-    from easy_verifier.core.metrics import METRIC_NAMES
-
-    assert tuple(RATING_RULES) == METRIC_NAMES
-    assert sum(rule.weight for rule in RATING_RULES.values()) == 100
-    assert RATING_RULES == {
-        "test_to_source_ratio": RatingRule("test_to_source_ratio", 15, 1.0, "at_least"),
-        "source_files_without_covering_test": RatingRule(
-            "source_files_without_covering_test", 15, 0.0, "at_most"
-        ),
-        "assertion_density_per_test": RatingRule(
-            "assertion_density_per_test", 10, 1.0, "at_least"
-        ),
-        "assertions_observed": RatingRule("assertions_observed", 5, 1.0, "at_least"),
-        "redaction_hits_observed": RatingRule(
-            "redaction_hits_observed", 10, 0.0, "at_most"
-        ),
-        "redacted_file_share": RatingRule("redacted_file_share", 10, 0.0, "at_most"),
-        "excerpts_observed": RatingRule("excerpts_observed", 5, 1.0, "at_least"),
-        "declared_source_coverage": RatingRule(
-            "declared_source_coverage", 10, 0.60, "at_least"
-        ),
-        "evidence_lines_observed": RatingRule(
-            "evidence_lines_observed", 5, 1.0, "at_least"
-        ),
-        "mean_excerpt_lines": RatingRule("mean_excerpt_lines", 5, 1.0, "at_least"),
-        "source_file_share": RatingRule("source_file_share", 10, 0.10, "at_least"),
-    }
 
 
 def test_rating_carries_inputs_citations_and_is_hand_recomputable():
@@ -216,6 +234,11 @@ def test_every_floor_is_inclusive_and_extremes_change_the_result(
     exact = rate(
         _numeric_metrics(dimension), _coverage(dimension, score=declared.value)
     )
+    if not RATING_RULES[dimension]:
+        # T035: a dimension with no rule abstains whatever its coverage.
+        assert isinstance(exact, RatingAbstention)
+        assert exact.reason_code == "no_static_rule"
+        return
     assert isinstance(exact, Rating)
 
     monkeypatch.setitem(COVERAGE_FLOORS, dimension, CoverageFloor(0.0, "inclusive"))
@@ -226,17 +249,20 @@ def test_every_floor_is_inclusive_and_extremes_change_the_result(
     assert isinstance(high_floor, RatingAbstention)
 
 
-@pytest.mark.parametrize("metric_name", tuple(RATING_RULES))
-def test_every_rule_threshold_distinguishes_pass_from_fail(metric_name: str):
-    passing = rate(
-        _numeric_metrics(passing_names={metric_name}),
-        _coverage(),
-    )
-    failing = rate(_numeric_metrics(passing_names=set()), _coverage())
+@pytest.mark.parametrize(
+    ("dimension", "metric_name"),
+    [(dimension, name) for dimension, rules in RATING_RULES.items() for name in rules],
+)
+def test_every_rule_threshold_distinguishes_pass_from_fail(
+    dimension: str, metric_name: str
+):
+    coverage = _coverage(dimension, score=1.0, missing=())
+    passing = rate(_numeric_metrics(dimension, passing_names={metric_name}), coverage)
+    failing = rate(_numeric_metrics(dimension, passing_names=set()), coverage)
 
     assert isinstance(passing, Rating)
     assert isinstance(failing, Rating)
-    assert passing.value == RATING_RULES[metric_name].weight
+    assert passing.value == RATING_RULES[dimension][metric_name].weight
     assert failing.value == 0
 
 
@@ -264,9 +290,9 @@ def test_none_coverage_and_failed_dimension_have_distinct_structured_reasons():
 
 
 def test_partial_metric_abstentions_are_disclosed_and_normalized_out():
-    first_name = next(iter(RATING_RULES))
+    first_name = next(iter(RATING_RULES["architecture"]))
     metrics = []
-    for name, rule in RATING_RULES.items():
+    for name, rule in RATING_RULES["architecture"].items():
         outcome = (
             rule.threshold
             if name == first_name
@@ -279,7 +305,7 @@ def test_partial_metric_abstentions_are_disclosed_and_normalized_out():
     assert isinstance(result, Rating)
     assert result.value == 100
     assert result.inputs[0].metric_name == first_name
-    assert len(result.unavailable_metrics) == len(RATING_RULES) - 1
+    assert len(result.unavailable_metrics) == len(RATING_RULES["architecture"]) - 1
     assert all(
         reason == "whole-set metric unavailable"
         for _, reason in result.unavailable_metrics
@@ -294,19 +320,19 @@ def test_all_metrics_abstained_but_legitimate_zero_does_not_collapse():
                 MetricAbstention("whole-set metric unavailable"),
                 dimension="architecture",
             )
-            for name in RATING_RULES
+            for name in RATING_RULES["architecture"]
         )
     )
     result = rate(all_abstained, _coverage())
     assert isinstance(result, RatingAbstention)
     assert result.reason_code == "all_metrics_abstained"
 
-    values = _numeric_metrics(passing_names={"redaction_hits_observed"})
-    zero = next(m for m in values if m.name == "redaction_hits_observed")
+    values = _numeric_metrics(passing_names={"top_level_import_cycles"})
+    zero = next(m for m in values if m.name == "top_level_import_cycles")
     assert zero.outcome == 0
     rated = rate(values, _coverage())
     assert isinstance(rated, Rating)
-    assert rated.value == RATING_RULES["redaction_hits_observed"].weight
+    assert rated.value == RATING_RULES["architecture"]["top_level_import_cycles"].weight
 
 
 def test_missing_and_duplicate_rule_metrics_are_rejected():
@@ -318,9 +344,9 @@ def test_missing_and_duplicate_rule_metrics_are_rejected():
 
 
 def test_rule_key_and_payload_name_cannot_drift(monkeypatch):
-    key = next(iter(RATING_RULES))
-    original = RATING_RULES[key]
-    monkeypatch.setitem(RATING_RULES, key, replace(original, metric_name="other"))
+    rules = RATING_RULES["architecture"]
+    key = next(iter(rules))
+    monkeypatch.setitem(rules, key, replace(rules[key], metric_name="other"))
     with pytest.raises(ValueError, match="key.*metric_name"):
         rate(_numeric_metrics(), _coverage())
 
@@ -328,13 +354,15 @@ def test_rule_key_and_payload_name_cannot_drift(monkeypatch):
 @pytest.mark.parametrize(
     "replacement, message",
     [
-        (RatingRule("test_to_source_ratio", 0, 1.0, "at_least"), "weight"),
-        (RatingRule("test_to_source_ratio", 15, float("nan"), "at_least"), "threshold"),
-        (RatingRule("test_to_source_ratio", 15, 1.0, "sideways"), "comparison"),
+        ({"weight": 0}, "weight"),
+        ({"threshold": float("nan")}, "threshold"),
+        ({"comparison": "sideways"}, "comparison"),
     ],
 )
 def test_malformed_declared_rules_are_rejected(replacement, message, monkeypatch):
-    monkeypatch.setitem(RATING_RULES, "test_to_source_ratio", replacement)
+    rules = RATING_RULES["architecture"]
+    key = "top_level_import_cycles"
+    monkeypatch.setitem(rules, key, replace(rules[key], **replacement))
     with pytest.raises(ValueError, match=message):
         rate(_numeric_metrics(), _coverage())
 
@@ -394,11 +422,8 @@ def test_rate_rejects_combined_coverage_that_differs_from_sole_dimension():
 def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
     strong_names = DIMENSIONS[:6]
     weak_name = DIMENSIONS[6]
-    strong = tuple(_rating_with_value(name, 70) for name in strong_names)
-    weak_metrics = _numeric_metrics(
-        weak_name,
-        passing_names={"test_to_source_ratio", "assertions_observed"},
-    )
+    strong = tuple(_rating_with_value(name, 50) for name in strong_names)
+    weak_metrics = _numeric_metrics(weak_name, passing_names=set())
     floor = COVERAGE_FLOORS[weak_name].value
     weak_rating = rate(weak_metrics, _coverage(weak_name, score=floor))
     weak_abstention = rate(
@@ -409,14 +434,14 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
             missing=(SourceMiss("go.mod", "not found in target"),),
         ),
     )
-    assert isinstance(weak_rating, Rating) and weak_rating.value == 20
+    assert isinstance(weak_rating, Rating) and weak_rating.value == 0
     assert isinstance(weak_abstention, RatingAbstention)
 
     all_seven = rate_overall(strong + (weak_rating,))
     with_abstention = rate_overall(strong + (weak_abstention,))
 
-    assert isinstance(all_seven, OverallRating) and all_seven.value == 63
-    assert isinstance(with_abstention, OverallRating) and with_abstention.value == 70
+    assert isinstance(all_seven, OverallRating) and all_seven.value == 43
+    assert isinstance(with_abstention, OverallRating) and with_abstention.value == 50
     assert with_abstention.value > all_seven.value
     assert with_abstention.contributor_count == 6
     assert with_abstention.total_dimension_count == 7
@@ -429,8 +454,8 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
 
 
 def test_overall_requires_exactly_the_seven_unique_known_dimensions():
-    ratings = tuple(_rating_with_value(name, 70) for name in DIMENSIONS)
-    with pytest.raises(ValueError, match="exactly the seven"):
+    ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS)
+    with pytest.raises(ValueError, match="exactly the declared dimensions"):
         rate_overall(ratings[:-1])
     with pytest.raises(ValueError, match="duplicate"):
         rate_overall(ratings[:-1] + (ratings[0],))
@@ -446,22 +471,28 @@ def test_rating_value_is_an_integer_in_the_closed_rating_range():
     forged = object.__new__(Rating)
     object.__setattr__(forged, "dimension", DIMENSIONS[-1])
     object.__setattr__(forged, "value", 999)
-    valid = tuple(_rating_with_value(name, 70) for name in DIMENSIONS[:-1])
+    valid = tuple(_rating_with_value(name, 50) for name in DIMENSIONS[:-1])
     with pytest.raises(ValueError, match="integer.*0.*100"):
         rate_overall(valid + (forged,))
 
 
 def test_rating_input_rejects_incoherent_or_uncheckable_fields():
+    rule = RATING_RULES["architecture"]["top_level_import_cycles"]
     valid = {
-        "metric_name": "excerpts_observed",
-        "metric_value": 1,
-        "weight": 5,
-        "threshold": 1.0,
-        "comparison": "at_least",
+        "metric_name": "top_level_import_cycles",
+        "metric_value": 0,
+        "weight": 40,
+        "threshold": 0,
+        "comparison": "at_most",
         "passed": True,
-        "earned_weight": 5,
+        "earned_weight": 40,
         "computed_from": ("src/app.py",),
+        "metric_citation": rule.metric_citation,
+        "threshold_citation": rule.threshold_citation,
+        "source_tag": rule.source_tag,
+        "area": rule.area,
     }
+    RatingInput(**valid)
     invalid_changes = (
         {"metric_name": ""},
         {"metric_name": 7},
@@ -477,6 +508,9 @@ def test_rating_input_rejects_incoherent_or_uncheckable_fields():
         {"computed_from": ()},
         {"computed_from": ("",)},
         {"computed_from": (7,)},
+        {"metric_citation": ()},
+        {"threshold_citation": "project-default"},
+        {"source_tag": "agent-researched (unreviewed)"},
     )
     for changes in invalid_changes:
         with pytest.raises(ValueError):
@@ -484,7 +518,7 @@ def test_rating_input_rejects_incoherent_or_uncheckable_fields():
 
 
 def test_rating_constructor_enforces_dimension_inputs_partition_and_arithmetic():
-    valid = _rating_with_value("architecture", 70)
+    valid = _rating_with_value("architecture", 50)
     with pytest.raises(ValueError):
         Rating("architecture", 75, inputs=())
     with pytest.raises(ValueError, match="unknown dimension"):
@@ -507,7 +541,7 @@ def test_overall_rejects_unsupported_objects_before_reading_them():
             self.value = 999
 
     forged = tuple(Forged(name) for name in DIMENSIONS[:-1])
-    valid = _rating_with_value(DIMENSIONS[-1], 70)
+    valid = _rating_with_value(DIMENSIONS[-1], 50)
     with pytest.raises(
         ValueError, match="exactly Rating, RatingAbstention or GatedRating"
     ):
@@ -518,7 +552,7 @@ def test_overall_constructor_enforces_counts_partition_and_arithmetic():
     with pytest.raises(ValueError):
         OverallRating(75, 99, 7, (), ())
 
-    ratings = tuple(_rating_with_value(name, 70) for name in DIMENSIONS)
+    ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS)
     valid = rate_overall(ratings)
     assert isinstance(valid, OverallRating)
     with pytest.raises(ValueError, match="contributor_count"):
@@ -532,12 +566,12 @@ def test_overall_constructor_enforces_counts_partition_and_arithmetic():
 
 
 def test_overall_serializes_contributor_values_needed_to_recompute_it():
-    ratings = tuple(_rating_with_value(name, 70) for name in DIMENSIONS)
+    ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS)
     result = rate_overall(ratings)
     assert isinstance(result, OverallRating)
     payload = json.loads(result.serialize())
     values = payload["contributor_values"]
-    assert values == [[name, 70] for name in DIMENSIONS]
+    assert values == [[name, 50] for name in DIMENSIONS]
     assert result.value == round(sum(value for _name, value in values) / len(values))
 
 
@@ -553,7 +587,7 @@ def test_unknown_abstention_reason_and_incoherent_payload_are_rejected():
         )
     with pytest.raises(ValueError, match="failure"):
         RatingAbstention(dimension="architecture", reason_code="dimension_failed")
-    with pytest.raises(ValueError, match="all seven abstentions"):
+    with pytest.raises(ValueError, match="every declared dimension's abstention"):
         RatingAbstention(
             dimension="overall",
             reason_code="no_dimension_rated",
@@ -566,7 +600,7 @@ def test_abstention_rejects_unknown_dimensions_and_surplus_reason_fields():
     leaves = tuple(
         rate(_numeric_metrics(name), _coverage(name, score=0.0)) for name in DIMENSIONS
     )
-    unavailable = tuple((name, "unavailable") for name in RATING_RULES)
+    unavailable = tuple((name, "unavailable") for name in RATING_RULES["architecture"])
     valid = {
         "below": RatingAbstention(
             dimension="architecture",
@@ -653,7 +687,7 @@ def test_abstention_validates_source_miss_values_at_construction_and_revalidatio
         sources_missing=(SourceMiss("go.mod", "not found in target"),),
     )
     object.__setattr__(valid, "sources_missing", (object(),))
-    ratings = tuple(_rating_with_value(name, 70) for name in DIMENSIONS[:-1])
+    ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS[:-1])
     with pytest.raises(ValueError, match="SourceMiss|malformed RatingAbstention"):
         rate_overall(ratings + (valid,))
 
@@ -662,7 +696,7 @@ def test_leaf_abstention_floor_must_equal_its_current_declared_floor():
     all_unavailable = MetricSet(
         tuple(
             _metric(name, MetricAbstention("unavailable"), dimension="architecture")
-            for name in RATING_RULES
+            for name in RATING_RULES["architecture"]
         )
     )
     leaves = (
@@ -681,13 +715,13 @@ def test_leaf_abstention_floor_must_equal_its_current_declared_floor():
 
 
 def test_public_rating_methods_and_order_are_canonical():
-    rating = _rating_with_value("architecture", 70)
+    rating = _rating_with_value("architecture", 50)
     with pytest.raises(ValueError, match="method"):
         replace(rating, method="caller supplied arithmetic")
     with pytest.raises(ValueError, match="canonical"):
         replace(rating, inputs=tuple(reversed(rating.inputs)))
 
-    first_name = next(iter(RATING_RULES))
+    first_name = next(iter(RATING_RULES["architecture"]))
     partial = rate(
         MetricSet(
             tuple(
@@ -698,7 +732,7 @@ def test_public_rating_methods_and_order_are_canonical():
                     else MetricAbstention("unavailable"),
                     dimension="architecture",
                 )
-                for name, rule in RATING_RULES.items()
+                for name, rule in RATING_RULES["architecture"].items()
             )
         ),
         _coverage(),
@@ -710,7 +744,7 @@ def test_public_rating_methods_and_order_are_canonical():
             unavailable_metrics=tuple(reversed(partial.unavailable_metrics)),
         )
 
-    outcomes = (_rating_with_value(DIMENSIONS[0], 70),) + tuple(
+    outcomes = (_rating_with_value(DIMENSIONS[0], 50),) + tuple(
         rate(_numeric_metrics(name), _coverage(name, score=0.0))
         for name in DIMENSIONS[1:]
     )
@@ -734,7 +768,7 @@ def test_overall_revalidates_bypassed_abstentions_and_parent_children():
     forged = object.__new__(RatingAbstention)
     object.__setattr__(forged, "dimension", DIMENSIONS[-1])
     object.__setattr__(forged, "reason_code", "invented_reason")
-    valid_ratings = tuple(_rating_with_value(name, 70) for name in DIMENSIONS[:-1])
+    valid_ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS[:-1])
     with pytest.raises(ValueError, match="reason_code"):
         rate_overall(valid_ratings + (forged,))
 
@@ -765,7 +799,7 @@ def test_all_seven_abstaining_produces_overall_abstention():
 
 
 def test_serialization_is_byte_deterministic_and_carries_disclosure():
-    ratings = tuple(_rating_with_value(name, 70) for name in DIMENSIONS)
+    ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS)
     first = rate_overall(ratings)
     second = rate_overall(tuple(reversed(ratings)))
 
@@ -784,15 +818,20 @@ def test_serialization_rejects_non_finite_json_numbers(non_finite: float):
     with pytest.raises(ValueError):
         _serialize({"not_json": non_finite})
     with pytest.raises(ValueError, match="finite"):
+        rule = RATING_RULES["architecture"]["top_level_import_cycles"]
         RatingInput(
-            metric_name="excerpts_observed",
+            metric_name="top_level_import_cycles",
             metric_value=non_finite,
-            weight=5,
-            threshold=1.0,
-            comparison="at_least",
+            weight=40,
+            threshold=0,
+            comparison="at_most",
             passed=False,
             earned_weight=0,
             computed_from=("src/app.py",),
+            metric_citation=rule.metric_citation,
+            threshold_citation=rule.threshold_citation,
+            source_tag=rule.source_tag,
+            area=rule.area,
         )
 
 

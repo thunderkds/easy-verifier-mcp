@@ -1,0 +1,217 @@
+# Go — curated reference registry entry (T030, DDR-0007).
+
+[[manifests]]
+value = ["go.mod"]
+citation_url = "https://go.dev/ref/mod#go-mod-file"
+source_tag = "curated"
+
+[[manifests]]
+value = ["go.work"]
+citation_url = "https://go.dev/ref/mod#workspaces"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/go.mod"]
+citation_url = "https://go.dev/ref/mod#go-mod-file"
+source_tag = "curated"
+
+[[roles.package-manifest]]
+value = ["**/go.work"]
+citation_url = "https://go.dev/ref/mod#workspaces"
+source_tag = "curated"
+
+[[roles.lockfile]]
+value = ["**/go.sum"]
+citation_url = "https://go.dev/ref/mod#go-sum-files"
+source_tag = "curated"
+
+[[roles.lint-config]]
+value = ["**/.golangci.yml", "**/.golangci.yaml", "**/.golangci.toml", "**/.golangci.json"]
+citation_url = "https://golangci-lint.run/"
+source_tag = "curated"
+
+[[roles.test-config]]
+value = ["**/go.mod"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+# Metric fields (T031): read by core/metric_tables.py; token syntax in core/registry.py.
+
+[[source_extensions]]
+value = [".go"]
+citation_url = "https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml"
+source_tag = "curated"
+
+[[test_name_patterns]]
+value = ["?*_test.go"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+[[colocated_test_name_patterns]]
+value = ["?*_test.go"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+[[test_candidates]]
+value = ["./{stem}_test{ext}"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+[[test_declarations]]
+value = ["func Test* ("]
+citation_url = "https://pkg.go.dev/testing"
+source_tag = "curated"
+
+[[assertions]]
+value = ["t.Error", "t.Errorf", "t.Fatal", "t.Fatalf", "t.Fail", "t.FailNow"]
+citation_url = "https://pkg.go.dev/testing#T"
+source_tag = "curated"
+
+# Structure fields (T033): read by core/tokens.py via core/metric_tables.py;
+# syntax in core/registry.py. Approximate CCN (lizard-style), McCabe 1976.
+
+[[branch_keywords]]
+value = ["if"]
+citation_url = "https://go.dev/ref/spec#If_statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["for"]
+citation_url = "https://go.dev/ref/spec#For_statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["case"]
+citation_url = "https://go.dev/ref/spec#Switch_statements"
+source_tag = "curated"
+
+[[branch_keywords]]
+value = ["&&", "||"]
+citation_url = "https://go.dev/ref/spec#Logical_operators"
+source_tag = "curated"
+
+[[comment_delimiters]]
+value = ["//", "/* */"]
+citation_url = "https://go.dev/ref/spec#Comments"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["\"", "` `"]
+citation_url = "https://go.dev/ref/spec#String_literals"
+source_tag = "curated"
+
+[[string_delimiters]]
+value = ["'"]
+citation_url = "https://go.dev/ref/spec#Rune_literals"
+source_tag = "curated"
+
+[[function_start]]
+value = ["func"]
+citation_url = "https://go.dev/ref/spec#Function_declarations"
+source_tag = "curated"
+
+[[import_syntax]]
+value = ["import"]
+citation_url = "https://go.dev/ref/spec#Import_declarations"
+source_tag = "curated"
+
+# Security field (T034): dangerous-sink tokens per CWE, matched by
+# core/metrics.py after comments and strings are blanked (syntax in
+# core/registry.py). Conservative: a miss is preferred over noise.
+
+[[security_sinks]]
+cwe = "CWE-78"
+value = ["exec.Command ( ?"]
+citation_url = "https://cwe.mitre.org/data/definitions/78.html"
+source_tag = "curated"
+
+[[security_sinks]]
+cwe = "CWE-89"
+value = [".Query ( +", ".QueryRow ( +", ".Exec ( +", ".Query ( fmt.Sprintf (", ".QueryRow ( fmt.Sprintf (", ".Exec ( fmt.Sprintf ("]
+citation_url = "https://cwe.mitre.org/data/definitions/89.html"
+source_tag = "curated"
+
+# Framework detection keys (T037): <framework>=<dependency>, each citing
+# the framework's official install page naming that dependency.
+
+[[frameworks]]
+value = ["gin=github.com/gin-gonic/gin"]
+citation_url = "https://gin-gonic.com/en/docs/quickstart/"
+source_tag = "curated"
+
+# Area fields (T040, FR-051): #16 skip markers and network calls in tests,
+# #17 type escapes (syntax in core/registry.py). Conservative: a miss is
+# preferred over noise.
+
+[[skip_markers]]
+value = ["t.Skip (", "t.Skipf (", "t.SkipNow ("]
+citation_url = "https://pkg.go.dev/testing#T.Skip"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["http.Get (", "http.Post (", "http.PostForm (", "http.Head ("]
+citation_url = "https://pkg.go.dev/net/http#Get"
+source_tag = "curated"
+
+[[network_calls]]
+value = ["net.Dial (", "net.DialTimeout ("]
+citation_url = "https://pkg.go.dev/net#Dial"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["interface { }"]
+citation_url = "https://go.dev/ref/spec#Interface_types"
+source_tag = "curated"
+
+[[type_escapes]]
+value = ["unsafe.Pointer"]
+citation_url = "https://pkg.go.dev/unsafe#Pointer"
+source_tag = "curated"
+
+# Compatibility field (T055, area #5): declarations visible outside their
+# module, matched at a line start in removed diff lines by the blast-radius
+# dimension. Textual: a declaration's enclosing scope is not resolved.
+
+[[public_declarations]]
+value = ["func <A-Z>", "func ( * * ) <A-Z>", "type <A-Z>"]
+citation_url = "https://go.dev/ref/spec#Exported_identifiers"
+source_tag = "curated"
+
+# Cookie fields (T056, area #8): a statement that sets a cookie, and the
+# tokens setting its Secure / HttpOnly / SameSite flags inside that statement
+# (syntax in core/registry.py). Conservative: a miss is preferred over noise,
+# so APIs whose flags are set in separate statements are not listed.
+
+[[cookie_calls]]
+value = ["http.Cookie {"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+[[cookie_secure]]
+value = ["Secure : true"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+[[cookie_httponly]]
+value = ["HttpOnly : true"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+[[cookie_samesite]]
+value = ["SameSite :"]
+citation_url = "https://pkg.go.dev/net/http#Cookie"
+source_tag = "curated"
+
+# Auth marker field (T056, area #8): code tokens showing authentication or
+# session code. A gate, never scored: the cookie metric computes only over a
+# pack in which one was read (user 2026-09-29; syntax in core/registry.py).
+
+[[auth_markers]]
+value = [".BasicAuth ("]
+citation_url = "https://pkg.go.dev/net/http#Request.BasicAuth"
+source_tag = "curated"
+
+[[auth_markers]]
+value = ["sessions.NewCookieStore ("]
+citation_url = "https://pkg.go.dev/github.com/gorilla/sessions"
+source_tag = "curated"

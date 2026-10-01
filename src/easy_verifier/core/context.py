@@ -20,6 +20,7 @@ import fnmatch
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
+from .git import run_git
 from .models import ApprovalRequest, Excerpt, SourceMiss
 from .redact import redact
 
@@ -172,6 +173,62 @@ def _is_secret_bearing(relative_path: str) -> bool:
     return any(fnmatch.fnmatch(name, pattern) for pattern in SECRET_BEARING_PATTERNS)
 
 
+def git_ignore_filter(repo: Path) -> Callable[[str], bool]:
+    """Return ``skip(relative_path)``: True for a file the repo's git ignores (T051).
+
+    Decided with **one** read-only ``git ls-files --others --ignored
+    --exclude-standard --directory`` per call, so nested ``.gitignore`` files,
+    ``.git/info/exclude`` and the global excludes file are honoured exactly as
+    git honours them, and the answer is a set lookup per file afterwards — never
+    a process per file. Callers build it once per walk. Only *untracked* ignored
+    files are skipped: a tracked file is part of the repository whatever a
+    pattern says.
+
+    Unchanged behaviour (skip nothing) when git is absent, the target is not a
+    git work tree (a tarball), or git fails for any reason. A target directory
+    that an enclosing repository ignores makes git answer ``./``, which matches
+    no repo-relative path, so that case also skips nothing — an evaluation must
+    never go silently empty.
+
+    A secret-bearing name (DDR-0002) is **never** skipped: its contents are
+    never read anyway, and its existence — a git-ignored ``.env`` is the normal
+    case — stays reportable as ``excluded: secret-bearing``.
+
+    Run through :func:`.git.run_git`, which disarms every program a target
+    repository's own config could name for git to run (NFR-007).
+    """
+    ok, stdout, _ = run_git(
+        repo,
+        ["ls-files", "--others", "--ignored", "--exclude-standard"]
+        + ["--directory", "-z"],
+    )
+    if not ok:
+        return _skip_nothing
+    listing = stdout.decode("utf-8", "surrogateescape")
+    entries = [entry for entry in listing.split("\0") if entry]
+    ignored_dirs = frozenset(e for e in entries if e.endswith("/"))
+    ignored_files = frozenset(e for e in entries if not e.endswith("/"))
+    if not ignored_dirs and not ignored_files:
+        return _skip_nothing
+
+    def skip(relative_path: str) -> bool:
+        if _is_secret_bearing(relative_path):
+            return False
+        if relative_path in ignored_files:
+            return True
+        parts = relative_path.split("/")[:-1]
+        return any(
+            "/".join(parts[: depth + 1]) + "/" in ignored_dirs
+            for depth in range(len(parts))
+        )
+
+    return skip
+
+
+def _skip_nothing(relative_path: str) -> bool:
+    return False
+
+
 class RepoPathError(ValueError):
     """The target repository path is unusable. Reported as a clear message, not
     a traceback."""
@@ -218,6 +275,10 @@ class RepoContext:
         self.sources_found: list[str] = []
         self.sources_missing: list[SourceMiss] = []
         self.approval_requests: list[ApprovalRequest] = []
+        self.trace_search: object | None = None
+        self.reach: object | None = None
+        self.compat: object | None = None
+        self.doc_history: object | None = None
         self._secret_approval = secret_approval
         self._secret_approval_decisions: dict[str, bool] = {}
         self._approved_secret_reads: set[str] = set()
@@ -234,26 +295,46 @@ class RepoContext:
         bytes are ever touched: reported as ``excluded: secret-bearing``,
         distinct from ``not found`` and ``not examined``, and never opened.
         """
+        text, reason = self._load(relative_path)
+        if reason is not None:
+            self._miss(relative_path, reason)
+            return None
+
+        self.sources_found.append(relative_path)
+        self.files_read.append(relative_path)
+        return text
+
+    def peek_source(self, relative_path: str) -> str | None:
+        """Return a source's text for ranking only (T058), recording nothing.
+
+        The refusals are exactly :meth:`read_source`'s (a secret-bearing file
+        is never opened, and a path resolving outside the repository is not
+        followed); nothing is added to ``files_read``, ``sources_found`` or
+        ``sources_missing``, because nothing peeked is evidence.
+        """
+        return self._load(relative_path, peek=True)[0]
+
+    def _load(
+        self, relative_path: str, *, peek: bool = False
+    ) -> tuple[str | None, str | None]:
+        """``(text, None)`` or ``(None, miss reason)``: the one place a source's
+        bytes are refused or read (Critical Constraint 4a)."""
         candidate = self.repo_path / relative_path
 
         try:
             resolved = candidate.resolve()
         except OSError as exc:
-            self._miss(relative_path, f"path could not be resolved: {exc.strerror}")
-            return None
+            return None, f"path could not be resolved: {exc.strerror}"
 
         # Symlinks pointing outside the repository are not followed.
         if not resolved.is_relative_to(self.repo_path):
-            self._miss(relative_path, "resolves outside the repository; not followed")
-            return None
+            return None, "resolves outside the repository; not followed"
 
         if not resolved.exists():
-            self._miss(relative_path, "not found in the target repository")
-            return None
+            return None, "not found in the target repository"
 
         if not resolved.is_file():
-            self._miss(relative_path, "not a regular file")
-            return None
+            return None, "not a regular file"
 
         # Metadata checks precede exclusion so absent, escaping, and non-file
         # paths retain their truthful reasons. Existing contained regular files
@@ -262,27 +343,23 @@ class RepoContext:
         secret_bearing = _is_secret_bearing(relative_path) or _is_secret_bearing(
             resolved_relative
         )
-        if secret_bearing and relative_path not in self._approved_secret_reads:
-            self._miss(relative_path, "excluded: secret-bearing")
-            return None
+        if secret_bearing and (
+            peek or relative_path not in self._approved_secret_reads
+        ):
+            return None, "excluded: secret-bearing"
 
         try:
             raw = resolved.read_bytes()
         except OSError as exc:
-            self._miss(relative_path, f"unreadable: {exc.strerror}")
-            return None
+            return None, f"unreadable: {exc.strerror}"
 
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             # Skipped rather than decoded with replacement characters, which
             # would put mojibake into a citation.
-            self._miss(relative_path, "not valid UTF-8 text; skipped")
-            return None
-
-        self.sources_found.append(relative_path)
-        self.files_read.append(relative_path)
-        return text
+            return None, "not valid UTF-8 text; skipped"
+        return text, None
 
     def request_secret_source(self, relative_path: str) -> str | None:
         """Request operator approval before reading one excluded secret file.
@@ -587,6 +664,7 @@ def _walk(
     extensions: frozenset[str] | None = _DOC_EXTENSIONS,
     contained_only: bool = True,
     _visited: set[Path] | None = None,
+    _skip: Callable[[str], bool] | None = None,
 ) -> Iterator[str]:
     """Yield matching files under the directory, depth-first and sorted.
 
@@ -604,6 +682,11 @@ def _walk(
     also yields a *file* symlink resolving outside the repository — never a
     directory — so role resolution can let ``read_source`` state the true
     reason ("resolves outside the repository") instead of "not found".
+
+    Files the repository's git ignores are not yielded (T051,
+    :func:`git_ignore_filter`, decided once per top-level walk); an ignored
+    directory is still descended so a secret-bearing file inside it stays
+    visible.
     """
     # Checked on entry rather than at the recursive call, so it covers the roots
     # `_candidate_docs` passes in too: `docs/` itself can be the escaping link.
@@ -624,6 +707,8 @@ def _walk(
     # cycles without materialising the file inventory.
     if _visited is None:
         _visited = set()
+    if _skip is None:
+        _skip = git_ignore_filter(repo)
     if resolved in _visited:
         return
     _visited.add(resolved)
@@ -637,13 +722,16 @@ def _walk(
                     extensions=extensions,
                     contained_only=contained_only,
                     _visited=_visited,
+                    _skip=_skip,
                 )
         elif (
             entry.is_file()
             and (extensions is None or entry.suffix.lower() in extensions)
             and (not contained_only or _is_contained(entry, repo))
         ):
-            yield entry.relative_to(repo).as_posix()
+            relative = entry.relative_to(repo).as_posix()
+            if not _skip(relative):
+                yield relative
 
 
 def _is_contained(candidate: Path, repo: Path) -> bool:

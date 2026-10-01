@@ -1,0 +1,3631 @@
+{
+  "ratings": [
+    {
+      "kind": "rating",
+      "dimension": "architecture",
+      "value": 45,
+      "inputs": [
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 2,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PROJECT_SPEC.md",
+            "README.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md"
+          ]
+        },
+        {
+          "metric_name": "redacted_file_share",
+          "metric_value": 0.25,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PROJECT_SPEC.md",
+            "README.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 8,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md:1-113",
+            "BRAINSTORMING_LOG_react-native-migration.md:1-154",
+            "BRAINSTORMING_LOG_team-roles.md:1-98",
+            "BRAINSTORMING_LOG_theme-system.md:1-105",
+            "PROJECT_SPEC.md:1-92",
+            "README.md:1-2",
+            "docs/adr/0001-theme-system-token-architecture.md:1-26",
+            "memory/decisions.md:1-186"
+          ]
+        },
+        {
+          "metric_name": "declared_source_coverage",
+          "metric_value": 1.0,
+          "weight": 10,
+          "threshold": 0.6,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 10,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PROJECT_SPEC.md",
+            "README.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 776,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md:1-113",
+            "BRAINSTORMING_LOG_react-native-migration.md:1-154",
+            "BRAINSTORMING_LOG_team-roles.md:1-98",
+            "BRAINSTORMING_LOG_theme-system.md:1-105",
+            "PROJECT_SPEC.md:1-92",
+            "README.md:1-2",
+            "docs/adr/0001-theme-system-token-architecture.md:1-26",
+            "memory/decisions.md:1-186"
+          ]
+        },
+        {
+          "metric_name": "mean_excerpt_lines",
+          "metric_value": 97.0,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md:1-113",
+            "BRAINSTORMING_LOG_react-native-migration.md:1-154",
+            "BRAINSTORMING_LOG_team-roles.md:1-98",
+            "BRAINSTORMING_LOG_theme-system.md:1-105",
+            "PROJECT_SPEC.md:1-92",
+            "README.md:1-2",
+            "docs/adr/0001-theme-system-token-architecture.md:1-26",
+            "memory/decisions.md:1-186"
+          ]
+        },
+        {
+          "metric_name": "source_file_share",
+          "metric_value": 0.0,
+          "weight": 10,
+          "threshold": 0.1,
+          "comparison": "at_least",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PROJECT_SPEC.md",
+            "README.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "test_to_source_ratio",
+          "no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "source_files_without_covering_test",
+          "no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertion_density_per_test",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertions_observed",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    },
+    {
+      "kind": "rating",
+      "dimension": "blast-radius",
+      "value": 64,
+      "inputs": [
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 0,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": true,
+          "earned_weight": 10,
+          "computed_from": [
+            "apps/api/package.json",
+            "apps/mobile/package.json",
+            "apps/web/package.json",
+            "package.json",
+            "packages/shared/package.json",
+            "pnpm-workspace.yaml"
+          ]
+        },
+        {
+          "metric_name": "redacted_file_share",
+          "metric_value": 0.0,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": true,
+          "earned_weight": 10,
+          "computed_from": [
+            "apps/api/package.json",
+            "apps/mobile/package.json",
+            "apps/web/package.json",
+            "package.json",
+            "packages/shared/package.json",
+            "pnpm-workspace.yaml"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 2,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "apps/mobile/package.json:5-5",
+            "packages/shared/package.json:5-5"
+          ]
+        },
+        {
+          "metric_name": "declared_source_coverage",
+          "metric_value": 0.5,
+          "weight": 10,
+          "threshold": 0.6,
+          "comparison": "at_least",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "apps/api/package.json",
+            "apps/mobile/package.json",
+            "apps/web/package.json",
+            "package.json",
+            "packages/shared/package.json",
+            "pnpm-workspace.yaml"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 2,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "apps/mobile/package.json:5-5",
+            "packages/shared/package.json:5-5"
+          ]
+        },
+        {
+          "metric_name": "mean_excerpt_lines",
+          "metric_value": 1.0,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "apps/mobile/package.json:5-5",
+            "packages/shared/package.json:5-5"
+          ]
+        },
+        {
+          "metric_name": "source_file_share",
+          "metric_value": 0.0,
+          "weight": 10,
+          "threshold": 0.1,
+          "comparison": "at_least",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "apps/api/package.json",
+            "apps/mobile/package.json",
+            "apps/web/package.json",
+            "package.json",
+            "packages/shared/package.json",
+            "pnpm-workspace.yaml"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "test_to_source_ratio",
+          "no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "source_files_without_covering_test",
+          "no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertion_density_per_test",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertions_observed",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    },
+    {
+      "kind": "rating",
+      "dimension": "code-quality",
+      "value": 41,
+      "inputs": [
+        {
+          "metric_name": "test_to_source_ratio",
+          "metric_value": 0.0,
+          "weight": 15,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "apps/api/.eslintrc.js"
+          ]
+        },
+        {
+          "metric_name": "source_files_without_covering_test",
+          "metric_value": 1,
+          "weight": 15,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "apps/api/.eslintrc.js"
+          ]
+        },
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 1,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "apps/api/.eslintrc.js",
+            "apps/api/.prettierrc",
+            "apps/web/.oxlintrc.json",
+            "docs/claude-md/code-naming-conventions.md"
+          ]
+        },
+        {
+          "metric_name": "redacted_file_share",
+          "metric_value": 0.25,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "apps/api/.eslintrc.js",
+            "apps/api/.prettierrc",
+            "apps/web/.oxlintrc.json",
+            "docs/claude-md/code-naming-conventions.md"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 4,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "apps/api/.eslintrc.js:1-25",
+            "apps/api/.prettierrc:1-4",
+            "apps/web/.oxlintrc.json:1-8",
+            "docs/claude-md/code-naming-conventions.md:1-30"
+          ]
+        },
+        {
+          "metric_name": "declared_source_coverage",
+          "metric_value": 1.0,
+          "weight": 10,
+          "threshold": 0.6,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 10,
+          "computed_from": [
+            "apps/api/.eslintrc.js",
+            "apps/api/.prettierrc",
+            "apps/web/.oxlintrc.json",
+            "docs/claude-md/code-naming-conventions.md"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 67,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "apps/api/.eslintrc.js:1-25",
+            "apps/api/.prettierrc:1-4",
+            "apps/web/.oxlintrc.json:1-8",
+            "docs/claude-md/code-naming-conventions.md:1-30"
+          ]
+        },
+        {
+          "metric_name": "mean_excerpt_lines",
+          "metric_value": 16.75,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "apps/api/.eslintrc.js:1-25",
+            "apps/api/.prettierrc:1-4",
+            "apps/web/.oxlintrc.json:1-8",
+            "docs/claude-md/code-naming-conventions.md:1-30"
+          ]
+        },
+        {
+          "metric_name": "source_file_share",
+          "metric_value": 0.25,
+          "weight": 10,
+          "threshold": 0.1,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 10,
+          "computed_from": [
+            "apps/api/.eslintrc.js",
+            "apps/api/.prettierrc",
+            "apps/web/.oxlintrc.json",
+            "docs/claude-md/code-naming-conventions.md"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "assertion_density_per_test",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertions_observed",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    },
+    {
+      "kind": "rating",
+      "dimension": "requirement-fidelity",
+      "value": 50,
+      "inputs": [
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 2,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "PRD.md",
+            "PROJECT_SPEC.md",
+            "RN_MIGRATION_ROADMAP.md",
+            "requirement.md",
+            "tasks/TASK_GUIDE_M001.md",
+            "tasks/TASK_GUIDE_T001.md",
+            "tasks/TASK_GUIDE_T002.md",
+            "tasks/TASK_GUIDE_T003.md",
+            "tasks/TASK_GUIDE_T004.md",
+            "tasks/TASK_GUIDE_T005.md",
+            "tasks/TASK_GUIDE_T006.md",
+            "tasks/TASK_GUIDE_T007.md",
+            "tasks/TASK_GUIDE_T008.md",
+            "tasks/TASK_GUIDE_T009.md",
+            "tasks/TASK_GUIDE_T010.md",
+            "tasks/TASK_GUIDE_T011.md",
+            "tasks/TASK_GUIDE_T012.md",
+            "tasks/TASK_GUIDE_T013.md",
+            "tasks/TASK_GUIDE_T014.md",
+            "tasks/TASK_GUIDE_T015.md",
+            "tasks/TASK_GUIDE_T016.md",
+            "tasks/TASK_GUIDE_T017.md",
+            "tasks/TASK_GUIDE_T018.md",
+            "tasks/TASK_GUIDE_T019.md",
+            "tasks/TASK_GUIDE_T020.md",
+            "tasks/TASK_GUIDE_T021.md",
+            "tasks/TASK_GUIDE_T022.md",
+            "tasks/TASK_GUIDE_T023.md",
+            "tasks/TASK_GUIDE_T024.md",
+            "tasks/TASK_GUIDE_T025.md",
+            "tasks/TASK_GUIDE_T026.md",
+            "tasks/TASK_GUIDE_T027.md",
+            "tasks/TASK_GUIDE_T028.md",
+            "tasks/TASK_GUIDE_T029.md",
+            "templates/PRD_template.md",
+            "templates/PROJECT_SPEC_template.md"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 108,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "PRD.md:109-126",
+            "PRD.md:51-83",
+            "PRD.md:84-97",
+            "requirement.md:188-197",
+            "requirement.md:2-7",
+            "requirement.md:76-85",
+            "tasks/TASK_GUIDE_M001.md:101-217",
+            "tasks/TASK_GUIDE_M001.md:24-47",
+            "tasks/TASK_GUIDE_M001.md:71-85",
+            "tasks/TASK_GUIDE_M001.md:88-97",
+            "tasks/TASK_GUIDE_T001.md:23-50",
+            "tasks/TASK_GUIDE_T001.md:51-62",
+            "tasks/TASK_GUIDE_T001.md:65-74",
+            "tasks/TASK_GUIDE_T002.md:21-46",
+            "tasks/TASK_GUIDE_T002.md:47-58",
+            "tasks/TASK_GUIDE_T002.md:61-69",
+            "tasks/TASK_GUIDE_T003.md:21-44",
+            "tasks/TASK_GUIDE_T003.md:45-54",
+            "tasks/TASK_GUIDE_T003.md:57-64",
+            "tasks/TASK_GUIDE_T003.md:88-114",
+            "tasks/TASK_GUIDE_T004.md:21-47",
+            "tasks/TASK_GUIDE_T004.md:48-59",
+            "tasks/TASK_GUIDE_T004.md:62-70",
+            "tasks/TASK_GUIDE_T005.md:21-45",
+            "tasks/TASK_GUIDE_T005.md:46-56",
+            "tasks/TASK_GUIDE_T005.md:59-66",
+            "tasks/TASK_GUIDE_T006.md:21-44",
+            "tasks/TASK_GUIDE_T006.md:45-54",
+            "tasks/TASK_GUIDE_T006.md:57-64",
+            "tasks/TASK_GUIDE_T007.md:21-45",
+            "tasks/TASK_GUIDE_T007.md:46-55",
+            "tasks/TASK_GUIDE_T007.md:58-65",
+            "tasks/TASK_GUIDE_T007.md:90-115",
+            "tasks/TASK_GUIDE_T008.md:21-48",
+            "tasks/TASK_GUIDE_T008.md:49-60",
+            "tasks/TASK_GUIDE_T008.md:63-71",
+            "tasks/TASK_GUIDE_T008.md:94-120",
+            "tasks/TASK_GUIDE_T009.md:21-44",
+            "tasks/TASK_GUIDE_T009.md:45-54",
+            "tasks/TASK_GUIDE_T009.md:57-63",
+            "tasks/TASK_GUIDE_T010.md:21-44",
+            "tasks/TASK_GUIDE_T010.md:45-54",
+            "tasks/TASK_GUIDE_T010.md:57-64",
+            "tasks/TASK_GUIDE_T011.md:1-163",
+            "tasks/TASK_GUIDE_T012.md:21-44",
+            "tasks/TASK_GUIDE_T012.md:45-55",
+            "tasks/TASK_GUIDE_T012.md:58-65",
+            "tasks/TASK_GUIDE_T012.md:90-116",
+            "tasks/TASK_GUIDE_T013.md:21-44",
+            "tasks/TASK_GUIDE_T013.md:45-54",
+            "tasks/TASK_GUIDE_T013.md:57-64",
+            "tasks/TASK_GUIDE_T014.md:21-44",
+            "tasks/TASK_GUIDE_T014.md:45-54",
+            "tasks/TASK_GUIDE_T014.md:57-64",
+            "tasks/TASK_GUIDE_T015.md:127-152",
+            "tasks/TASK_GUIDE_T015.md:21-44",
+            "tasks/TASK_GUIDE_T015.md:45-54",
+            "tasks/TASK_GUIDE_T015.md:57-64",
+            "tasks/TASK_GUIDE_T016.md:21-44",
+            "tasks/TASK_GUIDE_T016.md:45-54",
+            "tasks/TASK_GUIDE_T016.md:57-64",
+            "tasks/TASK_GUIDE_T016.md:89-114",
+            "tasks/TASK_GUIDE_T017.md:21-42",
+            "tasks/TASK_GUIDE_T017.md:43-53",
+            "tasks/TASK_GUIDE_T017.md:56-65",
+            "tasks/TASK_GUIDE_T018.md:21-42",
+            "tasks/TASK_GUIDE_T018.md:43-52",
+            "tasks/TASK_GUIDE_T018.md:55-63",
+            "tasks/TASK_GUIDE_T018.md:88-115",
+            "tasks/TASK_GUIDE_T019.md:23-47",
+            "tasks/TASK_GUIDE_T019.md:48-58",
+            "tasks/TASK_GUIDE_T019.md:61-68",
+            "tasks/TASK_GUIDE_T020.md:21-43",
+            "tasks/TASK_GUIDE_T020.md:44-53",
+            "tasks/TASK_GUIDE_T020.md:56-63",
+            "tasks/TASK_GUIDE_T021.md:23-44",
+            "tasks/TASK_GUIDE_T021.md:45-54",
+            "tasks/TASK_GUIDE_T021.md:57-64",
+            "tasks/TASK_GUIDE_T021.md:89-114",
+            "tasks/TASK_GUIDE_T022.md:23-44",
+            "tasks/TASK_GUIDE_T022.md:45-55",
+            "tasks/TASK_GUIDE_T022.md:58-66",
+            "tasks/TASK_GUIDE_T022.md:89-103",
+            "tasks/TASK_GUIDE_T023.md:21-46",
+            "tasks/TASK_GUIDE_T023.md:47-58",
+            "tasks/TASK_GUIDE_T023.md:61-70",
+            "tasks/TASK_GUIDE_T024.md:23-52",
+            "tasks/TASK_GUIDE_T024.md:53-64",
+            "tasks/TASK_GUIDE_T024.md:67-75",
+            "tasks/TASK_GUIDE_T025.md:25-52",
+            "tasks/TASK_GUIDE_T025.md:53-65",
+            "tasks/TASK_GUIDE_T025.md:68-76",
+            "tasks/TASK_GUIDE_T026.md:143-168",
+            "tasks/TASK_GUIDE_T026.md:25-55",
+            "tasks/TASK_GUIDE_T026.md:56-68",
+            "tasks/TASK_GUIDE_T026.md:71-80",
+            "tasks/TASK_GUIDE_T027.md:25-53",
+            "tasks/TASK_GUIDE_T027.md:54-70",
+            "tasks/TASK_GUIDE_T027.md:73-87",
+            "tasks/TASK_GUIDE_T028.md:118-143",
+            "tasks/TASK_GUIDE_T028.md:25-54",
+            "tasks/TASK_GUIDE_T028.md:55-68",
+            "tasks/TASK_GUIDE_T028.md:71-82",
+            "tasks/TASK_GUIDE_T029.md:23-53",
+            "tasks/TASK_GUIDE_T029.md:62-74",
+            "templates/PRD_template.md:36-47",
+            "templates/PRD_template.md:48-57",
+            "templates/PRD_template.md:66-74"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 2005,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "PRD.md:109-126",
+            "PRD.md:51-83",
+            "PRD.md:84-97",
+            "requirement.md:188-197",
+            "requirement.md:2-7",
+            "requirement.md:76-85",
+            "tasks/TASK_GUIDE_M001.md:101-217",
+            "tasks/TASK_GUIDE_M001.md:24-47",
+            "tasks/TASK_GUIDE_M001.md:71-85",
+            "tasks/TASK_GUIDE_M001.md:88-97",
+            "tasks/TASK_GUIDE_T001.md:23-50",
+            "tasks/TASK_GUIDE_T001.md:51-62",
+            "tasks/TASK_GUIDE_T001.md:65-74",
+            "tasks/TASK_GUIDE_T002.md:21-46",
+            "tasks/TASK_GUIDE_T002.md:47-58",
+            "tasks/TASK_GUIDE_T002.md:61-69",
+            "tasks/TASK_GUIDE_T003.md:21-44",
+            "tasks/TASK_GUIDE_T003.md:45-54",
+            "tasks/TASK_GUIDE_T003.md:57-64",
+            "tasks/TASK_GUIDE_T003.md:88-114",
+            "tasks/TASK_GUIDE_T004.md:21-47",
+            "tasks/TASK_GUIDE_T004.md:48-59",
+            "tasks/TASK_GUIDE_T004.md:62-70",
+            "tasks/TASK_GUIDE_T005.md:21-45",
+            "tasks/TASK_GUIDE_T005.md:46-56",
+            "tasks/TASK_GUIDE_T005.md:59-66",
+            "tasks/TASK_GUIDE_T006.md:21-44",
+            "tasks/TASK_GUIDE_T006.md:45-54",
+            "tasks/TASK_GUIDE_T006.md:57-64",
+            "tasks/TASK_GUIDE_T007.md:21-45",
+            "tasks/TASK_GUIDE_T007.md:46-55",
+            "tasks/TASK_GUIDE_T007.md:58-65",
+            "tasks/TASK_GUIDE_T007.md:90-115",
+            "tasks/TASK_GUIDE_T008.md:21-48",
+            "tasks/TASK_GUIDE_T008.md:49-60",
+            "tasks/TASK_GUIDE_T008.md:63-71",
+            "tasks/TASK_GUIDE_T008.md:94-120",
+            "tasks/TASK_GUIDE_T009.md:21-44",
+            "tasks/TASK_GUIDE_T009.md:45-54",
+            "tasks/TASK_GUIDE_T009.md:57-63",
+            "tasks/TASK_GUIDE_T010.md:21-44",
+            "tasks/TASK_GUIDE_T010.md:45-54",
+            "tasks/TASK_GUIDE_T010.md:57-64",
+            "tasks/TASK_GUIDE_T011.md:1-163",
+            "tasks/TASK_GUIDE_T012.md:21-44",
+            "tasks/TASK_GUIDE_T012.md:45-55",
+            "tasks/TASK_GUIDE_T012.md:58-65",
+            "tasks/TASK_GUIDE_T012.md:90-116",
+            "tasks/TASK_GUIDE_T013.md:21-44",
+            "tasks/TASK_GUIDE_T013.md:45-54",
+            "tasks/TASK_GUIDE_T013.md:57-64",
+            "tasks/TASK_GUIDE_T014.md:21-44",
+            "tasks/TASK_GUIDE_T014.md:45-54",
+            "tasks/TASK_GUIDE_T014.md:57-64",
+            "tasks/TASK_GUIDE_T015.md:127-152",
+            "tasks/TASK_GUIDE_T015.md:21-44",
+            "tasks/TASK_GUIDE_T015.md:45-54",
+            "tasks/TASK_GUIDE_T015.md:57-64",
+            "tasks/TASK_GUIDE_T016.md:21-44",
+            "tasks/TASK_GUIDE_T016.md:45-54",
+            "tasks/TASK_GUIDE_T016.md:57-64",
+            "tasks/TASK_GUIDE_T016.md:89-114",
+            "tasks/TASK_GUIDE_T017.md:21-42",
+            "tasks/TASK_GUIDE_T017.md:43-53",
+            "tasks/TASK_GUIDE_T017.md:56-65",
+            "tasks/TASK_GUIDE_T018.md:21-42",
+            "tasks/TASK_GUIDE_T018.md:43-52",
+            "tasks/TASK_GUIDE_T018.md:55-63",
+            "tasks/TASK_GUIDE_T018.md:88-115",
+            "tasks/TASK_GUIDE_T019.md:23-47",
+            "tasks/TASK_GUIDE_T019.md:48-58",
+            "tasks/TASK_GUIDE_T019.md:61-68",
+            "tasks/TASK_GUIDE_T020.md:21-43",
+            "tasks/TASK_GUIDE_T020.md:44-53",
+            "tasks/TASK_GUIDE_T020.md:56-63",
+            "tasks/TASK_GUIDE_T021.md:23-44",
+            "tasks/TASK_GUIDE_T021.md:45-54",
+            "tasks/TASK_GUIDE_T021.md:57-64",
+            "tasks/TASK_GUIDE_T021.md:89-114",
+            "tasks/TASK_GUIDE_T022.md:23-44",
+            "tasks/TASK_GUIDE_T022.md:45-55",
+            "tasks/TASK_GUIDE_T022.md:58-66",
+            "tasks/TASK_GUIDE_T022.md:89-103",
+            "tasks/TASK_GUIDE_T023.md:21-46",
+            "tasks/TASK_GUIDE_T023.md:47-58",
+            "tasks/TASK_GUIDE_T023.md:61-70",
+            "tasks/TASK_GUIDE_T024.md:23-52",
+            "tasks/TASK_GUIDE_T024.md:53-64",
+            "tasks/TASK_GUIDE_T024.md:67-75",
+            "tasks/TASK_GUIDE_T025.md:25-52",
+            "tasks/TASK_GUIDE_T025.md:53-65",
+            "tasks/TASK_GUIDE_T025.md:68-76",
+            "tasks/TASK_GUIDE_T026.md:143-168",
+            "tasks/TASK_GUIDE_T026.md:25-55",
+            "tasks/TASK_GUIDE_T026.md:56-68",
+            "tasks/TASK_GUIDE_T026.md:71-80",
+            "tasks/TASK_GUIDE_T027.md:25-53",
+            "tasks/TASK_GUIDE_T027.md:54-70",
+            "tasks/TASK_GUIDE_T027.md:73-87",
+            "tasks/TASK_GUIDE_T028.md:118-143",
+            "tasks/TASK_GUIDE_T028.md:25-54",
+            "tasks/TASK_GUIDE_T028.md:55-68",
+            "tasks/TASK_GUIDE_T028.md:71-82",
+            "tasks/TASK_GUIDE_T029.md:23-53",
+            "tasks/TASK_GUIDE_T029.md:62-74",
+            "templates/PRD_template.md:36-47",
+            "templates/PRD_template.md:48-57",
+            "templates/PRD_template.md:66-74"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "test_to_source_ratio",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "source_files_without_covering_test",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "assertion_density_per_test",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "assertions_observed",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "redacted_file_share",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "declared_source_coverage",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "mean_excerpt_lines",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "source_file_share",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    },
+    {
+      "kind": "rating",
+      "dimension": "security",
+      "value": 50,
+      "inputs": [
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 222,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            ".claude/harness-lock.json",
+            ".codex/harness-lock.json",
+            ".github/workflows/ci.yml",
+            ".github/workflows/deploy-staging.yml",
+            "apps/api/package.json",
+            "apps/api/src/auth/auth.controller.ts",
+            "apps/api/src/auth/auth.e2e.spec.ts",
+            "apps/api/src/auth/auth.module.ts",
+            "apps/api/src/auth/auth.service.ts",
+            "apps/api/src/auth/decorators/roles.decorator.ts",
+            "apps/api/src/auth/dto/login.dto.ts",
+            "apps/api/src/auth/dto/signup.dto.ts",
+            "apps/api/src/auth/guards/jwt-auth.guard.spec.ts",
+            "apps/api/src/auth/guards/jwt-auth.guard.ts",
+            "apps/api/src/auth/guards/roles-rbac.guard.spec.ts",
+            "apps/api/src/auth/guards/roles.guard.ts",
+            "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts",
+            "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts",
+            "apps/mobile/package.json",
+            "apps/web/package.json",
+            "apps/web/src/routes/AuthGuard.test.tsx",
+            "apps/web/src/routes/AuthGuard.tsx",
+            "apps/web/src/routes/auth.ts",
+            "docker-compose.yml",
+            "package.json",
+            "packages/shared/package.json",
+            "packages/shared/src/auth.dto.ts",
+            "pnpm-lock.yaml",
+            "pnpm-workspace.yaml",
+            "repo\u2026****:4d10b85626cf.html",
+            "repo\u2026****:60e7365a9573.html",
+            "repo\u2026****:7131be7be111.html",
+            "repo\u2026****:733ce35941d0.html",
+            "repo\u2026****:80b8e26427f3.html",
+            "repo\u2026****:9a2cc977475d.html",
+            "repo\u2026****:c1e88fe3b79e.html",
+            "repo\u2026****:e808c802ee27.html"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 36,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            ".claude/harness-lock.json:1-114",
+            ".codex/harness-lock.json:1-64",
+            ".github/workflows/ci.yml:1-83",
+            ".github/workflows/deploy-staging.yml:1-73",
+            "apps/api/package.json:1-93",
+            "apps/api/src/auth/auth.controller.ts:1-21",
+            "apps/api/src/auth/auth.e2e.spec.ts:1-161",
+            "apps/api/src/auth/auth.module.ts:1-26",
+            "apps/api/src/auth/auth.service.ts:1-144",
+            "apps/api/src/auth/decorators/roles.decorator.ts:1-10",
+            "apps/api/src/auth/dto/login.dto.ts:1-10",
+            "apps/api/src/auth/dto/signup.dto.ts:1-18",
+            "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+            "apps/api/src/auth/guards/jwt-auth.guard.ts:1-42",
+            "apps/api/src/auth/guards/roles-rbac.guard.spec.ts:1-84",
+            "apps/api/src/auth/guards/roles.guard.ts:1-55",
+            "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts:1-151",
+            "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts:1-200",
+            "apps/mobile/package.json:1-30",
+            "apps/web/package.json:1-37",
+            "apps/web/src/routes/AuthGuard.test.tsx:1-44",
+            "apps/web/src/routes/AuthGuard.tsx:1-13",
+            "apps/web/src/routes/auth.ts:1-15",
+            "docker-compose.yml:1-21",
+            "package.json:1-13",
+            "packages/shared/package.json:1-13",
+            "packages/shared/src/auth.dto.ts:1-18",
+            "pnpm-lock.yaml:1-200",
+            "pnpm-workspace.yaml:1-5",
+            "repo\u2026****:4d10b85626cf.html:1-200",
+            "repo\u2026****:60e7365a9573.html:1-200",
+            "repo\u2026****:733ce35941d0.html:1-200",
+            "repo\u2026****:80b8e26427f3.html:1-200",
+            "repo\u2026****:9a2cc977475d.html:1-200",
+            "repo\u2026****:c1e88fe3b79e.html:1-200",
+            "repo\u2026****:e808c802ee27.html:1-200"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 3202,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            ".claude/harness-lock.json:1-114",
+            ".codex/harness-lock.json:1-64",
+            ".github/workflows/ci.yml:1-83",
+            ".github/workflows/deploy-staging.yml:1-73",
+            "apps/api/package.json:1-93",
+            "apps/api/src/auth/auth.controller.ts:1-21",
+            "apps/api/src/auth/auth.e2e.spec.ts:1-161",
+            "apps/api/src/auth/auth.module.ts:1-26",
+            "apps/api/src/auth/auth.service.ts:1-144",
+            "apps/api/src/auth/decorators/roles.decorator.ts:1-10",
+            "apps/api/src/auth/dto/login.dto.ts:1-10",
+            "apps/api/src/auth/dto/signup.dto.ts:1-18",
+            "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+            "apps/api/src/auth/guards/jwt-auth.guard.ts:1-42",
+            "apps/api/src/auth/guards/roles-rbac.guard.spec.ts:1-84",
+            "apps/api/src/auth/guards/roles.guard.ts:1-55",
+            "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts:1-151",
+            "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts:1-200",
+            "apps/mobile/package.json:1-30",
+            "apps/web/package.json:1-37",
+            "apps/web/src/routes/AuthGuard.test.tsx:1-44",
+            "apps/web/src/routes/AuthGuard.tsx:1-13",
+            "apps/web/src/routes/auth.ts:1-15",
+            "docker-compose.yml:1-21",
+            "package.json:1-13",
+            "packages/shared/package.json:1-13",
+            "packages/shared/src/auth.dto.ts:1-18",
+            "pnpm-lock.yaml:1-200",
+            "pnpm-workspace.yaml:1-5",
+            "repo\u2026****:4d10b85626cf.html:1-200",
+            "repo\u2026****:60e7365a9573.html:1-200",
+            "repo\u2026****:733ce35941d0.html:1-200",
+            "repo\u2026****:80b8e26427f3.html:1-200",
+            "repo\u2026****:9a2cc977475d.html:1-200",
+            "repo\u2026****:c1e88fe3b79e.html:1-200",
+            "repo\u2026****:e808c802ee27.html:1-200"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "test_to_source_ratio",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "source_files_without_covering_test",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "assertion_density_per_test",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "assertions_observed",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "redacted_file_share",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "declared_source_coverage",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "mean_excerpt_lines",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "source_file_share",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    },
+    {
+      "kind": "rating",
+      "dimension": "solution-fit",
+      "value": 45,
+      "inputs": [
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 1,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PRD.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md",
+            "requirement.md",
+            "templates/PRD_template.md"
+          ]
+        },
+        {
+          "metric_name": "redacted_file_share",
+          "metric_value": 0.1111111111111111,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PRD.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md",
+            "requirement.md",
+            "templates/PRD_template.md"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 21,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md:30-41",
+            "BRAINSTORMING_LOG.md:42-53",
+            "BRAINSTORMING_LOG.md:54-64",
+            "BRAINSTORMING_LOG.md:76-81",
+            "BRAINSTORMING_LOG_react-native-migration.md:140-145",
+            "BRAINSTORMING_LOG_react-native-migration.md:33-49",
+            "BRAINSTORMING_LOG_react-native-migration.md:50-66",
+            "BRAINSTORMING_LOG_react-native-migration.md:67-81",
+            "BRAINSTORMING_LOG_team-roles.md:27-31",
+            "BRAINSTORMING_LOG_team-roles.md:32-36",
+            "BRAINSTORMING_LOG_team-roles.md:37-43",
+            "BRAINSTORMING_LOG_team-roles.md:50-57",
+            "BRAINSTORMING_LOG_theme-system.md:30-35",
+            "BRAINSTORMING_LOG_theme-system.md:36-41",
+            "BRAINSTORMING_LOG_theme-system.md:42-49",
+            "BRAINSTORMING_LOG_theme-system.md:56-63",
+            "PRD.md:18-28",
+            "PRD.md:29-50",
+            "requirement.md:18-26",
+            "templates/PRD_template.md:18-26",
+            "templates/PRD_template.md:27-35"
+          ]
+        },
+        {
+          "metric_name": "declared_source_coverage",
+          "metric_value": 1.0,
+          "weight": 10,
+          "threshold": 0.6,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 10,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PRD.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md",
+            "requirement.md",
+            "templates/PRD_template.md"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 209,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md:30-41",
+            "BRAINSTORMING_LOG.md:42-53",
+            "BRAINSTORMING_LOG.md:54-64",
+            "BRAINSTORMING_LOG.md:76-81",
+            "BRAINSTORMING_LOG_react-native-migration.md:140-145",
+            "BRAINSTORMING_LOG_react-native-migration.md:33-49",
+            "BRAINSTORMING_LOG_react-native-migration.md:50-66",
+            "BRAINSTORMING_LOG_react-native-migration.md:67-81",
+            "BRAINSTORMING_LOG_team-roles.md:27-31",
+            "BRAINSTORMING_LOG_team-roles.md:32-36",
+            "BRAINSTORMING_LOG_team-roles.md:37-43",
+            "BRAINSTORMING_LOG_team-roles.md:50-57",
+            "BRAINSTORMING_LOG_theme-system.md:30-35",
+            "BRAINSTORMING_LOG_theme-system.md:36-41",
+            "BRAINSTORMING_LOG_theme-system.md:42-49",
+            "BRAINSTORMING_LOG_theme-system.md:56-63",
+            "PRD.md:18-28",
+            "PRD.md:29-50",
+            "requirement.md:18-26",
+            "templates/PRD_template.md:18-26",
+            "templates/PRD_template.md:27-35"
+          ]
+        },
+        {
+          "metric_name": "mean_excerpt_lines",
+          "metric_value": 9.952380952380953,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md:30-41",
+            "BRAINSTORMING_LOG.md:42-53",
+            "BRAINSTORMING_LOG.md:54-64",
+            "BRAINSTORMING_LOG.md:76-81",
+            "BRAINSTORMING_LOG_react-native-migration.md:140-145",
+            "BRAINSTORMING_LOG_react-native-migration.md:33-49",
+            "BRAINSTORMING_LOG_react-native-migration.md:50-66",
+            "BRAINSTORMING_LOG_react-native-migration.md:67-81",
+            "BRAINSTORMING_LOG_team-roles.md:27-31",
+            "BRAINSTORMING_LOG_team-roles.md:32-36",
+            "BRAINSTORMING_LOG_team-roles.md:37-43",
+            "BRAINSTORMING_LOG_team-roles.md:50-57",
+            "BRAINSTORMING_LOG_theme-system.md:30-35",
+            "BRAINSTORMING_LOG_theme-system.md:36-41",
+            "BRAINSTORMING_LOG_theme-system.md:42-49",
+            "BRAINSTORMING_LOG_theme-system.md:56-63",
+            "PRD.md:18-28",
+            "PRD.md:29-50",
+            "requirement.md:18-26",
+            "templates/PRD_template.md:18-26",
+            "templates/PRD_template.md:27-35"
+          ]
+        },
+        {
+          "metric_name": "source_file_share",
+          "metric_value": 0.0,
+          "weight": 10,
+          "threshold": 0.1,
+          "comparison": "at_least",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            "BRAINSTORMING_LOG.md",
+            "BRAINSTORMING_LOG_react-native-migration.md",
+            "BRAINSTORMING_LOG_team-roles.md",
+            "BRAINSTORMING_LOG_theme-system.md",
+            "PRD.md",
+            "docs/adr/0001-theme-system-token-architecture.md",
+            "memory/decisions.md",
+            "requirement.md",
+            "templates/PRD_template.md"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "test_to_source_ratio",
+          "no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "source_files_without_covering_test",
+          "no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertion_density_per_test",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ],
+        [
+          "assertions_observed",
+          "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    },
+    {
+      "kind": "rating",
+      "dimension": "test-strategy",
+      "value": 60,
+      "inputs": [
+        {
+          "metric_name": "assertions_observed",
+          "metric_value": 54,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            ".claude/hooks/tests/test_guide_sections.py:1-200",
+            ".claude/hooks/tests/test_post_write_register_task.py:1-90",
+            ".claude/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+            ".claude/hooks/tests/test_task_context.py:1-200",
+            ".codex/hooks/tests/test_post_write_register_task.py:1-90",
+            ".codex/hooks/tests/test_pre_agent_validate_guide.py:1-152"
+          ]
+        },
+        {
+          "metric_name": "redaction_hits_observed",
+          "metric_value": 8,
+          "weight": 10,
+          "threshold": 0.0,
+          "comparison": "at_most",
+          "passed": false,
+          "earned_weight": 0,
+          "computed_from": [
+            ".claude/hooks/tests/test_guide_sections.py",
+            ".claude/hooks/tests/test_post_write_register_task.py",
+            ".claude/hooks/tests/test_pre_agent_validate_guide.py",
+            ".claude/hooks/tests/test_task_context.py",
+            ".codex/hooks/tests/test_post_write_register_task.py",
+            ".codex/hooks/tests/test_pre_agent_validate_guide.py",
+            ".github/workflows/ci.yml",
+            ".github/workflows/deploy-staging.yml",
+            "apps/api/src/app.controller.spec.ts",
+            "apps/api/src/auth/guards/jwt-auth.guard.spec.ts",
+            "apps/api/src/realtime/realtime.gateway.spec.ts",
+            "apps/mobile/jest.config.js",
+            "apps/mobile/src/session.test.ts",
+            "apps/mobile/src/storage.test.ts",
+            "apps/web/src/App.test.tsx",
+            "apps/web/src/components/AnnouncementsWidget/AnnouncementsWidget.test.tsx",
+            "apps/web/src/components/Comments/Comments.test.tsx",
+            "apps/web/src/components/Dialog/Dialog.test.tsx",
+            "apps/web/src/components/ExpiringSoonWidget/ExpiringSoonWidget.test.tsx",
+            "apps/web/src/components/LowStockWidget/LowStockWidget.test.tsx",
+            "apps/web/src/components/NotificationBell/NotificationBell.test.tsx",
+            "apps/web/src/components/PinnedNotesWidget/PinnedNotesWidget.test.tsx",
+            "apps/web/src/errorDialog/ErrorDialogProvider.test.tsx",
+            "apps/web/src/features/announcements/AnnouncementsPage.test.tsx",
+            "apps/web/src/features/export/api.test.ts",
+            "apps/web/src/features/guidelines/GuidelinesPage.test.tsx",
+            "apps/web/src/features/inventory/InventoryPage.test.tsx",
+            "apps/web/src/features/notes/NotesPage.test.tsx",
+            "apps/web/src/features/recipes/RecipesPage.test.tsx",
+            "apps/web/src/features/recipes/api.test.ts",
+            "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx",
+            "apps/web/src/features/shift-logs/api.test.ts",
+            "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx",
+            "apps/web/src/features/tasks/EditTaskDialog.test.tsx",
+            "package.json"
+          ]
+        },
+        {
+          "metric_name": "excerpts_observed",
+          "metric_value": 32,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            ".claude/hooks/tests/test_guide_sections.py:1-200",
+            ".claude/hooks/tests/test_post_write_register_task.py:1-90",
+            ".claude/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+            ".claude/hooks/tests/test_task_context.py:1-200",
+            ".codex/hooks/tests/test_post_write_register_task.py:1-90",
+            ".codex/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+            "apps/api/src/app.controller.spec.ts:1-22",
+            "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+            "apps/api/src/realtime/realtime.gateway.spec.ts:1-145",
+            "apps/mobile/jest.config.js:2-5",
+            "apps/mobile/src/session.test.ts:1-50",
+            "apps/mobile/src/storage.test.ts:1-114",
+            "apps/web/src/App.test.tsx:1-189",
+            "apps/web/src/components/AnnouncementsWidget/AnnouncementsWidget.test.tsx:1-50",
+            "apps/web/src/components/Comments/Comments.test.tsx:1-129",
+            "apps/web/src/components/Dialog/Dialog.test.tsx:1-77",
+            "apps/web/src/components/ExpiringSoonWidget/ExpiringSoonWidget.test.tsx:1-49",
+            "apps/web/src/components/LowStockWidget/LowStockWidget.test.tsx:1-41",
+            "apps/web/src/components/NotificationBell/NotificationBell.test.tsx:1-135",
+            "apps/web/src/components/PinnedNotesWidget/PinnedNotesWidget.test.tsx:1-59",
+            "apps/web/src/errorDialog/ErrorDialogProvider.test.tsx:1-94",
+            "apps/web/src/features/announcements/AnnouncementsPage.test.tsx:1-186",
+            "apps/web/src/features/export/api.test.ts:1-58",
+            "apps/web/src/features/guidelines/GuidelinesPage.test.tsx:1-200",
+            "apps/web/src/features/inventory/InventoryPage.test.tsx:1-200",
+            "apps/web/src/features/notes/NotesPage.test.tsx:1-192",
+            "apps/web/src/features/recipes/RecipesPage.test.tsx:1-200",
+            "apps/web/src/features/recipes/api.test.ts:1-49",
+            "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:1-190",
+            "apps/web/src/features/shift-logs/api.test.ts:1-64",
+            "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx:1-120",
+            "package.json:10-13"
+          ]
+        },
+        {
+          "metric_name": "evidence_lines_observed",
+          "metric_value": 3549,
+          "weight": 5,
+          "threshold": 1.0,
+          "comparison": "at_least",
+          "passed": true,
+          "earned_weight": 5,
+          "computed_from": [
+            ".claude/hooks/tests/test_guide_sections.py:1-200",
+            ".claude/hooks/tests/test_post_write_register_task.py:1-90",
+            ".claude/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+            ".claude/hooks/tests/test_task_context.py:1-200",
+            ".codex/hooks/tests/test_post_write_register_task.py:1-90",
+            ".codex/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+            "apps/api/src/app.controller.spec.ts:1-22",
+            "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+            "apps/api/src/realtime/realtime.gateway.spec.ts:1-145",
+            "apps/mobile/jest.config.js:2-5",
+            "apps/mobile/src/session.test.ts:1-50",
+            "apps/mobile/src/storage.test.ts:1-114",
+            "apps/web/src/App.test.tsx:1-189",
+            "apps/web/src/components/AnnouncementsWidget/AnnouncementsWidget.test.tsx:1-50",
+            "apps/web/src/components/Comments/Comments.test.tsx:1-129",
+            "apps/web/src/components/Dialog/Dialog.test.tsx:1-77",
+            "apps/web/src/components/ExpiringSoonWidget/ExpiringSoonWidget.test.tsx:1-49",
+            "apps/web/src/components/LowStockWidget/LowStockWidget.test.tsx:1-41",
+            "apps/web/src/components/NotificationBell/NotificationBell.test.tsx:1-135",
+            "apps/web/src/components/PinnedNotesWidget/PinnedNotesWidget.test.tsx:1-59",
+            "apps/web/src/errorDialog/ErrorDialogProvider.test.tsx:1-94",
+            "apps/web/src/features/announcements/AnnouncementsPage.test.tsx:1-186",
+            "apps/web/src/features/export/api.test.ts:1-58",
+            "apps/web/src/features/guidelines/GuidelinesPage.test.tsx:1-200",
+            "apps/web/src/features/inventory/InventoryPage.test.tsx:1-200",
+            "apps/web/src/features/notes/NotesPage.test.tsx:1-192",
+            "apps/web/src/features/recipes/RecipesPage.test.tsx:1-200",
+            "apps/web/src/features/recipes/api.test.ts:1-49",
+            "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:1-190",
+            "apps/web/src/features/shift-logs/api.test.ts:1-64",
+            "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx:1-120",
+            "package.json:10-13"
+          ]
+        }
+      ],
+      "unavailable_metrics": [
+        [
+          "test_to_source_ratio",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "source_files_without_covering_test",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "assertion_density_per_test",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "redacted_file_share",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "declared_source_coverage",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "mean_excerpt_lines",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ],
+        [
+          "source_file_share",
+          "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        ]
+      ],
+      "method": "round once to the nearest integer using Python round (ties to even): 100 * sum(earned_weight) / sum(weight) over numeric available rule metrics; a met threshold earns its full declared weight and an unmet threshold earns zero"
+    }
+  ],
+  "overall": {
+    "kind": "overall_rating",
+    "value": 51,
+    "contributor_count": 7,
+    "total_dimension_count": 7,
+    "contributors": [
+      "architecture",
+      "solution-fit",
+      "requirement-fidelity",
+      "code-quality",
+      "security",
+      "test-strategy",
+      "blast-radius"
+    ],
+    "contributor_values": [
+      [
+        "architecture",
+        45
+      ],
+      [
+        "solution-fit",
+        45
+      ],
+      [
+        "requirement-fidelity",
+        50
+      ],
+      [
+        "code-quality",
+        41
+      ],
+      [
+        "security",
+        50
+      ],
+      [
+        "test-strategy",
+        60
+      ],
+      [
+        "blast-radius",
+        64
+      ]
+    ],
+    "rated_by": [
+      [
+        "architecture",
+        "rules"
+      ],
+      [
+        "solution-fit",
+        "rules"
+      ],
+      [
+        "requirement-fidelity",
+        "rules"
+      ],
+      [
+        "code-quality",
+        "rules"
+      ],
+      [
+        "security",
+        "rules"
+      ],
+      [
+        "test-strategy",
+        "rules"
+      ],
+      [
+        "blast-radius",
+        "rules"
+      ]
+    ],
+    "abstentions": [],
+    "method": "round once to the nearest integer using Python round (ties to even): sum(dimension rating values) / contributor count; abstentions are excluded from the average",
+    "disclosure": "7 of 7 dimensions contributed (7 rule-rated, 0 blended, 0 agent-rated); ratings average contributors only, so abstention can raise the overall; none abstained"
+  },
+  "metrics": {
+    "dimensions_without_pack": [],
+    "metrics": [
+      {
+        "computed_from": [],
+        "derivation": "no value: no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "architecture",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "architecture",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "architecture",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "architecture",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PROJECT_SPEC.md",
+          "README.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md"
+        ],
+        "derivation": "2 secret redaction(s) recorded while building this pack from the 8 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "architecture",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 2
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PROJECT_SPEC.md",
+          "README.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md"
+        ],
+        "derivation": "2 file(s) with at least one redaction (BRAINSTORMING_LOG_team-roles.md, PROJECT_SPEC.md) / 8 file(s) read",
+        "dimension": "architecture",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.25
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md:1-113",
+          "BRAINSTORMING_LOG_react-native-migration.md:1-154",
+          "BRAINSTORMING_LOG_team-roles.md:1-98",
+          "BRAINSTORMING_LOG_theme-system.md:1-105",
+          "PROJECT_SPEC.md:1-92",
+          "README.md:1-2",
+          "docs/adr/0001-theme-system-token-architecture.md:1-26",
+          "memory/decisions.md:1-186"
+        ],
+        "derivation": "8 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "architecture",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 8
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PROJECT_SPEC.md",
+          "README.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md"
+        ],
+        "derivation": "3 of 3 declared source(s) found (the pack's own coverage_score), evidenced by the files listed here",
+        "dimension": "architecture",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": false,
+          "value": 1.0
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md:1-113",
+          "BRAINSTORMING_LOG_react-native-migration.md:1-154",
+          "BRAINSTORMING_LOG_team-roles.md:1-98",
+          "BRAINSTORMING_LOG_theme-system.md:1-105",
+          "PROJECT_SPEC.md:1-92",
+          "README.md:1-2",
+          "docs/adr/0001-theme-system-token-architecture.md:1-26",
+          "memory/decisions.md:1-186"
+        ],
+        "derivation": "776 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 776
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md:1-113",
+          "BRAINSTORMING_LOG_react-native-migration.md:1-154",
+          "BRAINSTORMING_LOG_team-roles.md:1-98",
+          "BRAINSTORMING_LOG_theme-system.md:1-105",
+          "PROJECT_SPEC.md:1-92",
+          "README.md:1-2",
+          "docs/adr/0001-theme-system-token-architecture.md:1-26",
+          "memory/decisions.md:1-186"
+        ],
+        "derivation": "776 line(s) / 8 excerpt(s) listed here",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": false,
+          "value": 97.0
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PROJECT_SPEC.md",
+          "README.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md"
+        ],
+        "derivation": "0 of 8 deduplicated file(s) read classify as source and are listed here -- none did, so this share is 0.0 by the rule below, not because the repository has no source; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.0
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: only the blast-radius pack says which files changed: its reference search quotes only lines naming in-scope files, and this is the 'architecture' pack",
+        "dimension": "architecture",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "only the blast-radius pack says which files changed: its reference search quotes only lines naming in-scope files, and this is the 'architecture' pack"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "architecture",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "blast-radius",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "blast-radius",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "blast-radius",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "blast-radius",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/package.json",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "package.json",
+          "packages/shared/package.json",
+          "pnpm-workspace.yaml"
+        ],
+        "derivation": "0 secret redaction(s) recorded while building this pack from the 6 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "blast-radius",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 0
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/package.json",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "package.json",
+          "packages/shared/package.json",
+          "pnpm-workspace.yaml"
+        ],
+        "derivation": "0 file(s) with at least one redaction (none) / 6 file(s) read",
+        "dimension": "blast-radius",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.0
+        }
+      },
+      {
+        "computed_from": [
+          "apps/mobile/package.json:5-5",
+          "packages/shared/package.json:5-5"
+        ],
+        "derivation": "2 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "blast-radius",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 2
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/package.json",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "package.json",
+          "packages/shared/package.json",
+          "pnpm-workspace.yaml"
+        ],
+        "derivation": "2 of 4 declared source(s) found (the pack's own coverage_score), evidenced by the files listed here",
+        "dimension": "blast-radius",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": false,
+          "value": 0.5
+        }
+      },
+      {
+        "computed_from": [
+          "apps/mobile/package.json:5-5",
+          "packages/shared/package.json:5-5"
+        ],
+        "derivation": "2 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 2
+        }
+      },
+      {
+        "computed_from": [
+          "apps/mobile/package.json:5-5",
+          "packages/shared/package.json:5-5"
+        ],
+        "derivation": "2 line(s) / 2 excerpt(s) listed here",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": false,
+          "value": 1.0
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/package.json",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "package.json",
+          "packages/shared/package.json",
+          "pnpm-workspace.yaml"
+        ],
+        "derivation": "0 of 6 deduplicated file(s) read classify as source and are listed here -- none did, so this share is 0.0 by the rule below, not because the repository has no source; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.0
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no import statement was found in this pack's code-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import",
+        "dimension": "blast-radius",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no import statement was found in this pack's code-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "blast-radius",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js"
+        ],
+        "derivation": "0 test file(s) / 1 source file(s), over the deduplicated files_read listed here; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "code-quality",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": false,
+          "value": 0.0
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js"
+        ],
+        "derivation": "1 of 1 source file(s) have no conventionally named test file in the same project inside this pack: apps/api/.eslintrc.js; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "code-quality",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": false,
+          "value": 1
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "code-quality",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "code-quality",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js",
+          "apps/api/.prettierrc",
+          "apps/web/.oxlintrc.json",
+          "docs/claude-md/code-naming-conventions.md"
+        ],
+        "derivation": "1 secret redaction(s) recorded while building this pack from the 4 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "code-quality",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 1
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js",
+          "apps/api/.prettierrc",
+          "apps/web/.oxlintrc.json",
+          "docs/claude-md/code-naming-conventions.md"
+        ],
+        "derivation": "1 file(s) with at least one redaction (apps/api/.eslintrc.js) / 4 file(s) read",
+        "dimension": "code-quality",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.25
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js:1-25",
+          "apps/api/.prettierrc:1-4",
+          "apps/web/.oxlintrc.json:1-8",
+          "docs/claude-md/code-naming-conventions.md:1-30"
+        ],
+        "derivation": "4 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "code-quality",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 4
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js",
+          "apps/api/.prettierrc",
+          "apps/web/.oxlintrc.json",
+          "docs/claude-md/code-naming-conventions.md"
+        ],
+        "derivation": "3 of 3 declared source(s) found (the pack's own coverage_score), evidenced by the files listed here",
+        "dimension": "code-quality",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": false,
+          "value": 1.0
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js:1-25",
+          "apps/api/.prettierrc:1-4",
+          "apps/web/.oxlintrc.json:1-8",
+          "docs/claude-md/code-naming-conventions.md:1-30"
+        ],
+        "derivation": "67 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 67
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js:1-25",
+          "apps/api/.prettierrc:1-4",
+          "apps/web/.oxlintrc.json:1-8",
+          "docs/claude-md/code-naming-conventions.md:1-30"
+        ],
+        "derivation": "67 line(s) / 4 excerpt(s) listed here",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": false,
+          "value": 16.75
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js",
+          "apps/api/.prettierrc",
+          "apps/web/.oxlintrc.json",
+          "docs/claude-md/code-naming-conventions.md"
+        ],
+        "derivation": "1 of 4 deduplicated file(s) read classify as source and are listed here; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.25
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: only the blast-radius pack says which files changed: its reference search quotes only lines naming in-scope files, and this is the 'code-quality' pack",
+        "dimension": "code-quality",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "only the blast-radius pack says which files changed: its reference search quotes only lines naming in-scope files, and this is the 'code-quality' pack"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/.eslintrc.js:1-25"
+        ],
+        "derivation": "0 dangerous-sink hit(s) in 1 excerpt(s): none; dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "code-quality",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 0
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "requirement-fidelity",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [
+          "PRD.md",
+          "PROJECT_SPEC.md",
+          "RN_MIGRATION_ROADMAP.md",
+          "requirement.md",
+          "tasks/TASK_GUIDE_M001.md",
+          "tasks/TASK_GUIDE_T001.md",
+          "tasks/TASK_GUIDE_T002.md",
+          "tasks/TASK_GUIDE_T003.md",
+          "tasks/TASK_GUIDE_T004.md",
+          "tasks/TASK_GUIDE_T005.md",
+          "tasks/TASK_GUIDE_T006.md",
+          "tasks/TASK_GUIDE_T007.md",
+          "tasks/TASK_GUIDE_T008.md",
+          "tasks/TASK_GUIDE_T009.md",
+          "tasks/TASK_GUIDE_T010.md",
+          "tasks/TASK_GUIDE_T011.md",
+          "tasks/TASK_GUIDE_T012.md",
+          "tasks/TASK_GUIDE_T013.md",
+          "tasks/TASK_GUIDE_T014.md",
+          "tasks/TASK_GUIDE_T015.md",
+          "tasks/TASK_GUIDE_T016.md",
+          "tasks/TASK_GUIDE_T017.md",
+          "tasks/TASK_GUIDE_T018.md",
+          "tasks/TASK_GUIDE_T019.md",
+          "tasks/TASK_GUIDE_T020.md",
+          "tasks/TASK_GUIDE_T021.md",
+          "tasks/TASK_GUIDE_T022.md",
+          "tasks/TASK_GUIDE_T023.md",
+          "tasks/TASK_GUIDE_T024.md",
+          "tasks/TASK_GUIDE_T025.md",
+          "tasks/TASK_GUIDE_T026.md",
+          "tasks/TASK_GUIDE_T027.md",
+          "tasks/TASK_GUIDE_T028.md",
+          "tasks/TASK_GUIDE_T029.md",
+          "templates/PRD_template.md",
+          "templates/PROJECT_SPEC_template.md"
+        ],
+        "derivation": "2 secret redaction(s) recorded while building this pack from the 36 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "requirement-fidelity",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 2
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          "PRD.md:109-126",
+          "PRD.md:51-83",
+          "PRD.md:84-97",
+          "requirement.md:188-197",
+          "requirement.md:2-7",
+          "requirement.md:76-85",
+          "tasks/TASK_GUIDE_M001.md:101-217",
+          "tasks/TASK_GUIDE_M001.md:24-47",
+          "tasks/TASK_GUIDE_M001.md:71-85",
+          "tasks/TASK_GUIDE_M001.md:88-97",
+          "tasks/TASK_GUIDE_T001.md:23-50",
+          "tasks/TASK_GUIDE_T001.md:51-62",
+          "tasks/TASK_GUIDE_T001.md:65-74",
+          "tasks/TASK_GUIDE_T002.md:21-46",
+          "tasks/TASK_GUIDE_T002.md:47-58",
+          "tasks/TASK_GUIDE_T002.md:61-69",
+          "tasks/TASK_GUIDE_T003.md:21-44",
+          "tasks/TASK_GUIDE_T003.md:45-54",
+          "tasks/TASK_GUIDE_T003.md:57-64",
+          "tasks/TASK_GUIDE_T003.md:88-114",
+          "tasks/TASK_GUIDE_T004.md:21-47",
+          "tasks/TASK_GUIDE_T004.md:48-59",
+          "tasks/TASK_GUIDE_T004.md:62-70",
+          "tasks/TASK_GUIDE_T005.md:21-45",
+          "tasks/TASK_GUIDE_T005.md:46-56",
+          "tasks/TASK_GUIDE_T005.md:59-66",
+          "tasks/TASK_GUIDE_T006.md:21-44",
+          "tasks/TASK_GUIDE_T006.md:45-54",
+          "tasks/TASK_GUIDE_T006.md:57-64",
+          "tasks/TASK_GUIDE_T007.md:21-45",
+          "tasks/TASK_GUIDE_T007.md:46-55",
+          "tasks/TASK_GUIDE_T007.md:58-65",
+          "tasks/TASK_GUIDE_T007.md:90-115",
+          "tasks/TASK_GUIDE_T008.md:21-48",
+          "tasks/TASK_GUIDE_T008.md:49-60",
+          "tasks/TASK_GUIDE_T008.md:63-71",
+          "tasks/TASK_GUIDE_T008.md:94-120",
+          "tasks/TASK_GUIDE_T009.md:21-44",
+          "tasks/TASK_GUIDE_T009.md:45-54",
+          "tasks/TASK_GUIDE_T009.md:57-63",
+          "tasks/TASK_GUIDE_T010.md:21-44",
+          "tasks/TASK_GUIDE_T010.md:45-54",
+          "tasks/TASK_GUIDE_T010.md:57-64",
+          "tasks/TASK_GUIDE_T011.md:1-163",
+          "tasks/TASK_GUIDE_T012.md:21-44",
+          "tasks/TASK_GUIDE_T012.md:45-55",
+          "tasks/TASK_GUIDE_T012.md:58-65",
+          "tasks/TASK_GUIDE_T012.md:90-116",
+          "tasks/TASK_GUIDE_T013.md:21-44",
+          "tasks/TASK_GUIDE_T013.md:45-54",
+          "tasks/TASK_GUIDE_T013.md:57-64",
+          "tasks/TASK_GUIDE_T014.md:21-44",
+          "tasks/TASK_GUIDE_T014.md:45-54",
+          "tasks/TASK_GUIDE_T014.md:57-64",
+          "tasks/TASK_GUIDE_T015.md:127-152",
+          "tasks/TASK_GUIDE_T015.md:21-44",
+          "tasks/TASK_GUIDE_T015.md:45-54",
+          "tasks/TASK_GUIDE_T015.md:57-64",
+          "tasks/TASK_GUIDE_T016.md:21-44",
+          "tasks/TASK_GUIDE_T016.md:45-54",
+          "tasks/TASK_GUIDE_T016.md:57-64",
+          "tasks/TASK_GUIDE_T016.md:89-114",
+          "tasks/TASK_GUIDE_T017.md:21-42",
+          "tasks/TASK_GUIDE_T017.md:43-53",
+          "tasks/TASK_GUIDE_T017.md:56-65",
+          "tasks/TASK_GUIDE_T018.md:21-42",
+          "tasks/TASK_GUIDE_T018.md:43-52",
+          "tasks/TASK_GUIDE_T018.md:55-63",
+          "tasks/TASK_GUIDE_T018.md:88-115",
+          "tasks/TASK_GUIDE_T019.md:23-47",
+          "tasks/TASK_GUIDE_T019.md:48-58",
+          "tasks/TASK_GUIDE_T019.md:61-68",
+          "tasks/TASK_GUIDE_T020.md:21-43",
+          "tasks/TASK_GUIDE_T020.md:44-53",
+          "tasks/TASK_GUIDE_T020.md:56-63",
+          "tasks/TASK_GUIDE_T021.md:23-44",
+          "tasks/TASK_GUIDE_T021.md:45-54",
+          "tasks/TASK_GUIDE_T021.md:57-64",
+          "tasks/TASK_GUIDE_T021.md:89-114",
+          "tasks/TASK_GUIDE_T022.md:23-44",
+          "tasks/TASK_GUIDE_T022.md:45-55",
+          "tasks/TASK_GUIDE_T022.md:58-66",
+          "tasks/TASK_GUIDE_T022.md:89-103",
+          "tasks/TASK_GUIDE_T023.md:21-46",
+          "tasks/TASK_GUIDE_T023.md:47-58",
+          "tasks/TASK_GUIDE_T023.md:61-70",
+          "tasks/TASK_GUIDE_T024.md:23-52",
+          "tasks/TASK_GUIDE_T024.md:53-64",
+          "tasks/TASK_GUIDE_T024.md:67-75",
+          "tasks/TASK_GUIDE_T025.md:25-52",
+          "tasks/TASK_GUIDE_T025.md:53-65",
+          "tasks/TASK_GUIDE_T025.md:68-76",
+          "tasks/TASK_GUIDE_T026.md:143-168",
+          "tasks/TASK_GUIDE_T026.md:25-55",
+          "tasks/TASK_GUIDE_T026.md:56-68",
+          "tasks/TASK_GUIDE_T026.md:71-80",
+          "tasks/TASK_GUIDE_T027.md:25-53",
+          "tasks/TASK_GUIDE_T027.md:54-70",
+          "tasks/TASK_GUIDE_T027.md:73-87",
+          "tasks/TASK_GUIDE_T028.md:118-143",
+          "tasks/TASK_GUIDE_T028.md:25-54",
+          "tasks/TASK_GUIDE_T028.md:55-68",
+          "tasks/TASK_GUIDE_T028.md:71-82",
+          "tasks/TASK_GUIDE_T029.md:23-53",
+          "tasks/TASK_GUIDE_T029.md:62-74",
+          "templates/PRD_template.md:36-47",
+          "templates/PRD_template.md:48-57",
+          "templates/PRD_template.md:66-74"
+        ],
+        "derivation": "108 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "requirement-fidelity",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 108
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          "PRD.md:109-126",
+          "PRD.md:51-83",
+          "PRD.md:84-97",
+          "requirement.md:188-197",
+          "requirement.md:2-7",
+          "requirement.md:76-85",
+          "tasks/TASK_GUIDE_M001.md:101-217",
+          "tasks/TASK_GUIDE_M001.md:24-47",
+          "tasks/TASK_GUIDE_M001.md:71-85",
+          "tasks/TASK_GUIDE_M001.md:88-97",
+          "tasks/TASK_GUIDE_T001.md:23-50",
+          "tasks/TASK_GUIDE_T001.md:51-62",
+          "tasks/TASK_GUIDE_T001.md:65-74",
+          "tasks/TASK_GUIDE_T002.md:21-46",
+          "tasks/TASK_GUIDE_T002.md:47-58",
+          "tasks/TASK_GUIDE_T002.md:61-69",
+          "tasks/TASK_GUIDE_T003.md:21-44",
+          "tasks/TASK_GUIDE_T003.md:45-54",
+          "tasks/TASK_GUIDE_T003.md:57-64",
+          "tasks/TASK_GUIDE_T003.md:88-114",
+          "tasks/TASK_GUIDE_T004.md:21-47",
+          "tasks/TASK_GUIDE_T004.md:48-59",
+          "tasks/TASK_GUIDE_T004.md:62-70",
+          "tasks/TASK_GUIDE_T005.md:21-45",
+          "tasks/TASK_GUIDE_T005.md:46-56",
+          "tasks/TASK_GUIDE_T005.md:59-66",
+          "tasks/TASK_GUIDE_T006.md:21-44",
+          "tasks/TASK_GUIDE_T006.md:45-54",
+          "tasks/TASK_GUIDE_T006.md:57-64",
+          "tasks/TASK_GUIDE_T007.md:21-45",
+          "tasks/TASK_GUIDE_T007.md:46-55",
+          "tasks/TASK_GUIDE_T007.md:58-65",
+          "tasks/TASK_GUIDE_T007.md:90-115",
+          "tasks/TASK_GUIDE_T008.md:21-48",
+          "tasks/TASK_GUIDE_T008.md:49-60",
+          "tasks/TASK_GUIDE_T008.md:63-71",
+          "tasks/TASK_GUIDE_T008.md:94-120",
+          "tasks/TASK_GUIDE_T009.md:21-44",
+          "tasks/TASK_GUIDE_T009.md:45-54",
+          "tasks/TASK_GUIDE_T009.md:57-63",
+          "tasks/TASK_GUIDE_T010.md:21-44",
+          "tasks/TASK_GUIDE_T010.md:45-54",
+          "tasks/TASK_GUIDE_T010.md:57-64",
+          "tasks/TASK_GUIDE_T011.md:1-163",
+          "tasks/TASK_GUIDE_T012.md:21-44",
+          "tasks/TASK_GUIDE_T012.md:45-55",
+          "tasks/TASK_GUIDE_T012.md:58-65",
+          "tasks/TASK_GUIDE_T012.md:90-116",
+          "tasks/TASK_GUIDE_T013.md:21-44",
+          "tasks/TASK_GUIDE_T013.md:45-54",
+          "tasks/TASK_GUIDE_T013.md:57-64",
+          "tasks/TASK_GUIDE_T014.md:21-44",
+          "tasks/TASK_GUIDE_T014.md:45-54",
+          "tasks/TASK_GUIDE_T014.md:57-64",
+          "tasks/TASK_GUIDE_T015.md:127-152",
+          "tasks/TASK_GUIDE_T015.md:21-44",
+          "tasks/TASK_GUIDE_T015.md:45-54",
+          "tasks/TASK_GUIDE_T015.md:57-64",
+          "tasks/TASK_GUIDE_T016.md:21-44",
+          "tasks/TASK_GUIDE_T016.md:45-54",
+          "tasks/TASK_GUIDE_T016.md:57-64",
+          "tasks/TASK_GUIDE_T016.md:89-114",
+          "tasks/TASK_GUIDE_T017.md:21-42",
+          "tasks/TASK_GUIDE_T017.md:43-53",
+          "tasks/TASK_GUIDE_T017.md:56-65",
+          "tasks/TASK_GUIDE_T018.md:21-42",
+          "tasks/TASK_GUIDE_T018.md:43-52",
+          "tasks/TASK_GUIDE_T018.md:55-63",
+          "tasks/TASK_GUIDE_T018.md:88-115",
+          "tasks/TASK_GUIDE_T019.md:23-47",
+          "tasks/TASK_GUIDE_T019.md:48-58",
+          "tasks/TASK_GUIDE_T019.md:61-68",
+          "tasks/TASK_GUIDE_T020.md:21-43",
+          "tasks/TASK_GUIDE_T020.md:44-53",
+          "tasks/TASK_GUIDE_T020.md:56-63",
+          "tasks/TASK_GUIDE_T021.md:23-44",
+          "tasks/TASK_GUIDE_T021.md:45-54",
+          "tasks/TASK_GUIDE_T021.md:57-64",
+          "tasks/TASK_GUIDE_T021.md:89-114",
+          "tasks/TASK_GUIDE_T022.md:23-44",
+          "tasks/TASK_GUIDE_T022.md:45-55",
+          "tasks/TASK_GUIDE_T022.md:58-66",
+          "tasks/TASK_GUIDE_T022.md:89-103",
+          "tasks/TASK_GUIDE_T023.md:21-46",
+          "tasks/TASK_GUIDE_T023.md:47-58",
+          "tasks/TASK_GUIDE_T023.md:61-70",
+          "tasks/TASK_GUIDE_T024.md:23-52",
+          "tasks/TASK_GUIDE_T024.md:53-64",
+          "tasks/TASK_GUIDE_T024.md:67-75",
+          "tasks/TASK_GUIDE_T025.md:25-52",
+          "tasks/TASK_GUIDE_T025.md:53-65",
+          "tasks/TASK_GUIDE_T025.md:68-76",
+          "tasks/TASK_GUIDE_T026.md:143-168",
+          "tasks/TASK_GUIDE_T026.md:25-55",
+          "tasks/TASK_GUIDE_T026.md:56-68",
+          "tasks/TASK_GUIDE_T026.md:71-80",
+          "tasks/TASK_GUIDE_T027.md:25-53",
+          "tasks/TASK_GUIDE_T027.md:54-70",
+          "tasks/TASK_GUIDE_T027.md:73-87",
+          "tasks/TASK_GUIDE_T028.md:118-143",
+          "tasks/TASK_GUIDE_T028.md:25-54",
+          "tasks/TASK_GUIDE_T028.md:55-68",
+          "tasks/TASK_GUIDE_T028.md:71-82",
+          "tasks/TASK_GUIDE_T029.md:23-53",
+          "tasks/TASK_GUIDE_T029.md:62-74",
+          "templates/PRD_template.md:36-47",
+          "templates/PRD_template.md:48-57",
+          "templates/PRD_template.md:66-74"
+        ],
+        "derivation": "2005 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 2005
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "requirement-fidelity",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "requirement-fidelity",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "security",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/harness-lock.json",
+          ".codex/harness-lock.json",
+          ".github/workflows/ci.yml",
+          ".github/workflows/deploy-staging.yml",
+          "apps/api/package.json",
+          "apps/api/src/auth/auth.controller.ts",
+          "apps/api/src/auth/auth.e2e.spec.ts",
+          "apps/api/src/auth/auth.module.ts",
+          "apps/api/src/auth/auth.service.ts",
+          "apps/api/src/auth/decorators/roles.decorator.ts",
+          "apps/api/src/auth/dto/login.dto.ts",
+          "apps/api/src/auth/dto/signup.dto.ts",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts",
+          "apps/api/src/auth/guards/jwt-auth.guard.ts",
+          "apps/api/src/auth/guards/roles-rbac.guard.spec.ts",
+          "apps/api/src/auth/guards/roles.guard.ts",
+          "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts",
+          "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "apps/web/src/routes/AuthGuard.test.tsx",
+          "apps/web/src/routes/AuthGuard.tsx",
+          "apps/web/src/routes/auth.ts",
+          "docker-compose.yml",
+          "package.json",
+          "packages/shared/package.json",
+          "packages/shared/src/auth.dto.ts",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml",
+          "repo\u2026****:4d10b85626cf.html",
+          "repo\u2026****:60e7365a9573.html",
+          "repo\u2026****:7131be7be111.html",
+          "repo\u2026****:733ce35941d0.html",
+          "repo\u2026****:80b8e26427f3.html",
+          "repo\u2026****:9a2cc977475d.html",
+          "repo\u2026****:c1e88fe3b79e.html",
+          "repo\u2026****:e808c802ee27.html"
+        ],
+        "derivation": "222 secret redaction(s) recorded while building this pack from the 37 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "security",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 222
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/harness-lock.json:1-114",
+          ".codex/harness-lock.json:1-64",
+          ".github/workflows/ci.yml:1-83",
+          ".github/workflows/deploy-staging.yml:1-73",
+          "apps/api/package.json:1-93",
+          "apps/api/src/auth/auth.controller.ts:1-21",
+          "apps/api/src/auth/auth.e2e.spec.ts:1-161",
+          "apps/api/src/auth/auth.module.ts:1-26",
+          "apps/api/src/auth/auth.service.ts:1-144",
+          "apps/api/src/auth/decorators/roles.decorator.ts:1-10",
+          "apps/api/src/auth/dto/login.dto.ts:1-10",
+          "apps/api/src/auth/dto/signup.dto.ts:1-18",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+          "apps/api/src/auth/guards/jwt-auth.guard.ts:1-42",
+          "apps/api/src/auth/guards/roles-rbac.guard.spec.ts:1-84",
+          "apps/api/src/auth/guards/roles.guard.ts:1-55",
+          "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts:1-151",
+          "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts:1-200",
+          "apps/mobile/package.json:1-30",
+          "apps/web/package.json:1-37",
+          "apps/web/src/routes/AuthGuard.test.tsx:1-44",
+          "apps/web/src/routes/AuthGuard.tsx:1-13",
+          "apps/web/src/routes/auth.ts:1-15",
+          "docker-compose.yml:1-21",
+          "package.json:1-13",
+          "packages/shared/package.json:1-13",
+          "packages/shared/src/auth.dto.ts:1-18",
+          "pnpm-lock.yaml:1-200",
+          "pnpm-workspace.yaml:1-5",
+          "repo\u2026****:4d10b85626cf.html:1-200",
+          "repo\u2026****:60e7365a9573.html:1-200",
+          "repo\u2026****:733ce35941d0.html:1-200",
+          "repo\u2026****:80b8e26427f3.html:1-200",
+          "repo\u2026****:9a2cc977475d.html:1-200",
+          "repo\u2026****:c1e88fe3b79e.html:1-200",
+          "repo\u2026****:e808c802ee27.html:1-200"
+        ],
+        "derivation": "36 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "security",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 36
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/harness-lock.json:1-114",
+          ".codex/harness-lock.json:1-64",
+          ".github/workflows/ci.yml:1-83",
+          ".github/workflows/deploy-staging.yml:1-73",
+          "apps/api/package.json:1-93",
+          "apps/api/src/auth/auth.controller.ts:1-21",
+          "apps/api/src/auth/auth.e2e.spec.ts:1-161",
+          "apps/api/src/auth/auth.module.ts:1-26",
+          "apps/api/src/auth/auth.service.ts:1-144",
+          "apps/api/src/auth/decorators/roles.decorator.ts:1-10",
+          "apps/api/src/auth/dto/login.dto.ts:1-10",
+          "apps/api/src/auth/dto/signup.dto.ts:1-18",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+          "apps/api/src/auth/guards/jwt-auth.guard.ts:1-42",
+          "apps/api/src/auth/guards/roles-rbac.guard.spec.ts:1-84",
+          "apps/api/src/auth/guards/roles.guard.ts:1-55",
+          "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts:1-151",
+          "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts:1-200",
+          "apps/mobile/package.json:1-30",
+          "apps/web/package.json:1-37",
+          "apps/web/src/routes/AuthGuard.test.tsx:1-44",
+          "apps/web/src/routes/AuthGuard.tsx:1-13",
+          "apps/web/src/routes/auth.ts:1-15",
+          "docker-compose.yml:1-21",
+          "package.json:1-13",
+          "packages/shared/package.json:1-13",
+          "packages/shared/src/auth.dto.ts:1-18",
+          "pnpm-lock.yaml:1-200",
+          "pnpm-workspace.yaml:1-5",
+          "repo\u2026****:4d10b85626cf.html:1-200",
+          "repo\u2026****:60e7365a9573.html:1-200",
+          "repo\u2026****:733ce35941d0.html:1-200",
+          "repo\u2026****:80b8e26427f3.html:1-200",
+          "repo\u2026****:9a2cc977475d.html:1-200",
+          "repo\u2026****:c1e88fe3b79e.html:1-200",
+          "repo\u2026****:e808c802ee27.html:1-200"
+        ],
+        "derivation": "3202 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 3202
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/web/src/routes/AuthGuard.tsx:1-13"
+        ],
+        "derivation": "the highest approximate CCN among 19 observed function(s) is 2, at apps/web/src/routes/AuthGuard.tsx:8; a lower bound on the repository; approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": false,
+          "value": 2
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "security",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/src/auth/auth.controller.ts:1-21",
+          "apps/api/src/auth/auth.e2e.spec.ts:1-161",
+          "apps/api/src/auth/auth.module.ts:1-26",
+          "apps/api/src/auth/auth.service.ts:1-144",
+          "apps/api/src/auth/decorators/roles.decorator.ts:1-10",
+          "apps/api/src/auth/dto/login.dto.ts:1-10",
+          "apps/api/src/auth/dto/signup.dto.ts:1-18",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+          "apps/api/src/auth/guards/jwt-auth.guard.ts:1-42",
+          "apps/api/src/auth/guards/roles-rbac.guard.spec.ts:1-84",
+          "apps/api/src/auth/guards/roles.guard.ts:1-55",
+          "apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts:1-151",
+          "apps/api/src/rbac-audit/rbac-matrix.e2e.spec.ts:1-200",
+          "apps/web/src/routes/AuthGuard.test.tsx:1-44",
+          "apps/web/src/routes/AuthGuard.tsx:1-13",
+          "apps/web/src/routes/auth.ts:1-15",
+          "packages/shared/src/auth.dto.ts:1-18"
+        ],
+        "derivation": "0 dangerous-sink hit(s) in 17 excerpt(s): none; dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "security",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 0
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "solution-fit",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no file in this pack classifies as source, so the ratio has a zero denominator; that is not the same as a ratio of 0. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "solution-fit",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no file in this pack classifies as source, so there is nothing whose test correspondence could be checked. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "solution-fit",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is no test body to measure assertions in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "solution-fit",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt from a file classifying as a test is present in the evidence, so there is nothing to have observed an assertion in. source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename"
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PRD.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md",
+          "requirement.md",
+          "templates/PRD_template.md"
+        ],
+        "derivation": "1 secret redaction(s) recorded while building this pack from the 9 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "solution-fit",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 1
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PRD.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md",
+          "requirement.md",
+          "templates/PRD_template.md"
+        ],
+        "derivation": "1 file(s) with at least one redaction (BRAINSTORMING_LOG_team-roles.md) / 9 file(s) read",
+        "dimension": "solution-fit",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.1111111111111111
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md:30-41",
+          "BRAINSTORMING_LOG.md:42-53",
+          "BRAINSTORMING_LOG.md:54-64",
+          "BRAINSTORMING_LOG.md:76-81",
+          "BRAINSTORMING_LOG_react-native-migration.md:140-145",
+          "BRAINSTORMING_LOG_react-native-migration.md:33-49",
+          "BRAINSTORMING_LOG_react-native-migration.md:50-66",
+          "BRAINSTORMING_LOG_react-native-migration.md:67-81",
+          "BRAINSTORMING_LOG_team-roles.md:27-31",
+          "BRAINSTORMING_LOG_team-roles.md:32-36",
+          "BRAINSTORMING_LOG_team-roles.md:37-43",
+          "BRAINSTORMING_LOG_team-roles.md:50-57",
+          "BRAINSTORMING_LOG_theme-system.md:30-35",
+          "BRAINSTORMING_LOG_theme-system.md:36-41",
+          "BRAINSTORMING_LOG_theme-system.md:42-49",
+          "BRAINSTORMING_LOG_theme-system.md:56-63",
+          "PRD.md:18-28",
+          "PRD.md:29-50",
+          "requirement.md:18-26",
+          "templates/PRD_template.md:18-26",
+          "templates/PRD_template.md:27-35"
+        ],
+        "derivation": "21 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "solution-fit",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 21
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PRD.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md",
+          "requirement.md",
+          "templates/PRD_template.md"
+        ],
+        "derivation": "2 of 2 declared source(s) found (the pack's own coverage_score), evidenced by the files listed here",
+        "dimension": "solution-fit",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": false,
+          "value": 1.0
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md:30-41",
+          "BRAINSTORMING_LOG.md:42-53",
+          "BRAINSTORMING_LOG.md:54-64",
+          "BRAINSTORMING_LOG.md:76-81",
+          "BRAINSTORMING_LOG_react-native-migration.md:140-145",
+          "BRAINSTORMING_LOG_react-native-migration.md:33-49",
+          "BRAINSTORMING_LOG_react-native-migration.md:50-66",
+          "BRAINSTORMING_LOG_react-native-migration.md:67-81",
+          "BRAINSTORMING_LOG_team-roles.md:27-31",
+          "BRAINSTORMING_LOG_team-roles.md:32-36",
+          "BRAINSTORMING_LOG_team-roles.md:37-43",
+          "BRAINSTORMING_LOG_team-roles.md:50-57",
+          "BRAINSTORMING_LOG_theme-system.md:30-35",
+          "BRAINSTORMING_LOG_theme-system.md:36-41",
+          "BRAINSTORMING_LOG_theme-system.md:42-49",
+          "BRAINSTORMING_LOG_theme-system.md:56-63",
+          "PRD.md:18-28",
+          "PRD.md:29-50",
+          "requirement.md:18-26",
+          "templates/PRD_template.md:18-26",
+          "templates/PRD_template.md:27-35"
+        ],
+        "derivation": "209 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 209
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md:30-41",
+          "BRAINSTORMING_LOG.md:42-53",
+          "BRAINSTORMING_LOG.md:54-64",
+          "BRAINSTORMING_LOG.md:76-81",
+          "BRAINSTORMING_LOG_react-native-migration.md:140-145",
+          "BRAINSTORMING_LOG_react-native-migration.md:33-49",
+          "BRAINSTORMING_LOG_react-native-migration.md:50-66",
+          "BRAINSTORMING_LOG_react-native-migration.md:67-81",
+          "BRAINSTORMING_LOG_team-roles.md:27-31",
+          "BRAINSTORMING_LOG_team-roles.md:32-36",
+          "BRAINSTORMING_LOG_team-roles.md:37-43",
+          "BRAINSTORMING_LOG_team-roles.md:50-57",
+          "BRAINSTORMING_LOG_theme-system.md:30-35",
+          "BRAINSTORMING_LOG_theme-system.md:36-41",
+          "BRAINSTORMING_LOG_theme-system.md:42-49",
+          "BRAINSTORMING_LOG_theme-system.md:56-63",
+          "PRD.md:18-28",
+          "PRD.md:29-50",
+          "requirement.md:18-26",
+          "templates/PRD_template.md:18-26",
+          "templates/PRD_template.md:27-35"
+        ],
+        "derivation": "209 line(s) / 21 excerpt(s) listed here",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": false,
+          "value": 9.952380952380953
+        }
+      },
+      {
+        "computed_from": [
+          "BRAINSTORMING_LOG.md",
+          "BRAINSTORMING_LOG_react-native-migration.md",
+          "BRAINSTORMING_LOG_team-roles.md",
+          "BRAINSTORMING_LOG_theme-system.md",
+          "PRD.md",
+          "docs/adr/0001-theme-system-token-architecture.md",
+          "memory/decisions.md",
+          "requirement.md",
+          "templates/PRD_template.md"
+        ],
+        "derivation": "0 of 9 deduplicated file(s) read classify as source and are listed here -- none did, so this share is 0.0 by the rule below, not because the repository has no source; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": false,
+          "value": 0.0
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no source-file excerpt in this pack contains a function start the registry recognises, so no function was observed; that is not the same as functions of low complexity. approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: only the blast-radius pack says which files changed: its reference search quotes only lines naming in-scope files, and this is the 'solution-fit' pack",
+        "dimension": "solution-fit",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "only the blast-radius pack says which files changed: its reference search quotes only lines naming in-scope files, and this is the 'solution-fit' pack"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "solution-fit",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": null,
+          "reason": "no excerpt in this pack is from a registry language with sink patterns, so no code was scanned; that is not the same as code without sinks. dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "test_to_source_ratio",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "source_files_without_covering_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "test_strength",
+        "kind": "whole_set",
+        "name": "assertion_density_per_test",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/hooks/tests/test_guide_sections.py:1-200",
+          ".claude/hooks/tests/test_post_write_register_task.py:1-90",
+          ".claude/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+          ".claude/hooks/tests/test_task_context.py:1-200",
+          ".codex/hooks/tests/test_post_write_register_task.py:1-90",
+          ".codex/hooks/tests/test_pre_agent_validate_guide.py:1-152"
+        ],
+        "derivation": "54 assertion(s) counted textually in the test-file excerpts listed here; a lower bound on the repository, since it counts only what this pack contains; source vs. test is classified by path convention, never by reading or parsing the file: the deepest directory segment naming a source root (src/, lib/, pkg/, ...) or a test root (tests/, spec/, ...) decides, and only a file under neither is decided by its basename",
+        "dimension": "test-strategy",
+        "family": "test_strength",
+        "kind": "evidence_local",
+        "name": "assertions_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 54
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/hooks/tests/test_guide_sections.py",
+          ".claude/hooks/tests/test_post_write_register_task.py",
+          ".claude/hooks/tests/test_pre_agent_validate_guide.py",
+          ".claude/hooks/tests/test_task_context.py",
+          ".codex/hooks/tests/test_post_write_register_task.py",
+          ".codex/hooks/tests/test_pre_agent_validate_guide.py",
+          ".github/workflows/ci.yml",
+          ".github/workflows/deploy-staging.yml",
+          "apps/api/src/app.controller.spec.ts",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts",
+          "apps/api/src/realtime/realtime.gateway.spec.ts",
+          "apps/mobile/jest.config.js",
+          "apps/mobile/src/session.test.ts",
+          "apps/mobile/src/storage.test.ts",
+          "apps/web/src/App.test.tsx",
+          "apps/web/src/components/AnnouncementsWidget/AnnouncementsWidget.test.tsx",
+          "apps/web/src/components/Comments/Comments.test.tsx",
+          "apps/web/src/components/Dialog/Dialog.test.tsx",
+          "apps/web/src/components/ExpiringSoonWidget/ExpiringSoonWidget.test.tsx",
+          "apps/web/src/components/LowStockWidget/LowStockWidget.test.tsx",
+          "apps/web/src/components/NotificationBell/NotificationBell.test.tsx",
+          "apps/web/src/components/PinnedNotesWidget/PinnedNotesWidget.test.tsx",
+          "apps/web/src/errorDialog/ErrorDialogProvider.test.tsx",
+          "apps/web/src/features/announcements/AnnouncementsPage.test.tsx",
+          "apps/web/src/features/export/api.test.ts",
+          "apps/web/src/features/guidelines/GuidelinesPage.test.tsx",
+          "apps/web/src/features/inventory/InventoryPage.test.tsx",
+          "apps/web/src/features/notes/NotesPage.test.tsx",
+          "apps/web/src/features/recipes/RecipesPage.test.tsx",
+          "apps/web/src/features/recipes/api.test.ts",
+          "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx",
+          "apps/web/src/features/shift-logs/api.test.ts",
+          "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx",
+          "apps/web/src/features/tasks/EditTaskDialog.test.tsx",
+          "package.json"
+        ],
+        "derivation": "8 secret redaction(s) recorded while building this pack from the 35 file(s) listed here; a lower bound on the repository, since only these files were read",
+        "dimension": "test-strategy",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "redaction_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 8
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "security_surface",
+        "kind": "whole_set",
+        "name": "redacted_file_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/hooks/tests/test_guide_sections.py:1-200",
+          ".claude/hooks/tests/test_post_write_register_task.py:1-90",
+          ".claude/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+          ".claude/hooks/tests/test_task_context.py:1-200",
+          ".codex/hooks/tests/test_post_write_register_task.py:1-90",
+          ".codex/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+          "apps/api/src/app.controller.spec.ts:1-22",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+          "apps/api/src/realtime/realtime.gateway.spec.ts:1-145",
+          "apps/mobile/jest.config.js:2-5",
+          "apps/mobile/src/session.test.ts:1-50",
+          "apps/mobile/src/storage.test.ts:1-114",
+          "apps/web/src/App.test.tsx:1-189",
+          "apps/web/src/components/AnnouncementsWidget/AnnouncementsWidget.test.tsx:1-50",
+          "apps/web/src/components/Comments/Comments.test.tsx:1-129",
+          "apps/web/src/components/Dialog/Dialog.test.tsx:1-77",
+          "apps/web/src/components/ExpiringSoonWidget/ExpiringSoonWidget.test.tsx:1-49",
+          "apps/web/src/components/LowStockWidget/LowStockWidget.test.tsx:1-41",
+          "apps/web/src/components/NotificationBell/NotificationBell.test.tsx:1-135",
+          "apps/web/src/components/PinnedNotesWidget/PinnedNotesWidget.test.tsx:1-59",
+          "apps/web/src/errorDialog/ErrorDialogProvider.test.tsx:1-94",
+          "apps/web/src/features/announcements/AnnouncementsPage.test.tsx:1-186",
+          "apps/web/src/features/export/api.test.ts:1-58",
+          "apps/web/src/features/guidelines/GuidelinesPage.test.tsx:1-200",
+          "apps/web/src/features/inventory/InventoryPage.test.tsx:1-200",
+          "apps/web/src/features/notes/NotesPage.test.tsx:1-192",
+          "apps/web/src/features/recipes/RecipesPage.test.tsx:1-200",
+          "apps/web/src/features/recipes/api.test.ts:1-49",
+          "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:1-190",
+          "apps/web/src/features/shift-logs/api.test.ts:1-64",
+          "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx:1-120",
+          "package.json:10-13"
+        ],
+        "derivation": "32 excerpt(s) present in this pack, listed here; a lower bound on the repository",
+        "dimension": "test-strategy",
+        "family": "evidence_coverage",
+        "kind": "evidence_local",
+        "name": "excerpts_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 32
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "evidence_coverage",
+        "kind": "whole_set",
+        "name": "declared_source_coverage",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/hooks/tests/test_guide_sections.py:1-200",
+          ".claude/hooks/tests/test_post_write_register_task.py:1-90",
+          ".claude/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+          ".claude/hooks/tests/test_task_context.py:1-200",
+          ".codex/hooks/tests/test_post_write_register_task.py:1-90",
+          ".codex/hooks/tests/test_pre_agent_validate_guide.py:1-152",
+          "apps/api/src/app.controller.spec.ts:1-22",
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+          "apps/api/src/realtime/realtime.gateway.spec.ts:1-145",
+          "apps/mobile/jest.config.js:2-5",
+          "apps/mobile/src/session.test.ts:1-50",
+          "apps/mobile/src/storage.test.ts:1-114",
+          "apps/web/src/App.test.tsx:1-189",
+          "apps/web/src/components/AnnouncementsWidget/AnnouncementsWidget.test.tsx:1-50",
+          "apps/web/src/components/Comments/Comments.test.tsx:1-129",
+          "apps/web/src/components/Dialog/Dialog.test.tsx:1-77",
+          "apps/web/src/components/ExpiringSoonWidget/ExpiringSoonWidget.test.tsx:1-49",
+          "apps/web/src/components/LowStockWidget/LowStockWidget.test.tsx:1-41",
+          "apps/web/src/components/NotificationBell/NotificationBell.test.tsx:1-135",
+          "apps/web/src/components/PinnedNotesWidget/PinnedNotesWidget.test.tsx:1-59",
+          "apps/web/src/errorDialog/ErrorDialogProvider.test.tsx:1-94",
+          "apps/web/src/features/announcements/AnnouncementsPage.test.tsx:1-186",
+          "apps/web/src/features/export/api.test.ts:1-58",
+          "apps/web/src/features/guidelines/GuidelinesPage.test.tsx:1-200",
+          "apps/web/src/features/inventory/InventoryPage.test.tsx:1-200",
+          "apps/web/src/features/notes/NotesPage.test.tsx:1-192",
+          "apps/web/src/features/recipes/RecipesPage.test.tsx:1-200",
+          "apps/web/src/features/recipes/api.test.ts:1-49",
+          "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:1-190",
+          "apps/web/src/features/shift-logs/api.test.ts:1-64",
+          "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx:1-120",
+          "package.json:10-13"
+        ],
+        "derivation": "3549 line(s) summed over the excerpts listed here, each counted as end_line - start_line + 1 (1-indexed, inclusive)",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "evidence_lines_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 3549
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "mean_excerpt_lines",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "source_file_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "functions_over_ccn_10_share",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          "apps/api/src/auth/guards/jwt-auth.guard.spec.ts:1-44",
+          "apps/api/src/realtime/realtime.gateway.spec.ts:1-145",
+          "apps/mobile/src/storage.test.ts:1-114",
+          "apps/web/src/App.test.tsx:1-189",
+          "apps/web/src/features/announcements/AnnouncementsPage.test.tsx:1-186",
+          "apps/web/src/features/guidelines/GuidelinesPage.test.tsx:1-200",
+          "apps/web/src/features/inventory/InventoryPage.test.tsx:1-200",
+          "apps/web/src/features/notes/NotesPage.test.tsx:1-192",
+          "apps/web/src/features/recipes/RecipesPage.test.tsx:1-200",
+          "apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:1-190",
+          "apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx:1-120"
+        ],
+        "derivation": "the highest approximate CCN among 29 observed function(s) is 1, at apps/api/src/auth/guards/jwt-auth.guard.spec.ts:5, apps/api/src/realtime/realtime.gateway.spec.ts:5, apps/api/src/realtime/realtime.gateway.spec.ts:23, apps/api/src/realtime/realtime.gateway.spec.ts:46, apps/mobile/src/storage.test.ts:22, apps/web/src/App.test.tsx:37, apps/web/src/features/announcements/AnnouncementsPage.test.tsx:8, apps/web/src/features/announcements/AnnouncementsPage.test.tsx:22, apps/web/src/features/announcements/AnnouncementsPage.test.tsx:32, apps/web/src/features/announcements/AnnouncementsPage.test.tsx:42, apps/web/src/features/announcements/AnnouncementsPage.test.tsx:52, apps/web/src/features/guidelines/GuidelinesPage.test.tsx:8, apps/web/src/features/guidelines/GuidelinesPage.test.tsx:22, apps/web/src/features/guidelines/GuidelinesPage.test.tsx:32, apps/web/src/features/inventory/InventoryPage.test.tsx:36, apps/web/src/features/inventory/InventoryPage.test.tsx:50, apps/web/src/features/inventory/InventoryPage.test.tsx:64, apps/web/src/features/inventory/InventoryPage.test.tsx:74, apps/web/src/features/notes/NotesPage.test.tsx:7, apps/web/src/features/recipes/RecipesPage.test.tsx:36, apps/web/src/features/recipes/RecipesPage.test.tsx:54, apps/web/src/features/recipes/RecipesPage.test.tsx:58, apps/web/src/features/recipes/RecipesPage.test.tsx:82, apps/web/src/features/recipes/RecipesPage.test.tsx:92, apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:30, apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:42, apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:52, apps/web/src/features/shift-logs/ShiftLogsPage.test.tsx:62, apps/web/src/features/tasks/CompleteTaskDialog/CompleteTaskDialog.test.tsx:6; a lower bound on the repository; approximate CCN (lizard-style), McCabe 1976: 1 + the registry's branch keywords per function, counted after the registry's comment and string delimiters are blanked; a function starts at a registry function-start token and ends before the next non-blank line indented no deeper, and a function whose excerpt ends first counts only the lines quoted; only source-file excerpts of registry languages are read",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "evidence_local",
+        "name": "max_function_ccn",
+        "outcome": {
+          "abstained": false,
+          "value": 1
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "top_level_import_cycles",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [],
+        "derivation": "no value: whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)",
+        "dimension": "test-strategy",
+        "family": "code_shape",
+        "kind": "whole_set",
+        "name": "max_fan_in_changed",
+        "outcome": {
+          "abstained": true,
+          "omitted_lower_bound": 1,
+          "reason": "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository (at least 1 item(s) omitted -- a lower bound, never an exact count)"
+        }
+      },
+      {
+        "computed_from": [
+          ".claude/hooks/tests/test_guide_sections.py:1-200"
+        ],
+        "derivation": "1 dangerous-sink hit(s) in 31 excerpt(s): .claude/hooks/tests/test_guide_sections.py:71 CWE-95 (https://cwe.mitre.org/data/definitions/95.html) [test path]; dangerous sinks are the registry's security_sinks tokens (each citing its CWE page), matched textually after the registry's comment and string delimiters are blanked (a string that interpolates keeps one mark at its start) -- no data flow is traced, so a hit is a place to look, not a proven vulnerability; test-path hits are counted and tagged; a lower bound on the repository, since only these excerpts were read",
+        "dimension": "test-strategy",
+        "family": "security_surface",
+        "kind": "evidence_local",
+        "name": "sink_hits_observed",
+        "outcome": {
+          "abstained": false,
+          "value": 1
+        }
+      }
+    ]
+  },
+  "provenance": [
+    {
+      "dimension": "architecture",
+      "sources": "rules",
+      "rating": "rules"
+    },
+    {
+      "dimension": "blast-radius",
+      "sources": "rules",
+      "rating": "rules"
+    },
+    {
+      "dimension": "code-quality",
+      "sources": "rules",
+      "rating": "rules"
+    },
+    {
+      "dimension": "requirement-fidelity",
+      "sources": "rules",
+      "rating": "rules"
+    },
+    {
+      "dimension": "security",
+      "sources": "rules",
+      "rating": "rules"
+    },
+    {
+      "dimension": "solution-fit",
+      "sources": "rules",
+      "rating": "rules"
+    },
+    {
+      "dimension": "test-strategy",
+      "sources": "rules",
+      "rating": "rules"
+    }
+  ]
+}

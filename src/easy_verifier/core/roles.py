@@ -2,14 +2,15 @@
 
 A dimension seeks **roles** (a lockfile, a requirements doc, a CI workflow), not
 filenames. This module is the whole mechanism, as plain data plus three
-functions — no base class, no registry, no detection classes:
+functions — no base class, no detection classes:
 
 * :data:`GENERIC_PATTERNS` — the language-agnostic globs for every file-backed
   role. Its keys are the complete set of roles a config file or an agent pick
   may name.
-* :data:`ECOSYSTEM_PATTERNS` — extra globs for existing roles (Python, JS/TS,
-  Rust, Java), switched on when one of the table's manifests is present. A
-  table may only *extend* a role; that it cannot add one is checked at import.
+* the reference registry (:mod:`.registry`) — cited extra globs for existing
+  roles per language, switched on when one of the language's manifests is
+  present. An entry may only *extend* a role; the loader rejects one that
+  names any other.
 * :func:`load_repo_config` / :func:`validate_agent_input` — the two caller
   inputs, both add-only, both validated with every error reported at once.
 * :func:`resolve` — one bounded, sorted walk that turns roles into files and
@@ -25,7 +26,7 @@ from __future__ import annotations
 import json
 import re
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from functools import lru_cache
@@ -33,8 +34,21 @@ from pathlib import Path, PurePosixPath
 
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
+from .judge import DocumentationResult, DocumentationRule
 from .models import SourceRole
 from .redact import redact
+from .registry import (
+    REJECTED,
+    Registry,
+    apply_reviews,
+    layered_registry,
+    local_write_problem,
+    parse_local_entries,
+    parse_reviews,
+    review_problems,
+    save_local_entries,
+    sot_root,
+)
 
 CONFIG_FILENAME = ".easy-verifier.toml"
 MAX_CONFIG_BYTES = 64 * 1024
@@ -85,11 +99,7 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     "readme": ("README*", "Readme*", "readme*"),
     "architecture-doc": ("PROJECT_SPEC.md", *_docs("architecture", "design")),
     "decision-record": (
-        # Exact name, deliberately not `BRAINSTORMING_LOG*.md`: redact.py's
-        # high_entropy_string detector fingerprints names such as
-        # `BRAINSTORMING_LOG_source-discovery.md`, which breaks the citation.
-        # Temporary narrowing; widen once the separate redaction bugfix lands.
-        "BRAINSTORMING_LOG.md",
+        "BRAINSTORMING_LOG*.md",
         "**/adr/**",
         "**/adrs/**",
         "**/ADR/**",
@@ -214,105 +224,18 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
 Directory and naming conventions shared across ecosystems. A repository in a
 language with no ecosystem table is evaluated by these alone."""
 
-ECOSYSTEM_PATTERNS: dict[str, dict] = {
-    "python": {
-        "manifests": (
-            "pyproject.toml",
-            "setup.py",
-            "setup.cfg",
-            "requirements.txt",
-            "Pipfile",
-        ),
-        "roles": {
-            "package-manifest": (
-                "**/pyproject.toml",
-                "**/setup.py",
-                "**/setup.cfg",
-                "**/requirements*.txt",
-                "**/Pipfile",
-            ),
-            "lint-config": (
-                "**/ruff.toml",
-                "**/.ruff.toml",
-                "**/.flake8",
-                "**/pylintrc",
-                "**/mypy.ini",
-                "**/pyproject.toml",
-                "**/setup.cfg",
-            ),
-            "test-config": (
-                "**/pytest.ini",
-                "**/tox.ini",
-                "**/conftest.py",
-                "**/noxfile.py",
-                "**/pyproject.toml",
-                "**/setup.cfg",
-            ),
-        },
-    },
-    "js-ts": {
-        "manifests": ("package.json",),
-        "roles": {
-            "package-manifest": ("**/package.json", "**/pnpm-workspace.yaml"),
-            "lint-config": (
-                "**/eslint.config.*",
-                "**/.eslintrc*",
-                "**/biome.json",
-                "**/biome.jsonc",
-            ),
-            "format-config": (
-                "**/.prettierrc*",
-                "**/prettier.config.*",
-                "**/biome.json",
-            ),
-            "lockfile": ("**/npm-shrinkwrap.json",),
-            "test-config": (
-                "**/jest.config.*",
-                "**/vitest.config.*",
-                "**/vitest.workspace.*",
-                "**/playwright.config.*",
-                "**/cypress.config.*",
-                "**/karma.conf.*",
-                "**/.mocharc*",
-                "package.json",
-            ),
-        },
-    },
-    "rust": {
-        "manifests": ("Cargo.toml",),
-        "roles": {
-            "package-manifest": ("**/Cargo.toml",),
-            "lint-config": ("**/clippy.toml", "**/.clippy.toml"),
-            "format-config": ("**/rustfmt.toml", "**/.rustfmt.toml"),
-            "test-config": ("**/Cargo.toml", "**/.config/nextest.toml"),
-        },
-    },
-    "java": {
-        "manifests": ("pom.xml", "build.gradle", "build.gradle.kts"),
-        "roles": {
-            "package-manifest": (
-                "**/pom.xml",
-                "**/build.gradle",
-                "**/build.gradle.kts",
-                "**/settings.gradle",
-                "**/settings.gradle.kts",
-            ),
-            "lint-config": ("**/checkstyle*.xml", "**/pmd*.xml", "**/spotbugs*.xml"),
-            "test-config": ("**/pom.xml", "**/build.gradle", "**/build.gradle.kts"),
-            "test-file": ("**/src/test/**",),
-        },
-    },
-}
-"""Extra patterns for existing roles, active when a listed manifest exists
-anywhere outside an excluded directory (FR-032). Data, never a boundary."""
 
-for _ecosystem, _table in ECOSYSTEM_PATTERNS.items():
-    _extra = set(_table["roles"]) - set(GENERIC_PATTERNS)
-    if _extra:
-        raise RuntimeError(
-            f"ecosystem table {_ecosystem!r} names roles that do not exist: "
-            f"{sorted(_extra)}; a table may extend a role, never add one"
-        )
+@lru_cache(maxsize=1)
+def _registry() -> Registry:
+    """The reference registry (DDR-0007): curated plus the local layer.
+
+    It holds each language's manifests and extra role globs; a language is
+    active when one of its manifests exists (FR-032). Data, never a boundary:
+    an entry naming a role outside :data:`GENERIC_PATTERNS` is rejected.
+    Cached; :func:`apply_registry_entries` clears it on every call carrying
+    agent input so a long-running server sees local writes (T036).
+    """
+    return layered_registry(known_roles=GENERIC_PATTERNS)
 
 
 def role(name: str) -> SourceRole:
@@ -432,17 +355,23 @@ def validate_agent_input(
     Accepts a parsed object or its JSON text. ``gate_evaluations`` is only
     shape-checked here: whether each one is valid depends on this call's
     ratings and packs, so ``gate.apply_gate_evaluations`` validates it (T028).
+    ``registry_entries`` and ``reviews`` (T038) are fully validated here and
+    applied by :func:`apply_registry_entries`.
     """
     document = parse_agent_input(document)
 
     root = _resolved_repo(repo)
     errors: list[str] = []
     for key in document:
-        if key not in ("picks", "gate_evaluations"):
+        if key not in ("picks", "gate_evaluations", "registry_entries", "reviews"):
             errors.append(
-                f"{redact(str(key))}: unknown key; only picks and "
-                "gate_evaluations are accepted"
+                f"{redact(str(key))}: unknown key; only picks, "
+                "gate_evaluations, registry_entries and reviews are accepted"
             )
+    errors.extend(
+        parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
+    )
+    errors.extend(parse_reviews(document.get("reviews"))[1])
     if not isinstance(document.get("gate_evaluations", {}), dict):
         errors.append(
             "gate_evaluations: must be an object mapping a dimension to an evaluation"
@@ -473,6 +402,98 @@ def validate_agent_input(
     if errors:
         raise RoleInputError("agent input", errors)
     return dict(sorted(result.items()))
+
+
+def apply_registry_entries(document: Mapping, repo: str | Path) -> None:
+    """Apply a validated document's ``reviews`` (T038), then save its
+    ``registry_entries`` (T036), and reload the registry, so this call
+    already scores with both. Reviews go first: a replacement sent with an
+    ``improve`` or ``reject`` answer then supersedes the answered item.
+
+    Called once per agent-input call, before any dimension runs. A layer that
+    cannot be written is not an error: scoring continues on the data already
+    on this machine and :func:`registry_notes` says what was not saved.
+    """
+    entries, _ = parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)
+    answers, _ = parse_reviews(document.get("reviews"))
+    if (entries or answers) and local_write_problem(sot_root(), Path(repo)) is None:
+        try:
+            apply_reviews(answers, sot_root(), known_roles=GENERIC_PATTERNS)
+            save_local_entries(entries, sot_root(), known_roles=GENERIC_PATTERNS)
+        except OSError:
+            pass  # reported by registry_notes: not in the registry
+    _registry.cache_clear()
+
+
+def review_notes(document: Mapping | None) -> tuple[str, ...]:
+    """Answers in ``document`` that will be ignored (unknown or already
+    reviewed ids). Call before :func:`apply_registry_entries` changes the
+    layer; the result joins :func:`registry_notes`."""
+    raw = document.get("reviews") if document is not None else None
+    answers, _ = parse_reviews(raw)
+    return tuple(review_problems(answers, sot_root(), GENERIC_PATTERNS))
+
+
+def registry_notes(document: Mapping | None, repo: str | Path) -> tuple[str, ...]:
+    """What the caller must be told about the registry this call used:
+    registry warnings (e.g. "curated wins") and entries that could not be
+    saved. Never part of the byte-compared score payload: it describes this
+    machine's layer, not the score (DDR-0005)."""
+    registry = _registry()
+    notes = list(registry.warnings)
+    raw = document.get("registry_entries") if document is not None else None
+    entries, _ = parse_local_entries(raw, GENERIC_PATTERNS)
+    refused = [
+        entry
+        for entry in entries
+        if entry.cited.review_status != REJECTED
+        and _in_registry(registry, entry, rejected=True)
+    ]
+    for entry in refused:
+        notes.append(
+            f"registry entry {entry.name}.{entry.field} = "
+            f"{', '.join(entry.cited.value)} was rejected by the user earlier; "
+            "it is not used (research a different value)"
+        )
+    unsaved = [
+        entry
+        for entry in entries
+        if entry not in refused and not _in_registry(registry, entry)
+    ]
+    answers = parse_reviews(document.get("reviews") if document else None)[0]
+    write_problem = local_write_problem(sot_root(), Path(repo))
+    if answers and write_problem:
+        notes.append(
+            f"reviews cannot be saved: {len(answers)} answer(s) not applied "
+            f"({write_problem}); the entries stay pending"
+        )
+    if unsaved:
+        reason = local_write_problem(sot_root(), Path(repo)) or "the write was refused"
+        notes.append(
+            f"research cannot be saved: {len(unsaved)} registry "
+            f"entr{'y' if len(unsaved) == 1 else 'ies'} not saved ({reason}); "
+            "scoring used only the registry data already on this machine"
+        )
+    return tuple(notes)
+
+
+def _in_registry(registry: Registry, entry, *, rejected: bool = False) -> bool:
+    """Whether ``entry``'s values are in ``registry``: among the live data,
+    or with ``rejected`` among the rejection records (T038). A replayed
+    rejection record is looked up among the records."""
+    found = registry.languages.get(entry.name) or registry.frameworks.get(entry.name)
+    if found is None:
+        return False
+    if rejected or entry.cited.review_status == REJECTED:
+        cited_values = found.rejected.get(entry.field, ())
+    elif entry.field == "manifests":
+        cited_values = found.manifests
+    elif entry.field.startswith("roles."):
+        cited_values = found.roles.get(entry.field.removeprefix("roles."), ())
+    else:
+        cited_values = found.fields.get(entry.field, ())
+    have = {value for cited in cited_values for value in cited.value}
+    return set(entry.cited.value) <= have
 
 
 def _known_roles() -> str:
@@ -559,6 +580,27 @@ class RoleResolution:
     walk_truncated: bool
 
 
+_TEMPLATE_DIRS = frozenset({"template", "templates"})
+_TEMPLATE_NAME = re.compile(r"[._-]template\.", re.IGNORECASE)
+
+
+def _is_template(path: str) -> bool:
+    """A file under a ``template(s)/`` directory, or named ``*_template.*``,
+    ``*.template.*`` or ``*-template.*``."""
+    pure = PurePosixPath(path)
+    return bool(_TEMPLATE_NAME.search(pure.name)) or any(
+        part.lower() in _TEMPLATE_DIRS for part in pure.parts[:-1]
+    )
+
+
+RULE_EXCLUSIONS: Mapping[str, Callable[[str], bool]] = {
+    "requirements-doc": _is_template,
+}
+"""Paths a role's rule (and local-layer) patterns never fill (T055, user
+2026-09-29): a template is not a competing requirements source. Config globs
+and agent picks are explicit choices and are not filtered."""
+
+
 def resolve(
     repo: str | Path,
     roles: Sequence[SourceRole],
@@ -586,11 +628,9 @@ def resolve(
             break
         walked.append(path)
 
-    names = {PurePosixPath(path).name for path in walked}
-    ecosystems = tuple(
-        ecosystem
-        for ecosystem, table in ECOSYSTEM_PATTERNS.items()
-        if names & set(table["manifests"])
+    registry = _registry()
+    ecosystems = registry.active_languages(
+        {PurePosixPath(path).name for path in walked}
     )
 
     files: dict[str, tuple[str, ...]] = {}
@@ -599,20 +639,22 @@ def resolve(
     for item in roles:
         if not item.patterns:
             continue
-        rule_patterns = item.patterns + tuple(
-            pattern
-            for ecosystem in ecosystems
-            for pattern in ECOSYSTEM_PATTERNS[ecosystem]["roles"].get(item.name, ())
-        )
+        rule_patterns = item.patterns + registry.patterns_for(item.name, ecosystems)
         rules_match = _matcher(rule_patterns)
+        # Local-layer globs came from a model's research: bounded matcher.
+        local_patterns = registry.patterns_for(item.name, ecosystems, local=True)
+        local_match = _config_matcher(local_patterns) if local_patterns else None
         config_patterns = tuple(config.get(item.name, ()))
         # Config globs are untrusted: matched segment-wise with a bounded
         # matcher, never compiled into the combined backtracking regex.
         config_match = _config_matcher(config_patterns) if config_patterns else None
 
+        excluded = RULE_EXCLUSIONS.get(item.name)
         matched: dict[str, str] = {}
         for path in walked:
-            if rules_match(path):
+            if (
+                rules_match(path) or (local_match is not None and local_match(path))
+            ) and not (excluded is not None and excluded(path)):
                 matched[path] = ORIGIN_RULES
             elif config_match is not None and config_match(path):
                 matched[path] = ORIGIN_CONFIG
@@ -658,6 +700,9 @@ def resolution_warnings(resolution: RoleResolution) -> tuple[str, ...]:
         f"first {MAX_ROLE_FILES} in sorted path order were considered."
         for name in resolution.truncated_roles
     ]
+    warnings.extend(
+        f"Reference registry: {warning}" for warning in _registry().warnings
+    )
     if resolution.walk_truncated:
         warnings.append(
             f"Source-role resolution was bounded at {MAX_ROLE_WALK_FILES} walked "
@@ -687,6 +732,31 @@ def unfilled_reason(resolution: RoleResolution, name: str) -> str | None:
     if all(_is_secret_bearing(path) for path in paths):
         return "excluded: secret-bearing"
     return None
+
+
+def documentation_present(
+    rule: DocumentationRule, files_read: Sequence[str]
+) -> DocumentationResult:
+    """Check a documentation rule (FR-052) against the files a dimension's
+    evidence pack read, with this module's glob semantics.
+
+    The first match in sorted order is cited. ``missing`` is bounded by those
+    reads and says so: it is not a repository-wide absence."""
+    match = _matcher(rule.patterns)
+    found = sorted(path for path in files_read if match(path))
+    if found:
+        return DocumentationResult(
+            rule.area, "present", found[0], rule.citation, "matched a file read"
+        )
+    return DocumentationResult(
+        rule.area,
+        "missing",
+        None,
+        rule.citation,
+        "no file matching "
+        + ", ".join(rule.patterns)
+        + " was among the files this dimension read",
+    )
 
 
 @lru_cache(maxsize=512)
@@ -765,12 +835,14 @@ def _translate(pattern: str) -> str:
 
 __all__ = [
     "CONFIG_FILENAME",
-    "ECOSYSTEM_PATTERNS",
     "GENERIC_PATTERNS",
     "MAX_ROLE_FILES",
     "MAX_ROLE_WALK_FILES",
     "RoleInputError",
     "RoleResolution",
+    "apply_registry_entries",
+    "review_notes",
+    "registry_notes",
     "load_repo_config",
     "resolution_warnings",
     "resolve",

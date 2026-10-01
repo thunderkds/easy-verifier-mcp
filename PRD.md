@@ -53,6 +53,8 @@ so, loudly, as a measurable coverage score. The result is an evaluation a develo
 | US-012 | As either caller, I want to point the verifier at a repository or feature and get quality numbers back in one run, so I can gauge quality without first standing up a reasoning agent — and I want it to decline to give me a number rather than give me an unfounded one. | P1, P2 |
 | US-013 | As a Standalone Developer, I want the verifier to recognise my repository's own docs, configs, and tests whatever my language or naming, so a dimension is not left unscored merely because my files are not named `PRD.md` or `pytest.ini`. | P2 |
 | US-014 | As a Reviewing Agent calling over MCP, I want to be asked — only at hard gates the rules cannot settle — which candidate files fill a missing source role, and to contribute a cited, confidence-weighted evaluation where the rules cannot rate reliably, so a small amount of my judgment makes the score more correct without my reading the whole repository. | P3 |
+| US-015 | *(Added 2026-09-28, DDR-0007)* As a Standalone Developer, I want every rating rule to cite a recognised standard and every language pattern to come from one cited registry, so I can trust the number is measured against a known reference, not an arbitrary threshold. | P1 |
+| US-016 | *(Added 2026-09-28, DDR-0008)* As a Reviewing Agent, I want the 32 evaluation areas I review against (architecture direction … business continuity) to appear by name in the report, each either rated by cited rules or honestly marked "documentation present / missing", so nothing is silently dropped or falsely scored. | P1 |
 
 ---
 
@@ -142,6 +144,31 @@ what the rules cannot detect or cannot rate with confidence (DDR-0006).
 | FR-038 | **Capped blend.** With rules rating R, agent score A and confidence c: `w = 0.5 × c`, `final = round(R·(1−w) + A·w)`. If the rules abstained, `final = A` and the dimension is labelled **agent-rated**. Every presentation of `final` must show its parts (e.g. `74 = rules 68 + agent 88 (w 0.30)`); a blended number is never rendered alone. The overall rating (FR-028b) must disclose which dimensions are rule-rated, blended, agent-rated, or abstained. Outside a hard gate the agent never changes a number. | US-012, US-003 |
 | FR-039 | Every report and `score` response must carry a one-line **provenance note** per dimension: sources from `rules` / `+ config` / `+ agent picks (N files)`, and rating `rules` / `blended (w)` / `agent-rated`. No agent reasoning text is written to the report. | US-003, US-014 |
 | FR-040 | The engine itself still makes **no model call** (NFR-001). All agent involvement is a question returned to the caller and an answer supplied back as input; CLI runs involve no agent at all unless replaying a saved agent input. | US-002, US-014 |
+
+### Reference registry — scoring source of truth *(added 2026-09-28, DDR-0007)*
+
+
+| ID | Requirement | Traces to |
+|----|-------------|-----------|
+| FR-041 | All language patterns (manifests, source extensions, test naming, test declaration, assertion syntax, lint/format config) must live in **one reference registry**, each field carrying a citation. `core/roles.py` ecosystem tables and `core/metrics.py` suffix/test/assertion tables read from it; no second copy. (G1) | US-015 |
+| FR-042 | The registry has two layers: `registry/curated/` inside the package (shipped, changes only on a release, always wins) and `~/.easy-verifier-sot/` (researched on this machine, override `EASY_VERIFIER_SOT`, reused across repos). The curated layer covers 9 languages: Python, JS/TS (Node), Rust, Java, Go, Kotlin, C#, Ruby, PHP. (G2, G6) <!-- RESOLVED B4: local layer lives at ~/.easy-verifier-sot/ (override EASY_VERIFIER_SOT), bind-mounted in Docker; no README exception needed. --> | US-015 |
+| FR-043 | Each dimension's rules must be anchored to a cited standard, measurable by reading code only: code-quality ISO/IEC 5055 + McCabe ≤10; security OWASP ASVS + CWE Top 25; test-strategy ISO/IEC/IEEE 29119 + assertion density; architecture ISO/IEC/IEEE 42010 + Martin package metrics; requirement-fidelity ISO/IEC/IEEE 29148 traceability; solution-fit ISO/IEC 25010 functional suitability; blast-radius fan-in/fan-out + relative churn. Replaces the 11 shared rules. (G1, G5) <!-- RESOLVED B1/B5: rule table in BRAINSTORMING_LOG_reference-registry.md approved; metric and threshold cited separately, project-default where no standard number exists; solution-fit abstains → FR-036. COVERAGE_FLOORS unchanged. --> | US-015 |
+| FR-044 | The **engine** detects languages and frameworks deterministically from manifests (e.g. `"react"` in `package.json`); the calling agent never detects the stack. Framework entries exist only when detected, and only add to their language entry. (G7, G8) | US-015 |
+| FR-045 | **Hard gate — reference (MCP only).** When a detected language/framework lacks registry fields the rules consume, `score` returns `needs_input` listing only those missing fields, at most 20 per call, language fields before framework fields. Remaining gaps use generic patterns, labelled. (G9) | US-015 |
+| FR-046 | The agent answers from official documentation or a bounded research session; if it cannot find a field quickly it asks the user one question at a time (grill-style). Answers are saved to `~/.easy-verifier-sot/` with citation and a tag: `agent-researched` or `user-supplied`. (G9) <!-- RESOLVED B2: ≤2 lookups per field, official docs first; every field cites a clear https link to the primary source. --> | US-015 |
+| FR-047 | **User review gate.** A new local entry is shown to the user once: *good* → `user-approved`; *needs improvement* → re-researched with the comment and re-asked; *reject* → deleted, its rules abstain. Pending entries score immediately (no abstention). (G3, G4) | US-015 |
+| FR-048 | Every rule input in `score` output and the report carries its **source tag** (`curated` / `agent-researched (unreviewed)` / `agent-researched (user-approved)` / `user-supplied`) and citation. Each report embeds the registry entries it used so `--agent-input` replay reproduces the score on any machine (FR-022 parity). The engine still makes no model call and no network request (NFR-001, FR-040). (G2, G4) | US-015 |
+| FR-049 | Curated data is seeded offline at build time from version-pinned structured sources (GitHub Linguist `languages.yml`, OWASP ASVS, MITRE CWE; Semgrep rules only after licence review). No RAG, no vector store, no runtime network. <!-- RESOLVED B3: Linguist (MIT), OWASP ASVS (CC BY-SA 4.0), MITRE CWE; no Semgrep. --> | US-015 |
+
+### Evaluation areas, dimensions and packs *(added 2026-09-28, DDR-0008)*
+
+| ID | Requirement | Traces to |
+|----|-------------|-----------|
+| FR-050 | The system must expose **13 dimensions**: the existing 7 plus `data`, `api`, `reliability`, `infrastructure`, `supply-chain`, `operations`. Each new dimension declares source roles, a coverage floor (user-approved), and cited rules from the registry (FR-043). | US-016 |
+| FR-051 | Each of the 32 evaluation areas (mapping in `BRAINSTORMING_LOG_evaluation-areas.md`) is a named **rule group** in exactly one dimension; `score` output and the report show every area label with its result. | US-016 |
+| FR-052 | Areas not verifiable from a repository use one shared rule type, **documentation present / missing**, citing the file when present. Such a rule never contributes a quality number. | US-016 |
+| FR-053 | **Optional packs** — healthcare (PHI, BAA/residency), finance (financial integrity), frontend accessibility (WCAG 2.2) — are active only when chosen by a detect-gate pick (FR-035) or `.easy-verifier.toml`; the engine never guesses a domain. | US-016 |
+| FR-054 | The overall rating averages the dimensions that rated out of all declared dimensions (13 plus active packs' dimensions, if any); FR-028b disclosure applies unchanged. | US-016 |
 
 ### Entry points
 
