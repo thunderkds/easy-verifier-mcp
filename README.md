@@ -103,6 +103,9 @@ rating-to-assessment divergences to the same JSON output.
 
 #### How each dimension is rated
 
+Full rule table (thresholds, weights, coverage floors, and the registry fields each rule reads):
+[`docs/SCORING_RULES.md`](docs/SCORING_RULES.md).
+
 Each dimension has its own rules, declared as data in `judge.RATING_RULES`. A rule compares one
 metric with a threshold. A met rule earns its weight and an unmet rule earns zero. The weights in
 each dimension add up to 100. A metric that abstains is left out of both the earned and the total
@@ -241,6 +244,11 @@ manage: your MCP client starts the server on demand. An HTTP/SSE opt-in exists, 
 Setup for Claude Code, Claude Desktop, Cursor, and other clients:
 [`docs/LOCAL_MCP_GUIDE.md`](docs/LOCAL_MCP_GUIDE.md).
 
+How a scoring session runs, round by round (diagram):
+[`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md).
+The rules, thresholds, weights, and registry fields behind every rating:
+[`docs/SCORING_RULES.md`](docs/SCORING_RULES.md).
+
 ### Docker — read-only target, writable reports only
 
 The container runs with pinned Python and MCP versions as UID/GID `10001`. It drops all
@@ -278,6 +286,16 @@ at itself). Nothing is overwritten; filenames are unique per scope and timestamp
 Each full seven-dimension report includes a score panel with the rule-based rating, optional caller
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
 an abstention with its coverage boundary, never as zero or a low score.
+
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [`docs/LOCAL_MCP_GUIDE.md`](docs/LOCAL_MCP_GUIDE.md) | Install locally and register the stdio MCP server with Claude Code, Claude Desktop, Cursor |
+| [`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md) | Run the hardened container as an MCP server, one registration for every repository, troubleshooting |
+| [`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md) | Round-by-round flow of an MCP scoring session (diagram) |
+| [`docs/SCORING_RULES.md`](docs/SCORING_RULES.md) | Every rating rule: threshold, weight, coverage floor, registry fields read |
+| [`docs/RELEASE_GUIDE.md`](docs/RELEASE_GUIDE.md) | Release process |
 
 ## License
 

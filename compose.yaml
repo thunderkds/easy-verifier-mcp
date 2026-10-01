@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     image: easy-verifier-mcp:0.1.0
     stdin_open: true
+    init: true
     read_only: true
     network_mode: none
     cap_drop:
