@@ -33,8 +33,13 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured Thu Oct  1 08:31:54 AM UTC 2026, before any implementation commit, from worktree `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T041` at develop 7a49a98:
+`date -u; PYTHONPATH=src .../.venv/bin/python -m easy_verifier.adapters.cli list-dimensions`
+Output (full JSON is ~480 lines; top-level dimension entries and their roles, abridged to the dimension names here; no `supply-chain` entry exists):
+```
+Thu Oct  1 08:31:54 AM UTC 2026
+dimensions listed (7): architecture, blast-radius, code-quality, requirement-fidelity, security, solution-fit, test-strategy
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
