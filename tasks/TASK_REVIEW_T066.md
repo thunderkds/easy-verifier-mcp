@@ -15,14 +15,14 @@
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| Verification command run | ☑ pass | Supervisor re-run: full suite **1664 passed, 2 skipped, 2 failed** (2 = known stale-Docker container tests, fail on clean `develop` too); ruff All checks passed — pass |
+| Negative cases hold | ☑ pass | Supervisor MCP stdio on bryony copy: `write_report` with `security/no_such_metric` → `isError: True`, "1 improvement error(s): improvements[0]: security/no_such_metric is not an item of the improvement plan; items: …"; report count 4 → 5 across both calls (bad call wrote nothing) — pass |
+| verify | ☑ pass | `verify` run by Supervisor 2026-10-03 09:23 UTC: MCP `score` → `write_report` with 3 P1 overrides on a scratch copy of bryony (`bryony-T066`, real bryony untouched). Report: agent labels 3, engine labels 10, raw `FAKEfake9Qx7…` 0 (rendered `sess…****:3ee04d1a1ad9`), raw `<script>x` 0, escaped 1 — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/improve.py` (validate_improvements, item_keys, error types), `core/report.py` (write_report wiring, plan item render, CSS), `core/roles.py` (agent-input key list), `adapters/mcp_server.py` (tool description), new test file. code-review: P0 0, P1 0, P2 0, P3 1 (`score` accepts `improvements` and ignores them — harmless since the score payload renders no agent text; noted). Security (Medium, manual): new agent-text egress goes redact → escape via `ctx.agent_text`; error echoes redacted + capped; validation before any disk write — pass |
+| Full smoke suite still green (no regression) | ☑ pass | 1664 passed (T065 base 1631 + 33 new), only the 2 pre-existing container failures — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t066/agent_fix_1280.png` — LLM-vision verdict (Supervisor): P1 rows show agent text with amber AGENT pill above the engine line with purple ENGINE pill; P2 Evidence now a collapsed "Why not measured" block; secret shown redacted, script tag shown as text — pass |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | CSS audit: reuses `.suggestion` styling; new `.fix-source-agent` amber #ffb800 is the report's existing amber accent; muted engine line #9a9ac0 — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | 1280 and true 400px (iframe; headless Chrome's minimum window is 500px): `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t066/agent_fix_400.png`, `plan_400_unscrolled.png`; page width 385, no horizontal page scroll, table scrolls inside `.plan-table`; agent text wraps with `overflow-wrap: break-word` — pass |
 
 ---
 
@@ -63,9 +63,15 @@ Sat Oct  3 09:10:23 AM UTC 2026
 [exited with code 0]
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (Supervisor, MCP stdio, branch HEAD `577075d`, bryony scratch copy):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+Sat Oct  3 09:23:35 AM UTC 2026
+unknown item -> isError: True | Error executing tool write_report: 1 improvement error(s): improvements[0]: security/no_such_metric is not an item of the improvement plan; items: architecture/decision_records_missing, ...
+write_report -> False reports/evidence-report-project-20261003T092406-323006Z.html
+agent labels: 3  engine: 10  secret raw: 0  raw script: 0  escaped script: 1
+```
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**DELTA**: the calling LLM agent can now attach a repo-specific fix to any improvement-plan item through `write_report`; the report shows it labelled agent above the engine line, and an unknown/duplicate item is rejected before anything is written.
+
+**WITNESS**: Supervisor (main session), 2026-10-03 09:23 UTC — independent MCP run on a bryony copy and full-suite re-run; not the implementing agent alone.
