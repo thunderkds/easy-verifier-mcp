@@ -538,7 +538,11 @@ def _render_plan_item(ctx: _Ctx, item: dict[str, Any]) -> str:
             f"<li><code>{_render_ref(ctx, ref)}</code></li>"
             for ref in item["computed_from"]
         )
-        evidence = f"<ul>{evidence}</ul>"
+        count = len(item["computed_from"])
+        evidence = (
+            f"<details><summary>{count} cited file{'s' if count != 1 else ''}"
+            f"</summary><ul>{evidence}</ul></details>"
+        )
     else:
         evidence = ctx.esc(item["unavailable_reason"] or "no file cited")
     return (
