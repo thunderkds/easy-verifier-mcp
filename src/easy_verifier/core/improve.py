@@ -206,8 +206,9 @@ class PlanItem:
 class ImprovementPlan:
     items: tuple[PlanItem, ...]
     """Already in group order, then gain order (see :meth:`PlanItem.sort_key`)."""
-    abstained: tuple[tuple[str, str, str], ...]
-    """Per dimension without a rules rating: (dimension, reason_code, reason)."""
+    abstained: tuple[tuple[str, str, str, tuple[tuple[str, str], ...]], ...]
+    """Per dimension without a rules rating: (dimension, reason_code, reason,
+    unmeasured rules as (metric_name, reason)) — FR-059: what the repo lacks."""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -216,8 +217,22 @@ class ImprovementPlan:
                 for group in GROUPS
             },
             "abstained": [
-                {"dimension": d, "reason_code": code, "reason": reason}
-                for d, code, reason in self.abstained
+                {
+                    "dimension": d,
+                    "reason_code": code,
+                    "reason": reason,
+                    **(
+                        {
+                            "unmeasured": [
+                                {"metric_name": n, "reason": r, "fix": FIX_HINTS[n]}
+                                for n, r in unmeasured
+                            ]
+                        }
+                        if unmeasured
+                        else {}
+                    ),
+                }
+                for d, code, reason, unmeasured in self.abstained
             ],
             "method": _METHOD,
         }
@@ -241,11 +256,18 @@ def improvement_plan(
         if type(item) in (Rating, GatedRating)
     }
     items: list[PlanItem] = []
-    abstained: list[tuple[str, str, str]] = []
+    abstained: list[tuple[str, str, str, tuple[tuple[str, str], ...]]] = []
     for item in ratings:
         rules = item.rules if type(item) is GatedRating else item
         if type(rules) is RatingAbstention:
-            abstained.append((rules.dimension, rules.reason_code, rules.reason))
+            abstained.append(
+                (
+                    rules.dimension,
+                    rules.reason_code,
+                    rules.reason,
+                    rules.unavailable_metrics,
+                )
+            )
             continue
         gated = type(item) is GatedRating
         basis = dict(contributors, **{rules.dimension: rules.value})

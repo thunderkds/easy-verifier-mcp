@@ -372,6 +372,7 @@ def _render_document(
         _render_header(ctx, packs, generated, finding_count),
         _render_advisory(ctx, first_write=first_write),
         _render_warnings(ctx, packs),
+        _render_evidence_warnings(ctx, score),
         _render_score_panel(ctx, score),
         _render_improvement_plan(ctx, plan, improvements) if plan else "",
         _render_coverage(ctx, packs.coverage),
@@ -433,6 +434,39 @@ def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
     return (
         '<section class="warning-banner"><h2>Context warnings</h2>'
         f"<ul>{items}</ul></section>"
+    )
+
+
+def _render_evidence_warnings(ctx: _Ctx, score: ScoreResult | None) -> str:
+    """FR-059: each dimension that abstained for missing evidence, with what
+    was not measured or not found, in the context-warning style."""
+    warnings = score.warnings if score is not None else []
+    if not warnings:
+        return ""
+    items = []
+    for warning in warnings:
+        rows = [
+            f"<li><code>{ctx.esc(rule['metric_name'])}</code> — "
+            f"{ctx.esc(rule['reason'])}</li>"
+            for rule in warning["unmeasured_rules"]
+        ] + [
+            f"<li><code>{ctx.esc(miss['source'])}</code> — "
+            f"{ctx.esc(miss['reason'])}</li>"
+            for miss in warning["sources_missing"]
+        ]
+        listed = f'<ul class="miss-list">{"".join(rows)}</ul>' if rows else ""
+        items.append(
+            f"<li><strong>{ctx.esc(warning['dimension'])}</strong> "
+            f"({ctx.esc(warning['reason_code'])}): "
+            f"{ctx.esc(warning['message'])}{listed}</li>"
+        )
+    return (
+        '<section class="warning-banner evidence-warnings">'
+        "<h2>Evidence warnings — no number given</h2>"
+        '<p class="method">These dimensions lacked the evidence for a rating. '
+        "Neither the rules nor the calling agent fills that in; each is "
+        "excluded from the overall and listed in the improvement plan.</p>"
+        f'<ul>{"".join(items)}</ul></section>'
     )
 
 
@@ -543,7 +577,8 @@ def _render_improvement_plan(
     if data["abstained"]:
         lines = "".join(
             f"<li><strong>{ctx.esc(line['dimension'])}</strong> — "
-            f"{ctx.esc(line['reason_code'])}: {ctx.esc(line['reason'])}</li>"
+            f"{ctx.esc(line['reason_code'])}: {ctx.esc(line['reason'])}"
+            f"{_render_unmeasured(ctx, line.get('unmeasured', ()))}</li>"
             for line in data["abstained"]
         )
         parts.append(
@@ -552,6 +587,18 @@ def _render_improvement_plan(
         )
     parts.append("</section>")
     return "".join(parts)
+
+
+def _render_unmeasured(ctx: _Ctx, unmeasured) -> str:
+    """FR-059: what the repository lacks for an abstained dimension."""
+    if not unmeasured:
+        return ""
+    rows = "".join(
+        f"<li><code>{ctx.esc(rule['metric_name'])}</code> — "
+        f"{ctx.esc(rule['reason'])}. Engine fix: {ctx.esc(rule['fix'])}</li>"
+        for rule in unmeasured
+    )
+    return f"<ul>{rows}</ul>"
 
 
 def _render_plan_item(

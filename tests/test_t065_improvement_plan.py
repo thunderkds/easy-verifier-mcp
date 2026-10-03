@@ -272,22 +272,29 @@ def test_order_is_gain_desc_then_dimension_then_metric() -> None:
 
 
 def test_p2_orders_by_high_end() -> None:
-    # code-quality with only lint/format measured (both met, 20 of 20 = 100);
-    # five metrics abstained. Sole contributor.
+    # DDR-0010 (T067): the old fixture measured only lint/format (20 of 100),
+    # which now abstains insufficient_measured_weight. Measure exactly the
+    # floor instead: CCN share 25 + max CCN 15 + lint 10 = 50 of 100, all met
+    # (100); four metrics abstained. Sole contributor.
+    measured = {
+        "functions_over_ccn_10_share",
+        "max_function_ccn",
+        "lint_config_missing",
+    }
     values = {
         name: UNAVAILABLE
         for name in RATING_RULES["code-quality"]
-        if name not in {"lint_config_missing", "format_config_missing"}
+        if name not in measured
     }
     plan = _plan(_ratings(code_quality=_rating("code-quality", values)))
     p2 = plan["groups"]["P2"]
     highs = [item["overall_gain"][1] for item in p2]
     assert highs == sorted(highs, reverse=True)
-    # pass keeps 100 -> high 0 for every one; fail of the w25 rule:
-    # 20/45 = 44 -> low -56. Ties broken by metric name.
+    # pass keeps 100 -> high 0 for every one; fail of a w15 rule:
+    # 50/65 = 77 -> low -23. Ties broken by metric name.
     assert all(high == 0 for high in highs)
     assert [item["metric_name"] for item in p2] == sorted(values)
-    assert _item(plan, "functions_over_ccn_10_share")["overall_gain"] == [-56, 0]
+    assert _item(plan, "type_escapes_per_kloc")["overall_gain"] == [-23, 0]
 
 
 # ---------------------------------------------------------------------------
@@ -338,12 +345,15 @@ def test_abstained_dimension_yields_reason_line_and_no_items() -> None:
 
 
 def test_agent_rated_dimension_reports_its_rules_abstention() -> None:
-    gated = GatedRating(_abstention("architecture"), 80, 1, ("README.md:1-3",))
-    plan = _plan(_ratings(architecture=gated))
+    # DDR-0010 (T067): an evidence-lack abstention (below_coverage_floor) is
+    # never agent-rated; only no_static_rule (solution-fit) is.
+    rules = _rating("solution-fit")
+    gated = GatedRating(rules, 80, 1, ("README.md:1-3",))
+    plan = _plan(_ratings(solution_fit=gated))
     assert {
-        "dimension": "architecture",
-        "reason_code": "below_coverage_floor",
-        "reason": "achieved coverage is below the declared floor",
+        "dimension": "solution-fit",
+        "reason_code": "no_static_rule",
+        "reason": rules.reason,
     } in plan["abstained"]
 
 
@@ -395,7 +405,7 @@ def _repo(root: Path) -> Path:
 
 
 def test_score_payload_carries_the_plan_of_its_own_ratings(tmp_path: Path) -> None:
-    result = score_repository(_repo(tmp_path), scope="worktree")
+    result = score_repository(_repo(tmp_path), scope="project")
     payload = result.to_dict()
     assert payload["improvement_plan"] == improvement_plan(
         result.ratings, result.overall
@@ -407,10 +417,13 @@ def test_score_payload_carries_the_plan_of_its_own_ratings(tmp_path: Path) -> No
 
 def test_report_renders_plan_in_group_order_with_engine_label(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
-    packs = combined_pack(DIMENSIONS, repo_path=repo, scope="worktree")
+    # DDR-0010 (T067): under worktree scope this non-git fixture reads no
+    # source file, so no dimension reaches the measured-weight floor and the
+    # plan has no item; project scope reads src/ and rates code-quality.
+    packs = combined_pack(DIMENSIONS, repo_path=repo, scope="project")
     result = write_report([], packs, repo)
     document = (repo / result.path).read_text(encoding="utf-8")
-    plan = score_repository(repo, scope="worktree").to_dict()["improvement_plan"]
+    plan = score_repository(repo, scope="project").to_dict()["improvement_plan"]
     assert '<section class="improvement-plan">' in document
     assert "<h2>Improvement plan</h2>" in document
     positions = [document.index(f"<h3>{group}") for group in ("P0", "P1", "P2")]
