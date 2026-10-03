@@ -55,6 +55,7 @@ so, loudly, as a measurable coverage score. The result is an evaluation a develo
 | US-014 | As a Reviewing Agent calling over MCP, I want to be asked — only at hard gates the rules cannot settle — which candidate files fill a missing source role, and to contribute a cited, confidence-weighted evaluation where the rules cannot rate reliably, so a small amount of my judgment makes the score more correct without my reading the whole repository. | P3 |
 | US-015 | *(Added 2026-09-28, DDR-0007)* As a Standalone Developer, I want every rating rule to cite a recognised standard and every language pattern to come from one cited registry, so I can trust the number is measured against a known reference, not an arbitrary threshold. | P1 |
 | US-016 | *(Added 2026-09-28, DDR-0008)* As a Reviewing Agent, I want the 32 evaluation areas I review against (architecture direction … business continuity) to appear by name in the report, each either rated by cited rules or honestly marked "documentation present / missing", so nothing is silently dropped or falsely scored. | P1 |
+| US-017 | *(Added 2026-10-03, DDR-0009)* As the owner of a scored repository, I want a prioritised list of the unmet rules with what fixing each is worth and how to fix it, so I know what to change first to raise the score. | P1, P2 |
 
 ---
 
@@ -114,7 +115,7 @@ Each FR must trace to at least one User Story.
 | FR-023 | Every finding must support an optional **suggested improvement** field. Where a finding carries one, the report must render it alongside the finding. | US-010 |
 | FR-024 | Suggestions are advisory text only. The system must never apply, patch, or auto-fix anything in the target repository (reinforces NFR-007). | US-010 |
 | FR-025 | The engine must provide a **combined pack** operation that runs several named dimensions in one call and returns their packs together with an aggregate coverage summary, so a caller can synthesize across dimensions without issuing seven separate calls and reassembling them by hand. | US-004, US-010 |
-| FR-026 | Cross-dimension synthesis — deciding what the findings *mean together* — is performed by the calling agent, not the engine. The engine's contribution to synthesis is aggregation and presentation only, never interpretation (reinforces FR-013, NFR-001). | US-010 |
+| FR-026 | Cross-dimension synthesis — deciding what the findings *mean together* — is performed by the calling agent, not the engine. The engine's contribution to synthesis is aggregation and presentation only, never interpretation (reinforces FR-013, NFR-001). **Amended 2026-10-03 (DDR-0009)**: ordering improvement-plan items by a declared, recomputed gain (FR-056) is presentation, not interpretation, and is permitted. | US-010 |
 
 ### Quality rating & assessment
 
@@ -169,6 +170,14 @@ what the rules cannot detect or cannot rate with confidence (DDR-0006).
 | FR-052 | Areas not verifiable from a repository use one shared rule type, **documentation present / missing**, citing the file when present. Such a rule never contributes a quality number. | US-016 |
 | FR-053 | **Optional packs** — healthcare (PHI, BAA/residency), finance (financial integrity), frontend accessibility (WCAG 2.2) — are active only when chosen by a detect-gate pick (FR-035) or `.easy-verifier.toml`; the engine never guesses a domain. | US-016 |
 | FR-054 | The overall rating averages the dimensions that rated out of all declared dimensions (13 plus active packs' dimensions, if any); FR-028b disclosure applies unchanged. | US-016 |
+
+### Improvement plan *(added 2026-10-03, DDR-0009)*
+
+| ID | Requirement | Traces to |
+|----|-------------|-----------|
+| FR-055 | `score` output (both adapters) and the report must carry an **improvement plan**: one item per unmet numeric rule input and per abstained rule metric of every rated dimension, each citing dimension, area, metric, current value, comparison, threshold and the metric's cited files. A dimension whose rating abstained contributes its reason code instead of items; a repository with no gaps states so. | US-017 |
+| FR-056 | Items are grouped **P0** (unmet and within ±`BORDERLINE_BAND` of the threshold; a threshold of 0 is never P0), **P1** (other unmet), **P2** (abstained metric), and ordered inside a group by overall gain descending, then dimension, then metric. Each gain is **recomputed** by re-running the dimension and overall arithmetic with that one rule passed; P2 carries the range [if it fails, if it passes]; a gated dimension's gain covers the rules part only and is labelled so. | US-017 |
+| FR-057 | Every declared rule metric has one static engine fix line. The calling agent may supply a suggestion for a named plan item through `write_report`; an item it names that is not in the plan is a validation error. The report labels each fix `engine` or `agent`, and agent text is redacted and escaped (FR-024 still holds: advisory only). | US-017, US-010 |
 
 ### Entry points
 

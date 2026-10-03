@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-09-30
+**Last updated**: 2026-10-03
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,6 +11,12 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T066** — Improvement plan (agent) — repo-specific fix text through `write_report` | backend-developer | C2 | Risk: Medium | P1
+- [ ] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1
+
+**Wave 12 — Improvement plan for the scored repo (added 2026-10-03, user request; DDR-0009, PRD FR-055…FR-057)**
+- [ ] **T065** — Improvement plan (engine): unmet rules grouped P0 near-miss / P1 failure / P2 abstained, recomputed gain, static fix lines, in `score` JSON + report | backend-developer | C2 | Risk: Med | P1
+- [ ] **T066** — Improvement plan (agent): repo-specific fix text via `write_report`, validated + redacted, labelled agent/engine (Depends on: T065) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
 
