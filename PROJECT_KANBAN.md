@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 12 — Improvement plan for the scored repo (added 2026-10-03, user request; DDR-0009, PRD FR-055…FR-057)**
-- [ ] **T066** — Improvement plan (agent): repo-specific fix text via `write_report`, validated + redacted, labelled agent/engine (Depends on: T065) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
 
@@ -60,7 +59,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T066** — Improvement plan (agent): repo-specific fix text via `write_report`, validated + redacted, labelled agent/engine (Depends on: T065) | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-03 (worktree `../easy-verifier-mcp-T066`, branch `feat/T066-improvement-overrides`)
 
 ### Ready for Review
 
