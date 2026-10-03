@@ -12,7 +12,6 @@
 
 ### Todo
 - [ ] **T066** — Improvement plan (agent) — repo-specific fix text through `write_report` | backend-developer | C2 | Risk: Medium | P1
-- [ ] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1
 
 **Wave 12 — Improvement plan for the scored repo (added 2026-10-03, user request; DDR-0009, PRD FR-055…FR-057)**
 - [ ] **T065** — Improvement plan (engine): unmet rules grouped P0 near-miss / P1 failure / P2 abstained, recomputed gain, static fix lines, in `score` JSON + report | backend-developer | C2 | Risk: Med | P1
@@ -63,7 +62,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1 | 🔄 In Progress 2026-10-03 (worktree `../easy-verifier-mcp-T065`, branch `feat/T065-improvement-plan`)
 
 ### Ready for Review
 
