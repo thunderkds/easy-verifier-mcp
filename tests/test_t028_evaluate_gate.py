@@ -193,8 +193,10 @@ def test_detect_gates_abstained_and_borderline_only() -> None:
         architecture=_abstention("architecture"), **{"code-quality": borderline}
     )
     gates = detect_evaluate_gates(ratings)
+    # DDR-0010 (T067): architecture's below_coverage_floor abstention is
+    # missing evidence, a warning that is never gated; only solution-fit's
+    # no_static_rule abstention and borderline inputs are.
     assert gates == {
-        "architecture": "abstained",
         "code-quality": "borderline: max_function_ccn",
         "solution-fit": "abstained",
     }
@@ -257,7 +259,9 @@ def test_blend_worked_cases(rules, agent, confidence, final, weight) -> None:
 
 
 def _reject(document, ratings=None, packs=None) -> str:
-    ratings = ratings or _ratings(architecture=_abstention("architecture"))
+    # DDR-0010 (T067): the gated abstention is solution-fit's no_static_rule;
+    # an evidence-lack abstention (e.g. below_coverage_floor) is never gated.
+    ratings = ratings or _ratings()
     with pytest.raises(ValidationError) as caught:
         apply_gate_evaluations(document, ratings, packs or _packs())
     return str(caught.value)
@@ -266,34 +270,34 @@ def _reject(document, ratings=None, packs=None) -> str:
 @pytest.mark.parametrize(
     ("entry", "named"),
     [
-        (_ev(score=101), "gate_evaluations.architecture.score"),
-        (_ev(score=-1), "gate_evaluations.architecture.score"),
-        (_ev(score="88"), "gate_evaluations.architecture.score"),
-        (_ev(score=True), "gate_evaluations.architecture.score"),
-        (_ev(score=math.nan), "gate_evaluations.architecture.score"),
-        (_ev(score=math.inf), "gate_evaluations.architecture.score"),
-        (_ev(score=None), "gate_evaluations.architecture.score"),
-        (_ev(confidence=1.01), "gate_evaluations.architecture.confidence"),
-        (_ev(confidence=-0.1), "gate_evaluations.architecture.confidence"),
-        (_ev(confidence=False), "gate_evaluations.architecture.confidence"),
-        (_ev(confidence=math.nan), "gate_evaluations.architecture.confidence"),
-        (_ev(confidence="high"), "gate_evaluations.architecture.confidence"),
-        (_ev(refs=()), "gate_evaluations.architecture.evidence_refs"),
-        (_ev(refs=(1,)), "gate_evaluations.architecture.evidence_refs"),
+        (_ev(score=101), "gate_evaluations.solution-fit.score"),
+        (_ev(score=-1), "gate_evaluations.solution-fit.score"),
+        (_ev(score="88"), "gate_evaluations.solution-fit.score"),
+        (_ev(score=True), "gate_evaluations.solution-fit.score"),
+        (_ev(score=math.nan), "gate_evaluations.solution-fit.score"),
+        (_ev(score=math.inf), "gate_evaluations.solution-fit.score"),
+        (_ev(score=None), "gate_evaluations.solution-fit.score"),
+        (_ev(confidence=1.01), "gate_evaluations.solution-fit.confidence"),
+        (_ev(confidence=-0.1), "gate_evaluations.solution-fit.confidence"),
+        (_ev(confidence=False), "gate_evaluations.solution-fit.confidence"),
+        (_ev(confidence=math.nan), "gate_evaluations.solution-fit.confidence"),
+        (_ev(confidence="high"), "gate_evaluations.solution-fit.confidence"),
+        (_ev(refs=()), "gate_evaluations.solution-fit.evidence_refs"),
+        (_ev(refs=(1,)), "gate_evaluations.solution-fit.evidence_refs"),
         (_ev(refs=("src/nope.py:1-2",)), "src/nope.py:1-2"),
-        (_ev(verdict="x"), "gate_evaluations.architecture.verdict"),
-        ({"score": 1, "confidence": 1}, "gate_evaluations.architecture.evidence_refs"),
-        ("not an object", "gate_evaluations.architecture"),
-        (_ev(rationale=7), "gate_evaluations.architecture.rationale"),
+        (_ev(verdict="x"), "gate_evaluations.solution-fit.verdict"),
+        ({"score": 1, "confidence": 1}, "gate_evaluations.solution-fit.evidence_refs"),
+        ("not an object", "gate_evaluations.solution-fit"),
+        (_ev(rationale=7), "gate_evaluations.solution-fit.rationale"),
     ],
 )
 def test_invalid_evaluation_is_rejected_naming_the_field(entry, named) -> None:
-    assert named in _reject({"architecture": entry})
+    assert named in _reject({"solution-fit": entry})
 
 
 def test_unknown_ref_names_the_ref_and_truncation() -> None:
     message = _reject(
-        {"architecture": _ev(refs=("src/gone.py:1-9",))}, packs=_packs(truncated=True)
+        {"solution-fit": _ev(refs=("src/gone.py:1-9",))}, packs=_packs(truncated=True)
     )
     assert "src/gone.py:1-9" in message and "truncated" in message
 
@@ -315,8 +319,8 @@ def test_gate_evaluations_must_be_an_object() -> None:
 
 def test_too_many_refs_is_one_named_error() -> None:
     refs = tuple(f"bogus{i}.py:1-2" for i in range(100_000))
-    message = _reject({"architecture": _ev(refs=refs)})
-    assert "gate_evaluations.architecture.evidence_refs: 100000 refs" in message
+    message = _reject({"solution-fit": _ev(refs=refs)})
+    assert "gate_evaluations.solution-fit.evidence_refs: 100000 refs" in message
     assert "bogus" not in message
     assert len(message) < 500
 
@@ -335,9 +339,9 @@ def test_error_lines_are_bounded() -> None:
 
 
 def test_every_error_is_reported_at_once() -> None:
-    message = _reject({"architecture": _ev(score=500, confidence=9), "security": _ev()})
-    assert "architecture.score" in message
-    assert "architecture.confidence" in message
+    message = _reject({"solution-fit": _ev(score=500, confidence=9), "security": _ev()})
+    assert "solution-fit.score" in message
+    assert "solution-fit.confidence" in message
     assert "gate_evaluations.security" in message
 
 
@@ -373,10 +377,15 @@ def test_blended_rating_shows_its_parts() -> None:
 
 
 def test_agent_rated_keeps_abstention_record() -> None:
-    abstained = _abstention("security")
-    ratings = _ratings(security=abstained)
-    applied = apply_gate_evaluations({"security": _ev(70, 0.8)}, ratings, _packs())
-    gated = applied[DIMENSIONS.index("security")]
+    # DDR-0010 (T067): only a no_static_rule abstention is agent-rated now;
+    # below_coverage_floor is missing evidence and never reaches the gate.
+    ratings = _ratings()
+    abstained = ratings[DIMENSIONS.index("solution-fit")]
+    assert abstained.reason_code == "no_static_rule"
+    applied = apply_gate_evaluations(
+        {"solution-fit": _ev(70, 0.8)}, ratings, _packs()
+    )
+    gated = applied[DIMENSIONS.index("solution-fit")]
     assert gated.value == 70
     assert gated.rated_by == "agent-rated"
     payload = gated.to_dict()
@@ -384,40 +393,39 @@ def test_agent_rated_keeps_abstention_record() -> None:
     assert payload["agent"]["weight"] is None
     assert payload["rules"] == abstained.to_dict()
     assert payload["rules"]["coverage_floor"] == abstained.coverage_floor
-    assert payload["rules"]["sources_missing"]
     assert "70 = agent 70" in payload["parts"]
-    assert "below_coverage_floor" in payload["parts"]
+    assert "no_static_rule" in payload["parts"]
 
 
 def test_agent_rated_score_rounds_half_up() -> None:
+    # DDR-0010 (T067): agent-rated only where no static rule is declared.
     applied = apply_gate_evaluations(
-        {"security": _ev(70.5, 1)}, _ratings(security=_abstention("security")), _packs()
+        {"solution-fit": _ev(70.5, 1)}, _ratings(), _packs()
     )
-    assert applied[DIMENSIONS.index("security")].value == 71
+    assert applied[DIMENSIONS.index("solution-fit")].value == 71
 
 
 def test_overall_discloses_each_rating_kind() -> None:
+    # DDR-0010 (T067): the agent-rated kind is solution-fit (no_static_rule);
+    # architecture's below_coverage_floor abstention cannot be evaluated.
     ratings = _ratings(
         architecture=_abstention("architecture"),
-        security=_abstention("security"),
         **{"code-quality": _rating_55("code-quality")},
     )
     applied = apply_gate_evaluations(
-        {"security": _ev(70, 0.8), "code-quality": _ev(88, 0.6)}, ratings, _packs()
+        {"solution-fit": _ev(70, 0.8), "code-quality": _ev(88, 0.6)}, ratings, _packs()
     )
     overall = rate_overall(applied)
-    # solution-fit declares no rule (no_static_rule) and was not evaluated here
-    assert overall.contributor_count == 5
-    assert "security" in overall.contributors
+    assert overall.contributor_count == 6
+    assert "solution-fit" in overall.contributors
     assert "architecture" not in overall.contributors
-    assert "solution-fit" not in overall.contributors
-    assert "(3 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
+    assert "(4 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
     assert "abstained: architecture (below_coverage_floor" in overall.disclosure
     assert dict(overall.contributor_values)["code-quality"] == 65
     assert dict(overall.rated_by) == {
         **{name: "rules" for name in overall.contributors},
         "code-quality": "blended (w 0.30)",
-        "security": "agent-rated",
+        "solution-fit": "agent-rated",
     }
     assert overall.to_dict()["rated_by"]
 
@@ -436,7 +444,9 @@ def test_ratings_without_agent_input_equal_ratings_with_empty_evaluations() -> N
         architecture=_abstention("architecture"),
         **{"code-quality": _rating_55("code-quality")},
     )
-    applied = apply_gate_evaluations({"architecture": _ev(1, 1)}, ratings, _packs())
+    # DDR-0010 (T067): architecture (below_coverage_floor) is not gated; the
+    # evaluated abstention is solution-fit's no_static_rule.
+    applied = apply_gate_evaluations({"solution-fit": _ev(1, 1)}, ratings, _packs())
     gates = detect_evaluate_gates(ratings)
     for index, name in enumerate(DIMENSIONS):
         if name not in gates or name == "code-quality":

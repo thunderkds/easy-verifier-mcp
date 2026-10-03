@@ -28,6 +28,7 @@ from .gate import (
 from .improve import ImprovementPlan, improvement_plan
 from .judge import (
     DOCUMENTATION_RULES,
+    EVIDENCE_LACK_REASONS,
     GatedRating,
     OverallRating,
     Rating,
@@ -107,11 +108,24 @@ class ScoreResult:
         and the report all see the same plan (DDR-0009)."""
         return improvement_plan(self.ratings, self.overall)
 
+    @property
+    def warnings(self) -> list[dict[str, Any]]:
+        """FR-059: one warning per abstention for missing evidence, in
+        canonical order, naming what was not measured or not found. A pure
+        function of the ratings, like the plan."""
+        return [
+            _evidence_warning(item)
+            for item in self.ratings
+            if type(item) is RatingAbstention
+            and item.reason_code in EVIDENCE_LACK_REASONS
+        ]
+
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "ratings": [item.to_dict() for item in self.ratings],
             "overall": self.overall.to_dict(),
             "improvement_plan": self.improvement_plan.to_dict(),
+            "warnings": self.warnings,
             "metrics": json.loads(self.metrics.serialize()),
             "provenance": [
                 {
@@ -291,6 +305,35 @@ def score_packs(
         provenance,
         registry_entries=registry.local_entries(name for name, _ in frameworks),
     )
+
+
+def _evidence_warning(item: RatingAbstention) -> dict[str, Any]:
+    share = item.measured_share
+    if share is not None:
+        message = (
+            f"{item.dimension}: no number given — only {share * 100:.0f}% of its "
+            "rule weight was measured (a rating needs "
+            f"{item.to_dict()['measured_weight_floor']} of it); add what the "
+            "unmeasured rules need"
+        )
+    else:
+        message = f"{item.dimension}: no number given — {item.reason}"
+    warning: dict[str, Any] = {
+        "dimension": item.dimension,
+        "reason_code": item.reason_code,
+        "message": message,
+        "unmeasured_rules": [
+            {"metric_name": name, "reason": reason}
+            for name, reason in item.unavailable_metrics
+        ],
+        "sources_missing": [
+            {"source": miss.source, "reason": miss.reason}
+            for miss in item.sources_missing
+        ],
+    }
+    if share is not None:
+        warning["measured_share"] = item.to_dict()["measured_share"]
+    return warning
 
 
 def _rating_provenance(rating: Rating | RatingAbstention | GatedRating) -> str:

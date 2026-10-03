@@ -131,6 +131,10 @@ def _rating_with_value(dimension: str, value: int) -> Rating | GatedRating:
             rules[n].weight for n, st in zip(names, states, strict=True) if st == 2
         )
         total = sum(rules[n].weight for n in available)
+        # DDR-0010 (T067): below half the declared weight measured, rate()
+        # abstains insufficient_measured_weight instead of rating.
+        if 2 * total < sum(rule.weight for rule in rules.values()):
+            continue
         if round(100 * earned / total) != value:
             continue
         metrics = []
@@ -289,23 +293,33 @@ def test_none_coverage_and_failed_dimension_have_distinct_structured_reasons():
     assert failed.failure == "collector exploded"
 
 
-def test_partial_metric_abstentions_are_disclosed_and_normalized_out():
-    first_name = next(iter(RATING_RULES["architecture"]))
-    metrics = []
-    for name, rule in RATING_RULES["architecture"].items():
-        outcome = (
-            rule.threshold
-            if name == first_name
-            else MetricAbstention("whole-set metric unavailable")
+def _partial(reason: str = "unavailable") -> Rating:
+    """code-quality with its first three rules measured and met (25 + 15 + 10
+    = 50 of 100, exactly the measured-weight floor) and the rest abstained.
+    DDR-0010 (T067): the earlier architecture fixture measured one rule (30
+    of 100), which now abstains insufficient_measured_weight."""
+    rules = RATING_RULES["code-quality"]
+    measured = tuple(rules)[:3]
+    assert sum(rules[name].weight for name in measured) == 50
+    metrics = tuple(
+        _metric(
+            name,
+            rule.threshold if name in measured else MetricAbstention(reason),
+            dimension="code-quality",
         )
-        metrics.append(_metric(name, outcome, dimension="architecture"))
+        for name, rule in rules.items()
+    )
+    return rate(MetricSet(metrics), _coverage("code-quality"))
 
-    result = rate(MetricSet(tuple(metrics)), _coverage())
+
+def test_partial_metric_abstentions_are_disclosed_and_normalized_out():
+    first_name = next(iter(RATING_RULES["code-quality"]))
+    result = _partial("whole-set metric unavailable")
 
     assert isinstance(result, Rating)
     assert result.value == 100
     assert result.inputs[0].metric_name == first_name
-    assert len(result.unavailable_metrics) == len(RATING_RULES["architecture"]) - 1
+    assert len(result.unavailable_metrics) == len(RATING_RULES["code-quality"]) - 3
     assert all(
         reason == "whole-set metric unavailable"
         for _, reason in result.unavailable_metrics
@@ -721,22 +735,7 @@ def test_public_rating_methods_and_order_are_canonical():
     with pytest.raises(ValueError, match="canonical"):
         replace(rating, inputs=tuple(reversed(rating.inputs)))
 
-    first_name = next(iter(RATING_RULES["architecture"]))
-    partial = rate(
-        MetricSet(
-            tuple(
-                _metric(
-                    name,
-                    rule.threshold
-                    if name == first_name
-                    else MetricAbstention("unavailable"),
-                    dimension="architecture",
-                )
-                for name, rule in RATING_RULES["architecture"].items()
-            )
-        ),
-        _coverage(),
-    )
+    partial = _partial()
     assert isinstance(partial, Rating)
     with pytest.raises(ValueError, match="canonical"):
         replace(

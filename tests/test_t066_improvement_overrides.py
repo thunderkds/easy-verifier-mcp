@@ -38,8 +38,14 @@ SECRET = "FAKEfake" + "9Qx7Lm2Vt8Rk4Wz6Np3Jh5"
 
 # The tiny fixture repo below has exactly this P1 item and an abstained
 # architecture dimension (checked by `test_fixture_plan_has_the_items_used`).
+# DDR-0010 (T067): the fixture is scored at project scope. Under worktree
+# scope this non-git directory reads no source file, so code-quality measured
+# only 20 of 100 rule weight and now abstains insufficient_measured_weight;
+# max_function_ccn is measured at project scope, so the P2 item is the
+# type-checker strictness rule (no type-checker configuration is read).
+SCOPE = "project"
 P1_ITEM = ("code-quality", "format_config_missing")
-P2_ITEM = ("code-quality", "max_function_ccn")
+P2_ITEM = ("code-quality", "strict_type_config_missing")
 ABSTAINED_DIMENSION = "architecture"
 
 
@@ -64,7 +70,7 @@ def _override(item=P1_ITEM, suggestion="Add a ruff format section to pyproject.t
 
 def _write(repo: Path, improvements, dimensions=None) -> str:
     packs = combined_pack(
-        dimensions or dimension_names(), repo_path=repo, scope="worktree"
+        dimensions or dimension_names(), repo_path=repo, scope=SCOPE
     )
     result = write_report(
         [], packs, repo, agent_input={"improvements": improvements}
@@ -92,7 +98,7 @@ def repo(tmp_path: Path) -> Path:
 def test_fixture_plan_has_the_items_used(repo: Path) -> None:
     from easy_verifier.core.score import score_repository
 
-    plan = score_repository(repo, scope="worktree").to_dict()["improvement_plan"]
+    plan = score_repository(repo, scope=SCOPE).to_dict()["improvement_plan"]
     keys = {
         (group, item["dimension"], item["metric_name"])
         for group, items in plan["groups"].items()
@@ -259,7 +265,8 @@ def _synthetic_plan() -> ImprovementPlan:
     )
     return ImprovementPlan(
         items=(item,),
-        abstained=(("architecture", "below_coverage_floor", "low coverage"),),
+        # T067: an abstained line also carries its unmeasured rules
+        abstained=(("architecture", "below_coverage_floor", "low coverage", ()),),
     )
 
 
@@ -329,7 +336,7 @@ def test_cli_and_mcp_write_the_same_plan_with_the_agent_fix(
             "--repo",
             str(cli_repo),
             "--scope",
-            "worktree",
+            SCOPE,
             "--findings",
             str(findings_path),
             "--agent-input",
@@ -353,7 +360,7 @@ def test_cli_and_mcp_write_the_same_plan_with_the_agent_fix(
             {
                 "findings": [],
                 "repo": str(mcp_repo),
-                "scope": "worktree",
+                "scope": SCOPE,
                 "agent_input": agent_input,
             },
         )
@@ -383,7 +390,7 @@ def test_cli_rejects_an_unknown_item_with_the_validation_exit(tmp_path: Path) ->
             "--repo",
             str(repo),
             "--scope",
-            "worktree",
+            SCOPE,
             "--findings",
             str(findings_path),
             "--agent-input",
@@ -422,7 +429,7 @@ def test_p2_unavailable_reason_folds_into_a_details_block(repo: Path) -> None:
     document = _write(repo, [])
     row = _row(document, P2_ITEM[1])
     assert "<details><summary>Why not measured</summary>" in row
-    assert "no source-file excerpt" in row
+    assert "no type-checker configuration was read" in row
 
 
 def test_mcp_write_report_description_tells_the_agent_about_improvements() -> None:
