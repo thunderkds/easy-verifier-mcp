@@ -11,10 +11,8 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T066** — Improvement plan (agent) — repo-specific fix text through `write_report` | backend-developer | C2 | Risk: Medium | P1
 
 **Wave 12 — Improvement plan for the scored repo (added 2026-10-03, user request; DDR-0009, PRD FR-055…FR-057)**
-- [ ] **T065** — Improvement plan (engine): unmet rules grouped P0 near-miss / P1 failure / P2 abstained, recomputed gain, static fix lines, in `score` JSON + report | backend-developer | C2 | Risk: Med | P1
 - [ ] **T066** — Improvement plan (agent): repo-specific fix text via `write_report`, validated + redacted, labelled agent/engine (Depends on: T065) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
@@ -62,13 +60,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1 | 🔄 In Progress 2026-10-03 (worktree `../easy-verifier-mcp-T065`, branch `feat/T065-improvement-plan`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1 | ✅ Done 2026-10-03 (Stage 4 P0/P1 none, 1 P2 suggestion; 1631 passed, 2 pre-existing container failures; CLI+MCP verify on bryony pass)
 - [x] **T058** — Bugfix (T056 defect): #8 cookie rule never computed on real Express/Passport repo | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 (root cause: 200-read path-ordered security sweep never reached bryony's index.js + js-ts tokens missed session-middleware cookie config; fix: RepoContext.peek_source content pre-screen capped at 2000 (user option A) + cited express-session/cookie-session/passport tokens; real repos: bryony security 59→50 (cookie rule unmet at dashboard/index.js:93 +2), kitchd/ai-training unchanged; 1615 passed; follow-up: NestJS/JWT auth_markers gap on kitchd)
 - [x] **T056** — Area rule groups needing new evidence: #8 cookies/auth-gate/offboarding (ASVS 5.0.0) + #17 strict type config | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 — ⚠️ defect on real repos, fixed by T058 (cookie_flags_missing_observed gated by auth_markers, never scored when no auth code; offboarding DocumentationRule; strict_type_config_missing via targeted excerpts with tsconfig extends; user-signed weights security 35/35/15/15, code-quality 25/15/10/10/15/15/10; required reference fields 16; 1600 passed; CLI + MCP verify pass; code-review P3 only)
 - [x] **T055** — Area rule groups needing git evidence: #5 backward compat + #27 doc source of truth | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-29 (4 metrics + rules, user-signed weights; templates excluded from requirements-doc role; Stage 4 P2 DDR-0002 secret-file diff exclusion fixed; 1506 passed; changes + project scope CLI verify pass; follow-up T057)
