@@ -26,7 +26,7 @@ flowchart TD
     J -- yes --> K{Unfilled roles<br/>with candidate files?}
     K -- yes --> P[/needs_input.picks/]
     K -- no --> L
-    J -- no --> L{Dimension abstained or<br/>metric within ±10% of threshold?}
+    J -- no --> L{no_static_rule abstention or<br/>metric within ±10% of threshold?}
     L -- yes --> Q[/needs_input.gate_evaluations/]
     L -- no --> R{reference or review<br/>attached?}
     R -- yes --> S[/needs_input.reference or review only/]
@@ -58,6 +58,13 @@ divergence and is never blended into it.
 
 The CLI runs the same core but never asks: one pass, rules-only ratings, no `needs_input`.
 
+Only two things are gated (DDR-0010): solution-fit, which declares no static rule
+(`no_static_rule`), and a dimension with a rule input within ±10% of its threshold. An abstention
+for missing evidence (`insufficient_measured_weight` below the 50% measured-weight floor,
+`below_coverage_floor`, `coverage_not_applicable`, `all_metrics_abstained`, `dimension_failed`) is
+never asked about: it is listed in the payload's `warnings` and the report's "Evidence warnings"
+block, and an evaluation sent for it is rejected with an error naming the dimension.
+
 ## Improvement plan
 
 Every `score` result (CLI and MCP alike) carries `improvement_plan`, and the HTML report shows it
@@ -76,5 +83,6 @@ even), never read off the weight. A P2 gain is a range `[if it fails, if it pass
 end may be negative. A gated dimension's items use its rules part (`gain_basis: "rules"`); the
 agent half of a blend is never predicted. Inside a group items are ordered by overall gain (P2 by
 the high end), then dimension, then metric name. A dimension without a rules rating gets one
-`abstained` line with its reason code instead of items. When every group is empty the report says
+`abstained` line with its reason code instead of items; when it has unmeasured rules (for example
+`insufficient_measured_weight`) the line lists them as `unmeasured` with reason and fix text. When every group is empty the report says
 "No gaps".

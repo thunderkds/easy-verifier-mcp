@@ -152,8 +152,9 @@ every rule shipped in the package), and the HTML report shows them as links.
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
 file read, else 0. On a truncated pack an unfilled role abstains, because the budget may have
 dropped the file. The requirement-fidelity metrics and `changed_files_in_churn_hotspots_share`
-cannot be derived from a read-only pack, so they always abstain with a stated reason. That makes
-requirement-fidelity and project-scope blast-radius abstain and go to the evaluate gate.
+cannot be derived from a read-only pack, so they always abstain with a stated reason. A dimension
+whose measured rules carry less than half of its declared rule weight abstains
+(`insufficient_measured_weight`, DDR-0010); missing evidence is reported as a warning, never gated.
 
 #### Source roles — any language, no configuration required
 
@@ -203,7 +204,8 @@ with at most one of picks or gate evaluations per response, and at most two extr
 1. `needs_input.picks`: some roles are unfilled but the repository has candidate files.
 2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
    asked on the call that carries picks, or on the first call when nothing needs picking. A
-   dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
+   dimension is gated when its rules abstain `no_static_rule` (`abstained`; an abstention for
+   missing evidence is a warning and never gated) or when a rule input's metric lies
    within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
    borderline). Only reference ids are listed, at most 20 per dimension.
 3. `needs_input.reference` rides along with either question and adds no round. It lists only

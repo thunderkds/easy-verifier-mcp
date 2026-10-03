@@ -13,11 +13,21 @@ these rules is drawn in [`SCORING_FLOW.md`](SCORING_FLOW.md).
    A pass earns the rule's full weight; a fail earns 0. Each dimension's weights total 100.
 3. **Abstained metrics are excluded** from both numerator and denominator. If every metric
    abstained, the dimension abstains (`all_metrics_abstained`).
-4. **Rating** = `round(100 × earned weight ÷ available weight)`.
-5. **Overall** = the average of the dimensions that produced a rating.
+4. **Measured-weight floor** (`MEASURED_WEIGHT_FLOOR = 0.50`, DDR-0010). If the measured rules'
+   weight is below half of the dimension's declared rule weight, the dimension abstains
+   (`insufficient_measured_weight`) with `measured_share` and every unmeasured rule and its
+   reason. Exactly 0.50 is rated.
+5. **Rating** = `round(100 × earned weight ÷ available weight)`.
+6. **Overall** = the average of the dimensions that produced a rating.
+
+An abstention for missing evidence (`insufficient_measured_weight`, `below_coverage_floor`,
+`coverage_not_applicable`, `all_metrics_abstained`, `dimension_failed`) never gets a number from
+anyone. It appears in the payload's `warnings`, in the report's "Evidence warnings" block, and in
+the improvement plan's abstained lines (with the unmeasured rules to fix).
 
 The only judgment input is the calling agent's `gate_evaluations`, blended as
-`rules × (1 − w) + agent × w` with `w = 0.5 × confidence` and always shown with its parts.
+`rules × (1 − w) + agent × w` with `w = 0.5 × confidence` and always shown with its parts. It is
+accepted only for solution-fit (`no_static_rule`) and for dimensions with a borderline input.
 
 ### Coverage floors
 
