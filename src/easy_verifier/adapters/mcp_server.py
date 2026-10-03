@@ -169,7 +169,15 @@ def score(
 
 @mcp.tool(
     name="write_report",
-    description="Validate findings and write a self-contained evidence report.",
+    description=(
+        "Validate findings and write a self-contained evidence report. To "
+        "attach a repo-specific fix to an item of score's improvement_plan, "
+        "pass the same agent_input plus "
+        '"improvements": [{"dimension": ..., "metric_name": ..., '
+        '"suggestion": "..."}]; it is shown labelled agent beside the engine '
+        "fix. Naming an item not in the plan, or naming one twice, is a "
+        "validation error."
+    ),
     structured_output=True,
 )
 def render_report(

@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from .findings import ValidationError
 from .judge import (
     RATING_RULES,
     GatedRating,
@@ -24,6 +25,7 @@ from .judge import (
     rating_value,
     within_band,
 )
+from .redact import redact
 
 GROUPS = ("P0", "P1", "P2")
 """P0 near-miss (unmet, within ``BORDERLINE_BAND``), P1 clear failure, P2 not
@@ -220,6 +222,11 @@ class ImprovementPlan:
             "method": _METHOD,
         }
 
+    def item_keys(self) -> tuple[tuple[str, str], ...]:
+        """Each item's identity, ``(dimension, metric_name)``: the name an
+        agent suggestion is attached by (FR-057). Unique within a plan."""
+        return tuple((item.dimension, item.metric_name) for item in self.items)
+
 
 def improvement_plan(
     ratings: Sequence[Rating | RatingAbstention | GatedRating],
@@ -311,8 +318,164 @@ def _items(
     return found
 
 
+MAX_SUGGESTION_CHARS = 1000
+"""Upper bound on one agent suggestion, after surrounding whitespace is
+stripped: a fix line, not an essay."""
+
+MAX_IMPROVEMENTS = 500
+"""Bound on a submitted ``improvements`` list, like ``MAX_FINDINGS``: a
+caller-sized list must not size the error message."""
+
+_IMPROVEMENT_FIELDS = ("dimension", "metric_name", "suggestion")
+
+
+@dataclass(frozen=True)
+class ImprovementError:
+    """One rejection reason for one submitted improvement."""
+
+    index: int
+    """Position in the submitted list, or -1 for the list itself."""
+    field: str | None
+    reason: str
+
+    def __str__(self) -> str:
+        where = "improvements" if self.index < 0 else f"improvements[{self.index}]"
+        return f"{where}{'.' + self.field if self.field else ''}: {self.reason}"
+
+
+class ImprovementValidationError(ValidationError):
+    """A :class:`ValidationError` (so both adapters already report it as one)
+    naming every rejected improvement at once."""
+
+    def __init__(self, errors: list[ImprovementError]) -> None:
+        super().__init__(errors)
+        self.args = (
+            f"{len(self.errors)} improvement error(s): "
+            + "; ".join(str(e) for e in self.errors),
+        )
+
+
+def validate_improvements(
+    value: object, plan: ImprovementPlan | None
+) -> dict[tuple[str, str], str]:
+    """The agent's suggestions keyed by plan-item identity (FR-057).
+
+    ``plan`` is the plan of the score the report renders, or ``None`` when the
+    report has no score. Fails closed: any unknown, duplicate or malformed
+    entry raises :class:`ImprovementValidationError` naming all of them.
+    Agent-supplied names are redacted before they are echoed; a suggestion is
+    never echoed.
+    """
+    if not isinstance(value, list):
+        _reject(
+            -1, None, "must be a list of {dimension, metric_name, suggestion} objects"
+        )
+    if len(value) > MAX_IMPROVEMENTS:
+        _reject(
+            -1, None, f"has {len(value)} items, exceeding the {MAX_IMPROVEMENTS} limit"
+        )
+    if value and plan is None:
+        _reject(
+            -1,
+            None,
+            "this report has no improvement plan (it does not cover every "
+            "declared dimension), so no item can be named",
+        )
+    known = plan.item_keys() if plan is not None else ()
+    errors: list[ImprovementError] = []
+    accepted: dict[tuple[str, str], str] = {}
+    for index, raw in enumerate(value):
+        if not isinstance(raw, dict):
+            errors.append(
+                ImprovementError(
+                    index, None, "must be an object with dimension, metric_name "
+                    "and suggestion"
+                )
+            )
+            continue
+        problems = [
+            ImprovementError(
+                index,
+                _echo(key),
+                "unknown key; only dimension, metric_name and suggestion are accepted",
+            )
+            for key in raw
+            if key not in _IMPROVEMENT_FIELDS
+        ]
+        for field in _IMPROVEMENT_FIELDS:
+            if field not in raw:
+                problems.append(ImprovementError(index, field, "missing"))
+            elif not isinstance(raw[field], str):
+                problems.append(ImprovementError(index, field, "must be a string"))
+        suggestion = raw.get("suggestion")
+        if isinstance(suggestion, str):
+            suggestion = suggestion.strip()
+            if not suggestion:
+                problems.append(
+                    ImprovementError(index, "suggestion", "must not be empty")
+                )
+            elif len(suggestion) > MAX_SUGGESTION_CHARS:
+                problems.append(
+                    ImprovementError(
+                        index,
+                        "suggestion",
+                        f"must be at most {MAX_SUGGESTION_CHARS} characters, "
+                        f"got {len(suggestion)}",
+                    )
+                )
+        if problems:
+            errors.extend(problems)
+            continue
+        identity = (raw["dimension"], raw["metric_name"])
+        if identity not in known:
+            items = ", ".join(f"{d}/{m}" for d, m in known) or "none"
+            errors.append(
+                ImprovementError(
+                    index,
+                    None,
+                    f"{_echo('/'.join(identity))} is not an item of the "
+                    f"improvement plan; items: {items}",
+                )
+            )
+        elif identity in accepted:
+            errors.append(
+                ImprovementError(
+                    index,
+                    None,
+                    f"duplicate: {_echo('/'.join(identity))} is already named by "
+                    "an earlier entry",
+                )
+            )
+        else:
+            accepted[identity] = suggestion
+    if errors:
+        raise ImprovementValidationError(errors)
+    return accepted
+
+
+def _reject(index: int, field: str | None, reason: str) -> None:
+    raise ImprovementValidationError([ImprovementError(index, field, reason)])
+
+
+def _echo(value: object) -> str:
+    """An agent-supplied name, safe to put in an error message."""
+    text = redact(str(value))
+    return text if len(text) <= 120 else text[:120] + "…"
+
+
 def _gain(value: int | tuple[int, int]) -> int | list[int]:
     return list(value) if isinstance(value, tuple) else value
 
 
-__all__ = ["FIX_HINTS", "GROUPS", "ImprovementPlan", "PlanItem", "improvement_plan"]
+__all__ = [
+    "FIX_HINTS",
+    "GROUPS",
+    "MAX_IMPROVEMENTS",
+    "MAX_SUGGESTION_CHARS",
+    "ImprovementError",
+    "ImprovementPlan",
+    "ImprovementValidationError",
+    "PlanItem",
+    "improvement_plan",
+    "validate_improvements",
+]

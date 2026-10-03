@@ -42,7 +42,11 @@ from easy_verifier.core.assessment import (
 )
 from easy_verifier.core.context import RepoPathError, _resolved_repo
 from easy_verifier.core.findings import Finding, validate_findings
-from easy_verifier.core.improve import GROUPS, ImprovementPlan
+from easy_verifier.core.improve import (
+    GROUPS,
+    ImprovementPlan,
+    validate_improvements,
+)
 from easy_verifier.core.judge import (
     BORDERLINE_BAND,
     GatedRating,
@@ -133,8 +137,22 @@ def write_report(
         if tuple(slot.dimension for slot in packs.slots) == dimension_names()
         else None
     )
+    # T066: agent suggestions name items of the plan this report renders --
+    # one plan, computed once -- and are rejected before anything is written.
+    plan = score.improvement_plan if score is not None else None
+    improvements = (
+        validate_improvements(document_input["improvements"], plan)
+        if "improvements" in document_input
+        else {}
+    )
     document = _render_document(
-        ctx, validated.by_dimension, packs, score, first_write=first_write
+        ctx,
+        validated.by_dimension,
+        packs,
+        score,
+        plan,
+        improvements,
+        first_write=first_write,
     )
 
     written = _write_new_file(reports_dir, _filename(packs), document)
@@ -333,6 +351,8 @@ def _render_document(
     by_dimension: dict[str, tuple[Finding, ...]],
     packs: CombinedPack,
     score: ScoreResult | None,
+    plan: ImprovementPlan | None,
+    improvements: dict[tuple[str, str], str],
     *,
     first_write: bool,
 ) -> str:
@@ -353,7 +373,7 @@ def _render_document(
         _render_advisory(ctx, first_write=first_write),
         _render_warnings(ctx, packs),
         _render_score_panel(ctx, score),
-        _render_improvement_plan(ctx, score.improvement_plan) if score else "",
+        _render_improvement_plan(ctx, plan, improvements) if plan else "",
         _render_coverage(ctx, packs.coverage),
         _render_dimensions(ctx, by_dimension, packs),
         _render_footer(),
@@ -481,9 +501,16 @@ _GROUP_TITLES = {
 }
 
 
-def _render_improvement_plan(ctx: _Ctx, plan: ImprovementPlan) -> str:
+def _render_improvement_plan(
+    ctx: _Ctx,
+    plan: ImprovementPlan,
+    improvements: dict[tuple[str, str], str] | None = None,
+) -> str:
     """FR-055/FR-056: every gap, P0 then P1 then P2, each with its
-    recomputed gain and the engine's fix line, labelled as such (FR-057)."""
+    recomputed gain and the engine's fix line, labelled as such (FR-057);
+    a validated agent suggestion for an item is shown above its engine line,
+    labelled ``agent``."""
+    improvements = improvements or {}
     data = plan.to_dict()
     band = format((BORDERLINE_BAND * 100).normalize(), "f")
     parts = [
@@ -501,7 +528,12 @@ def _render_improvement_plan(ctx: _Ctx, plan: ImprovementPlan) -> str:
         if not items:
             parts.append('<p class="empty">None.</p>')
             continue
-        rows = "".join(_render_plan_item(ctx, item) for item in items)
+        rows = "".join(
+            _render_plan_item(
+                ctx, item, improvements.get((item["dimension"], item["metric_name"]))
+            )
+            for item in items
+        )
         parts.append(
             '<div class="plan-table"><table><thead><tr><th>Dimension · area</th>'
             "<th>Metric</th><th>Now → rule</th><th>Gain (dimension / overall)"
@@ -522,7 +554,9 @@ def _render_improvement_plan(ctx: _Ctx, plan: ImprovementPlan) -> str:
     return "".join(parts)
 
 
-def _render_plan_item(ctx: _Ctx, item: dict[str, Any]) -> str:
+def _render_plan_item(
+    ctx: _Ctx, item: dict[str, Any], suggestion: str | None = None
+) -> str:
     now = (
         "not measured"
         if item["metric_value"] is None
@@ -543,16 +577,32 @@ def _render_plan_item(ctx: _Ctx, item: dict[str, Any]) -> str:
             f"<details><summary>{count} cited file{'s' if count != 1 else ''}"
             f"</summary><ul>{evidence}</ul></details>"
         )
+    elif item["unavailable_reason"]:
+        evidence = (
+            "<details><summary>Why not measured</summary>"
+            f"<p>{ctx.esc(item['unavailable_reason'])}</p></details>"
+        )
     else:
-        evidence = ctx.esc(item["unavailable_reason"] or "no file cited")
+        evidence = "no file cited"
+    engine = (
+        f"{ctx.esc(item['fix']['text'])} "
+        f'<span class="fix-source">{ctx.esc(item["fix"]["source"])}</span>'
+    )
+    if suggestion is not None:
+        # Agent prose is a new egress path: redact, then escape (DDR-0001).
+        fix = (
+            f'<p class="suggestion">{ctx.agent_text(suggestion)} '
+            '<span class="fix-source fix-source-agent">agent</span></p>'
+            f'<p class="fix-engine">{engine}</p>'
+        )
+    else:
+        fix = engine
     return (
         f"<tr><td>{ctx.esc(item['dimension'])} · {ctx.esc(item['area'])}</td>"
         f"<td><code>{ctx.esc(item['metric_name'])}</code></td>"
         f"<td>{ctx.esc(now)}; {ctx.esc(item['comparison'])} "
         f"{ctx.esc(item['threshold'])}; weight {ctx.esc(item['weight'])}</td>"
-        f"<td>{ctx.esc(gain)}</td><td>{evidence}</td>"
-        f"<td>{ctx.esc(item['fix']['text'])} "
-        f'<span class="fix-source">{ctx.esc(item["fix"]["source"])}</span></td></tr>'
+        f"<td>{ctx.esc(gain)}</td><td>{evidence}</td><td>{fix}</td></tr>"
     )
 
 
@@ -1089,6 +1139,11 @@ section, article { background: #111128; border: 1px solid #1e1e42;
 .fix-source { display: inline-block; padding: .05rem .45rem; border-radius: 999px;
   font-size: .7rem; font-weight: 700; text-transform: uppercase;
   background: rgba(168,85,247,.15); color: #c084fc; }
+.fix-source-agent { background: rgba(255,184,0,.15); color: #ffb800; }
+.plan-table .suggestion { margin: 0 0 .35rem; font-size: inherit;
+  overflow-wrap: anywhere; }
+.plan-table .fix-engine { margin: 0; color: #9a9ac0; }
+.plan-table details p { margin: .25rem 0 0; }
 .no-gaps { color: #00ff88; font-weight: 700; }
 .footer { border: none; background: none; color: #6b6b9a; font-size: .8rem;
   text-align: center; }
