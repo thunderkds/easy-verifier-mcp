@@ -180,8 +180,11 @@ def test_threshold_zero_is_never_p0() -> None:
 def test_at_most_near_miss_respects_direction() -> None:
     # max_function_ccn at_most 15: 16 fails, |16-15| = 1 <= 1.5 -> P0;
     # 17 fails by 2 > 1.5 -> P1.
-    near = _plan(_ratings(code_quality=_rating("code-quality", {"max_function_ccn": 16})))
-    far = _plan(_ratings(code_quality=_rating("code-quality", {"max_function_ccn": 17})))
+    def plan(value):
+        rating = _rating("code-quality", {"max_function_ccn": value})
+        return _plan(_ratings(code_quality=rating))
+
+    near, far = plan(16), plan(17)
     assert _item(near, "max_function_ccn")["group"] == "P0"
     assert _item(far, "max_function_ccn")["group"] == "P1"
 
@@ -251,7 +254,10 @@ def test_order_is_gain_desc_then_dimension_then_metric() -> None:
         "security", {"redaction_hits_observed": 3, "sink_hits_observed": 3}
     )
     plan = _plan(_ratings(architecture=architecture, security=security))
-    p1 = [(i["overall_gain"], i["dimension"], i["metric_name"]) for i in plan["groups"]["P1"]]
+    p1 = [
+        (i["overall_gain"], i["dimension"], i["metric_name"])
+        for i in plan["groups"]["P1"]
+    ]
     # architecture fix: 100 -> round(130/2) = 65 -> +25
     # each security fix: 65 -> round(115/2) = round(57.5) = 58 -> +18
     assert p1 == [
@@ -334,8 +340,11 @@ def test_abstained_dimension_yields_reason_line_and_no_items() -> None:
 def test_agent_rated_dimension_reports_its_rules_abstention() -> None:
     gated = GatedRating(_abstention("architecture"), 80, 1, ("README.md:1-3",))
     plan = _plan(_ratings(architecture=gated))
-    assert {"dimension": "architecture", "reason_code": "below_coverage_floor",
-            "reason": "achieved coverage is below the declared floor"} in plan["abstained"]
+    assert {
+        "dimension": "architecture",
+        "reason_code": "below_coverage_floor",
+        "reason": "achieved coverage is below the declared floor",
+    } in plan["abstained"]
 
 
 def test_all_met_gives_empty_groups() -> None:
