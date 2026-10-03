@@ -57,3 +57,24 @@ Findings, when passed, get a separate **assessment**. It is shown next to the ra
 divergence and is never blended into it.
 
 The CLI runs the same core but never asks: one pass, rules-only ratings, no `needs_input`.
+
+## Improvement plan
+
+Every `score` result (CLI and MCP alike) carries `improvement_plan`, and the HTML report shows it
+after the score panel. It lists every gap of every rated dimension, in three groups:
+
+| Group | Meaning |
+|---|---|
+| P0 | near miss: the rule is unmet but its value is within ±10% (`BORDERLINE_BAND`) of the threshold; a threshold of 0 is never a near miss |
+| P1 | clear failure: the rule is unmet and outside the band |
+| P2 | not measurable yet: the rule's metric abstained |
+
+Each item gives the metric, its value, the rule, the cited files, a static engine fix line
+(`fix.source = "engine"`), and what fixing it is worth: `dimension_gain` and `overall_gain`. The
+gain is **recomputed** with the rating arithmetic as if that one rule passed (rounded once, ties to
+even), never read off the weight. A P2 gain is a range `[if it fails, if it passes]`, and the low
+end may be negative. A gated dimension's items use its rules part (`gain_basis: "rules"`); the
+agent half of a blend is never predicted. Inside a group items are ordered by overall gain (P2 by
+the high end), then dimension, then metric name. A dimension without a rules rating gets one
+`abstained` line with its reason code instead of items. When every group is empty the report says
+"No gaps".
