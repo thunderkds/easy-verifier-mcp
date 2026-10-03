@@ -25,6 +25,7 @@ from .gate import (
     reference_requests,
     review_requests,
 )
+from .improve import ImprovementPlan, improvement_plan
 from .judge import (
     DOCUMENTATION_RULES,
     GatedRating,
@@ -100,10 +101,17 @@ class ScoreResult:
     instructions}`` for local entries awaiting the user's review. Like
     ``reference``, never part of :meth:`to_dict`; the CLI never shows it."""
 
+    @property
+    def improvement_plan(self) -> ImprovementPlan:
+        """FR-055: a pure function of the ratings, so both adapters, replay
+        and the report all see the same plan (DDR-0009)."""
+        return improvement_plan(self.ratings, self.overall)
+
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "ratings": [item.to_dict() for item in self.ratings],
             "overall": self.overall.to_dict(),
+            "improvement_plan": self.improvement_plan.to_dict(),
             "metrics": json.loads(self.metrics.serialize()),
             "provenance": [
                 {
