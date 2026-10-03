@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t067_evidence_floor.py` (33 tests: floor 45 abstains / 50 rated / floor 0.51 makes 50 abstain; measured_share + unmeasured rules round-trip; gates only no_static_rule + borderline; evidence-lack gate_evaluations rejected naming the dimension; GatedRating refuses evidence-lack; warnings payload; plan abstained line lists unmeasured; report warning block; overall with fewer contributors). Updated tests cite DDR-0010: test_t028_evaluate_gate, test_judge, test_t065, test_t066, test_score_operation. New tests fail on pre-change source (agent) — pass |
+| Verification command run | ☑ pass | Supervisor 2026-10-03 15:10 UTC bryony CLI: overall 67; code-quality `insufficient_measured_weight` 0.20; warnings: blast-radius (4 unmeasured), code-quality (5 unmeasured), requirement-fidelity (below_coverage_floor; requirements-doc/spec-doc/task-breakdown not found) — pass |
+| Negative cases hold | ☑ pass | MCP gate round on bryony (agent): only solution-fit asked; evaluation for code-quality rejected "never agent-rated … (DDR-0010)"; solution-fit accepted agent-rated 70; code-quality stays abstention — pass |
+| verify | ☑ pass | Supervisor drove CLI on bryony (above); agent drove MCP stdio gate round + kitchd before/after (code-quality 67→abstain 0.45, test-strategy 100→abstain 0.30, overall 68→58, both explained: whole-set metrics abstained on byte-budget truncation). CLI/MCP byte-equal excluding needs_input/registry_notes — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed judge.py (floor, reason, EVIDENCE_LACK_REASONS, measured_share derived from unavailable_metrics, validators), gate.py (gate only no_static_rule/borderline; refuse evidence-lack evaluations), score.py warnings, improve.py unmeasured lines, report.py warning block, tests. code-review: P0 0, P1 0, P2 1 (pre-existing 'Context warnings' banner overflows at 400px — not from this change, follow-up), P3 1 (MCP score tool description wording). Security (manual): no new egress of agent text; warnings render engine text via esc — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Supervisor re-run: 1697 passed, 2 skipped, 2 failed (the 2 known stale-Docker container tests, failing on develop too); ruff All checks passed — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t067_report_1280.png` — LLM-vision verdict (Supervisor): 'Evidence warnings — no number given' block above Quality score, red-edged banner, each dimension with reason and unmeasured rules — pass |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | reuses `warning-banner` / `miss-list` classes, no new colours — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t067_report_400.png` (true 400px iframe): new block fits 349/349px; page-level horizontal scroll 522/385 comes from the pre-existing 'Context warnings' banner and is identical on pre-change source — new block pass; pre-existing overflow logged as follow-up |
 
 ---
 
@@ -79,5 +79,4 @@ after overall: 4 of 7 dimensions contributed (3 rule-rated, 0 blended, 1 agent-r
 
 **DELTA**: code-quality on bryony is no longer a confident 100 built from 20% of its rule weight: it abstains `insufficient_measured_weight` (measured_share 0.20) and is shown as a warning listing the five unmeasured rules, and the MCP gate now asks the agent only about solution-fit instead of also inviting it to invent numbers for blast-radius and requirement-fidelity.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor (main session), 2026-10-03 15:10 UTC — independent bryony CLI run and full-suite re-run; not the implementing agent alone.
