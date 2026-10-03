@@ -12,6 +12,9 @@
 
 ### Todo
 
+**Wave 13 — No number without evidence; large repos in priority batches (added 2026-10-03, user request; DDR-0010, PRD FR-058…FR-062)**
+- [ ] **T068** — Large repos: code-tier sources in priority batches (purpose → churn), continue/stop, stateless resume (Depends on: T067) | backend-developer | C3 | Risk: Med | P1
+
 **Wave 12 — Improvement plan for the scored repo (added 2026-10-03, user request; DDR-0009, PRD FR-055…FR-057)**
 
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
@@ -59,7 +62,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T067** — Evidence floor: no number below 50% measured weight; evidence-lack = warning, never agent-rated | backend-developer | C2 | Risk: Med | P0 | 🔄 In Progress 2026-10-03 (worktree `../easy-verifier-mcp-T067`, branch `fix/T067-evidence-floor`)
 
 ### Ready for Review
 
