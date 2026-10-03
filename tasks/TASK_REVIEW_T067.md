@@ -33,8 +33,21 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer on `fix/T067-evidence-floor` at HEAD `d98ac4d` (no implementation commit yet). Command: `PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score --repo /home/hungnguyenhuu/workspace/project/bryony/bryony --scope project </dev/null | python3 -c '...print dimension, value/reason_code, inputs (metric, weight), len(unavailable_metrics)...'`
+
+```
+Sat Oct  3 02:49:24 PM UTC 2026
+d98ac4d
+architecture 50 [('architecture_description_missing', 30), ('decision_records_missing', 30)] 1
+blast-radius all_metrics_abstained [] 4
+code-quality 100 [('lint_config_missing', 10), ('format_config_missing', 10)] 5
+requirement-fidelity below_coverage_floor [] 0
+security 50 [('redaction_hits_observed', 35), ('sink_hits_observed', 35), ('lockfile_missing', 15), ('cookie_flags_missing_observed', 15)] 0
+solution-fit no_static_rule [] 0
+test-strategy 100 [('assertion_density_per_test', 20), ('test_config_and_ci_missing', 20), ('tests_without_assertions_share', 15), ('skipped_test_share', 10), ('network_calls_in_unit_tests_observed', 10)] 1
+```
+
+code-quality is rated **100** from only 2 measured inputs (lint_config_missing 10 + format_config_missing 10 = 20 weight) while 5 rule metrics were unavailable.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
