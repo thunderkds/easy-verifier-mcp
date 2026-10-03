@@ -952,11 +952,22 @@ def rate(
     available = sum(item.weight for item in inputs)
     return Rating(
         dimension=dimension,
-        value=round(100 * earned / available),
+        value=rating_value(earned, available),
         inputs=tuple(inputs),
         unavailable_metrics=tuple(unavailable),
         documentation=documentation,
     )
+
+
+def rating_value(earned: int, available: int) -> int:
+    """The one form of ``_RATING_METHOD``'s arithmetic, shared with the
+    improvement plan (T065) so a recomputed gain cannot drift from it."""
+    return round(100 * earned / available)
+
+
+def overall_value(values: Sequence[int]) -> int:
+    """The one form of ``_OVERALL_RATING_METHOD``'s arithmetic."""
+    return round(sum(values) / len(values))
 
 
 def within_band(value: float | int, threshold: float | int) -> bool:
@@ -1081,7 +1092,7 @@ def rate_overall(
         )
 
     return OverallRating(
-        value=round(sum(item.value for item in contributors) / len(contributors)),
+        value=overall_value([item.value for item in contributors]),
         contributor_count=len(contributors),
         total_dimension_count=len(expected),
         contributors=tuple(item.dimension for item in contributors),
@@ -1576,10 +1587,9 @@ def _validate_rating(value: Rating) -> None:
             "rating inputs and unavailable metrics must partition all rules"
         )
 
-    expected = round(
-        100
-        * sum(item.earned_weight for item in value.inputs)
-        / sum(item.weight for item in value.inputs)
+    expected = rating_value(
+        sum(item.earned_weight for item in value.inputs),
+        sum(item.weight for item in value.inputs),
     )
     if value.value != expected:
         raise ValueError(
@@ -1654,10 +1664,7 @@ def _validate_overall_rating(value: OverallRating) -> None:
     )
     if abstained_names != expected_abstention_order:
         raise ValueError("overall abstentions are not in canonical dimension order")
-    expected = round(
-        sum(rating for _name, rating in value.contributor_values)
-        / len(value.contributor_values)
-    )
+    expected = overall_value([rating for _name, rating in value.contributor_values])
     if value.value != expected:
         raise ValueError(
             f"overall value {value.value} does not match contributor "

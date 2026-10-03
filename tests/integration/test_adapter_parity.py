@@ -82,6 +82,10 @@ def test_combined_score_and_discovery_match_across_adapters() -> None:
     # not a widening of DDR-0005's closed normalization list.
     assert "needs_input" not in cli_score
     mcp_score_for_parity = {k: v for k, v in mcp_score.items() if k != "needs_input"}
+    # T065 (FR-055): the improvement plan is part of the shared payload, so it
+    # is compared byte-for-byte with everything else, never excluded.
+    assert "improvement_plan" in cli_score
+    assert "improvement_plan" in mcp_score_for_parity
     assert normalize(cli_score) == normalize(mcp_score_for_parity)
 
 

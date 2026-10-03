@@ -42,7 +42,9 @@ from easy_verifier.core.assessment import (
 )
 from easy_verifier.core.context import RepoPathError, _resolved_repo
 from easy_verifier.core.findings import Finding, validate_findings
+from easy_verifier.core.improve import GROUPS, ImprovementPlan
 from easy_verifier.core.judge import (
+    BORDERLINE_BAND,
     GatedRating,
     OverallRating,
     Rating,
@@ -351,6 +353,7 @@ def _render_document(
         _render_advisory(ctx, first_write=first_write),
         _render_warnings(ctx, packs),
         _render_score_panel(ctx, score),
+        _render_improvement_plan(ctx, score.improvement_plan) if score else "",
         _render_coverage(ctx, packs.coverage),
         _render_dimensions(ctx, by_dimension, packs),
         _render_footer(),
@@ -469,6 +472,94 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         f'{overall_html}<div class="score-grid">{cards}</div>'
         f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
     )
+
+
+_GROUP_TITLES = {
+    "P0": "P0 — near miss: unmet, within ±{band}% of the threshold",
+    "P1": "P1 — clear failure",
+    "P2": "P2 — not measurable yet: the metric abstained",
+}
+
+
+def _render_improvement_plan(ctx: _Ctx, plan: ImprovementPlan) -> str:
+    """FR-055/FR-056: every gap, P0 then P1 then P2, each with its
+    recomputed gain and the engine's fix line, labelled as such (FR-057)."""
+    data = plan.to_dict()
+    band = format((BORDERLINE_BAND * 100).normalize(), "f")
+    parts = [
+        '<section class="improvement-plan"><h2>Improvement plan</h2>',
+        f'<p class="method">{ctx.esc(data["method"])}</p>',
+    ]
+    if not plan.items:
+        parts.append(
+            '<p class="no-gaps">No gaps: every measured rule is met and no rule '
+            "metric of a rated dimension is unmeasured.</p>"
+        )
+    for group in GROUPS:
+        items = data["groups"][group]
+        parts.append(f"<h3>{ctx.esc(_GROUP_TITLES[group].format(band=band))}</h3>")
+        if not items:
+            parts.append('<p class="empty">None.</p>')
+            continue
+        rows = "".join(_render_plan_item(ctx, item) for item in items)
+        parts.append(
+            '<div class="plan-table"><table><thead><tr><th>Dimension · area</th>'
+            "<th>Metric</th><th>Now → rule</th><th>Gain (dimension / overall)"
+            "</th><th>Evidence</th><th>Fix</th></tr></thead>"
+            f"<tbody>{rows}</tbody></table></div>"
+        )
+    if data["abstained"]:
+        lines = "".join(
+            f"<li><strong>{ctx.esc(line['dimension'])}</strong> — "
+            f"{ctx.esc(line['reason_code'])}: {ctx.esc(line['reason'])}</li>"
+            for line in data["abstained"]
+        )
+        parts.append(
+            "<h3>Dimensions without a rules rating</h3>"
+            f'<ul class="miss-list">{lines}</ul>'
+        )
+    parts.append("</section>")
+    return "".join(parts)
+
+
+def _render_plan_item(ctx: _Ctx, item: dict[str, Any]) -> str:
+    now = (
+        "not measured"
+        if item["metric_value"] is None
+        else f"{item['metric_value']}"
+    )
+    gain = (
+        f"{_signed(item['dimension_gain'])} / {_signed(item['overall_gain'])}"
+    )
+    if item["gain_basis"] == "rules":
+        gain += " (rules part; the final rating also depends on the gate)"
+    if item["computed_from"]:
+        evidence = "".join(
+            f"<li><code>{_render_ref(ctx, ref)}</code></li>"
+            for ref in item["computed_from"]
+        )
+        count = len(item["computed_from"])
+        evidence = (
+            f"<details><summary>{count} cited file{'s' if count != 1 else ''}"
+            f"</summary><ul>{evidence}</ul></details>"
+        )
+    else:
+        evidence = ctx.esc(item["unavailable_reason"] or "no file cited")
+    return (
+        f"<tr><td>{ctx.esc(item['dimension'])} · {ctx.esc(item['area'])}</td>"
+        f"<td><code>{ctx.esc(item['metric_name'])}</code></td>"
+        f"<td>{ctx.esc(now)}; {ctx.esc(item['comparison'])} "
+        f"{ctx.esc(item['threshold'])}; weight {ctx.esc(item['weight'])}</td>"
+        f"<td>{ctx.esc(gain)}</td><td>{evidence}</td>"
+        f"<td>{ctx.esc(item['fix']['text'])} "
+        f'<span class="fix-source">{ctx.esc(item["fix"]["source"])}</span></td></tr>'
+    )
+
+
+def _signed(value: int | list[int]) -> str:
+    if isinstance(value, list):
+        return f"{value[0]:+d} to {value[1]:+d}"
+    return f"{value:+d}"
 
 
 def _render_registry_entries(ctx: _Ctx, entries) -> str:
@@ -989,6 +1080,16 @@ section, article { background: #111128; border: 1px solid #1e1e42;
   padding: .6rem .8rem; overflow-x: auto; white-space: pre-wrap;
   word-break: break-word; font-size: .8rem; }
 .dimension-error .error { color: #ff3b6b; }
+.plan-table { overflow-x: auto; }
+.plan-table table { border-collapse: collapse; width: 100%; font-size: .8rem; }
+.plan-table th, .plan-table td { border-top: 1px solid #1e1e42; padding: .35rem .5rem;
+  text-align: left; vertical-align: top; }
+.plan-table th { color: #6b6b9a; }
+.plan-table ul { margin: 0; padding-left: 1rem; }
+.fix-source { display: inline-block; padding: .05rem .45rem; border-radius: 999px;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  background: rgba(168,85,247,.15); color: #c084fc; }
+.no-gaps { color: #00ff88; font-weight: 700; }
 .footer { border: none; background: none; color: #6b6b9a; font-size: .8rem;
   text-align: center; }
 """
