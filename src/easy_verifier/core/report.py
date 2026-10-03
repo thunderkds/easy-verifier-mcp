@@ -1141,7 +1141,7 @@ section, article { background: #111128; border: 1px solid #1e1e42;
   background: rgba(168,85,247,.15); color: #c084fc; }
 .fix-source-agent { background: rgba(255,184,0,.15); color: #ffb800; }
 .plan-table .suggestion { margin: 0 0 .35rem; font-size: inherit;
-  overflow-wrap: anywhere; }
+  overflow-wrap: break-word; }
 .plan-table .fix-engine { margin: 0; color: #9a9ac0; }
 .plan-table details p { margin: .25rem 0 0; }
 .no-gaps { color: #00ff88; font-weight: 700; }
