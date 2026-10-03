@@ -62,13 +62,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T067** — Evidence floor: no number below 50% measured weight; evidence-lack = warning, never agent-rated | backend-developer | C2 | Risk: Med | P0 | 🔄 In Progress 2026-10-03 (worktree `../easy-verifier-mcp-T067`, branch `fix/T067-evidence-floor`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T067** — Evidence floor: no number below 50% measured weight; evidence-lack = warning, never agent-rated | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-03 (P0/P1 none; 1697 passed; bryony code-quality 100 → abstain 0.20 with warning; MCP gate asks only solution-fit; kitchd before/after)
 - [x] **T066** — Improvement plan (agent): repo-specific fix text via `write_report`, validated + redacted, labelled agent/engine (Depends on: T065) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-03 (Stage 4 P0/P1/P2 none, 1 P3; 1664 passed, 2 pre-existing container failures; MCP verify on bryony copy pass)
 - [x] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1 | ✅ Done 2026-10-03 (Stage 4 P0/P1 none, 1 P2 suggestion; 1631 passed, 2 pre-existing container failures; CLI+MCP verify on bryony pass)
 - [x] **T058** — Bugfix (T056 defect): #8 cookie rule never computed on real Express/Passport repo | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-09-30 (root cause: 200-read path-ordered security sweep never reached bryony's index.js + js-ts tokens missed session-middleware cookie config; fix: RepoContext.peek_source content pre-screen capped at 2000 (user option A) + cited express-session/cookie-session/passport tokens; real repos: bryony security 59→50 (cookie rule unmet at dashboard/index.js:93 +2), kitchd/ai-training unchanged; 1615 passed; follow-up: NestJS/JWT auth_markers gap on kitchd)
