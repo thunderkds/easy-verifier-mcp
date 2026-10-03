@@ -33,8 +33,15 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer on `feat/T065-improvement-plan` at `ebba8ff`, before any implementation commit; no `improvement_plan` key in the `score` payload):
+
+```
+Sat Oct  3 08:24:36 AM UTC 2026
+$ cd /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T065 && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m easy_verifier.adapters.cli score --repo /home/hungnguyenhuu/workspace/project/bryony/bryony --scope project </dev/null | python3 -c "import json,sys; p=json.load(sys.stdin); print(sorted(p), 'improvement_plan' in p)"
+['detected_stack', 'metrics', 'overall', 'provenance', 'ratings'] False
+exit=0
+Sat Oct  3 08:24:46 AM UTC 2026
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
