@@ -29,6 +29,7 @@ from .improve import ImprovementPlan, improvement_plan
 from .judge import (
     DOCUMENTATION_RULES,
     EVIDENCE_LACK_REASONS,
+    MEASURED_WEIGHT_FLOOR,
     GatedRating,
     OverallRating,
     Rating,
@@ -311,13 +312,12 @@ def _evidence_warning(item: RatingAbstention) -> dict[str, Any]:
     share = item.measured_share
     if share is not None:
         message = (
-            f"{item.dimension}: no number given — only {share * 100:.0f}% of its "
-            "rule weight was measured (a rating needs "
-            f"{item.to_dict()['measured_weight_floor']} of it); add what the "
-            "unmeasured rules need"
+            f"no number given — only {share * 100:.0f}% of its rule weight was "
+            f"measured (a rating needs at least {MEASURED_WEIGHT_FLOOR * 100:.0f}%); "
+            "add what the unmeasured rules need"
         )
     else:
-        message = f"{item.dimension}: no number given — {item.reason}"
+        message = f"no number given — {item.reason}"
     warning: dict[str, Any] = {
         "dimension": item.dimension,
         "reason_code": item.reason_code,
