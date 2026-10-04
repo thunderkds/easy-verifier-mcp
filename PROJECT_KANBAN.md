@@ -71,13 +71,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T073** — Structure convention patterns: layers, routes, requirement items, issue references (cited registry, extendable) | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T073`, branch `feat/T073-structure-patterns`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T073** — Structure convention patterns: layers, routes, requirement items, issue references (cited registry, extendable) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none; 1913 passed; no score change; P2 findings carried to T074/T075)
 - [x] **T072** — Area coverage doc: 32 areas → today's rules, status, planned home (docs/AREA_COVERAGE.md + sync test) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (Covered 4 · Partial 7 · Not yet 21; 6 sync tests)
 - [x] **T071** — Evaluation docs: EVALUATION_GUIDE.md, README "Reading a report", SCORING_FLOW interpretation (Depends on: T070) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (P0–P3 none; 77 doc tests; guide + README + SCORING_FLOW)
 - [x] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1/P2 none, 2 P3; 1792 passed; 0 numbers/links lost on bryony + coffee-shop-api; 400px overflow fixed)
