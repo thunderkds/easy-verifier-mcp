@@ -12,6 +12,7 @@ Synthetic scores reuse T067's builders, so every number is the real
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import importlib
 import json
 import re
@@ -35,6 +36,7 @@ from test_t067_evidence_floor import (
 import easy_verifier.core.report as report
 from easy_verifier.core.findings import ValidationError
 from easy_verifier.core.judge import RATING_RULES, GatedRating
+from easy_verifier.core.models import SourceMiss
 from easy_verifier.core.report import _Ctx, _render_summary, write_report
 from easy_verifier.core.roles import RoleInputError, validate_agent_input
 from easy_verifier.core.synthesis import combined_pack
@@ -71,11 +73,22 @@ def _security_three_failures():
     )
 
 
+def _architecture_missing_roles():
+    """Below the floor with two declared roles not found."""
+    return dataclasses.replace(
+        _below_floor("architecture"),
+        sources_missing=(
+            SourceMiss("architecture-doc", "not found in target"),
+            SourceMiss("decision-record", "not found in target"),
+        ),
+    )
+
+
 def _two_rated_four_warnings():
     """Success criterion 1: security + blast-radius rated, 3 P1 items, four
     evidence-lack warnings, solution-fit without a static rule."""
     return _by_name(
-        architecture=_below_floor("architecture"),
+        architecture=_architecture_missing_roles(),
         **{"requirement-fidelity": _not_applicable("requirement-fidelity")},
         **{"code-quality": _bryony_code_quality()},
         security=_security_three_failures(),
@@ -83,8 +96,10 @@ def _two_rated_four_warnings():
     )
 
 
-def _summary(score, agent_summary=None) -> str:
-    return _render_summary(CTX, score, score.improvement_plan, agent_summary)
+def _summary(score, agent_summary=None, scopes=None) -> str:
+    return _render_summary(
+        CTX, score, score.improvement_plan, agent_summary, scopes or {}
+    )
 
 
 def _block(html: str, cls: str) -> str:
@@ -122,25 +137,34 @@ def test_two_rated_three_focus_items_four_warnings() -> None:
         assert report._METRIC_TEXT[item.metric_name] in line
         assert f"now {item.metric_value}, rule at most 0" in line
         assert f"{item.overall_gain:+d} overall" in line
+        assert "<code>" not in line  # no metric-name tag
         rule = RATING_RULES[item.dimension][item.metric_name]
-        for citation in rule.metric_citation:
-            assert f'href="{citation.url}"' in line
-            assert citation.label.split(" (")[0] in line
+        first, *others = rule.metric_citation
+        assert f'href="{first.url}"' in line
+        assert first.label.split(" (")[0] in line
+        for citation in others:  # only the first metric citation
+            assert f'href="{citation.url}"' not in line
 
     missing = _items(html, "summary-missing")
     assert [re.search(r"<strong>(.*?)</strong>", m).group(1) for m in missing] == [
         w["dimension"] for w in score.warnings
     ]
     assert len(missing) == 4
+    assert all("<code>" not in m for m in missing)
     code_quality = next(m for m in missing if "code-quality" in m)
-    assert "not measured: " in code_quality
-    assert report._METRIC_TEXT["functions_over_ccn_10_share"] in code_quality
-    assert "(+2 more)" in code_quality
+    assert code_quality == "<strong>code-quality</strong>: 5 rules not measured"
     architecture = next(m for m in missing if "<strong>architecture" in m)
-    assert "not found: <code>REQUIREMENTS.md</code>" in architecture
-    # solution-fit is neither rated nor a warning: it is named once, plainly
-    assert "Not rated: solution-fit" in html
-    assert "agent" not in html.replace("agent evaluation", "")
+    assert architecture == (
+        "<strong>architecture</strong>: no architecture doc or decision records"
+    )
+    # solution-fit is neither rated nor a warning: it is named once, shortly
+    assert (
+        "<p>Not rated: solution-fit — rated only by the calling agent "
+        "(MCP evaluate gate).</p>"
+    ) in html
+    assert "agent" not in html.replace("calling agent", "").replace(
+        "agent evaluation", ""
+    )
 
 
 def test_only_the_top_three_p0_p1_items_are_shown_in_plan_order() -> None:
@@ -171,12 +195,22 @@ def test_only_the_top_three_p0_p1_items_are_shown_in_plan_order() -> None:
         assert report._METRIC_TEXT[item.metric_name] not in _summary(score)
 
 
-def test_project_default_threshold_is_named_plainly_without_a_link() -> None:
+def test_project_default_threshold_is_not_shown() -> None:
     security = _rating("security", {"cookie_flags_missing_observed": 2})
     score = _score(_by_name(security=security))
     (line,) = _items(_summary(score), "summary-focus")
-    assert "threshold: project default" in line
+    assert "threshold" not in line and "project default" not in line
     assert line.count("<a ") == 1  # the metric's standard only
+
+
+def test_a_distinct_threshold_citation_is_shown() -> None:
+    code_quality = _rating("code-quality", {"max_function_ccn": 30})
+    (line,) = _items(
+        _summary(_score(_by_name(**{"code-quality": code_quality}))), "summary-focus"
+    )
+    rule = RATING_RULES["code-quality"]["max_function_ccn"]
+    assert f'; threshold: <a href="{rule.threshold_citation.url}"' in line
+    assert line.count("<a ") == 2
 
 
 def test_threshold_citation_shared_with_the_metric_is_not_repeated() -> None:
@@ -229,6 +263,58 @@ def test_unmeasured_only_gaps_point_to_the_plan() -> None:
     assert "summary-focus" not in html
 
 
+def test_requirement_and_ci_roles_get_plain_names() -> None:
+    requirement = dataclasses.replace(
+        _below_floor("requirement-fidelity"),
+        sources_missing=(
+            SourceMiss("requirements-doc", "not found in target"),
+            SourceMiss("task-breakdown", "not found in target"),
+        ),
+    )
+    tests = dataclasses.replace(
+        _below_floor("test-strategy"),
+        sources_missing=(
+            SourceMiss("ci-workflow", "not found in target"),
+            SourceMiss(
+                "source-to-test correspondence for files in the active scope",
+                "no source file in scope",
+            ),
+        ),
+    )
+    html = _summary(
+        _score(
+            _by_name(**{"requirement-fidelity": requirement, "test-strategy": tests})
+        )
+    )
+    lines = _items(html, "summary-missing")
+    assert lines[0] == (
+        "<strong>requirement-fidelity</strong>: no requirements doc or task breakdown"
+    )
+    # the derived correspondence miss is not something to add: not named
+    assert lines[1] == "<strong>test-strategy</strong>: no CI workflow"
+
+
+def test_an_undeclared_source_is_counted_never_quoted() -> None:
+    html = _summary(_score(_by_name(architecture=_below_floor("architecture"))))
+    (line,) = _items(html, "summary-missing")
+    assert "REQUIREMENTS.md" not in html
+    assert line == "<strong>architecture</strong>: 1 other source not found"
+
+
+def test_blast_radius_at_project_scope_says_to_run_on_a_change() -> None:
+    blast = _all_abstained("blast-radius")
+    score = _score(_by_name(**{"blast-radius": blast}))
+    project = _summary(score, scopes={"blast-radius": "project"})
+    (line,) = _items(project, "summary-missing")
+    assert line == (
+        "<strong>blast-radius</strong>: measured only on a change: run with "
+        "--scope changes (a commit, range or branch)"
+    )
+    changes = _summary(score, scopes={"blast-radius": "changes"})
+    (line,) = _items(changes, "summary-missing")
+    assert "rules not measured" in line and "--scope" not in line
+
+
 def test_failed_dimension_line_uses_its_reason() -> None:
     html = _summary(_score(_by_name(security=_failed("security"))))
     (line,) = _items(html, "summary-missing")
@@ -257,8 +343,6 @@ def test_blended_dimension_is_labelled_blended() -> None:
 
 
 def test_sampled_dimension_shows_its_sample() -> None:
-    import dataclasses
-
     score = dataclasses.replace(
         _score(_by_name()),
         samples=(
@@ -276,7 +360,7 @@ def test_sampled_dimension_shows_its_sample() -> None:
 
 
 def test_no_score_is_one_line() -> None:
-    html = _render_summary(CTX, None, None, None)
+    html = _render_summary(CTX, None, None, None, {})
     assert html == (
         '<section class="summary"><h2>Summary</h2><p class="summary-overall">'
         "No score in this report: it does not cover every declared dimension."
@@ -472,6 +556,13 @@ def test_cli_and_mcp_write_the_same_summary(tmp_path: Path) -> None:
     assert SECRET not in cli_document and SECRET not in mcp_document
     assert ">agent<" in _block(cli_document, "summary")
     assert _block(cli_document, "summary") == _block(mcp_document, "summary")
+
+
+def test_every_declared_source_has_a_plain_name_or_is_marked_derived() -> None:
+    from easy_verifier.dimensions import list_dimensions
+
+    declared = {s for item in list_dimensions() for s in item.sources_sought}
+    assert set(report._SOURCE_TEXT) == declared
 
 
 def test_every_rule_metric_has_a_plain_description() -> None:

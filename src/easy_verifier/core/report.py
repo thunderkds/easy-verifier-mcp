@@ -381,7 +381,13 @@ def _render_document(
         "<body>",
         _render_header(ctx, packs, generated, finding_count),
         _render_advisory(ctx, first_write=first_write),
-        _render_summary(ctx, score, plan, agent_summary),
+        _render_summary(
+            ctx,
+            score,
+            plan,
+            agent_summary,
+            {s.dimension: s.pack.scope for s in packs.slots if s.pack is not None},
+        ),
         _render_warnings(ctx, packs),
         _render_evidence_warnings(ctx, score),
         _render_score_panel(ctx, score),
@@ -438,9 +444,6 @@ is stripped (FR-064): a paragraph, not a second report."""
 SUMMARY_FOCUS_LIMIT = 3
 """At most this many improvement-plan items open the report (FR-063)."""
 
-_SUMMARY_NAMES_LIMIT = 3
-"""Names listed per could-not-evaluate line before "+N more"."""
-
 _METRIC_TEXT: dict[str, str] = {
     # architecture
     "architecture_description_missing": "no architecture description",
@@ -486,7 +489,52 @@ _METRIC_TEXT: dict[str, str] = {
     "destructive_migration_ops": "destructive migration operations",
 }
 """One plain description per declared rule metric, for the summary (FR-063).
-Presentation only; the metric name is shown beside it."""
+Presentation only."""
+
+_SOURCE_TEXT: dict[str, str | None] = {
+    "readme": "README",
+    "architecture-doc": "architecture doc",
+    "decision-record": "decision records",
+    "requirements-doc": "requirements doc",
+    "spec-doc": "spec doc",
+    "task-breakdown": "task breakdown",
+    "contributing-guide": "contributing guide",
+    "lint-config": "linter config",
+    "format-config": "formatter config",
+    "package-manifest": "package manifest",
+    "lockfile": "lockfile",
+    "auth-code": "auth code",
+    "container-config": "container config",
+    "ci-workflow": "CI workflow",
+    "credential-file": "credential file",
+    "test-config": "test config",
+    "test-file": "test files",
+    # Derived evidence, not something the user adds: not named in the summary.
+    "git history (out of scope for v1)": None,
+    "source-to-test correspondence for files in the active scope": None,
+    "referencing files (textual reference search over repository code)": None,
+    "git co-change history (local `git log --name-only`)": None,
+    "repository change hotspots (local git history)": None,
+}
+"""Plain name per declared sought source (every dimension's
+``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks
+derived evidence the user cannot add. A missing source not declared here is
+counted, never quoted."""
+
+_NOT_RATED_TEXT = {
+    "no_static_rule": "rated only by the calling agent (MCP evaluate gate)",
+}
+"""Short text per non-evidence-lack abstention reason; others use the judge's
+own reason."""
+
+_CHANGES_ONLY = {
+    "blast-radius": (
+        "measured only on a change: run with --scope changes "
+        "(a commit, range or branch)"
+    ),
+}
+"""Dimensions whose rules read a change; at project scope the line says how
+to run them instead of listing what was not measured."""
 
 
 class SummaryValidationError(ValidationError):
@@ -517,6 +565,7 @@ def _render_summary(
     score: ScoreResult | None,
     plan: ImprovementPlan | None,
     agent_summary: str | None,
+    scopes: dict[str, str],
 ) -> str:
     """FR-063/FR-064: the report's opening section. Templated sentences built
     from the score only (FR-026); the agent's paragraph, when given, follows
@@ -531,7 +580,7 @@ def _render_summary(
         parts.append(_summary_overall(ctx, score))
         if type(score.overall) is OverallRating:
             parts.append(_summary_focus(ctx, plan))
-        parts.append(_summary_missing(ctx, score.warnings))
+        parts.append(_summary_missing(ctx, score.warnings, scopes))
     if agent_summary is not None:
         # Agent prose is a new egress path: redact, then escape (DDR-0001).
         parts.append(
@@ -550,7 +599,8 @@ def _summary_overall(ctx: _Ctx, score: ScoreResult) -> str:
     for rating in score.ratings:
         if type(rating) is RatingAbstention:
             if rating.dimension not in warned:
-                not_rated.append(f"{rating.dimension} — {rating.reason}")
+                reason = _NOT_RATED_TEXT.get(rating.reason_code, rating.reason)
+                not_rated.append(f"{rating.dimension} — {reason}")
             continue
         label = f"{rating.dimension} {rating.value}"
         if type(rating) is GatedRating:
@@ -603,15 +653,15 @@ def _summary_focus_item(ctx: _Ctx, item) -> str:
         f"{item.overall_gain:+d} overall ({item.dimension} {item.dimension_gain:+d}"
         f"{', rules part' if item.gain_basis == 'rules' else ''})"
     )
-    standard = ", ".join(_render_citation(ctx, c) for c in rule.metric_citation)
-    if rule.threshold_citation == PROJECT_DEFAULT:
-        standard += "; threshold: project default"
-    elif rule.threshold_citation not in rule.metric_citation:
+    standard = _render_citation(ctx, rule.metric_citation[0])
+    if (
+        rule.threshold_citation != PROJECT_DEFAULT
+        and rule.threshold_citation not in rule.metric_citation
+    ):
         standard += f"; threshold: {_render_citation(ctx, rule.threshold_citation)}"
     return (
         f"<li><strong>{ctx.esc(item.dimension)}</strong>: "
-        f"{ctx.esc(_METRIC_TEXT[item.metric_name])} "
-        f"(<code>{ctx.esc(item.metric_name)}</code>) — now "
+        f"{ctx.esc(_METRIC_TEXT[item.metric_name])} — now "
         f"{ctx.esc(_number(item.metric_value))}, rule "
         f"{ctx.esc(item.comparison.replace('_', ' '))} "
         f"{ctx.esc(_number(item.threshold))}; worth {ctx.esc(worth)}. "
@@ -619,37 +669,20 @@ def _summary_focus_item(ctx: _Ctx, item) -> str:
     )
 
 
-def _summary_missing(ctx: _Ctx, warnings: list[dict[str, Any]]) -> str:
+def _summary_missing(
+    ctx: _Ctx, warnings: list[dict[str, Any]], scopes: dict[str, str]
+) -> str:
     if not warnings:
         return ""
     lines = []
     for warning in warnings:
-        details = []
-        if warning["unmeasured_rules"]:
-            details.append(
-                "not measured: "
-                + _first_names(
-                    [
-                        ctx.esc(_METRIC_TEXT[rule["metric_name"]])
-                        for rule in warning["unmeasured_rules"]
-                    ]
-                )
-            )
-        if warning["sources_missing"]:
-            details.append(
-                "not found: "
-                + _first_names(
-                    [
-                        f"<code>{ctx.path(miss['source'])}</code>"
-                        for miss in warning["sources_missing"]
-                    ]
-                )
-            )
-        text = "; ".join(details) or ctx.esc(
-            warning["message"].removeprefix("no number given — ")
-        )
+        dimension = warning["dimension"]
+        if dimension in _CHANGES_ONLY and scopes.get(dimension) == "project":
+            text = _CHANGES_ONLY[dimension]
+        else:
+            text = _missing_text(warning)
         lines.append(
-            f"<li><strong>{ctx.esc(warning['dimension'])}</strong>: {text}</li>"
+            f"<li><strong>{ctx.esc(dimension)}</strong>: {ctx.esc(text)}</li>"
         )
     return (
         "<h3>Could not evaluate — add what each needs</h3>"
@@ -657,10 +690,32 @@ def _summary_missing(ctx: _Ctx, warnings: list[dict[str, Any]]) -> str:
     )
 
 
-def _first_names(names: list[str]) -> str:
-    shown = ", ".join(names[:_SUMMARY_NAMES_LIMIT])
-    more = len(names) - _SUMMARY_NAMES_LIMIT
-    return f"{shown} (+{more} more)" if more > 0 else shown
+def _missing_text(warning: dict[str, Any]) -> str:
+    """Plain names of missing declared sources, then counts; never a raw
+    source string or reason."""
+    sources = [miss["source"] for miss in warning["sources_missing"]]
+    names = [_SOURCE_TEXT[s] for s in sources if _SOURCE_TEXT.get(s)]
+    other = sum(1 for s in sources if s not in _SOURCE_TEXT)
+    details = []
+    if names:
+        details.append(
+            "no "
+            + (
+                names[0]
+                if len(names) == 1
+                else f"{', '.join(names[:-1])} or {names[-1]}"
+            )
+        )
+    if other:
+        details.append(f"{other} other source{'s' if other != 1 else ''} not found")
+    unmeasured = len(warning["unmeasured_rules"])
+    if unmeasured:
+        details.append(
+            f"{unmeasured} rule{'s' if unmeasured != 1 else ''} not measured"
+        )
+    return "; ".join(details) or warning["message"].removeprefix(
+        "no number given — "
+    )
 
 
 def _number(value: float | int) -> str:
