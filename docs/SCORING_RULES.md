@@ -69,10 +69,11 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `decision_records_missing` | 10 | = 0 | `roles.decision-record` |
 | | `top_level_import_cycles` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax` |
 | | `layer_direction_violations` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax`, conventions `layer_paths` |
-| requirement-fidelity | `acceptance_criteria_traced_to_code_share` | 35 | ≥ 0.80 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)* |
-| | `acceptance_criteria_traced_to_test_share` | 35 | ≥ 0.80 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)* |
-| | `requirements_docs_count` | 15 | ≤ 1 | none (generic role patterns) |
-| | `code_commits_with_docs_share` | 15 | ≥ 0.30 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*; git history |
+| requirement-fidelity | `requirements_docs_count` | 10 | ≤ 1 | none (generic role patterns) |
+| | `code_commits_with_docs_share` | 10 | ≥ 0.30 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*; git history. No document = the real share from history, not an abstention (T075) |
+| | `routes_without_test_share` | 40 | ≤ 0.20 | `source_extensions`, delimiters, `route_tokens`, conventions `route_files`, `test_name_patterns`; whole files; a route is tested when a test names its path's static segments or its handler; abstains with no route |
+| | `commits_with_issue_reference_share` | 20 | ≥ 0.50 | conventions `issue_reference_patterns`, `issue_reference_exclusions`; last 200 non-merge commits; abstains below 20 commits |
+| | `requirement_items_traced_share` | 20 | ≥ 0.80 | conventions `requirement_item_patterns`; items from `roles.requirements-doc` / `roles.spec-doc` (incl. `docs/requirements*/`, OpenAPI/Swagger) traced in code or tests; abstains with no item |
 | code-quality | `functions_over_ccn_10_share` | 25 | ≤ 0.10 | `source_extensions`, delimiters, `branch_keywords`, `function_start` |
 | | `max_function_ccn` | 15 | ≤ 15 | `source_extensions`, delimiters, `branch_keywords`, `function_start` |
 | | `lint_config_missing` | 10 | = 0 | `roles.lint-config` |

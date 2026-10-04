@@ -39,7 +39,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | # | Area | Status | Rules today (`dimension` · `metric`) | Planned home | Notes |
 |---|---|---|---|---|---|
 | 1 | Architecture & dependency direction | Partial | `architecture` · `architecture_description_missing`<br>`architecture` · `decision_records_missing`<br>`architecture` · `top_level_import_cycles`<br>`architecture` · `layer_direction_violations` | — | layers from curated `layer_paths` conventions (local/config paths from T075); abstains below 50% classified |
-| 2 | Business-rule correctness | Partial | `requirement-fidelity` · `acceptance_criteria_traced_to_code_share`<br>`requirement-fidelity` · `acceptance_criteria_traced_to_test_share` | — | traceability metrics abstain from a read-only pack |
+| 2 | Business-rule correctness | Partial | `requirement-fidelity` · `routes_without_test_share`<br>`requirement-fidelity` · `commits_with_issue_reference_share`<br>`requirement-fidelity` · `requirement_items_traced_share` | — | textual: routes ↔ tests by path segments or handler name, commit issue references, requirement items in any declared form (T075, DDR-0011) |
 | 3 | Financial integrity & historical reconstruction | Not yet | — | finance pack (T048) | class G |
 | 4 | Data model, constraints, migrations | Not yet | — | data (T045) | class S |
 | 5 | Backward compatibility & upgrade safety | Partial | `blast-radius` · `max_fan_in_changed`<br>`blast-radius` · `changed_files_in_churn_hotspots_share`<br>`blast-radius` · `public_symbols_removed`<br>`blast-radius` · `destructive_migration_ops` | — | measured only at `--scope changes` |
