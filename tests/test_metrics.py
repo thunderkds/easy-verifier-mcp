@@ -326,6 +326,10 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "destructive_migration_ops",
         "requirements_docs_count",
         "code_commits_with_docs_share",
+        # T075: computed only by the requirement-fidelity dimension.
+        "routes_without_test_share",
+        "commits_with_issue_reference_share",
+        "requirement_items_traced_share",
         # T056: the fixture sets no cookie, so this count has nothing to judge.
         "cookie_flags_missing_observed",
         # T056: the fixture quotes no type-checker configuration.

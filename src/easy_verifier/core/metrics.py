@@ -2003,9 +2003,15 @@ def _code_commits_with_docs_share(view: _PackView) -> _Computed:
     cited = {*facts.docs_cited, *facts.requirements_docs}
     refs = sorted(path for path in cited if path in view.files)
     if not refs:
+        # A missing document fails the rule, never abstains (T075, FR-067):
+        # the share is still read from history, cited by the code files read.
+        refs = [path for path in view.files if code_kind(path, view.tables)][
+            :MAX_CODE_FILES_CITED
+        ]
+    if not refs:
         return MetricAbstention(
-            reason="no document of this pack was read, so there is no evidence "
-            "to cite beside the share"
+            reason="no document or code file of this pack was read, so there is "
+            "no evidence to cite beside the share"
         )
     return (
         facts.code_commits_with_docs / facts.code_commits,
@@ -2018,6 +2024,30 @@ def _code_commits_with_docs_share(view: _PackView) -> _Computed:
         + "; code = a file the registry classifies as source or test code; "
         "documentation = a .md/.rst/.adoc/.txt file or a file under doc/ or "
         "docs/",
+    )
+
+
+MAX_CODE_FILES_CITED = 20
+"""Code files cited by a history share when no document can be (T075)."""
+
+
+def _code_fact(view: _PackView) -> MetricAbstention:
+    """The T075 code metrics are computed by the requirement-fidelity
+    dimension over whole files and stored on ``pack.whole_file``; reaching
+    this function means they were not."""
+    pack = view.pack
+    if pack.dimension != REQUIREMENT_FIDELITY:
+        return MetricAbstention(
+            reason=(
+                "only the requirement-fidelity pack records route, commit and "
+                f"requirement-item facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no route, commit "
+            "or requirement-item facts were gathered"
+        )
     )
 
 
@@ -2541,6 +2571,25 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
         _code_commits_with_docs_share,
+    ),
+    # T075: computed by the requirement-fidelity dimension (whole files)
+    MetricDefinition(
+        "routes_without_test_share",
+        FAMILY_TEST_STRENGTH,
+        EVIDENCE_LOCAL,
+        _code_fact,
+    ),
+    MetricDefinition(
+        "commits_with_issue_reference_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _code_fact,
+    ),
+    MetricDefinition(
+        "requirement_items_traced_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _code_fact,
     ),
     MetricDefinition(
         "cookie_flags_missing_observed",

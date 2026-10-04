@@ -288,7 +288,8 @@ def test_requirement_and_ci_roles_get_plain_names() -> None:
     )
     lines = _items(html, "summary-missing")
     assert lines[0] == (
-        "<strong>requirement-fidelity</strong>: no requirements doc or task breakdown"
+        "<strong>requirement-fidelity</strong>: no requirements doc; "
+        "1 other source not found"
     )
     # the derived correspondence miss is not something to add: not named
     assert lines[1] == "<strong>test-strategy</strong>: no CI workflow"

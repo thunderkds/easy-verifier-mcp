@@ -51,14 +51,18 @@ FIX_HINTS: dict[str, str] = {
         "an interface the lower layer owns."
     ),
     # requirement-fidelity
-    "acceptance_criteria_traced_to_code_share": (
-        "Reference each acceptance criterion from the code that implements it "
-        "(a requirement or criterion id in the code or its commit), and drop "
-        "criteria no longer intended."
+    "routes_without_test_share": (
+        "Add a test that calls each untested route by its path (or names its "
+        "handler), starting with the examples listed."
     ),
-    "acceptance_criteria_traced_to_test_share": (
-        "Write a test for each untested acceptance criterion and name the "
-        "criterion id in the test."
+    "commits_with_issue_reference_share": (
+        "Name the issue or ticket a commit serves in its message (e.g. "
+        '"Fixes #12" or "ABC-34"), so each change traces to a request.'
+    ),
+    "requirement_items_traced_share": (
+        "Reference each untraced requirement item (its id, or its scenario text) "
+        "from the code or test that implements it, and drop items no longer "
+        "intended."
     ),
     "requirements_docs_count": (
         "Consolidate requirements into one authoritative document and point the "

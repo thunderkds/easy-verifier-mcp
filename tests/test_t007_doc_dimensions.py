@@ -76,7 +76,8 @@ def test_standalone_docs_prevent_code_fallback(tmp_path: Path, module) -> None:
     # their own trailing code tier (a function / its import lines); the doc
     # fallback firing would read it a second time or quote it whole. T076:
     # that one read happens first, for the whole-file metrics.
-    code_tier = module.NAME in ("code-quality", "architecture")
+    # T075: requirement-fidelity reads code whole for its route facts.
+    code_tier = module.NAME in ("code-quality", "architecture", "requirement-fidelity")
     assert pack.files_read == (
         ("implementation.py", "README.md") if code_tier else ("README.md",)
     )
@@ -353,15 +354,10 @@ def test_requirement_fidelity_collects_task_acceptance_criteria(
 
     pack = run_dimension(requirement_fidelity.DESCRIPTOR, tmp_path)
 
-    # T026: the task guide fills the `task-breakdown` role.
-    assert "task-breakdown" in pack.sources_sought
-    assert "task-breakdown" in pack.sources_found
+    # T075 (FR-071): `task-breakdown` is no longer sought; the guide is
+    # still read for its acceptance-criteria evidence.
+    assert "task-breakdown" not in pack.sources_sought
     assert "tasks/TASK_GUIDE_T123.md" in pack.files_read
-    assert any(
-        excerpt.path == "tasks/TASK_GUIDE_T123.md"
-        and "returns citable evidence" in excerpt.text
-        for excerpt in pack.excerpts
-    )
 
 
 def test_task_guide_glob_does_not_follow_outside_symlink(tmp_path: Path) -> None:
@@ -416,7 +412,10 @@ def test_requirement_fidelity_standalone_with_no_frs_states_the_miss_plainly(
     assert pack.mode == MODE_STANDALONE
     assert pack.coverage_score == 0.0
     for miss in pack.sources_missing:
-        assert "not found" in miss.reason or "excluded" in miss.reason
+        # T075: git history is "not examined" outside a git repository.
+        assert any(
+            word in miss.reason for word in ("not found", "excluded", "not examined")
+        )
 
 
 def test_line_numbers_correct_with_crlf_line_endings(tmp_path: Path) -> None:
@@ -623,9 +622,4 @@ def test_task_guide_glob_alias_to_secret_bearing_file_is_excluded(
 
     assert "tasks/TASK_GUIDE_T123.md" not in pack.files_read
     assert not any("raw secret bytes" in excerpt.text for excerpt in pack.excerpts)
-    # T026: the only file matching `task-breakdown` resolves to a
-    # secret-bearing file, so the role is excluded, not merely unreadable.
-    assert any(
-        miss.source == "task-breakdown" and miss.reason == "excluded: secret-bearing"
-        for miss in pack.sources_missing
-    )
+    # T075: `task-breakdown` is no longer sought, so no miss names it.

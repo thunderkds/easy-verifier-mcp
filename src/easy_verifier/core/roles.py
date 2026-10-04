@@ -116,12 +116,26 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "**/decisions/**",
         *_docs("decision"),
     ),
-    "requirements-doc": ("PRD*.md", "**/PRD*.md", *_docs("requirement")),
+    "requirements-doc": (
+        "PRD*.md",
+        "**/PRD*.md",
+        *_docs("requirement"),
+        # T075 (FR-068): a requirements directory, e.g. docs/requirements/x.md
+        "docs/requirements*/**",
+        "**/docs/requirements*/**",
+    ),
     "spec-doc": (
         "PROJECT_SPEC.md",
         "**/specs/**/*.md",
         "**/specification/**/*.md",
         *_docs("spec"),
+        # T075 (FR-068): OpenAPI / Swagger contracts, anywhere
+        *(
+            f"{prefix}{name}*.{suffix}"
+            for prefix in ("", "**/")
+            for name in ("openapi", "swagger")
+            for suffix in ("yaml", "yml", "json")
+        ),
     ),
     "task-breakdown": (
         "tasks/TASK_GUIDE_*.md",
