@@ -11,6 +11,8 @@
 # schemas are boundary contracts every layer uses, so they are shared. requirement_item_patterns: "id=<token>" matches
 # an identifier anywhere, "line=<token>" a line start (the item is the rest of
 # the line). Tokens use the registry token syntax (core/registry.py).
+# Checklist lines ("- [ ]") are plan tasks, not requirement items, so they are
+# not curated; a repository may declare them (DDR-0011 addendum, T077).
 
 # --- layers ------------------------------------------------------------------
 
@@ -99,11 +101,6 @@ source_tag = "curated"
 [[requirement_item_patterns]]
 value = ["line=Scenario:", "line=Scenario Outline:"]
 citation_url = "https://cucumber.io/docs/gherkin/reference/"
-source_tag = "curated"
-
-[[requirement_item_patterns]]
-value = ["line=- [ ]", "line=- [x]", "line=- [X]"]
-citation_url = "https://github.github.com/gfm/#task-list-items-extension-"
 source_tag = "curated"
 
 [[requirement_item_patterns]]
