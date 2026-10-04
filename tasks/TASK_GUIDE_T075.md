@@ -65,6 +65,9 @@ code evidence; `task-breakdown` no longer sought.
 | 6 | `requirements-doc` / `spec-doc` roles accept common conventions (`specs/**/plan.md`, `docs/requirements*`, OpenAPI files) — extendable | FR-068 |
 | 7 | Documents missing = failed document rules, never abstention | FR-067 |
 | 8 | `docs/SCORING_RULES.md`, `docs/AREA_COVERAGE.md` updated; T072 sync test passes | FR-066 |
+| 9 | Carried from T073 review: issue-reference matching must not count `UTF-8`, `SHA-256`, `ISO-8601`-style tokens or hex colours (declared exclusion list, extendable); Express single-argument `app.get(name)` (settings read) is not a route; Ruby bare route tokens apply only in routes files (`config/routes.rb`, declared) | FR-068 |
+| 10 | Carried from T073/T074 review: repository-local and `.easy-verifier.toml` conventions used in scoring are embedded with the report/agent input so replay stays byte-equal (FR-048); after this, layer paths and requirement-item/issue patterns from those sources are used in scoring (update the T074 derivation note that says they are not yet used) | FR-048, FR-068 |
+| 11 | Routes and requirement items are computed over whole files below and above the cap (T076/T068 path), never from truncated excerpts | FR-072 |
 
 ---
 
