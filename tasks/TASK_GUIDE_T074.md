@@ -64,6 +64,7 @@ evidence; document roles accept common conventions (e.g. a README "Architecture"
 | 6 | Batches (T068) and measured-weight floor (T067) still apply; sampled metrics labelled | DDR-0010 |
 | 7 | `docs/SCORING_RULES.md` and `docs/AREA_COVERAGE.md` updated (T072 sync test passes) | FR-066 |
 | 8 | CLI/MCP parity and replay unchanged in form | FR-022 |
+| 9 | **Real-repo layer coverage (Supervisor finding after T073):** on coffee-shop-api only 22 of 83 non-test sources classify. Extend `conventions.toml` `layer_paths` with cited NestJS/common forms — api: `*.dto.*`, `*.schema.*` (request/response schemas), `*.guard.*`, `*.middleware.*`, `*.filter.*`, `*.interceptor.*`, `*.decorator.*`, `**/middlewares/**`; data: `**/migrations/**` — and add a declared **`shared`** class (cross-cutting: `*.module.*`, `**/config*/**`, `*.config.*`, `**/utils/**`, `*.util.*`, `**/constants/**`, `*.constant.*`, `**/enums/**`, `*.enum.*`, `**/types/**`, `*.d.ts`, `*.interface.*`, `main.*`). `shared` files are excluded from the classified-share denominator and never take part in a violation. Glossary *Layer* gains the `shared` note | FR-069, FR-068 |
 
 ---
 
