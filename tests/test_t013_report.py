@@ -609,7 +609,7 @@ def test_standalone_limited_context_warning_is_prominent(target_repo: Path):
     _, document = _write(target_repo, [_finding("architecture")], packs)
 
     assert LIMITED_CONTEXT_WARNING[:60] in document
-    banner_at = document.index('class="warning-banner"')
+    banner_at = document.index('class="warning-banner unknowns"')
     first_dimension_at = document.index('class="dimensions"')
     assert banner_at < first_dimension_at, "the warning must precede the evidence"
 
@@ -619,7 +619,7 @@ def test_no_warning_banner_when_there_are_no_warnings(target_repo: Path):
 
     _, document = _write(target_repo, [_finding("architecture")], packs)
 
-    assert 'class="warning-banner"' not in document.split("</style>", 1)[1]
+    assert 'class="warning-banner unknowns"' not in document.split("</style>", 1)[1]
 
 
 # ---------------------------------------------------------------------------

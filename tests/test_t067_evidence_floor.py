@@ -35,7 +35,7 @@ from easy_verifier.core.judge import (
 )
 from easy_verifier.core.metrics import WHOLE_SET, Metric, MetricAbstention, MetricSet
 from easy_verifier.core.models import CoverageSummary, SourceMiss
-from easy_verifier.core.report import _Ctx, _render_evidence_warnings
+from easy_verifier.core.report import _Ctx, _render_unknowns
 from easy_verifier.core.roles import documentation_present
 from easy_verifier.core.score import ScoreResult
 from easy_verifier.dimensions import dimension_names
@@ -445,8 +445,8 @@ def test_no_warning_for_solution_fit_or_rated() -> None:
 
 
 def test_report_renders_warning_block_with_dimension_and_rules() -> None:
-    html = _render_evidence_warnings(_Ctx(Path("/repo")), _score(_every_kind()))
-    assert html.startswith('<section class="warning-banner evidence-warnings">')
+    html = _render_unknowns(_Ctx(Path("/repo")), [], _score(_every_kind()))
+    assert html.startswith('<section class="warning-banner unknowns">')
     assert "code-quality" in html
     assert "insufficient_measured_weight" in html
     assert "20%" in html
@@ -459,7 +459,7 @@ def test_report_renders_nothing_without_warnings() -> None:
         _solution_fit() if name == "solution-fit" else _rated_far(name)
         for name in DIMENSIONS
     )
-    assert _render_evidence_warnings(_Ctx(Path("/repo")), _score(ratings)) == ""
+    assert _render_unknowns(_Ctx(Path("/repo")), [], _score(ratings)) == ""
 
 
 # ---------------------------------------------------------------------------
