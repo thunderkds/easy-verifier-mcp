@@ -33,8 +33,33 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (Supervisor, 2026-10-04, develop `88c883d`, verbatim headings before any T071 change; `docs/EVALUATION_GUIDE.md` does not exist):
+
+```
+README.md
+1:# easy-verifier-mcp
+9:## What it refuses to do
+22:## The seven dimensions
+36:## Scopes
+52:## Two modes: kit-aware and standalone
+61:## Running it
+71:### CLI — no server or container required
+104:#### How each dimension is rated
+159:#### Source roles — any language, no configuration required
+239:### MCP — stdio by default
+254:### Docker — read-only target, writable reports only
+267:### Final release gate
+282:## Where reports go
+292:## Documentation
+302:## License
+
+docs/SCORING_FLOW.md
+1:# Scoring session flow (MCP)
+12:## Flow
+43:## The rounds
+68:## Large repositories: priority batches
+95:## Improvement plan
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
