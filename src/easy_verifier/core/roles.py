@@ -100,7 +100,13 @@ def _source_roots(*keywords: str) -> tuple[str, ...]:
 
 GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     "readme": ("README*", "Readme*", "readme*"),
-    "architecture-doc": ("PROJECT_SPEC.md", *_docs("architecture", "design")),
+    "architecture-doc": (
+        "PROJECT_SPEC.md",
+        "ARCHITECTURE.md",
+        "**/docs/architecture*",
+        "**/docs/architecture/**",
+        *_docs("architecture", "design"),
+    ),
     "decision-record": (
         "BRAINSTORMING_LOG*.md",
         "**/adr/**",

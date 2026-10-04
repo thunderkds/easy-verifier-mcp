@@ -251,6 +251,9 @@ def test_architecture_pack_matches_pre_refactor_snapshot(tmp_path: Path) -> None
         Path(__file__).resolve().parent / "snapshots" / "architecture_pack.json"
     )
     expected = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    # T074 (DDR-0011): the checklist gained the "source files with import
+    # statements" pseudo-source (code evidence counts toward coverage), so the
+    # snapshot's sources_sought / sources_missing / coverage_score changed.
     # T055: the adapters' serializer; the snapshot predates T055, so this also
     # proves unused new pack facts leave the JSON byte-identical (DDR-0005).
     actual = json.loads(json.dumps(to_json_dict(pack)))

@@ -45,6 +45,11 @@ FIX_HINTS: dict[str, str] = {
         "Break import cycles between top-level modules: move the shared code into "
         "a lower-level module or invert the dependency behind an interface."
     ),
+    "layer_direction_violations": (
+        "Make imports point from higher to lower layers only (api -> service -> "
+        "data): move what the lower layer needs into it, or pass it in through "
+        "an interface the lower layer owns."
+    ),
     # requirement-fidelity
     "acceptance_criteria_traced_to_code_share": (
         "Reference each acceptance criterion from the code that implements it "

@@ -1,6 +1,6 @@
 {
   "approval_requests": [],
-  "coverage_score": 1.0,
+  "coverage_score": 0.75,
   "dimension": "architecture",
   "excerpts": [
     {
@@ -30,6 +30,7 @@
   "had_redactions": false,
   "mode": "kit-aware",
   "omitted_count": 0,
+  "reach": null,
   "redactions": [],
   "scope": "project",
   "source_provenance": "rules",
@@ -38,18 +39,23 @@
     "decision-record",
     "readme"
   ],
-  "sources_missing": [],
+  "sources_missing": [
+    {
+      "reason": "not found: no in-scope source file of a registry language with import syntax",
+      "source": "source files with import statements"
+    }
+  ],
   "sources_sought": [
     "architecture-doc",
     "decision-record",
-    "readme"
+    "readme",
+    "source files with import statements"
   ],
+  "trace_search": null,
   "truncated": false,
   "truncation": {
     "omitted_count": 0,
     "truncated": false
   },
-  "warnings": [],
-  "trace_search": null,
-  "reach": null
+  "warnings": []
 }

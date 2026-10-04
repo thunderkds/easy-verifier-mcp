@@ -43,6 +43,18 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | test-strategy | 0.20 |
 | blast-radius | 0.25 |
 
+architecture (DDR-0011, T074): documents carry 20 and code 80. A missing architecture description or
+decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
+seeks "source files with import statements", so a repository with code and a README reaches the
+0.40 floor. `layer_direction_violations` counts import statements from a lower to a higher layer
+(data → service, service → api, data → api) between files the `layer_paths` conventions classify;
+`shared` files (modules, config, utils, constants, enums, types) and unclassified files never count,
+and the rule abstains when fewer than 50% of the non-shared source files quoted classify. DTOs,
+schemas, exceptions and providers are `shared` boundary contracts. Only the curated `layer_paths`
+apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in scoring until
+conventions are embedded for replay (T075). A README heading naming "Architecture" fills the
+`architecture-doc` role (coverage) and passes the description rule, citing the same excerpt.
+
 ## Rules and the registry fields they read
 
 Metrics come from static analysis: file and pattern matching, complexity counts, the import graph,
@@ -53,9 +65,10 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 
 | Dimension | Rule | Weight | Pass when | Registry fields read |
 |---|---|---|---|---|
-| architecture | `architecture_description_missing` | 30 | = 0 | `roles.architecture-doc` |
-| | `decision_records_missing` | 30 | = 0 | `roles.decision-record` |
+| architecture | `architecture_description_missing` | 10 | = 0 | `roles.architecture-doc`; a README heading naming "Architecture" also passes |
+| | `decision_records_missing` | 10 | = 0 | `roles.decision-record` |
 | | `top_level_import_cycles` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax` |
+| | `layer_direction_violations` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax`, conventions `layer_paths` |
 | requirement-fidelity | `acceptance_criteria_traced_to_code_share` | 35 | ≥ 0.80 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)* |
 | | `acceptance_criteria_traced_to_test_share` | 35 | ≥ 0.80 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)* |
 | | `requirements_docs_count` | 15 | ≤ 1 | none (generic role patterns) |

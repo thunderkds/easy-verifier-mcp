@@ -98,8 +98,8 @@ def layer_of(
     *,
     tables: LanguageTables | None = None,
 ) -> str | None:
-    """``api``, ``service`` or ``data`` for a repository-relative source file,
-    or ``None`` when it is unclassified.
+    """``api``, ``service``, ``data`` or ``shared`` (cross-cutting, T074) for a
+    repository-relative source file, or ``None`` when it is unclassified.
 
     ``layer_paths`` are ``<layer>=<glob>`` values (default: curated). ``\\``
     separators are normalised. A file that is not source, is a test (the

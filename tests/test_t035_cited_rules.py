@@ -49,9 +49,11 @@ _ASVS = "OWASP ASVS 5.0.0"
 # metric-citation labels, threshold citation label or project-default).
 APPROVED = {
     "architecture": [
-        ("architecture_description_missing", 30, "at_most", 0, ("42010",), "42010"),
-        ("decision_records_missing", 30, "at_most", 0, ("42010",), "42010"),
+        # DDR-0011 (T074, user-signed): documents 20 / code 80.
+        ("architecture_description_missing", 10, "at_most", 0, ("42010",), "42010"),
+        ("decision_records_missing", 10, "at_most", 0, ("42010",), "42010"),
         ("top_level_import_cycles", 40, "at_most", 0, ("Martin",), "Martin"),
+        ("layer_direction_violations", 40, "at_most", 0, ("Stable",), "Stable"),
     ],
     "solution-fit": [],
     "requirement-fidelity": [

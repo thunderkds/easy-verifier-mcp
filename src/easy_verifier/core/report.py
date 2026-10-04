@@ -466,6 +466,7 @@ _METRIC_TEXT: dict[str, str] = {
     "architecture_description_missing": "no architecture description",
     "decision_records_missing": "no decision records (ADRs)",
     "top_level_import_cycles": "import cycles between top-level modules",
+    "layer_direction_violations": "imports from a lower to a higher layer",
     # requirement-fidelity
     "acceptance_criteria_traced_to_code_share": (
         "share of acceptance criteria traced to code"
@@ -529,6 +530,7 @@ _SOURCE_TEXT: dict[str, str | None] = {
     # Derived evidence, not something the user adds: not named in the summary.
     "git history (out of scope for v1)": None,
     "source-to-test correspondence for files in the active scope": None,
+    "source files with import statements": None,
     "referencing files (textual reference search over repository code)": None,
     "git co-change history (local `git log --name-only`)": None,
     "repository change hotspots (local git history)": None,

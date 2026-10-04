@@ -487,6 +487,9 @@ def test_cli_all_and_validation(big_repo: Path, capsys) -> None:
 
 
 def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
+    # Snapshot regenerated for T074 (DDR-0011 architecture 10/10/40/40, code
+    # evidence counts toward coverage): only architecture changed (below
+    # floor -> 67) and the layer_direction_violations metric was added.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

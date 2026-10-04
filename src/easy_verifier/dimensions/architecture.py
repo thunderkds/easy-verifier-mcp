@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from ..core.metrics import ARCHITECTURE_HEADING
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
     Excerpt,
+    SourceMiss,
     SourceRole,
 )
 from ..core.roles import role
@@ -25,10 +27,17 @@ PURPOSE = (
     "so the calling agent can judge the architecture from cited evidence."
 )
 
+DOC_ROLE = "architecture-doc"
+
+IMPORTS_SOURCE = "source files with import statements"
+"""Code evidence counts toward coverage (T074, DDR-0011): a pseudo-source,
+found when the import tier quotes at least one statement."""
+
 ROLES: tuple[SourceRole, ...] = (
     role("architecture-doc"),
     role("decision-record"),
     role("readme"),
+    SourceRole(name=IMPORTS_SOURCE, patterns=()),
 )
 """Source roles (T026): filled by any matching file in any language."""
 
@@ -54,8 +63,44 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """
     sources = _code_extract.source_candidates(context, "import excerpts")
     _code_extract.record_sample(context, NAME)
-    yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
-    yield from _code_extract.import_excerpts(context, sources)
+    for excerpt in _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS):
+        _architecture_section(context, excerpt)
+        yield excerpt
+    found = IMPORTS_SOURCE in context.sources_found
+    for excerpt in _code_extract.import_excerpts(context, sources):
+        if not found:
+            context.sources_found.append(IMPORTS_SOURCE)
+            found = True
+        yield excerpt
+    recorded = any(m.source == IMPORTS_SOURCE for m in context.sources_missing)
+    if not found and not recorded:
+        context.sources_missing.append(
+            SourceMiss(
+                source=IMPORTS_SOURCE,
+                reason=(
+                    f"no import statement was found in the {len(sources)} "
+                    "in-scope source file(s) of a registry language read for "
+                    "the import tier"
+                    if sources
+                    else "not found: no in-scope source file of a registry "
+                    "language with import syntax"
+                ),
+            )
+        )
+
+
+def _architecture_section(context: DimensionContext, excerpt: Excerpt) -> None:
+    """A README heading naming the architecture fills ``architecture-doc``
+    (T074, FR-068), as the description rule cites it."""
+    name = excerpt.path.rsplit("/", 1)[-1].lower()
+    if not name.startswith("readme") or not ARCHITECTURE_HEADING.search(excerpt.text):
+        return
+    files = context.role_files.get(DOC_ROLE)
+    if files is None:
+        if DOC_ROLE not in context.sources_found:
+            context.sources_found.append(DOC_ROLE)
+    elif excerpt.path not in files:
+        context.role_files[DOC_ROLE] = (*files, excerpt.path)
 
 
 DESCRIPTOR = DimensionDescriptor(
