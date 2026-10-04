@@ -53,6 +53,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     (T050), so the import graph is measurable from this pack.
     """
     sources = _code_extract.source_candidates(context, "import excerpts")
+    _code_extract.record_sample(context, NAME)
     yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
     yield from _code_extract.import_excerpts(context, sources)
 

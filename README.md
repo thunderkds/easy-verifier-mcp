@@ -152,8 +152,9 @@ every rule shipped in the package), and the HTML report shows them as links.
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
 file read, else 0. On a truncated pack an unfilled role abstains, because the budget may have
 dropped the file. The requirement-fidelity metrics and `changed_files_in_churn_hotspots_share`
-cannot be derived from a read-only pack, so they always abstain with a stated reason. That makes
-requirement-fidelity and project-scope blast-radius abstain and go to the evaluate gate.
+cannot be derived from a read-only pack, so they always abstain with a stated reason. A dimension
+whose measured rules carry less than half of its declared rule weight abstains
+(`insufficient_measured_weight`, DDR-0010); missing evidence is reported as a warning, never gated.
 
 #### Source roles — any language, no configuration required
 
@@ -203,7 +204,8 @@ with at most one of picks or gate evaluations per response, and at most two extr
 1. `needs_input.picks`: some roles are unfilled but the repository has candidate files.
 2. `needs_input.gate_evaluations`: a list of `{dimension, reason, evidence_refs, omitted}`. It is
    asked on the call that carries picks, or on the first call when nothing needs picking. A
-   dimension is gated when its rules abstain (`abstained`) or when a rule input's metric lies
+   dimension is gated when its rules abstain `no_static_rule` (`abstained`; an abstention for
+   missing evidence is a warning and never gated) or when a rule input's metric lies
    within ±10% of its threshold (`borderline: <metric>`; a threshold of 0 is never
    borderline). Only reference ids are listed, at most 20 per dimension.
 3. `needs_input.reference` rides along with either question and adds no round. It lists only
@@ -287,6 +289,22 @@ Each full seven-dimension report includes a score panel with the rule-based rati
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
 an abstention with its coverage boundary, never as zero or a low score.
 
+## Reading a report
+
+A number counts declared rules met, weighted; it is not a judgment of quality. Before acting on one:
+
+- **Overall** is the mean of the dimensions that produced a number. Abstentions are left out, so
+  read it with its disclosure ("N of 7 dimensions contributed").
+- **Trust** a dimension number as far as its evidence: coverage floor, at least 50% of its rule
+  weight measured, a `sample: … files` label on large repositories, and any blended or agent-rated
+  part shown beside it.
+- **Warnings** ("What we couldn't measure") name what to add for a missing number; no agent can
+  fill one in.
+- **Improvement plan**: fix P0 (near miss) first, then P1, by recomputed `overall_gain`; P2 rules
+  need evidence before they can be measured. Open the cited files first.
+
+Full guide, with worked examples: [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_GUIDE.md).
+
 ## Documentation
 
 | Doc | What it covers |
@@ -295,6 +313,8 @@ an abstention with its coverage boundary, never as zero or a low score.
 | [`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md) | Run the hardened container as an MCP server, one registration for every repository, troubleshooting |
 | [`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md) | Round-by-round flow of an MCP scoring session (diagram) |
 | [`docs/SCORING_RULES.md`](docs/SCORING_RULES.md) | Every rating rule: threshold, weight, coverage floor, registry fields read |
+| [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_GUIDE.md) | What each part of a score or report means, when to trust a number, how to act on it |
+| [`docs/AREA_COVERAGE.md`](docs/AREA_COVERAGE.md) | Which of the 32 evaluation areas have rules today, which rules, and which task adds the rest |
 | [`docs/RELEASE_GUIDE.md`](docs/RELEASE_GUIDE.md) | Release process |
 
 ## License

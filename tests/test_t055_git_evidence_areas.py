@@ -503,7 +503,7 @@ def test_unused_facts_leave_the_pack_json_byte_identical(tmp_path: Path, capsys)
     emitted = to_json_dict(pack)
     assert list(emitted) == PRE_T055_PACK_KEYS
     legacy = dataclasses.asdict(pack)
-    del legacy["compat"], legacy["doc_history"]
+    del legacy["compat"], legacy["doc_history"], legacy["sample"]  # T068 too
     assert json.dumps(emitted) == json.dumps(legacy)
 
     assert cli.main(["code-quality", "--repo", str(root), "--scope", "project"]) == 0

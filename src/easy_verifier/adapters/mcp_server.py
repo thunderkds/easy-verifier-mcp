@@ -117,8 +117,13 @@ def gather_combined(
         "carries needs_input.review, show each listed registry entry to the "
         "user once (value and link), ask whether it is good, needs "
         "improvement, or should be rejected, and send the answers as "
-        "agent_input.reviews on the next call. Otherwise use the response "
-        "as-is."
+        "agent_input.reviews on the next call. If it carries "
+        "needs_input.continue_batches, the repository has more source files "
+        "than one read: only the listed share was read, in priority order. "
+        "Ask the user its question -- read the next batch (more tokens) or "
+        "stop -- and to continue call score again with the same agent_input "
+        'plus "batches": batches_done + 1 (or "all"). Otherwise use the '
+        "response as-is."
     ),
     structured_output=True,
 )
@@ -158,6 +163,8 @@ def score(
         needs_input["reference"] = result.reference
     if result.review is not None:
         needs_input["review"] = result.review
+    if result.continue_batches is not None:
+        needs_input["continue_batches"] = result.continue_batches
     if result.needs_input is not None:
         needs_input["picks"] = result.needs_input
     elif result.gate_requests is not None:
@@ -169,7 +176,18 @@ def score(
 
 @mcp.tool(
     name="write_report",
-    description="Validate findings and write a self-contained evidence report.",
+    description=(
+        "Validate findings and write a self-contained evidence report. To "
+        "attach a repo-specific fix to an item of score's improvement_plan, "
+        "pass the same agent_input plus "
+        '"improvements": [{"dimension": ..., "metric_name": ..., '
+        '"suggestion": "..."}]; it is shown labelled agent beside the engine '
+        "fix. Naming an item not in the plan, or naming one twice, is a "
+        "validation error. To add your own short summary for the user, pass "
+        '"summary": "..." (one paragraph, at most 2000 characters) in '
+        "agent_input; it is shown labelled agent after the engine summary "
+        "that opens the report."
+    ),
     structured_output=True,
 )
 def render_report(

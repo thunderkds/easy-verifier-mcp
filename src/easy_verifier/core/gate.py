@@ -40,6 +40,7 @@ from .context import _is_secret_bearing, _resolved_repo, _walk
 from .judge import (
     BORDERLINE_BAND,
     COVERAGE_FLOORS,
+    EVIDENCE_LACK_REASONS,
     RATING_RULES,
     GatedRating,
     Rating,
@@ -246,16 +247,19 @@ def detect_evaluate_gates(
 ) -> dict[str, str]:
     """Dimension -> gate reason, in canonical order (FR-036, AC1).
 
-    ``abstained`` when the rules abstained; ``borderline: <metric>, ...``
+    ``abstained`` when the rules abstained ``no_static_rule`` (no rule is
+    declared, so only the agent can rate it); ``borderline: <metric>, ...``
     when any rule input's value lies within the declared band of its
     threshold. Every other dimension is absent: outside a gate the agent
     never changes a number. A ``documentation_only`` abstention is never
     gated: its areas are documentation present/missing, never scored (E3).
+    Nor is an abstention for missing evidence (:data:`EVIDENCE_LACK_REASONS`):
+    it is a warning, never an agent number (FR-059, DDR-0010).
     """
     gates: dict[str, str] = {}
     for item in ratings:
         if type(item) is RatingAbstention:
-            if item.reason_code != "documentation_only":
+            if item.reason_code == "no_static_rule":
                 gates[item.dimension] = "abstained"
         elif type(item) is Rating:
             near = [
@@ -318,6 +322,11 @@ def apply_gate_evaluations(
         for item in ratings
         if type(item) is RatingAbstention and item.reason_code == "documentation_only"
     }
+    evidence_lack = {
+        item.dimension: item.reason_code
+        for item in ratings
+        if type(item) is RatingAbstention and item.reason_code in EVIDENCE_LACK_REASONS
+    }
     accepted: dict[str, tuple[int | float, int | float, tuple[str, ...]]] = {}
     for name, entry in document.items():
         field = f"gate_evaluations.{redact(str(name))}"
@@ -329,6 +338,13 @@ def apply_gate_evaluations(
                 f"{field}: declares only documentation rules, which report "
                 "present or missing and are never scored, so no evaluation is "
                 "accepted for it"
+            )
+            continue
+        if name in evidence_lack:
+            errors.append(
+                f"{field}: the rules abstained {evidence_lack[name]} for missing "
+                "evidence; that is reported as a warning and is never "
+                "agent-rated, so no evaluation is accepted for it (DDR-0010)"
             )
             continue
         if name not in gates:

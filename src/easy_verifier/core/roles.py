@@ -32,6 +32,7 @@ from fnmatch import fnmatchcase
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
+from .batches import BatchInputError, parse_batches
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
 from .judge import DocumentationResult, DocumentationRule
@@ -335,6 +336,17 @@ def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
     return dict(sorted(result.items()))
 
 
+_AGENT_INPUT_KEYS = (
+    "picks",
+    "gate_evaluations",
+    "registry_entries",
+    "reviews",
+    "improvements",
+    "batches",
+    "summary",
+)
+
+
 def parse_agent_input(document: object) -> dict:
     """The agent-input document as a dict, from a parsed object or JSON text."""
     if isinstance(document, bytes | str):
@@ -356,22 +368,38 @@ def validate_agent_input(
     shape-checked here: whether each one is valid depends on this call's
     ratings and packs, so ``gate.apply_gate_evaluations`` validates it (T028).
     ``registry_entries`` and ``reviews`` (T038) are fully validated here and
-    applied by :func:`apply_registry_entries`.
+    applied by :func:`apply_registry_entries`. ``improvements`` (T066) is only
+    shape-checked too: its items are named against the report's own plan, so
+    ``improve.validate_improvements`` validates it in ``write_report``.
+    ``summary`` (T069) is shape-checked here and fully validated in
+    ``write_report``.
     """
     document = parse_agent_input(document)
 
     root = _resolved_repo(repo)
     errors: list[str] = []
     for key in document:
-        if key not in ("picks", "gate_evaluations", "registry_entries", "reviews"):
+        if key not in _AGENT_INPUT_KEYS:
             errors.append(
-                f"{redact(str(key))}: unknown key; only picks, "
-                "gate_evaluations, registry_entries and reviews are accepted"
+                f"{redact(str(key))}: unknown key; only picks, gate_evaluations, "
+                "registry_entries, reviews, improvements, batches and summary "
+                "are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
     )
     errors.extend(parse_reviews(document.get("reviews"))[1])
+    if not isinstance(document.get("improvements", []), list):
+        errors.append(
+            "improvements: must be a list of {dimension, metric_name, suggestion}"
+        )
+    if not isinstance(document.get("summary", ""), str):
+        errors.append("summary: must be a string")
+    if "batches" in document:
+        try:
+            parse_batches(document["batches"])
+        except BatchInputError as exc:
+            errors.extend(exc.errors)
     if not isinstance(document.get("gate_evaluations", {}), dict):
         errors.append(
             "gate_evaluations: must be an object mapping a dimension to an evaluation"

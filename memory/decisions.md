@@ -948,3 +948,20 @@ it clearly wins. No engine change either way.
 - **Option A, capped.** A new `RepoContext.peek_source` applies exactly the same refusals as `read_source` (secret-bearing per DDR-0002, outside the repo, symlinks) but records nothing, so `files_read` stays evidence-only. Critical Constraint 4a is read as "enforced in RepoContext". Security pre-screens generic source files for registry auth/session/cookie tokens and moves hits to the front of the generic tier. Evidence reads stay ≤ `MAX_SECURITY_SOURCES` (200, unchanged). The pre-screen is capped at 2000 files, with a warning when the cap is reached.
 - Rejected: B (pre-screen via `read_source` would inflate `files_read` about 6x and shift metrics on every repo); C (a second 4a enforcement site); D (type-only ordering fails the confirmed Expected items without raising the cap).
 - Root cause (T058 diagnosis): the 200-read cap hid bryony's index.js (rank 788 of 1532); the 40-excerpt pack was never truncated.
+
+---
+
+## 2026-10-03 — DDR-0009: improvement plan for the scored repo (user)
+
+**Decision**: `score` gains an `improvement_plan` (both adapters + report). Items = unmet rule inputs
+and abstained rule metrics; groups P0 near-miss (±`BORDERLINE_BAND`, threshold 0 never), P1 clear
+failure, P2 abstained; inside a group ordered by **recomputed** overall gain. P2 shows a [fail, pass]
+range (low may be negative). Gated dimensions: rules-part gain, labelled. Fix text: static engine
+line per rule metric + optional agent override via `write_report`, labelled engine/agent, redacted.
+FR-026 amended: ordering by recomputed gain is presentation. Tasks T065 (engine) → T066 (agent).
+
+**Why**: the user wants scored repos told what to change first. Rules are binary weighted thresholds,
+so the gain is exactly computable without inference; weight-share would be wrong under round-once.
+
+**Rejected**: gain = weight; agent-written plan (unreproducible numbers); report-only (agent cannot
+name items it never sees). Source: `BRAINSTORMING_LOG_improvement-plan.md`.

@@ -250,16 +250,20 @@ def test_excerpts_pass_through_redaction(tmp_path: Path) -> None:
     assert secret not in pack.excerpts[-1].text
 
 
-def test_above_the_cap_no_code_is_read_and_a_warning_says_so(
+def test_above_the_cap_batch_one_is_read_and_a_warning_says_so(
     repo: Path, monkeypatch
 ) -> None:
+    """T068 (DDR-0010) reverses the all-or-none cap: batch 1 is read."""
     monkeypatch.setattr(_code_extract, "MAX_CODE_SOURCES", 1)
 
     for module in (code_quality, architecture):
         pack = run_dimension(module.DESCRIPTOR, repo)
-        assert _code_refs(pack) == []
-        assert not any(p.startswith("src/") for p in pack.files_read)
-        assert any("exceed the cap of 1" in w for w in pack.warnings)
+        code = {e.path for e in pack.excerpts if e.path.startswith("src/")}
+        assert len(code) <= 1
+        assert pack.sample is not None and pack.sample.files_read == 1
+        assert any(
+            "exceed the cap of 1" in w and "batches 1 of" in w for w in pack.warnings
+        )
 
 
 def test_repo_with_docs_but_no_code_is_unchanged(tmp_path: Path, monkeypatch) -> None:

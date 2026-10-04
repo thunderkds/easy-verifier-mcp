@@ -41,12 +41,21 @@ from easy_verifier.core.assessment import (
     DivergenceAbsence,
 )
 from easy_verifier.core.context import RepoPathError, _resolved_repo
-from easy_verifier.core.findings import Finding, validate_findings
+from easy_verifier.core.findings import Finding, ValidationError, validate_findings
+from easy_verifier.core.improve import (
+    GROUPS,
+    ImprovementPlan,
+    validate_improvements,
+)
 from easy_verifier.core.judge import (
+    BORDERLINE_BAND,
+    PROJECT_DEFAULT,
+    RATING_RULES,
     GatedRating,
     OverallRating,
     Rating,
     RatingAbstention,
+    _measured_share,
 )
 from easy_verifier.core.models import (
     CombinedPack,
@@ -131,8 +140,29 @@ def write_report(
         if tuple(slot.dimension for slot in packs.slots) == dimension_names()
         else None
     )
+    # T066: agent suggestions name items of the plan this report renders --
+    # one plan, computed once -- and are rejected before anything is written.
+    plan = score.improvement_plan if score is not None else None
+    improvements = (
+        validate_improvements(document_input["improvements"], plan)
+        if "improvements" in document_input
+        else {}
+    )
+    # T069: the agent's summary paragraph, also rejected before any write.
+    agent_summary = (
+        _validate_agent_summary(document_input["summary"])
+        if "summary" in document_input
+        else None
+    )
     document = _render_document(
-        ctx, validated.by_dimension, packs, score, first_write=first_write
+        ctx,
+        validated.by_dimension,
+        packs,
+        score,
+        plan,
+        improvements,
+        agent_summary,
+        first_write=first_write,
     )
 
     written = _write_new_file(reports_dir, _filename(packs), document)
@@ -331,11 +361,18 @@ def _render_document(
     by_dimension: dict[str, tuple[Finding, ...]],
     packs: CombinedPack,
     score: ScoreResult | None,
+    plan: ImprovementPlan | None,
+    improvements: dict[tuple[str, str], str],
+    agent_summary: str | None = None,
     *,
     first_write: bool,
 ) -> str:
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     finding_count = sum(len(v) for v in by_dimension.values())
+    context_warnings = _context_warnings(packs)
+    nothing_rated = score is not None and all(
+        type(rating) is RatingAbstention for rating in score.ratings
+    )
 
     parts = [
         "<!DOCTYPE html>",
@@ -349,7 +386,20 @@ def _render_document(
         "<body>",
         _render_header(ctx, packs, generated, finding_count),
         _render_advisory(ctx, first_write=first_write),
-        _render_warnings(ctx, packs),
+        _render_summary(
+            ctx,
+            score,
+            plan,
+            agent_summary,
+            {s.dimension: s.pack.scope for s in packs.slots if s.pack is not None},
+            context_warning_count=len(context_warnings),
+        ),
+        _render_improvement_plan(
+            ctx, plan, improvements, nothing_rated=nothing_rated
+        )
+        if plan
+        else "",
+        _render_unknowns(ctx, context_warnings, score),
         _render_score_panel(ctx, score),
         _render_coverage(ctx, packs.coverage),
         _render_dimensions(ctx, by_dimension, packs),
@@ -383,6 +433,13 @@ def _render_header(
     )
 
 
+_ADVISORY_LINE = (
+    "This report quotes source code and file paths from this repository: "
+    "review it before sharing."
+)
+"""The share notice's one visible line (FR-065); the full notice is folded."""
+
+
 def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
     marker = (
         "This is the first report written into this repository's reports/ directory."
@@ -391,12 +448,338 @@ def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
     )
     return (
         '<section class="advisory"><h2>Before you share this report</h2>'
-        f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p>"
+        f"<details><summary>{ctx.esc(_ADVISORY_LINE)}</summary>"
+        f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p></details>"
         f'<p class="first-write">{ctx.esc(marker)}</p></section>'
     )
 
 
-def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
+MAX_AGENT_SUMMARY_CHARS = 2000
+"""Upper bound on the agent's summary paragraph, after surrounding whitespace
+is stripped (FR-064): a paragraph, not a second report."""
+
+SUMMARY_FOCUS_LIMIT = 3
+"""At most this many improvement-plan items open the report (FR-063)."""
+
+_METRIC_TEXT: dict[str, str] = {
+    # architecture
+    "architecture_description_missing": "no architecture description",
+    "decision_records_missing": "no decision records (ADRs)",
+    "top_level_import_cycles": "import cycles between top-level modules",
+    # requirement-fidelity
+    "acceptance_criteria_traced_to_code_share": (
+        "share of acceptance criteria traced to code"
+    ),
+    "acceptance_criteria_traced_to_test_share": (
+        "share of acceptance criteria traced to tests"
+    ),
+    "requirements_docs_count": "number of requirements documents",
+    "code_commits_with_docs_share": "share of code commits that also update docs",
+    # code-quality
+    "functions_over_ccn_10_share": "share of functions with complexity over 10",
+    "max_function_ccn": "highest function complexity",
+    "lint_config_missing": "no linter configuration",
+    "format_config_missing": "no formatter configuration",
+    "type_escapes_per_kloc": "type escapes per 1,000 lines",
+    "todo_without_ticket_share": "share of TODOs without a ticket",
+    "strict_type_config_missing": "type checker not in strict mode",
+    # security
+    "redaction_hits_observed": "secret-shaped values in the code",
+    "sink_hits_observed": "dangerous calls (eval, shell, string-built SQL)",
+    "lockfile_missing": "no dependency lockfile",
+    "cookie_flags_missing_observed": "cookies without Secure/HttpOnly/SameSite",
+    # test-strategy
+    "source_files_without_covering_test_share": (
+        "share of source files no test covers"
+    ),
+    "assertion_density_per_test": "assertions per test",
+    "test_config_and_ci_missing": "no test configuration and CI workflow",
+    "tests_without_assertions_share": "share of tests without assertions",
+    "skipped_test_share": "share of skipped tests",
+    "network_calls_in_unit_tests_observed": "real network calls in unit tests",
+    # blast-radius
+    "max_fan_in_changed": "most imports of one changed module (fan-in)",
+    "changed_files_in_churn_hotspots_share": (
+        "share of changed files in churn hotspots"
+    ),
+    "public_symbols_removed": "public symbols removed",
+    "destructive_migration_ops": "destructive migration operations",
+}
+"""One plain description per declared rule metric, for the summary (FR-063).
+Presentation only."""
+
+_SOURCE_TEXT: dict[str, str | None] = {
+    "readme": "README",
+    "architecture-doc": "architecture doc",
+    "decision-record": "decision records",
+    "requirements-doc": "requirements doc",
+    "spec-doc": "spec doc",
+    "task-breakdown": "task breakdown",
+    "contributing-guide": "contributing guide",
+    "lint-config": "linter config",
+    "format-config": "formatter config",
+    "package-manifest": "package manifest",
+    "lockfile": "lockfile",
+    "auth-code": "auth code",
+    "container-config": "container config",
+    "ci-workflow": "CI workflow",
+    "credential-file": "credential file",
+    "test-config": "test config",
+    "test-file": "test files",
+    # Derived evidence, not something the user adds: not named in the summary.
+    "git history (out of scope for v1)": None,
+    "source-to-test correspondence for files in the active scope": None,
+    "referencing files (textual reference search over repository code)": None,
+    "git co-change history (local `git log --name-only`)": None,
+    "repository change hotspots (local git history)": None,
+}
+"""Plain name per declared sought source (every dimension's
+``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks
+derived evidence the user cannot add. A missing source not declared here is
+counted, never quoted."""
+
+_NOT_RATED_TEXT = {
+    "no_static_rule": "rated only by the calling agent (MCP evaluate gate)",
+}
+"""Short text per non-evidence-lack abstention reason; others use the judge's
+own reason."""
+
+_CHANGES_ONLY = {
+    "blast-radius": (
+        "measured only on a change: run with --scope changes "
+        "(a commit, range or branch)"
+    ),
+}
+"""Dimensions whose rules read a change; at project scope the line says how
+to run them instead of listing what was not measured."""
+
+
+class SummaryValidationError(ValidationError):
+    """A rejected agent ``summary`` (FR-064). A :class:`ValidationError`, so
+    both adapters already report it as one; the text is never echoed."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__([])
+        self.args = (f"summary: {reason}",)
+
+
+def _validate_agent_summary(value: object) -> str:
+    """The agent's summary paragraph, stripped; fails closed (FR-064)."""
+    if not isinstance(value, str):
+        raise SummaryValidationError("must be a string")
+    text = value.strip()
+    if not text:
+        raise SummaryValidationError("must not be empty")
+    if len(text) > MAX_AGENT_SUMMARY_CHARS:
+        raise SummaryValidationError(
+            f"must be at most {MAX_AGENT_SUMMARY_CHARS} characters, got {len(text)}"
+        )
+    return text
+
+
+def _render_summary(
+    ctx: _Ctx,
+    score: ScoreResult | None,
+    plan: ImprovementPlan | None,
+    agent_summary: str | None,
+    scopes: dict[str, str],
+    *,
+    context_warning_count: int = 0,
+) -> str:
+    """FR-063/FR-064: the report's opening section. Templated sentences built
+    from the score only (FR-026); the agent's paragraph, when given, follows
+    it labelled ``agent`` and changes nothing above it."""
+    parts = ['<section class="summary"><h2>Summary</h2>']
+    if score is None or plan is None:
+        parts.append(
+            '<p class="summary-overall">No score in this report: it does not '
+            "cover every declared dimension.</p>"
+        )
+    else:
+        parts.append(_summary_overall(ctx, score))
+        parts.append(_summary_evidence(ctx, score, context_warning_count))
+        if type(score.overall) is OverallRating:
+            parts.append(_summary_focus(ctx, plan))
+        parts.append(_summary_missing(ctx, score.warnings, scopes))
+    if agent_summary is not None:
+        # Agent prose is a new egress path: redact, then escape (DDR-0001).
+        parts.append(
+            f'<p class="summary-agent">{ctx.agent_text(agent_summary)} '
+            '<span class="fix-source fix-source-agent">agent</span></p>'
+        )
+    parts.append("</section>")
+    return "".join(parts)
+
+
+def _summary_overall(ctx: _Ctx, score: ScoreResult) -> str:
+    samples = {item["dimension"]: item for item in score.samples}
+    warned = {warning["dimension"] for warning in score.warnings}
+    rated: list[str] = []
+    not_rated: list[str] = []
+    for rating in score.ratings:
+        if type(rating) is RatingAbstention:
+            if rating.dimension not in warned:
+                reason = _NOT_RATED_TEXT.get(rating.reason_code, rating.reason)
+                not_rated.append(f"{rating.dimension} — {reason}")
+            continue
+        label = f"{rating.dimension} {rating.value}"
+        if type(rating) is GatedRating:
+            label += (
+                " (agent-rated)"
+                if rating.is_agent_rated
+                else " (blended with an agent evaluation)"
+            )
+        sample = samples.get(rating.dimension)
+        if sample is not None:
+            label += (
+                f" (sample: {sample['files_read']:,} of "
+                f"{sample['files_in_scope']:,} files)"
+            )
+        rated.append(label)
+    total = len(score.ratings)
+    if type(score.overall) is OverallRating:
+        head = (
+            f"Overall <strong>{ctx.esc(score.overall.value)}/100</strong> — "
+            f"{len(rated)} of {total} dimensions rated: {ctx.esc(', '.join(rated))}."
+        )
+    else:
+        head = f"Overall: no number — none of the {total} dimensions could be rated."
+    css = (
+        "summary-overall"
+        if type(score.overall) is OverallRating
+        else "summary-overall notice notice-abstain"
+    )
+    line = f'<p class="{css}">{head}</p>'
+    if not_rated:
+        line += f"<p>Not rated: {ctx.esc('; '.join(not_rated))}.</p>"
+    return line
+
+
+def _summary_evidence(
+    ctx: _Ctx, score: ScoreResult, context_warning_count: int
+) -> str:
+    """FR-065: how much evidence stands behind the numbers, as counts only --
+    rated dimensions, the lowest measured rule-weight share among rated and
+    insufficient-weight dimensions (when any is known), and warnings."""
+    rated = sum(type(rating) is not RatingAbstention for rating in score.ratings)
+    shares = []
+    for rating in score.ratings:
+        rules = rating.rules if type(rating) is GatedRating else rating
+        if type(rules) is Rating and RATING_RULES[rules.dimension]:
+            share = _measured_share(rules.dimension, rules.unavailable_metrics)
+        else:
+            share = rules.measured_share
+        if share is not None:
+            shares.append((share, rules.dimension))
+    parts = [f"{rated} of {len(score.ratings)} dimensions rated"]
+    if shares:
+        share, dimension = min(shares, key=lambda pair: pair[0])
+        parts.append(f"lowest measured rule weight {share * 100:.0f}% ({dimension})")
+    warnings = len(score.warnings) + context_warning_count
+    parts.append(
+        f"{warnings} warning{'s' if warnings != 1 else ''} — see What we "
+        "couldn't measure"
+        if warnings
+        else "no warnings"
+    )
+    text = "Evidence: " + "; ".join(parts) + "."
+    return f'<p class="summary-evidence">{ctx.esc(text)}</p>'
+
+
+def _summary_focus(ctx: _Ctx, plan: ImprovementPlan) -> str:
+    focus = [item for item in plan.items if item.group in ("P0", "P1")]
+    if not focus:
+        unmeasured = len(plan.items)
+        if not unmeasured:
+            return '<p class="no-gaps">No gaps: every measured rule is met.</p>'
+        return (
+            f"<p>No measured rule fails; {unmeasured} "
+            f"rule{'s' if unmeasured != 1 else ''} could not be measured — see "
+            "the improvement plan.</p>"
+        )
+    rows = "".join(
+        _summary_focus_item(ctx, item) for item in focus[:SUMMARY_FOCUS_LIMIT]
+    )
+    return f'<h3>Focus on these first</h3><ol class="summary-focus">{rows}</ol>'
+
+
+def _summary_focus_item(ctx: _Ctx, item) -> str:
+    rule = RATING_RULES[item.dimension][item.metric_name]
+    worth = (
+        f"{item.overall_gain:+d} overall ({item.dimension} {item.dimension_gain:+d}"
+        f"{', rules part' if item.gain_basis == 'rules' else ''})"
+    )
+    standard = _render_citation(ctx, rule.metric_citation[0])
+    if (
+        rule.threshold_citation != PROJECT_DEFAULT
+        and rule.threshold_citation not in rule.metric_citation
+    ):
+        standard += f"; threshold: {_render_citation(ctx, rule.threshold_citation)}"
+    return (
+        f"<li><strong>{ctx.esc(item.dimension)}</strong>: "
+        f"{ctx.esc(_METRIC_TEXT[item.metric_name])} — now "
+        f"{ctx.esc(_number(item.metric_value))}, rule "
+        f"{ctx.esc(item.comparison.replace('_', ' '))} "
+        f"{ctx.esc(_number(item.threshold))}; worth {ctx.esc(worth)}. "
+        f"Standard: {standard}</li>"
+    )
+
+
+def _summary_missing(
+    ctx: _Ctx, warnings: list[dict[str, Any]], scopes: dict[str, str]
+) -> str:
+    if not warnings:
+        return ""
+    lines = []
+    for warning in warnings:
+        dimension = warning["dimension"]
+        if dimension in _CHANGES_ONLY and scopes.get(dimension) == "project":
+            text = _CHANGES_ONLY[dimension]
+        else:
+            text = _missing_text(warning)
+        lines.append(
+            f"<li><strong>{ctx.esc(dimension)}</strong>: {ctx.esc(text)}</li>"
+        )
+    return (
+        "<h3>Could not evaluate — add what each needs</h3>"
+        f'<ul class="summary-missing">{"".join(lines)}</ul>'
+    )
+
+
+def _missing_text(warning: dict[str, Any]) -> str:
+    """Plain names of missing declared sources, then counts; never a raw
+    source string or reason."""
+    sources = [miss["source"] for miss in warning["sources_missing"]]
+    names = [_SOURCE_TEXT[s] for s in sources if _SOURCE_TEXT.get(s)]
+    other = sum(1 for s in sources if s not in _SOURCE_TEXT)
+    details = []
+    if names:
+        details.append(
+            "no "
+            + (
+                names[0]
+                if len(names) == 1
+                else f"{', '.join(names[:-1])} or {names[-1]}"
+            )
+        )
+    if other:
+        details.append(f"{other} other source{'s' if other != 1 else ''} not found")
+    unmeasured = len(warning["unmeasured_rules"])
+    if unmeasured:
+        details.append(
+            f"{unmeasured} rule{'s' if unmeasured != 1 else ''} not measured"
+        )
+    return "; ".join(details) or warning["message"].removeprefix(
+        "no number given — "
+    )
+
+
+def _number(value: float | int) -> str:
+    return f"{round(value, 2):g}" if isinstance(value, float) else str(value)
+
+
+def _context_warnings(packs: CombinedPack) -> list[str]:
+    """Every pack's context warnings, first occurrence kept, in slot order."""
     warnings: list[str] = []
     for slot in packs.slots:
         if slot.pack is None:
@@ -404,13 +787,56 @@ def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
         for warning in slot.pack.warnings:
             if warning not in warnings:
                 warnings.append(warning)
-    if not warnings:
+    return warnings
+
+
+def _render_unknowns(
+    ctx: _Ctx, context_warnings: list[str], score: ScoreResult | None
+) -> str:
+    """FR-065: context warnings and FR-059 evidence-lack warnings in one
+    section, one summary line per item, the full text folded below it."""
+    evidence = score.warnings if score is not None else []
+    if not context_warnings and not evidence:
         return ""
-    items = "".join(f"<li>{ctx.esc(w)}</li>" for w in warnings)
-    return (
-        '<section class="warning-banner"><h2>Context warnings</h2>'
-        f"<ul>{items}</ul></section>"
+    items = [
+        f'<li class="unknown"><details><summary>{ctx.esc(_first_sentence(w))}'
+        f"</summary><p>{ctx.esc(w)}</p></details></li>"
+        for w in context_warnings
+    ]
+    for warning in evidence:
+        rows = [
+            f"<li><code>{ctx.esc(rule['metric_name'])}</code> — "
+            f"{ctx.esc(rule['reason'])}</li>"
+            for rule in warning["unmeasured_rules"]
+        ] + [
+            f"<li><code>{ctx.esc(miss['source'])}</code> — "
+            f"{ctx.esc(miss['reason'])}</li>"
+            for miss in warning["sources_missing"]
+        ]
+        listed = f'<ul class="miss-list">{"".join(rows)}</ul>' if rows else ""
+        items.append(
+            '<li class="unknown"><details><summary>'
+            f"<strong>{ctx.esc(warning['dimension'])}</strong> "
+            f"({ctx.esc(warning['reason_code'])}): no number given</summary>"
+            f"<p>{ctx.esc(warning['message'])}</p>{listed}</details></li>"
+        )
+    method = (
+        '<p class="method">These dimensions lacked the evidence for a rating. '
+        "Neither the rules nor the calling agent fills that in; each is "
+        "excluded from the overall and listed in the improvement plan.</p>"
+        if evidence
+        else ""
     )
+    return (
+        '<section class="warning-banner unknowns">'
+        "<h2>What we couldn't measure</h2>"
+        f'{method}<ul class="unknown-list">{"".join(items)}</ul></section>'
+    )
+
+
+def _first_sentence(text: str) -> str:
+    head, separator, _rest = text.partition(". ")
+    return head + "." if separator else text
 
 
 def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
@@ -450,12 +876,14 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         if score.comparisons is not None
         else {}
     )
+    samples = {item["dimension"]: item for item in score.samples}
     cards = "".join(
         _render_score_card(
             ctx,
             rating,
             assessments.get(rating.dimension),
             divergences.get(rating.dimension),
+            samples.get(rating.dimension),
         )
         for rating in score.ratings
     )
@@ -469,6 +897,162 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         f'{overall_html}<div class="score-grid">{cards}</div>'
         f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
     )
+
+
+_GROUP_TITLES = {
+    "P0": "P0 — near miss: unmet, within ±{band}% of the threshold",
+    "P1": "P1 — clear failure",
+    "P2": "P2 — not measurable yet: the metric abstained",
+}
+
+
+def _render_improvement_plan(
+    ctx: _Ctx,
+    plan: ImprovementPlan,
+    improvements: dict[tuple[str, str], str] | None = None,
+    *,
+    nothing_rated: bool = False,
+) -> str:
+    """FR-055/FR-056: every gap, P0 then P1 then P2, each with its
+    recomputed gain and the engine's fix line, labelled as such (FR-057);
+    a validated agent suggestion for an item is shown above its engine line,
+    labelled ``agent``. FR-065: one card per item; the first P0/P1 items the
+    summary names are highlighted; P2 is folded."""
+    improvements = improvements or {}
+    data = plan.to_dict()
+    band = format((BORDERLINE_BAND * 100).normalize(), "f")
+    parts = [
+        '<section class="improvement-plan"><h2>Improvement plan</h2>',
+        f'<p class="method">{ctx.esc(data["method"])}</p>',
+    ]
+    if not plan.items:
+        parts.append(
+            '<p class="notice notice-abstain">No number for any dimension: none '
+            "could be rated, so there is no measured gap to rank. What each "
+            "dimension lacks is listed below.</p>"
+            if nothing_rated
+            else '<p class="notice no-gaps">No gaps: every measured rule is met '
+            "and no rule metric of a rated dimension is unmeasured.</p>"
+        )
+    highlighted = 0
+    for group in GROUPS:
+        items = data["groups"][group]
+        title = f"<h3>{ctx.esc(_GROUP_TITLES[group].format(band=band))}</h3>"
+        if not items:
+            parts.append(f'{title}<p class="empty">None.</p>')
+            continue
+        cards = []
+        for item in items:
+            top = group != "P2" and highlighted < SUMMARY_FOCUS_LIMIT
+            highlighted += top
+            cards.append(
+                _render_plan_item(
+                    ctx,
+                    item,
+                    improvements.get((item["dimension"], item["metric_name"])),
+                    top=top,
+                )
+            )
+        body = f'<div class="plan-cards">{"".join(cards)}</div>'
+        if group == "P2":
+            parts.append(
+                f'<details class="plan-group"><summary>{title}</summary>'
+                f"{body}</details>"
+            )
+        else:
+            parts.append(title + body)
+    if data["abstained"]:
+        lines = "".join(
+            f"<li><strong>{ctx.esc(line['dimension'])}</strong> — "
+            f"{ctx.esc(line['reason_code'])}: {ctx.esc(line['reason'])}"
+            f"{_render_unmeasured(ctx, line.get('unmeasured', ()))}</li>"
+            for line in data["abstained"]
+        )
+        parts.append(
+            "<h3>Dimensions without a rules rating</h3>"
+            f'<ul class="miss-list">{lines}</ul>'
+        )
+    parts.append("</section>")
+    return "".join(parts)
+
+
+def _render_unmeasured(ctx: _Ctx, unmeasured) -> str:
+    """FR-059: what the repository lacks for an abstained dimension."""
+    if not unmeasured:
+        return ""
+    rows = "".join(
+        f"<li><code>{ctx.esc(rule['metric_name'])}</code> — "
+        f"{ctx.esc(rule['reason'])}. Engine fix: {ctx.esc(rule['fix'])}</li>"
+        for rule in unmeasured
+    )
+    return f"<ul>{rows}</ul>"
+
+
+def _render_plan_item(
+    ctx: _Ctx, item: dict[str, Any], suggestion: str | None = None, *, top=False
+) -> str:
+    now = (
+        "not measured"
+        if item["metric_value"] is None
+        else f"{item['metric_value']}"
+    )
+    gain = (
+        f"{_signed(item['overall_gain'])} overall / "
+        f"{_signed(item['dimension_gain'])} {item['dimension']}"
+    )
+    note = (
+        '<p class="method">(rules part; the final rating also depends on the '
+        "gate)</p>"
+        if item["gain_basis"] == "rules"
+        else ""
+    )
+    if item["computed_from"]:
+        evidence = "".join(
+            f"<li><code>{_render_ref(ctx, ref)}</code></li>"
+            for ref in item["computed_from"]
+        )
+        count = len(item["computed_from"])
+        evidence = (
+            f"<details><summary>{count} cited file{'s' if count != 1 else ''}"
+            f"</summary><ul>{evidence}</ul></details>"
+        )
+    elif item["unavailable_reason"]:
+        evidence = (
+            "<details><summary>Why not measured</summary>"
+            f"<p>{ctx.esc(item['unavailable_reason'])}</p></details>"
+        )
+    else:
+        evidence = '<p class="empty">no file cited</p>'
+    engine = (
+        f"{ctx.esc(item['fix']['text'])} "
+        f'<span class="fix-source">{ctx.esc(item["fix"]["source"])}</span>'
+    )
+    if suggestion is not None:
+        # Agent prose is a new egress path: redact, then escape (DDR-0001).
+        fix = (
+            f'<p class="suggestion">{ctx.agent_text(suggestion)} '
+            '<span class="fix-source fix-source-agent">agent</span></p>'
+            f'<p class="fix-engine">{engine}</p>'
+        )
+    else:
+        fix = f'<p class="fix">{engine}</p>'
+    css = f"plan-card plan-{item['group']}" + (" plan-top" if top else "")
+    return (
+        f'<article class="{ctx.esc(css)}">'
+        f'<p class="plan-head"><strong>{ctx.esc(item["dimension"])} · '
+        f'{ctx.esc(item["area"])}</strong> '
+        f'<span class="plan-gain">Gain {ctx.esc(gain)}</span></p>'
+        f'<p class="plan-now">Metric <code>{ctx.esc(item["metric_name"])}</code> — '
+        f"Now → rule: {ctx.esc(now)}; {ctx.esc(item['comparison'])} "
+        f"{ctx.esc(item['threshold'])}; weight {ctx.esc(item['weight'])}</p>"
+        f"{note}{fix}{evidence}</article>"
+    )
+
+
+def _signed(value: int | list[int]) -> str:
+    if isinstance(value, list):
+        return f"{value[0]:+d} to {value[1]:+d}"
+    return f"{value:+d}"
 
 
 def _render_registry_entries(ctx: _Ctx, entries) -> str:
@@ -512,9 +1096,12 @@ def _render_score_card(
     rating: Rating | RatingAbstention | GatedRating,
     assessment: Assessment | AssessmentAbsence | None,
     divergence: Divergence | DivergenceAbsence | None,
+    sample: dict[str, Any] | None = None,
 ) -> str:
     gated = ""
+    row = ""
     if type(rating) is GatedRating:
+        row = f"{rating.parts}; "
         # FR-038: the number never appears without its parts; the rules
         # result (rating or abstention record) is rendered in full below it.
         refs = "".join(
@@ -541,6 +1128,11 @@ def _render_score_card(
             if unavailable
             else ""
         )
+        met = sum(item.passed for item in rating.inputs)
+        row += (
+            f"{rating.value}/100 · rules met {met}/"
+            f"{len(RATING_RULES[rating.dimension])}"
+        )
         rating_html = (
             f'<p class="rating-value">{label} {ctx.esc(rating.value)}/100</p>'
             f'<p class="rating-method">{ctx.esc(rating.method)}</p>'
@@ -565,6 +1157,7 @@ def _render_score_card(
             if rating.failure
             else ""
         )
+        row += f"no number — {rating.reason_code}"
         rating_html = (
             f'<p class="rating-withheld">{label} withheld</p>'
             f"<p>{ctx.esc(rating.reason_code)} — {ctx.esc(rating.reason)}</p>"
@@ -575,8 +1168,24 @@ def _render_score_card(
 
     return (
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
+        f'<p class="score-row">{ctx.esc(row)}</p>'
+        f"{_render_sample(ctx, sample)}"
+        "<details><summary>Rule inputs, citations and cited files</summary>"
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
-        f"{_render_divergence(ctx, divergence)}</article>"
+        f"{_render_divergence(ctx, divergence)}</details></article>"
+    )
+
+
+def _render_sample(ctx: _Ctx, sample: dict[str, Any] | None) -> str:
+    """T068: a sampled dimension says so beside its number (FR-060)."""
+    if sample is None:
+        return ""
+    return (
+        '<p class="rating-method">Sample: batches '
+        f"{ctx.esc(sample['batches_done'])} of {ctx.esc(sample['batches_total'])} — "
+        f"{ctx.esc(format(sample['files_read'], ','))} of "
+        f"{ctx.esc(format(sample['files_in_scope'], ','))} in-scope source files "
+        f"read, ordered by {ctx.esc(sample['order'])}</p>"
     )
 
 
@@ -702,12 +1311,21 @@ def _render_coverage(ctx: _Ctx, coverage: CoverageSummary) -> str:
     combined = _coverage_entry(
         ctx, "All dimensions (combined)", coverage.combined, combined_misses
     )
+    # Counts only: a coverage score never appears without its miss list
+    # (FR-016a), so the folded entries below are the only place it is shown.
+    missing = len(combined_misses)
+    count = len(entries)
+    summary = (
+        f"{count} dimension{'s' if count != 1 else ''}; {missing} "
+        f"source{'s' if missing != 1 else ''} missing"
+    )
     return (
         '<section class="coverage"><h2>Checklist coverage</h2>'
+        f"<details><summary>{ctx.esc(summary)}</summary>"
         f'<p class="method">Method: {ctx.esc(coverage.method)}. A coverage score '
         "describes how much of this engine's own source checklist it reached — "
         "never the quality of the repository.</p>"
-        f"{combined}{''.join(entries)}</section>"
+        f"{combined}{''.join(entries)}</details></section>"
     )
 
 
@@ -797,9 +1415,28 @@ def _render_dimensions(
         for slot in packs.slots
     ]
     if not sections:
-        sections = ['<p class="empty">No dimensions were submitted.</p>']
+        return (
+            '<section class="dimensions"><h2>Dimensions</h2>'
+            '<p class="empty">No dimensions were submitted.</p></section>'
+        )
+    findings = sum(len(v) for v in by_dimension.values())
+    files = len(
+        {
+            path
+            for slot in packs.slots
+            if slot.pack is not None
+            for path in slot.pack.files_read
+        }
+    )
+    summary = (
+        f"{len(sections)} dimension{'s' if len(sections) != 1 else ''}; "
+        f"{findings} finding{'s' if findings != 1 else ''}; "
+        f"{files} file{'s' if files != 1 else ''} read"
+    )
     return (
-        f'<section class="dimensions"><h2>Dimensions</h2>{"".join(sections)}</section>'
+        '<section class="dimensions"><h2>Dimensions</h2>'
+        f"<details><summary>{ctx.esc(summary)}</summary>{''.join(sections)}"
+        "</details></section>"
     )
 
 
@@ -989,6 +1626,47 @@ section, article { background: #111128; border: 1px solid #1e1e42;
   padding: .6rem .8rem; overflow-x: auto; white-space: pre-wrap;
   word-break: break-word; font-size: .8rem; }
 .dimension-error .error { color: #ff3b6b; }
+.fix-source { display: inline-block; padding: .05rem .45rem; border-radius: 999px;
+  font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  background: rgba(168,85,247,.15); color: #c084fc; }
+.fix-source-agent { background: rgba(255,184,0,.15); color: #ffb800; }
+summary { cursor: pointer; }
+section, article, li, dd { min-width: 0; overflow-wrap: break-word; }
+.plan-cards { display: grid; gap: .6rem; margin-bottom: .75rem; }
+.plan-card { margin: 0; padding: .6rem .8rem; font-size: .85rem;
+  background: #16162e; }
+.plan-P0 { border-left: 3px solid #ffb800; }
+.plan-P1 { border-left: 3px solid #ff3b6b; }
+.plan-top { box-shadow: inset 0 0 0 1px #00d4ff; }
+.plan-card p { margin: .2rem 0; }
+.plan-card ul { margin: 0; padding-left: 1rem; }
+.plan-gain { display: inline-block; padding: .05rem .45rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: rgba(0,212,255,.12); color: #00d4ff; }
+.plan-card .suggestion { margin: 0 0 .35rem; font-size: inherit; }
+.plan-card .fix-engine { margin: 0; color: #9a9ac0; }
+.plan-group > summary h3 { display: inline; }
+.unknown-list { padding-left: 1.1rem; }
+.unknown { margin-bottom: .35rem; overflow-wrap: anywhere; }
+.unknown p { margin: .25rem 0; font-size: .9rem; }
+.score-row { font-weight: 700; font-variant-numeric: tabular-nums;
+  color: #00ff88; margin: .2rem 0; }
+.rating-abstention .score-row { color: #ffb800; }
+.score-card details, .coverage details, .dimensions details { font-size: .9rem; }
+pre { overflow-x: auto; }
+.notice { border-left: 3px solid #00ff88; background: #16162e;
+  border-radius: 6px; padding: .5rem .75rem; margin: .5rem 0; }
+.notice-abstain { border-left-color: #ffb800; background: rgba(255,184,0,.08);
+  color: #ffb800; font-weight: 700; }
+.no-gaps { color: #00ff88; font-weight: 700; }
+.summary { border-left: 3px solid #00d4ff; }
+.summary h3 { margin-top: .75rem; }
+.summary-focus, .summary-missing { margin: .25rem 0 0; padding-left: 1.2rem;
+  font-size: .9rem; }
+.summary-focus li, .summary-missing li { margin-bottom: .35rem;
+  overflow-wrap: break-word; }
+.summary-agent { border-left: 2px solid #ffb800; padding-left: .6rem;
+  margin: .75rem 0 0; overflow-wrap: break-word; }
 .footer { border: none; background: none; color: #6b6b9a; font-size: .8rem;
   text-align: center; }
 """

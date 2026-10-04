@@ -491,6 +491,12 @@ DOCUMENTATION_RULES: dict[str, tuple[DocumentationRule, ...]] = {}
 # Tuning the band is a value change here, never a code change (FR-028).
 BORDERLINE_BAND = Decimal("0.10")
 
+# Measured-weight floor (FR-058, DDR-0010, user 50%): a dimension is rated only
+# when the declared weight of its measured rule inputs is at least this share
+# of its declared rule weight (inclusive); below it the rating abstains
+# ``insufficient_measured_weight``. Tuning it is a value change here.
+MEASURED_WEIGHT_FLOOR = Decimal("0.50")
+
 # Capped blend (FR-038): w = AGENT_WEIGHT_CAP x confidence, so a gate
 # evaluation can move a rules rating at most half of the gap.
 AGENT_WEIGHT_CAP = Decimal("0.5")
@@ -514,7 +520,23 @@ _ABSTENTION_REASONS = {
         "this dimension declares only documentation rules, which report "
         "present or missing and never produce a number"
     ),
+    "insufficient_measured_weight": (
+        "less than the declared floor of this dimension's rule weight was "
+        "measured, so no number is given"
+    ),
 }
+
+EVIDENCE_LACK_REASONS = frozenset(
+    {
+        "insufficient_measured_weight",
+        "below_coverage_floor",
+        "coverage_not_applicable",
+        "all_metrics_abstained",
+        "dimension_failed",
+    }
+)
+"""Abstentions caused by missing evidence (FR-059, DDR-0010): reported as a
+warning and never gated or agent-rated. Only ``no_static_rule`` is."""
 
 _RATING_METHOD = (
     "round once to the nearest integer using Python round (ties to even): "
@@ -642,7 +664,16 @@ class RatingAbstention:
     def reason(self) -> str:
         return _ABSTENTION_REASONS[self.reason_code]
 
+    @property
+    def measured_share(self) -> Decimal | None:
+        """Measured / declared rule weight, for ``insufficient_measured_weight``
+        only; derived from ``unavailable_metrics`` so it cannot disagree."""
+        if self.reason_code != "insufficient_measured_weight":
+            return None
+        return _measured_share(self.dimension, self.unavailable_metrics)
+
     def to_dict(self) -> dict:
+        share = self.measured_share
         return {
             "kind": "rating_abstention",
             "dimension": self.dimension,
@@ -658,10 +689,27 @@ class RatingAbstention:
             "unavailable_metrics": [list(item) for item in self.unavailable_metrics],
             "abstentions": [item.to_dict() for item in self.abstentions],
             **_documentation_dict(self.documentation),
+            **(
+                {
+                    "measured_share": _decimal_text(share),
+                    "measured_weight_floor": _decimal_text(MEASURED_WEIGHT_FLOOR),
+                }
+                if share is not None
+                else {}
+            ),
         }
 
     def serialize(self) -> str:
         return _serialize(self.to_dict())
+
+
+def _measured_share(
+    dimension: str, unavailable: tuple[tuple[str, str], ...]
+) -> Decimal:
+    rules = RATING_RULES[dimension]
+    declared = sum(rule.weight for rule in rules.values())
+    missing = sum(rules[name].weight for name, _reason in unavailable)
+    return Decimal(declared - missing) / Decimal(declared)
 
 
 def _documentation_dict(results: tuple[DocumentationResult, ...]) -> dict:
@@ -948,15 +996,37 @@ def rate(
             documentation=documentation,
         )
 
+    if _measured_share(dimension, tuple(unavailable)) < MEASURED_WEIGHT_FLOOR:
+        return RatingAbstention(
+            dimension=dimension,
+            reason_code="insufficient_measured_weight",
+            coverage_floor=floor.value,
+            achieved_coverage=achieved,
+            sources_missing=misses,
+            unavailable_metrics=tuple(unavailable),
+            documentation=documentation,
+        )
+
     earned = sum(item.earned_weight for item in inputs)
     available = sum(item.weight for item in inputs)
     return Rating(
         dimension=dimension,
-        value=round(100 * earned / available),
+        value=rating_value(earned, available),
         inputs=tuple(inputs),
         unavailable_metrics=tuple(unavailable),
         documentation=documentation,
     )
+
+
+def rating_value(earned: int, available: int) -> int:
+    """The one form of ``_RATING_METHOD``'s arithmetic, shared with the
+    improvement plan (T065) so a recomputed gain cannot drift from it."""
+    return round(100 * earned / available)
+
+
+def overall_value(values: Sequence[int]) -> int:
+    """The one form of ``_OVERALL_RATING_METHOD``'s arithmetic."""
+    return round(sum(values) / len(values))
 
 
 def within_band(value: float | int, threshold: float | int) -> bool:
@@ -1007,6 +1077,12 @@ def _validate_gated_rating(value: GatedRating) -> None:
             raise ValueError(
                 "a gated rating cannot wrap a documentation_only abstention: "
                 "documentation rules are never scored"
+            )
+        if value.rules.reason_code in EVIDENCE_LACK_REASONS:
+            raise ValueError(
+                "a gated rating cannot wrap a "
+                f"{value.rules.reason_code} abstention: missing evidence is a "
+                "warning, never agent-rated (DDR-0010)"
             )
     else:
         raise ValueError("gated rating rules must be a Rating or RatingAbstention")
@@ -1081,7 +1157,7 @@ def rate_overall(
         )
 
     return OverallRating(
-        value=round(sum(item.value for item in contributors) / len(contributors)),
+        value=overall_value([item.value for item in contributors]),
         contributor_count=len(contributors),
         total_dimension_count=len(expected),
         contributors=tuple(item.dimension for item in contributors),
@@ -1340,6 +1416,24 @@ def _validate_abstention(value: RatingAbstention) -> None:
                 "all unavailable metrics, with no failure or nested abstentions"
             )
         _validate_miss_coverage_coherence(value)
+    elif value.reason_code == "insufficient_measured_weight":
+        if (
+            value.coverage_floor is None
+            or value.achieved_coverage is None
+            or value.achieved_coverage < value.coverage_floor
+            or not unavailable_names
+            or unavailable_names == tuple(RATING_RULES[value.dimension])
+            or _measured_share(value.dimension, value.unavailable_metrics)
+            >= MEASURED_WEIGHT_FLOOR
+            or value.failure is not None
+            or value.abstentions
+        ):
+            raise ValueError(
+                "insufficient_measured_weight requires coverage provenance, some "
+                "but not all rules unavailable with a measured share below "
+                f"{MEASURED_WEIGHT_FLOOR}, and no failure or nested abstentions"
+            )
+        _validate_miss_coverage_coherence(value)
     elif value.reason_code in ("no_static_rule", "documentation_only"):
         # Two causes, two codes: which one is decided by the declared data.
         documented = bool(DOCUMENTATION_RULES.get(value.dimension))
@@ -1576,10 +1670,18 @@ def _validate_rating(value: Rating) -> None:
             "rating inputs and unavailable metrics must partition all rules"
         )
 
-    expected = round(
-        100
-        * sum(item.earned_weight for item in value.inputs)
-        / sum(item.weight for item in value.inputs)
+    if _measured_share(value.dimension, value.unavailable_metrics) < (
+        MEASURED_WEIGHT_FLOOR
+    ):
+        raise ValueError(
+            f"rating for {value.dimension!r} measured less than "
+            f"{MEASURED_WEIGHT_FLOOR} of its declared rule weight; it must "
+            "abstain insufficient_measured_weight (FR-058)"
+        )
+
+    expected = rating_value(
+        sum(item.earned_weight for item in value.inputs),
+        sum(item.weight for item in value.inputs),
     )
     if value.value != expected:
         raise ValueError(
@@ -1654,10 +1756,7 @@ def _validate_overall_rating(value: OverallRating) -> None:
     )
     if abstained_names != expected_abstention_order:
         raise ValueError("overall abstentions are not in canonical dimension order")
-    expected = round(
-        sum(rating for _name, rating in value.contributor_values)
-        / len(value.contributor_values)
-    )
+    expected = overall_value([rating for _name, rating in value.contributor_values])
     if value.value != expected:
         raise ValueError(
             f"overall value {value.value} does not match contributor "
