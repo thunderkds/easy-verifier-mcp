@@ -131,7 +131,7 @@ The convention fields (T073, DDR-0011, FR-068) are read by
   fix the method;
 * the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
   and local layer, never a language) holds the language-agnostic
-  :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data>=<glob>"``),
+  :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data|shared>=<glob>"``),
   ``requirement_item_patterns`` (``"id=<token>"`` anywhere or ``"line=<token>"``
   at a line start) and ``issue_reference_patterns`` (tokens), plus optional
   repository-wide ``route_tokens``. A repository's ``.easy-verifier.toml``
@@ -310,7 +310,9 @@ CONVENTION_FIELDS = (
 language (a repository's own framework); per language it is an
 :data:`ENTRY_FIELDS` field."""
 
-LAYERS = ("api", "service", "data")
+LAYERS = ("api", "service", "data", "shared")
+"""``shared`` is cross-cutting (T074): never part of a layer-direction
+violation and left out of the classified share."""
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
 REQUIREMENT_ITEM_KINDS = ("id", "line")
 

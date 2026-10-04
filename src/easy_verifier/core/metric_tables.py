@@ -111,7 +111,7 @@ def metric_tables(
             )
 
     assertions = _union(entries, "assertions")
-    return LanguageTables(
+    tables = LanguageTables(
         source_suffixes=frozenset(suffixes),
         test_name_patterns=tuple(
             re.compile(translate(glob))
@@ -154,6 +154,14 @@ def metric_tables(
         type_strict=type_tokens["type_strict"],
         type_strict_off=type_tokens["type_strict_off"],
         type_config_extends=type_tokens["type_config_extends"],
+    )
+    # The curated layer_paths (T074); structure imports this module, hence
+    # the late import. Local / .easy-verifier.toml layer paths are not bound
+    # here until conventions are embedded for replay (FR-048).
+    from .structure import layer_of
+
+    return dataclasses.replace(
+        tables, layer_of=lambda path: layer_of(path, tables=tables)
     )
 
 
@@ -254,7 +262,11 @@ _TEST_MATCH = (
 )
 _ASSERTIONS = ("assertion_density_per_test", "assertions_observed")
 _CCN = ("functions_over_ccn_10_share", "max_function_ccn")
-_IMPORTS = ("top_level_import_cycles", "max_fan_in_changed")
+_IMPORTS = (
+    "top_level_import_cycles",
+    "layer_direction_violations",
+    "max_fan_in_changed",
+)
 _AC_TRACE = (
     "acceptance_criteria_traced_to_code_share",
     "acceptance_criteria_traced_to_test_share",

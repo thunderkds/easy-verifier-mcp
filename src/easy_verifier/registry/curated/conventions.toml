@@ -4,8 +4,10 @@
 # conventions.toml or .easy-verifier.toml [conventions]; nothing here is the
 # only accepted form.
 #
-# layer_paths: "<api|service|data>=<repository glob>"; a file matching two
-# layers stays unclassified. requirement_item_patterns: "id=<token>" matches
+# layer_paths: "<api|service|data|shared>=<repository glob>"; a file matching
+# two layers stays unclassified. "shared" marks cross-cutting files (modules,
+# config, utils, constants, enums, types): they are left out of the layer
+# rule's classified share and never take part in a violation (T074). requirement_item_patterns: "id=<token>" matches
 # an identifier anywhere, "line=<token>" a line start (the item is the rest of
 # the line). Tokens use the registry token syntax (core/registry.py).
 
@@ -44,6 +46,26 @@ source_tag = "curated"
 [[layer_paths]]
 value = ["data=**/models/**", "data=**/models.py", "data=**/entities/**", "data=**/*.entity.*"]
 citation_url = "https://docs.djangoproject.com/en/5.1/topics/db/models/"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["api=**/*.dto.*", "api=**/*.schema.*", "api=**/*.guard.*", "api=**/*.middleware.*", "api=**/middlewares/**", "api=**/*.filter.*", "api=**/*.interceptor.*", "api=**/*.decorator.*"]
+citation_url = "https://docs.nestjs.com/guards"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["data=**/migrations/**"]
+citation_url = "https://martinfowler.com/articles/evodb.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.module.*", "shared=**/config*/**", "shared=**/*.config.*", "shared=**/main.*"]
+citation_url = "https://docs.nestjs.com/modules"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/utils/**", "shared=**/*.util.*", "shared=**/constants/**", "shared=**/*.constant.*", "shared=**/enums/**", "shared=**/*.enum.*", "shared=**/types/**", "shared=**/*.d.ts", "shared=**/*.interface.*"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html"
 source_tag = "curated"
 
 # --- requirement items ------------------------------------------------------

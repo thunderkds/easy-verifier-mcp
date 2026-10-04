@@ -216,25 +216,26 @@ def test_rounding_tie_uses_recomputed_gain_not_weight_share() -> None:
 
 
 def test_abstained_metric_is_p2_with_a_range_and_negative_low() -> None:
-    # architecture: description met (30), decision records unmet (30),
-    # import cycles abstained -> 30/60 = 50; sole contributor -> overall 50.
-    # Cycles measured and failing: 30/100 = 30 -> [-20]; passing: 70 -> [+20].
+    # DDR-0011 (T074) weights 10/10/40/40: description met (10), decision
+    # records unmet (10), import cycles abstained, layers met (40) -> 50/60 =
+    # 83; sole contributor -> overall 83. Cycles measured and failing: 50/100
+    # = 50 -> [-33]; passing: 90 -> [+7].
     rating = _rating(
         "architecture",
         {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
     )
-    assert rating.value == 50
+    assert rating.value == 83
     plan = _plan(_ratings(architecture=rating))
     item = _item(plan, "top_level_import_cycles")
     assert item["group"] == "P2"
-    assert item["dimension_gain"] == [-20, 20]
-    assert item["overall_gain"] == [-20, 20]
+    assert item["dimension_gain"] == [-33, 7]
+    assert item["overall_gain"] == [-33, 7]
     assert item["metric_value"] is None
     assert item["unavailable_reason"] == UNAVAILABLE.reason
     assert item["computed_from"] == []
-    # the unmet measured rule: 50 -> 100
+    # the unmet measured rule: 83 -> 100
     decision = _item(plan, "decision_records_missing")
-    assert (decision["group"], decision["overall_gain"]) == ("P1", 50)
+    assert (decision["group"], decision["overall_gain"]) == ("P1", 17)
 
 
 # ---------------------------------------------------------------------------
@@ -243,9 +244,9 @@ def test_abstained_metric_is_p2_with_a_range_and_negative_low() -> None:
 
 
 def test_order_is_gain_desc_then_dimension_then_metric() -> None:
-    # architecture 50 (decision records unmet, w30 of 60) and security
-    # 30 (redaction 35 + sink 35 unmet; lockfile 15 + cookie 15 met).
-    # overall round(80/2) = 40.
+    # DDR-0011 (T074): architecture 83 (decision records unmet, w10 of 60
+    # measured) and security 30 (redaction 35 + sink 35 unmet; lockfile 15 +
+    # cookie 15 met). overall round(113/2) = 56.
     architecture = _rating(
         "architecture",
         {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
@@ -258,12 +259,12 @@ def test_order_is_gain_desc_then_dimension_then_metric() -> None:
         (i["overall_gain"], i["dimension"], i["metric_name"])
         for i in plan["groups"]["P1"]
     ]
-    # architecture fix: 100 -> round(130/2) = 65 -> +25
-    # each security fix: 65 -> round(115/2) = round(57.5) = 58 -> +18
+    # each security fix: 65 -> round(148/2) = 74 -> +18
+    # architecture fix: 100 -> round(130/2) = 65 -> +9
     assert p1 == [
-        (25, "architecture", "decision_records_missing"),
         (18, "security", "redaction_hits_observed"),
         (18, "security", "sink_hits_observed"),
+        (9, "architecture", "decision_records_missing"),
     ]
     # determinism: same input, same bytes
     assert json.dumps(plan) == json.dumps(
@@ -308,14 +309,15 @@ def test_gated_dimension_gain_is_rules_part_and_labelled() -> None:
         {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
     )
     gated = GatedRating(rules, 90, 1, ("README.md:1-3",))
-    assert gated.value == 70  # 50 x 0.5 + 90 x 0.5
+    # DDR-0011 (T074) weights: rules part 83 (see above).
+    assert gated.value == 87  # 83 x 0.5 + 90 x 0.5 = 86.5
     plan = _plan(_ratings(architecture=gated, security=_rating("security")))
     item = _item(plan, "decision_records_missing")
     assert item["gain_basis"] == "rules"
-    # rules part 50 -> 100; overall on the rules basis round(150/2) = 75
-    # -> round(200/2) = 100: +25. Never the blended 70.
-    assert item["dimension_gain"] == 50
-    assert item["overall_gain"] == 25
+    # rules part 83 -> 100; overall on the rules basis round(183/2) = 92
+    # -> round(200/2) = 100: +8. Never the blended 87.
+    assert item["dimension_gain"] == 17
+    assert item["overall_gain"] == 8
     assert _item(plan, "top_level_import_cycles")["gain_basis"] == "rules"
 
 

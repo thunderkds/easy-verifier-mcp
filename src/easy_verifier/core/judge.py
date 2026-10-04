@@ -196,6 +196,11 @@ _MARTIN_ADP = Citation(
     "https://web.archive.org/web/2015/http://www.objectmentor.com/resources/"
     "articles/granularity.pdf",
 )
+_MARTIN_SDP = Citation(
+    "Martin 1997, Stability (Stable Dependencies Principle)",
+    "https://web.archive.org/web/2015/http://www.objectmentor.com/resources/"
+    "articles/stability.pdf",
+)
 _ISO_29148 = Citation(
     "ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)",
     "https://www.iso.org/standard/72089.html",
@@ -237,20 +242,26 @@ def _rules(*rules: RatingRule) -> dict[str, RatingRule]:
 # rule earns its weight; missing it earns zero. Each non-empty dimension's
 # weights total 100. solution-fit declares no rule by design (FR-036).
 RATING_RULES: dict[str, dict[str, RatingRule]] = {
+    # Documents 20 / code 80, user-signed via DDR-0011 (T074, 2026-10-04).
     "architecture": _rules(
         RatingRule(
-            "architecture_description_missing", 30, 0, "at_most",
+            "architecture_description_missing", 10, 0, "at_most",
             (_ISO_42010,), _ISO_42010,
             area=AREAS[0],
         ),
         RatingRule(
-            "decision_records_missing", 30, 0, "at_most",
+            "decision_records_missing", 10, 0, "at_most",
             (_ISO_42010,), _ISO_42010,
             area=AREAS[0],
         ),
         RatingRule(
             "top_level_import_cycles", 40, 0, "at_most",
             (_MARTIN_ADP,), _MARTIN_ADP,
+            area=AREAS[0],
+        ),
+        RatingRule(
+            "layer_direction_violations", 40, 0, "at_most",
+            (_MARTIN_SDP,), _MARTIN_SDP,
             area=AREAS[0],
         ),
     ),
