@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t069_report_summary.py` (34 tests: summary first section; N of M rated with values + sample note; top 3 P0→P1 with gain + first citation; could-not-evaluate plain names from `_SOURCE_TEXT` (completeness test vs every sources_sought); blast-radius project-scope 'run with --scope changes'; no-gaps / overall-abstained text; agent summary redacted+escaped+labelled; empty/over-length/non-string → ValidationError with no reports/ written; _METRIC_TEXT completeness). Sabotage (agent): focus limit, redaction, empty check, position, P2 in focus, roles key, all citations — each red — pass |
+| Verification command run | ☑ pass | Supervisor 2026-10-04 04:21 UTC: full suite 1774 passed, 2 skipped, 2 failed (known stale-Docker container tests); ruff All checks passed — pass |
+| Negative cases hold | ☑ pass | Validation-before-write tests for agent summary (empty, 2001 chars, non-string); partial-dimension report → one-line 'No score in this report' — pass |
+| verify | ☑ pass | Supervisor re-rendered scratch copies with the worktree CLI: coffee-shop-api (with agent summary) → 'Overall 65/100 — 2 of 7 dimensions rated…', 3 focus items one/two lines each, 4 plain could-not-evaluate lines, AGENT paragraph; bryony → 'Overall 66/100 — 4 of 7… (sample: 200 of 1,178 files)', 3 focus items, 2 could-not-evaluate — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed report.py (_render_summary, _METRIC_TEXT, _SOURCE_TEXT, summary validation, CSS), roles.py key, mcp_server description, tests. code-review: P0 0, P1 0; P2 1 (summary ~20 lines vs user's 'too much to read') → fixed in 93dd3eb (one citation, plain names, counts, scope hint). Security (manual): agent summary redact→escape; errors never echo text; hrefs from static citation data only — pass |
+| Full smoke suite still green (no regression) | ☑ pass | 1774 passed; only the 2 pre-existing container failures — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/shots/coffee-1280-v2.png` — LLM-vision verdict (Supervisor): Summary is the first section after the share notice; 3 focus items, 4 could-not-evaluate lines, AGENT paragraph; detail follows. AC6 (agent): detail body byte-identical to BEFORE report after removing the summary and normalizing timestamp/first-write marker — pass |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | existing section/card styles; agent label reuses `.fix-source-agent` — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | true 400px iframe (agent, `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/shots/coffee-400.png`, `bryony-400.png`): summary scrollWidth 349 = clientWidth 349; page-level overflow comes from the pre-existing Context-warnings banner (logged follow-up) — pass |
 
 ---
 
@@ -114,10 +114,26 @@ Screenshots: `$S/shots/coffee-1280.png`, `$S/shots/coffee-400.png`, `$S/shots/br
 (402 coffee / 522 bryony) comes from the pre-existing Context-warnings banner (T067 learning), not
 the summary.
 
+**AFTER, post Stage 4 P2 trim** (Supervisor, 2026-10-04 04:21 UTC, commit `93dd3eb`, coffee-shop-api copy, tags stripped):
+
+```
+Summary Overall 65/100 — 2 of 7 dimensions rated: code-quality 71, security 59.
+Not rated: solution-fit — rated only by the calling agent (MCP evaluate gate).
+Focus on these first
+ security: secret-shaped values in the code — now 41, rule at most 0; worth +21 overall (security +41). Standard: CWE-798 Use of Hard-coded Credentials
+ code-quality: highest function complexity — now 25, rule at most 15; worth +9 overall (code-quality +17). Standard: McCabe 1976, A Complexity Measure; threshold: NIST SP 500-235 (15 with justification)
+ code-quality: type checker not in strict mode — now 1, rule at most 0; worth +5 overall (code-quality +11). Standard: ISO/IEC 5055:2021 (automated source code quality measures)
+Could not evaluate — add what each needs
+ architecture: no architecture doc or decision records
+ blast-radius: measured only on a change: run with --scope changes (a commit, range or branch)
+ requirement-fidelity: no requirements doc or task breakdown
+ test-strategy: no CI workflow; 4 rules not measured
+Hey, I checked your code: 2 of the 7 areas could be rated. … [AGENT]
+```
+
 **DELTA**: The report now opens with a short summary: the overall, which dimensions were rated, the
 top three fixes with their rule, standard and worth, and what to add for the dimensions that could
 not be rated, plus an optional paragraph from the calling agent labelled agent. Before, the report
 opened straight into warnings and detail.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor (main session), 2026-10-04 04:21 UTC — independent re-render of coffee-shop-api and bryony copies, screenshot, full-suite re-run; not the implementing agent alone.
