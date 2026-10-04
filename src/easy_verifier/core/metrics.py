@@ -2586,10 +2586,12 @@ def compute_metrics(
         allowed = allowed_refs(evidence)
         sample = evidence.sample
         stored = {item.name: item for item in sample.metrics} if sample else {}
+        stored |= {item.name: item for item in evidence.whole_file or ()}
         for definition in METRIC_DEFINITIONS:
             if definition.name in stored:
                 # Computed by the dimension over the whole text of the
-                # sample's files (T068), not over the budgeted excerpts, so
+                # sample's files (T068) or of every source file at or under
+                # the cap (T076), not over the budgeted excerpts, so
                 # the FR-027a truncation rule does not describe it.
                 computed = _stored(stored[definition.name])
             elif definition.kind == WHOLE_SET and truncated:

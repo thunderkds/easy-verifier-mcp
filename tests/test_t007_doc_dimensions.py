@@ -74,10 +74,11 @@ def test_standalone_docs_prevent_code_fallback(tmp_path: Path, module) -> None:
 
     # T050: code-quality and architecture read in-scope source once more, in
     # their own trailing code tier (a function / its import lines); the doc
-    # fallback firing would read it a second time or quote it whole.
+    # fallback firing would read it a second time or quote it whole. T076:
+    # that one read happens first, for the whole-file metrics.
     code_tier = module.NAME in ("code-quality", "architecture")
     assert pack.files_read == (
-        ("README.md", "implementation.py") if code_tier else ("README.md",)
+        ("implementation.py", "README.md") if code_tier else ("README.md",)
     )
     assert {excerpt.ref for excerpt in pack.excerpts} == (
         {"README.md:1-1", "implementation.py:1-2"}

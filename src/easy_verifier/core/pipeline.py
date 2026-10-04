@@ -183,6 +183,7 @@ def run_dimension(
         compat=getattr(context, "compat", None),
         doc_history=getattr(context, "doc_history", None),
         sample=getattr(context, "sample", None),
+        whole_file=getattr(context, "whole_file", None),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
