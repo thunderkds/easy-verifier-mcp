@@ -67,13 +67,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T071** — Evaluation docs: EVALUATION_GUIDE.md, README "Reading a report", SCORING_FLOW interpretation (Depends on: T070) | backend-developer | C1 | Risk: Low | P1 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T071`, branch `docs/T071-evaluation-guide`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T071** — Evaluation docs: EVALUATION_GUIDE.md, README "Reading a report", SCORING_FLOW interpretation (Depends on: T070) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (P0–P3 none; 77 doc tests; guide + README + SCORING_FLOW)
 - [x] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1/P2 none, 2 P3; 1792 passed; 0 numbers/links lost on bryony + coffee-shop-api; 400px overflow fixed)
 - [x] **T069** — Report summary first: engine summary (rated areas, top 3 weak points with rule + standard, could-not-evaluate) + optional agent paragraph; detail right after | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none, 1 P2 fixed in-task; 1774 passed; coffee-shop-api + bryony summaries verified)
 - [x] **T068** — Large repos: code-tier sources in priority batches (purpose → churn), continue/stop, stateless resume (Depends on: T067) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none, 2 P2 → follow-up; 1740 passed; bryony 0 → 200/400 of 1178 files read, code-quality abstain → 67 over a disclosed sample)
