@@ -55,6 +55,7 @@ from easy_verifier.core.judge import (
     OverallRating,
     Rating,
     RatingAbstention,
+    _measured_share,
 )
 from easy_verifier.core.models import (
     CombinedPack,
@@ -368,6 +369,10 @@ def _render_document(
 ) -> str:
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     finding_count = sum(len(v) for v in by_dimension.values())
+    context_warnings = _context_warnings(packs)
+    nothing_rated = score is not None and all(
+        type(rating) is RatingAbstention for rating in score.ratings
+    )
 
     parts = [
         "<!DOCTYPE html>",
@@ -387,11 +392,15 @@ def _render_document(
             plan,
             agent_summary,
             {s.dimension: s.pack.scope for s in packs.slots if s.pack is not None},
+            context_warning_count=len(context_warnings),
         ),
-        _render_warnings(ctx, packs),
-        _render_evidence_warnings(ctx, score),
+        _render_improvement_plan(
+            ctx, plan, improvements, nothing_rated=nothing_rated
+        )
+        if plan
+        else "",
+        _render_unknowns(ctx, context_warnings, score),
         _render_score_panel(ctx, score),
-        _render_improvement_plan(ctx, plan, improvements) if plan else "",
         _render_coverage(ctx, packs.coverage),
         _render_dimensions(ctx, by_dimension, packs),
         _render_footer(),
@@ -424,6 +433,13 @@ def _render_header(
     )
 
 
+_ADVISORY_LINE = (
+    "This report quotes source code and file paths from this repository: "
+    "review it before sharing."
+)
+"""The share notice's one visible line (FR-065); the full notice is folded."""
+
+
 def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
     marker = (
         "This is the first report written into this repository's reports/ directory."
@@ -432,7 +448,8 @@ def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
     )
     return (
         '<section class="advisory"><h2>Before you share this report</h2>'
-        f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p>"
+        f"<details><summary>{ctx.esc(_ADVISORY_LINE)}</summary>"
+        f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p></details>"
         f'<p class="first-write">{ctx.esc(marker)}</p></section>'
     )
 
@@ -566,6 +583,8 @@ def _render_summary(
     plan: ImprovementPlan | None,
     agent_summary: str | None,
     scopes: dict[str, str],
+    *,
+    context_warning_count: int = 0,
 ) -> str:
     """FR-063/FR-064: the report's opening section. Templated sentences built
     from the score only (FR-026); the agent's paragraph, when given, follows
@@ -578,6 +597,7 @@ def _render_summary(
         )
     else:
         parts.append(_summary_overall(ctx, score))
+        parts.append(_summary_evidence(ctx, score, context_warning_count))
         if type(score.overall) is OverallRating:
             parts.append(_summary_focus(ctx, plan))
         parts.append(_summary_missing(ctx, score.warnings, scopes))
@@ -624,10 +644,46 @@ def _summary_overall(ctx: _Ctx, score: ScoreResult) -> str:
         )
     else:
         head = f"Overall: no number — none of the {total} dimensions could be rated."
-    line = f'<p class="summary-overall">{head}</p>'
+    css = (
+        "summary-overall"
+        if type(score.overall) is OverallRating
+        else "summary-overall notice notice-abstain"
+    )
+    line = f'<p class="{css}">{head}</p>'
     if not_rated:
         line += f"<p>Not rated: {ctx.esc('; '.join(not_rated))}.</p>"
     return line
+
+
+def _summary_evidence(
+    ctx: _Ctx, score: ScoreResult, context_warning_count: int
+) -> str:
+    """FR-065: how much evidence stands behind the numbers, as counts only --
+    rated dimensions, the lowest measured rule-weight share among rated and
+    insufficient-weight dimensions (when any is known), and warnings."""
+    rated = sum(type(rating) is not RatingAbstention for rating in score.ratings)
+    shares = []
+    for rating in score.ratings:
+        rules = rating.rules if type(rating) is GatedRating else rating
+        if type(rules) is Rating and RATING_RULES[rules.dimension]:
+            share = _measured_share(rules.dimension, rules.unavailable_metrics)
+        else:
+            share = rules.measured_share
+        if share is not None:
+            shares.append((share, rules.dimension))
+    parts = [f"{rated} of {len(score.ratings)} dimensions rated"]
+    if shares:
+        share, dimension = min(shares, key=lambda pair: pair[0])
+        parts.append(f"lowest measured rule weight {share * 100:.0f}% ({dimension})")
+    warnings = len(score.warnings) + context_warning_count
+    parts.append(
+        f"{warnings} warning{'s' if warnings != 1 else ''} — see What we "
+        "couldn't measure"
+        if warnings
+        else "no warnings"
+    )
+    text = "Evidence: " + "; ".join(parts) + "."
+    return f'<p class="summary-evidence">{ctx.esc(text)}</p>'
 
 
 def _summary_focus(ctx: _Ctx, plan: ImprovementPlan) -> str:
@@ -722,7 +778,8 @@ def _number(value: float | int) -> str:
     return f"{round(value, 2):g}" if isinstance(value, float) else str(value)
 
 
-def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
+def _context_warnings(packs: CombinedPack) -> list[str]:
+    """Every pack's context warnings, first occurrence kept, in slot order."""
     warnings: list[str] = []
     for slot in packs.slots:
         if slot.pack is None:
@@ -730,23 +787,23 @@ def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
         for warning in slot.pack.warnings:
             if warning not in warnings:
                 warnings.append(warning)
-    if not warnings:
-        return ""
-    items = "".join(f"<li>{ctx.esc(w)}</li>" for w in warnings)
-    return (
-        '<section class="warning-banner"><h2>Context warnings</h2>'
-        f"<ul>{items}</ul></section>"
-    )
+    return warnings
 
 
-def _render_evidence_warnings(ctx: _Ctx, score: ScoreResult | None) -> str:
-    """FR-059: each dimension that abstained for missing evidence, with what
-    was not measured or not found, in the context-warning style."""
-    warnings = score.warnings if score is not None else []
-    if not warnings:
+def _render_unknowns(
+    ctx: _Ctx, context_warnings: list[str], score: ScoreResult | None
+) -> str:
+    """FR-065: context warnings and FR-059 evidence-lack warnings in one
+    section, one summary line per item, the full text folded below it."""
+    evidence = score.warnings if score is not None else []
+    if not context_warnings and not evidence:
         return ""
-    items = []
-    for warning in warnings:
+    items = [
+        f'<li class="unknown"><details><summary>{ctx.esc(_first_sentence(w))}'
+        f"</summary><p>{ctx.esc(w)}</p></details></li>"
+        for w in context_warnings
+    ]
+    for warning in evidence:
         rows = [
             f"<li><code>{ctx.esc(rule['metric_name'])}</code> — "
             f"{ctx.esc(rule['reason'])}</li>"
@@ -758,18 +815,28 @@ def _render_evidence_warnings(ctx: _Ctx, score: ScoreResult | None) -> str:
         ]
         listed = f'<ul class="miss-list">{"".join(rows)}</ul>' if rows else ""
         items.append(
-            f"<li><strong>{ctx.esc(warning['dimension'])}</strong> "
-            f"({ctx.esc(warning['reason_code'])}): "
-            f"{ctx.esc(warning['message'])}{listed}</li>"
+            '<li class="unknown"><details><summary>'
+            f"<strong>{ctx.esc(warning['dimension'])}</strong> "
+            f"({ctx.esc(warning['reason_code'])}): no number given</summary>"
+            f"<p>{ctx.esc(warning['message'])}</p>{listed}</details></li>"
         )
-    return (
-        '<section class="warning-banner evidence-warnings">'
-        "<h2>Evidence warnings — no number given</h2>"
+    method = (
         '<p class="method">These dimensions lacked the evidence for a rating. '
         "Neither the rules nor the calling agent fills that in; each is "
         "excluded from the overall and listed in the improvement plan.</p>"
-        f'<ul>{"".join(items)}</ul></section>'
+        if evidence
+        else ""
     )
+    return (
+        '<section class="warning-banner unknowns">'
+        "<h2>What we couldn't measure</h2>"
+        f'{method}<ul class="unknown-list">{"".join(items)}</ul></section>'
+    )
+
+
+def _first_sentence(text: str) -> str:
+    head, separator, _rest = text.partition(". ")
+    return head + "." if separator else text
 
 
 def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
@@ -843,11 +910,14 @@ def _render_improvement_plan(
     ctx: _Ctx,
     plan: ImprovementPlan,
     improvements: dict[tuple[str, str], str] | None = None,
+    *,
+    nothing_rated: bool = False,
 ) -> str:
     """FR-055/FR-056: every gap, P0 then P1 then P2, each with its
     recomputed gain and the engine's fix line, labelled as such (FR-057);
     a validated agent suggestion for an item is shown above its engine line,
-    labelled ``agent``."""
+    labelled ``agent``. FR-065: one card per item; the first P0/P1 items the
+    summary names are highlighted; P2 is folded."""
     improvements = improvements or {}
     data = plan.to_dict()
     band = format((BORDERLINE_BAND * 100).normalize(), "f")
@@ -857,27 +927,40 @@ def _render_improvement_plan(
     ]
     if not plan.items:
         parts.append(
-            '<p class="no-gaps">No gaps: every measured rule is met and no rule '
-            "metric of a rated dimension is unmeasured.</p>"
+            '<p class="notice notice-abstain">No number for any dimension: none '
+            "could be rated, so there is no measured gap to rank. What each "
+            "dimension lacks is listed below.</p>"
+            if nothing_rated
+            else '<p class="notice no-gaps">No gaps: every measured rule is met '
+            "and no rule metric of a rated dimension is unmeasured.</p>"
         )
+    highlighted = 0
     for group in GROUPS:
         items = data["groups"][group]
-        parts.append(f"<h3>{ctx.esc(_GROUP_TITLES[group].format(band=band))}</h3>")
+        title = f"<h3>{ctx.esc(_GROUP_TITLES[group].format(band=band))}</h3>"
         if not items:
-            parts.append('<p class="empty">None.</p>')
+            parts.append(f'{title}<p class="empty">None.</p>')
             continue
-        rows = "".join(
-            _render_plan_item(
-                ctx, item, improvements.get((item["dimension"], item["metric_name"]))
+        cards = []
+        for item in items:
+            top = group != "P2" and highlighted < SUMMARY_FOCUS_LIMIT
+            highlighted += top
+            cards.append(
+                _render_plan_item(
+                    ctx,
+                    item,
+                    improvements.get((item["dimension"], item["metric_name"])),
+                    top=top,
+                )
             )
-            for item in items
-        )
-        parts.append(
-            '<div class="plan-table"><table><thead><tr><th>Dimension · area</th>'
-            "<th>Metric</th><th>Now → rule</th><th>Gain (dimension / overall)"
-            "</th><th>Evidence</th><th>Fix</th></tr></thead>"
-            f"<tbody>{rows}</tbody></table></div>"
-        )
+        body = f'<div class="plan-cards">{"".join(cards)}</div>'
+        if group == "P2":
+            parts.append(
+                f'<details class="plan-group"><summary>{title}</summary>'
+                f"{body}</details>"
+            )
+        else:
+            parts.append(title + body)
     if data["abstained"]:
         lines = "".join(
             f"<li><strong>{ctx.esc(line['dimension'])}</strong> — "
@@ -906,7 +989,7 @@ def _render_unmeasured(ctx: _Ctx, unmeasured) -> str:
 
 
 def _render_plan_item(
-    ctx: _Ctx, item: dict[str, Any], suggestion: str | None = None
+    ctx: _Ctx, item: dict[str, Any], suggestion: str | None = None, *, top=False
 ) -> str:
     now = (
         "not measured"
@@ -914,10 +997,15 @@ def _render_plan_item(
         else f"{item['metric_value']}"
     )
     gain = (
-        f"{_signed(item['dimension_gain'])} / {_signed(item['overall_gain'])}"
+        f"{_signed(item['overall_gain'])} overall / "
+        f"{_signed(item['dimension_gain'])} {item['dimension']}"
     )
-    if item["gain_basis"] == "rules":
-        gain += " (rules part; the final rating also depends on the gate)"
+    note = (
+        '<p class="method">(rules part; the final rating also depends on the '
+        "gate)</p>"
+        if item["gain_basis"] == "rules"
+        else ""
+    )
     if item["computed_from"]:
         evidence = "".join(
             f"<li><code>{_render_ref(ctx, ref)}</code></li>"
@@ -934,7 +1022,7 @@ def _render_plan_item(
             f"<p>{ctx.esc(item['unavailable_reason'])}</p></details>"
         )
     else:
-        evidence = "no file cited"
+        evidence = '<p class="empty">no file cited</p>'
     engine = (
         f"{ctx.esc(item['fix']['text'])} "
         f'<span class="fix-source">{ctx.esc(item["fix"]["source"])}</span>'
@@ -947,13 +1035,17 @@ def _render_plan_item(
             f'<p class="fix-engine">{engine}</p>'
         )
     else:
-        fix = engine
+        fix = f'<p class="fix">{engine}</p>'
+    css = f"plan-card plan-{item['group']}" + (" plan-top" if top else "")
     return (
-        f"<tr><td>{ctx.esc(item['dimension'])} · {ctx.esc(item['area'])}</td>"
-        f"<td><code>{ctx.esc(item['metric_name'])}</code></td>"
-        f"<td>{ctx.esc(now)}; {ctx.esc(item['comparison'])} "
-        f"{ctx.esc(item['threshold'])}; weight {ctx.esc(item['weight'])}</td>"
-        f"<td>{ctx.esc(gain)}</td><td>{evidence}</td><td>{fix}</td></tr>"
+        f'<article class="{ctx.esc(css)}">'
+        f'<p class="plan-head"><strong>{ctx.esc(item["dimension"])} · '
+        f'{ctx.esc(item["area"])}</strong> '
+        f'<span class="plan-gain">Gain {ctx.esc(gain)}</span></p>'
+        f'<p class="plan-now">Metric <code>{ctx.esc(item["metric_name"])}</code> — '
+        f"Now → rule: {ctx.esc(now)}; {ctx.esc(item['comparison'])} "
+        f"{ctx.esc(item['threshold'])}; weight {ctx.esc(item['weight'])}</p>"
+        f"{note}{fix}{evidence}</article>"
     )
 
 
@@ -1007,7 +1099,9 @@ def _render_score_card(
     sample: dict[str, Any] | None = None,
 ) -> str:
     gated = ""
+    row = ""
     if type(rating) is GatedRating:
+        row = f"{rating.parts}; "
         # FR-038: the number never appears without its parts; the rules
         # result (rating or abstention record) is rendered in full below it.
         refs = "".join(
@@ -1034,6 +1128,11 @@ def _render_score_card(
             if unavailable
             else ""
         )
+        met = sum(item.passed for item in rating.inputs)
+        row += (
+            f"{rating.value}/100 · rules met {met}/"
+            f"{len(RATING_RULES[rating.dimension])}"
+        )
         rating_html = (
             f'<p class="rating-value">{label} {ctx.esc(rating.value)}/100</p>'
             f'<p class="rating-method">{ctx.esc(rating.method)}</p>'
@@ -1058,6 +1157,7 @@ def _render_score_card(
             if rating.failure
             else ""
         )
+        row += f"no number — {rating.reason_code}"
         rating_html = (
             f'<p class="rating-withheld">{label} withheld</p>'
             f"<p>{ctx.esc(rating.reason_code)} — {ctx.esc(rating.reason)}</p>"
@@ -1068,9 +1168,11 @@ def _render_score_card(
 
     return (
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
+        f'<p class="score-row">{ctx.esc(row)}</p>'
         f"{_render_sample(ctx, sample)}"
+        "<details><summary>Rule inputs, citations and cited files</summary>"
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
-        f"{_render_divergence(ctx, divergence)}</article>"
+        f"{_render_divergence(ctx, divergence)}</details></article>"
     )
 
 
@@ -1209,12 +1311,21 @@ def _render_coverage(ctx: _Ctx, coverage: CoverageSummary) -> str:
     combined = _coverage_entry(
         ctx, "All dimensions (combined)", coverage.combined, combined_misses
     )
+    # Counts only: a coverage score never appears without its miss list
+    # (FR-016a), so the folded entries below are the only place it is shown.
+    missing = len(combined_misses)
+    count = len(entries)
+    summary = (
+        f"{count} dimension{'s' if count != 1 else ''}; {missing} "
+        f"source{'s' if missing != 1 else ''} missing"
+    )
     return (
         '<section class="coverage"><h2>Checklist coverage</h2>'
+        f"<details><summary>{ctx.esc(summary)}</summary>"
         f'<p class="method">Method: {ctx.esc(coverage.method)}. A coverage score '
         "describes how much of this engine's own source checklist it reached — "
         "never the quality of the repository.</p>"
-        f"{combined}{''.join(entries)}</section>"
+        f"{combined}{''.join(entries)}</details></section>"
     )
 
 
@@ -1304,9 +1415,28 @@ def _render_dimensions(
         for slot in packs.slots
     ]
     if not sections:
-        sections = ['<p class="empty">No dimensions were submitted.</p>']
+        return (
+            '<section class="dimensions"><h2>Dimensions</h2>'
+            '<p class="empty">No dimensions were submitted.</p></section>'
+        )
+    findings = sum(len(v) for v in by_dimension.values())
+    files = len(
+        {
+            path
+            for slot in packs.slots
+            if slot.pack is not None
+            for path in slot.pack.files_read
+        }
+    )
+    summary = (
+        f"{len(sections)} dimension{'s' if len(sections) != 1 else ''}; "
+        f"{findings} finding{'s' if findings != 1 else ''}; "
+        f"{files} file{'s' if files != 1 else ''} read"
+    )
     return (
-        f'<section class="dimensions"><h2>Dimensions</h2>{"".join(sections)}</section>'
+        '<section class="dimensions"><h2>Dimensions</h2>'
+        f"<details><summary>{ctx.esc(summary)}</summary>{''.join(sections)}"
+        "</details></section>"
     )
 
 
@@ -1496,20 +1626,38 @@ section, article { background: #111128; border: 1px solid #1e1e42;
   padding: .6rem .8rem; overflow-x: auto; white-space: pre-wrap;
   word-break: break-word; font-size: .8rem; }
 .dimension-error .error { color: #ff3b6b; }
-.plan-table { overflow-x: auto; }
-.plan-table table { border-collapse: collapse; width: 100%; font-size: .8rem; }
-.plan-table th, .plan-table td { border-top: 1px solid #1e1e42; padding: .35rem .5rem;
-  text-align: left; vertical-align: top; }
-.plan-table th { color: #6b6b9a; }
-.plan-table ul { margin: 0; padding-left: 1rem; }
 .fix-source { display: inline-block; padding: .05rem .45rem; border-radius: 999px;
   font-size: .7rem; font-weight: 700; text-transform: uppercase;
   background: rgba(168,85,247,.15); color: #c084fc; }
 .fix-source-agent { background: rgba(255,184,0,.15); color: #ffb800; }
-.plan-table .suggestion { margin: 0 0 .35rem; font-size: inherit;
-  overflow-wrap: break-word; }
-.plan-table .fix-engine { margin: 0; color: #9a9ac0; }
-.plan-table details p { margin: .25rem 0 0; }
+summary { cursor: pointer; }
+section, article, li, dd { min-width: 0; overflow-wrap: break-word; }
+.plan-cards { display: grid; gap: .6rem; margin-bottom: .75rem; }
+.plan-card { margin: 0; padding: .6rem .8rem; font-size: .85rem;
+  background: #16162e; }
+.plan-P0 { border-left: 3px solid #ffb800; }
+.plan-P1 { border-left: 3px solid #ff3b6b; }
+.plan-top { box-shadow: inset 0 0 0 1px #00d4ff; }
+.plan-card p { margin: .2rem 0; }
+.plan-card ul { margin: 0; padding-left: 1rem; }
+.plan-gain { display: inline-block; padding: .05rem .45rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: rgba(0,212,255,.12); color: #00d4ff; }
+.plan-card .suggestion { margin: 0 0 .35rem; font-size: inherit; }
+.plan-card .fix-engine { margin: 0; color: #9a9ac0; }
+.plan-group > summary h3 { display: inline; }
+.unknown-list { padding-left: 1.1rem; }
+.unknown { margin-bottom: .35rem; overflow-wrap: anywhere; }
+.unknown p { margin: .25rem 0; font-size: .9rem; }
+.score-row { font-weight: 700; font-variant-numeric: tabular-nums;
+  color: #00ff88; margin: .2rem 0; }
+.rating-abstention .score-row { color: #ffb800; }
+.score-card details, .coverage details, .dimensions details { font-size: .9rem; }
+pre { overflow-x: auto; }
+.notice { border-left: 3px solid #00ff88; background: #16162e;
+  border-radius: 6px; padding: .5rem .75rem; margin: .5rem 0; }
+.notice-abstain { border-left-color: #ffb800; background: rgba(255,184,0,.08);
+  color: #ffb800; font-weight: 700; }
 .no-gaps { color: #00ff88; font-weight: 700; }
 .summary { border-left: 3px solid #00d4ff; }
 .summary h3 { margin-top: .75rem; }

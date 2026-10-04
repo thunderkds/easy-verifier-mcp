@@ -86,8 +86,8 @@ def _plan_section(document: str) -> str:
 def _row(document: str, metric_name: str) -> str:
     section = _plan_section(document)
     marker = f"<code>{metric_name}</code>"
-    start = section.rindex("<tr>", 0, section.index(marker))
-    return section[start : section.index("</tr>", start)]
+    start = section.rindex('<article class="plan-card', 0, section.index(marker))
+    return section[start : section.index("</article>", start)]
 
 
 @pytest.fixture
