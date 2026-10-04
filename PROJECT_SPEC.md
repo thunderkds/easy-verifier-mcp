@@ -89,6 +89,9 @@ src/easy_verifier/
 | **Source tag** | Where a rule input's data came from: `curated` / `agent-researched (unreviewed)` / `agent-researched (user-approved)` / `user-supplied`. Always shown with its link. |
 | **Reference gate** | MCP-only hard gate: detected language/framework lacks registry fields the rules consume → `needs_input` names only those fields (≤20). |
 | **Rule group** | The rules of one of the 32 evaluation areas, labelled by area, inside one dimension (DDR-0008). |
+| **Convention pattern** | A declared, extendable list of forms a rule recognises (e.g. requirement-item ids, route tokens, layer paths). The engine ships common forms; a repository adds its own through the local registry layer or `.easy-verifier.toml`. A rule never depends on one workflow's single format (2026-10-04, code-derived rules). |
+| **Requirement item** | One traceable requirement statement in any recognised form — `AC-1`, `FR-012`, `US-3`, `REQ-…`, a Gherkin `Scenario:`, a checklist item under a spec, an OpenAPI `operationId`, or a repository-declared pattern. No items found means the tracing rule abstains, never fails. |
+| **Layer** | A source file's architectural role — *api*, *service* or *data* — assigned only by declared, extendable path/name convention patterns. A **layer-direction violation** is an import from a lower layer to a higher one (data → service, service → api, data → api). Unclassified files never count. |
 | **Documentation rule** | Rule type for areas not verifiable from a repo: *present* (cited file) / *missing*; never a number. |
 | **Pack** | Optional rule set (healthcare, finance, frontend-a11y) active only via detect pick or `.easy-verifier.toml`. |
 
