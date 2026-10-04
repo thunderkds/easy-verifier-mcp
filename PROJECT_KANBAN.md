@@ -30,6 +30,10 @@
 - [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2
 - [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
 
+**Follow-up from T068 Stage 4 (2026-10-04, no guide yet — needs user go-ahead)**
+- 💡 Cap per-file citation lists in score payload + report (bryony payload 476 KB → 1.08 MB → 1.64 MB per batch; architecture card lists hundreds of paths) — works against the token-saving goal of DDR-0010
+- 💡 Compute code metrics over whole files below the cap too (kitchd: code-quality/test-strategy abstain on byte-budget truncation while above-cap repos use whole files)
+
 **Deferred ideas (revisit after T029–T049 are done — no guide yet, not pickable)**
 - 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev".
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
@@ -61,13 +65,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T068** — Large repos: code-tier sources in priority batches (purpose → churn), continue/stop, stateless resume (Depends on: T067) | backend-developer | C3 | Risk: Med | P1 | 🔄 In Progress 2026-10-03 (worktree `../easy-verifier-mcp-T068`, branch `feat/T068-priority-batches`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T068** — Large repos: code-tier sources in priority batches (purpose → churn), continue/stop, stateless resume (Depends on: T067) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none, 2 P2 → follow-up; 1740 passed; bryony 0 → 200/400 of 1178 files read, code-quality abstain → 67 over a disclosed sample)
 - [x] **T067** — Evidence floor: no number below 50% measured weight; evidence-lack = warning, never agent-rated | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-03 (P0/P1 none; 1697 passed; bryony code-quality 100 → abstain 0.20 with warning; MCP gate asks only solution-fit; kitchd before/after)
 - [x] **T066** — Improvement plan (agent): repo-specific fix text via `write_report`, validated + redacted, labelled agent/engine (Depends on: T065) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-03 (Stage 4 P0/P1/P2 none, 1 P3; 1664 passed, 2 pre-existing container failures; MCP verify on bryony copy pass)
 - [x] **T065** — Improvement plan (engine) — unmet rules grouped P0/P1/P2, recomputed gain, static fix lines | backend-developer | C2 | Risk: Medium | P1 | ✅ Done 2026-10-03 (Stage 4 P0/P1 none, 1 P2 suggestion; 1631 passed, 2 pre-existing container failures; CLI+MCP verify on bryony pass)
