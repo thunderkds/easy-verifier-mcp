@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t068_priority_batches.py` (43 tests: purpose → churn → path order, no-git fallback, batch slicing, oracle batches 1–2 == direct over 400 files, batches=N vs all byte-equal, under-cap snapshot `tests/snapshots/t068_under_cap_score.json` from pre-change `2bf07ff`, needs_input.continue_batches, out-of-range/malformed → error, truncation no longer abstains sampled metrics). Updated: test_t050, test_t031, test_t009 (old all-or-none cap reversed by DDR-0010), test_t055 legacy dict. Sabotage (agent): zero churn / drop sampled metrics turn tests red — pass |
+| Verification command run | ☑ pass | Supervisor 2026-10-04 03:03 UTC bryony CLI: `--batches 1` → samples 200/1178 (1 of 6) for architecture, code-quality, test-strategy; code-quality 67, architecture 70, test-strategy 75, overall 66; stderr "continue with --batches 2, or --all". `--batches 2` → 400/1178 (2 of 6), same ratings — pass |
+| Negative cases hold | ☑ pass | MCP (agent, in-process tool fn): `batches: 7` → "out of range; this scope has 6 batches"; malformed → validation error; kitchd (under cap) unchanged — pass |
+| verify | ☑ pass | Supervisor drove CLI on bryony batches 1 and 2 (above); agent drove MCP continue_batches round {1,6,200,1178} → batches 2 → {2,6,400,1178}; kitchd before/after identical (under cap) — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed new core/batches.py (purpose classes as data, ordering, parse/resolve, churn via run_git_text), metrics.compute_sampled_metrics + EvidencePack.sample, _code_extract/code_quality/architecture/test_strategy batching, roles/score/adapters input + needs_input, report disclosure. Agent input carries only `batches` (no numbers) — FR-062 holds. code-review: P0 0, P1 0, P2 2 → follow-ups: (a) score payload grows ~550 KB per batch (476 KB → 1.08 MB → 1.64 MB) from existing per-file citation lists, against the token-saving goal; (b) under-cap repos still compute code metrics over budgeted excerpts and abstain on truncation (kitchd) while above-cap repos use whole files. Security (manual): git via hardened run_git_text; sample facts redacted like ReachFacts; secret-bearing files still refused — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Supervisor re-run: 1740 passed, 2 skipped, 2 failed (the 2 known stale-Docker container tests); ruff All checks passed — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t068_panel_1280.png` — LLM-vision verdict (Supervisor): sample disclosure line on each sampled dimension card — pass |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | reuses existing `rating-method` class, no new CSS tokens — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t068_panel_400.png` true 400px iframe: disclosure wraps, no horizontal page scroll in the panel — pass |
 
 ---
 
@@ -120,8 +120,7 @@ test-strategy now read the highest-priority, most-changed 200 files instead of n
 code-quality goes from abstained at 20% weight to rated 67 over a disclosed sample), and the user can
 continue batch by batch (`--batches N`/`--all`, or MCP `continue_batches` → `agent_input.batches`) or stop.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor (main session), 2026-10-04 03:03 UTC — independent bryony CLI runs (batches 1, 2) and full-suite re-run; not the implementing agent alone.
 
 ---
 
