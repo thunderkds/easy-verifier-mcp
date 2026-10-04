@@ -70,13 +70,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T076** — Whole-file code metrics below the cap (no truncation abstention for structure metrics; T068 follow-up #2, needed by DDR-0011) | backend-developer | C2 | Risk: Med | P0 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T076`, branch `fix/T076-whole-file-metrics`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T076** — Whole-file code metrics below the cap (no truncation abstention for structure metrics; T068 follow-up #2, needed by DDR-0011) | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-04 (kitchd architecture → 100, code-quality → 70, overall 37 → 61; 1956 passed)
 - [x] **T074** — architecture from code + documents (20/80): layer direction, widened doc conventions, code-aware floor (Depends on: T073) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (coffee arch →80, bryony 70→83; kitchd no number — under-cap truncation → T076)
 - [x] **T073** — Structure convention patterns: layers, routes, requirement items, issue references (cited registry, extendable) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none; 1913 passed; no score change; P2 findings carried to T074/T075)
 - [x] **T072** — Area coverage doc: 32 areas → today's rules, status, planned home (docs/AREA_COVERAGE.md + sync test) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (Covered 4 · Partial 7 · Not yet 21; 6 sync tests)
