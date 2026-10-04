@@ -41,7 +41,7 @@ from easy_verifier.core.assessment import (
     DivergenceAbsence,
 )
 from easy_verifier.core.context import RepoPathError, _resolved_repo
-from easy_verifier.core.findings import Finding, validate_findings
+from easy_verifier.core.findings import Finding, ValidationError, validate_findings
 from easy_verifier.core.improve import (
     GROUPS,
     ImprovementPlan,
@@ -49,6 +49,8 @@ from easy_verifier.core.improve import (
 )
 from easy_verifier.core.judge import (
     BORDERLINE_BAND,
+    PROJECT_DEFAULT,
+    RATING_RULES,
     GatedRating,
     OverallRating,
     Rating,
@@ -145,6 +147,12 @@ def write_report(
         if "improvements" in document_input
         else {}
     )
+    # T069: the agent's summary paragraph, also rejected before any write.
+    agent_summary = (
+        _validate_agent_summary(document_input["summary"])
+        if "summary" in document_input
+        else None
+    )
     document = _render_document(
         ctx,
         validated.by_dimension,
@@ -152,6 +160,7 @@ def write_report(
         score,
         plan,
         improvements,
+        agent_summary,
         first_write=first_write,
     )
 
@@ -353,6 +362,7 @@ def _render_document(
     score: ScoreResult | None,
     plan: ImprovementPlan | None,
     improvements: dict[tuple[str, str], str],
+    agent_summary: str | None = None,
     *,
     first_write: bool,
 ) -> str:
@@ -371,6 +381,13 @@ def _render_document(
         "<body>",
         _render_header(ctx, packs, generated, finding_count),
         _render_advisory(ctx, first_write=first_write),
+        _render_summary(
+            ctx,
+            score,
+            plan,
+            agent_summary,
+            {s.dimension: s.pack.scope for s in packs.slots if s.pack is not None},
+        ),
         _render_warnings(ctx, packs),
         _render_evidence_warnings(ctx, score),
         _render_score_panel(ctx, score),
@@ -418,6 +435,291 @@ def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
         f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p>"
         f'<p class="first-write">{ctx.esc(marker)}</p></section>'
     )
+
+
+MAX_AGENT_SUMMARY_CHARS = 2000
+"""Upper bound on the agent's summary paragraph, after surrounding whitespace
+is stripped (FR-064): a paragraph, not a second report."""
+
+SUMMARY_FOCUS_LIMIT = 3
+"""At most this many improvement-plan items open the report (FR-063)."""
+
+_METRIC_TEXT: dict[str, str] = {
+    # architecture
+    "architecture_description_missing": "no architecture description",
+    "decision_records_missing": "no decision records (ADRs)",
+    "top_level_import_cycles": "import cycles between top-level modules",
+    # requirement-fidelity
+    "acceptance_criteria_traced_to_code_share": (
+        "share of acceptance criteria traced to code"
+    ),
+    "acceptance_criteria_traced_to_test_share": (
+        "share of acceptance criteria traced to tests"
+    ),
+    "requirements_docs_count": "number of requirements documents",
+    "code_commits_with_docs_share": "share of code commits that also update docs",
+    # code-quality
+    "functions_over_ccn_10_share": "share of functions with complexity over 10",
+    "max_function_ccn": "highest function complexity",
+    "lint_config_missing": "no linter configuration",
+    "format_config_missing": "no formatter configuration",
+    "type_escapes_per_kloc": "type escapes per 1,000 lines",
+    "todo_without_ticket_share": "share of TODOs without a ticket",
+    "strict_type_config_missing": "type checker not in strict mode",
+    # security
+    "redaction_hits_observed": "secret-shaped values in the code",
+    "sink_hits_observed": "dangerous calls (eval, shell, string-built SQL)",
+    "lockfile_missing": "no dependency lockfile",
+    "cookie_flags_missing_observed": "cookies without Secure/HttpOnly/SameSite",
+    # test-strategy
+    "source_files_without_covering_test_share": (
+        "share of source files no test covers"
+    ),
+    "assertion_density_per_test": "assertions per test",
+    "test_config_and_ci_missing": "no test configuration and CI workflow",
+    "tests_without_assertions_share": "share of tests without assertions",
+    "skipped_test_share": "share of skipped tests",
+    "network_calls_in_unit_tests_observed": "real network calls in unit tests",
+    # blast-radius
+    "max_fan_in_changed": "most imports of one changed module (fan-in)",
+    "changed_files_in_churn_hotspots_share": (
+        "share of changed files in churn hotspots"
+    ),
+    "public_symbols_removed": "public symbols removed",
+    "destructive_migration_ops": "destructive migration operations",
+}
+"""One plain description per declared rule metric, for the summary (FR-063).
+Presentation only."""
+
+_SOURCE_TEXT: dict[str, str | None] = {
+    "readme": "README",
+    "architecture-doc": "architecture doc",
+    "decision-record": "decision records",
+    "requirements-doc": "requirements doc",
+    "spec-doc": "spec doc",
+    "task-breakdown": "task breakdown",
+    "contributing-guide": "contributing guide",
+    "lint-config": "linter config",
+    "format-config": "formatter config",
+    "package-manifest": "package manifest",
+    "lockfile": "lockfile",
+    "auth-code": "auth code",
+    "container-config": "container config",
+    "ci-workflow": "CI workflow",
+    "credential-file": "credential file",
+    "test-config": "test config",
+    "test-file": "test files",
+    # Derived evidence, not something the user adds: not named in the summary.
+    "git history (out of scope for v1)": None,
+    "source-to-test correspondence for files in the active scope": None,
+    "referencing files (textual reference search over repository code)": None,
+    "git co-change history (local `git log --name-only`)": None,
+    "repository change hotspots (local git history)": None,
+}
+"""Plain name per declared sought source (every dimension's
+``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks
+derived evidence the user cannot add. A missing source not declared here is
+counted, never quoted."""
+
+_NOT_RATED_TEXT = {
+    "no_static_rule": "rated only by the calling agent (MCP evaluate gate)",
+}
+"""Short text per non-evidence-lack abstention reason; others use the judge's
+own reason."""
+
+_CHANGES_ONLY = {
+    "blast-radius": (
+        "measured only on a change: run with --scope changes "
+        "(a commit, range or branch)"
+    ),
+}
+"""Dimensions whose rules read a change; at project scope the line says how
+to run them instead of listing what was not measured."""
+
+
+class SummaryValidationError(ValidationError):
+    """A rejected agent ``summary`` (FR-064). A :class:`ValidationError`, so
+    both adapters already report it as one; the text is never echoed."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__([])
+        self.args = (f"summary: {reason}",)
+
+
+def _validate_agent_summary(value: object) -> str:
+    """The agent's summary paragraph, stripped; fails closed (FR-064)."""
+    if not isinstance(value, str):
+        raise SummaryValidationError("must be a string")
+    text = value.strip()
+    if not text:
+        raise SummaryValidationError("must not be empty")
+    if len(text) > MAX_AGENT_SUMMARY_CHARS:
+        raise SummaryValidationError(
+            f"must be at most {MAX_AGENT_SUMMARY_CHARS} characters, got {len(text)}"
+        )
+    return text
+
+
+def _render_summary(
+    ctx: _Ctx,
+    score: ScoreResult | None,
+    plan: ImprovementPlan | None,
+    agent_summary: str | None,
+    scopes: dict[str, str],
+) -> str:
+    """FR-063/FR-064: the report's opening section. Templated sentences built
+    from the score only (FR-026); the agent's paragraph, when given, follows
+    it labelled ``agent`` and changes nothing above it."""
+    parts = ['<section class="summary"><h2>Summary</h2>']
+    if score is None or plan is None:
+        parts.append(
+            '<p class="summary-overall">No score in this report: it does not '
+            "cover every declared dimension.</p>"
+        )
+    else:
+        parts.append(_summary_overall(ctx, score))
+        if type(score.overall) is OverallRating:
+            parts.append(_summary_focus(ctx, plan))
+        parts.append(_summary_missing(ctx, score.warnings, scopes))
+    if agent_summary is not None:
+        # Agent prose is a new egress path: redact, then escape (DDR-0001).
+        parts.append(
+            f'<p class="summary-agent">{ctx.agent_text(agent_summary)} '
+            '<span class="fix-source fix-source-agent">agent</span></p>'
+        )
+    parts.append("</section>")
+    return "".join(parts)
+
+
+def _summary_overall(ctx: _Ctx, score: ScoreResult) -> str:
+    samples = {item["dimension"]: item for item in score.samples}
+    warned = {warning["dimension"] for warning in score.warnings}
+    rated: list[str] = []
+    not_rated: list[str] = []
+    for rating in score.ratings:
+        if type(rating) is RatingAbstention:
+            if rating.dimension not in warned:
+                reason = _NOT_RATED_TEXT.get(rating.reason_code, rating.reason)
+                not_rated.append(f"{rating.dimension} — {reason}")
+            continue
+        label = f"{rating.dimension} {rating.value}"
+        if type(rating) is GatedRating:
+            label += (
+                " (agent-rated)"
+                if rating.is_agent_rated
+                else " (blended with an agent evaluation)"
+            )
+        sample = samples.get(rating.dimension)
+        if sample is not None:
+            label += (
+                f" (sample: {sample['files_read']:,} of "
+                f"{sample['files_in_scope']:,} files)"
+            )
+        rated.append(label)
+    total = len(score.ratings)
+    if type(score.overall) is OverallRating:
+        head = (
+            f"Overall <strong>{ctx.esc(score.overall.value)}/100</strong> — "
+            f"{len(rated)} of {total} dimensions rated: {ctx.esc(', '.join(rated))}."
+        )
+    else:
+        head = f"Overall: no number — none of the {total} dimensions could be rated."
+    line = f'<p class="summary-overall">{head}</p>'
+    if not_rated:
+        line += f"<p>Not rated: {ctx.esc('; '.join(not_rated))}.</p>"
+    return line
+
+
+def _summary_focus(ctx: _Ctx, plan: ImprovementPlan) -> str:
+    focus = [item for item in plan.items if item.group in ("P0", "P1")]
+    if not focus:
+        unmeasured = len(plan.items)
+        if not unmeasured:
+            return '<p class="no-gaps">No gaps: every measured rule is met.</p>'
+        return (
+            f"<p>No measured rule fails; {unmeasured} "
+            f"rule{'s' if unmeasured != 1 else ''} could not be measured — see "
+            "the improvement plan.</p>"
+        )
+    rows = "".join(
+        _summary_focus_item(ctx, item) for item in focus[:SUMMARY_FOCUS_LIMIT]
+    )
+    return f'<h3>Focus on these first</h3><ol class="summary-focus">{rows}</ol>'
+
+
+def _summary_focus_item(ctx: _Ctx, item) -> str:
+    rule = RATING_RULES[item.dimension][item.metric_name]
+    worth = (
+        f"{item.overall_gain:+d} overall ({item.dimension} {item.dimension_gain:+d}"
+        f"{', rules part' if item.gain_basis == 'rules' else ''})"
+    )
+    standard = _render_citation(ctx, rule.metric_citation[0])
+    if (
+        rule.threshold_citation != PROJECT_DEFAULT
+        and rule.threshold_citation not in rule.metric_citation
+    ):
+        standard += f"; threshold: {_render_citation(ctx, rule.threshold_citation)}"
+    return (
+        f"<li><strong>{ctx.esc(item.dimension)}</strong>: "
+        f"{ctx.esc(_METRIC_TEXT[item.metric_name])} — now "
+        f"{ctx.esc(_number(item.metric_value))}, rule "
+        f"{ctx.esc(item.comparison.replace('_', ' '))} "
+        f"{ctx.esc(_number(item.threshold))}; worth {ctx.esc(worth)}. "
+        f"Standard: {standard}</li>"
+    )
+
+
+def _summary_missing(
+    ctx: _Ctx, warnings: list[dict[str, Any]], scopes: dict[str, str]
+) -> str:
+    if not warnings:
+        return ""
+    lines = []
+    for warning in warnings:
+        dimension = warning["dimension"]
+        if dimension in _CHANGES_ONLY and scopes.get(dimension) == "project":
+            text = _CHANGES_ONLY[dimension]
+        else:
+            text = _missing_text(warning)
+        lines.append(
+            f"<li><strong>{ctx.esc(dimension)}</strong>: {ctx.esc(text)}</li>"
+        )
+    return (
+        "<h3>Could not evaluate — add what each needs</h3>"
+        f'<ul class="summary-missing">{"".join(lines)}</ul>'
+    )
+
+
+def _missing_text(warning: dict[str, Any]) -> str:
+    """Plain names of missing declared sources, then counts; never a raw
+    source string or reason."""
+    sources = [miss["source"] for miss in warning["sources_missing"]]
+    names = [_SOURCE_TEXT[s] for s in sources if _SOURCE_TEXT.get(s)]
+    other = sum(1 for s in sources if s not in _SOURCE_TEXT)
+    details = []
+    if names:
+        details.append(
+            "no "
+            + (
+                names[0]
+                if len(names) == 1
+                else f"{', '.join(names[:-1])} or {names[-1]}"
+            )
+        )
+    if other:
+        details.append(f"{other} other source{'s' if other != 1 else ''} not found")
+    unmeasured = len(warning["unmeasured_rules"])
+    if unmeasured:
+        details.append(
+            f"{unmeasured} rule{'s' if unmeasured != 1 else ''} not measured"
+        )
+    return "; ".join(details) or warning["message"].removeprefix(
+        "no number given — "
+    )
+
+
+def _number(value: float | int) -> str:
+    return f"{round(value, 2):g}" if isinstance(value, float) else str(value)
 
 
 def _render_warnings(ctx: _Ctx, packs: CombinedPack) -> str:
@@ -1209,6 +1511,14 @@ section, article { background: #111128; border: 1px solid #1e1e42;
 .plan-table .fix-engine { margin: 0; color: #9a9ac0; }
 .plan-table details p { margin: .25rem 0 0; }
 .no-gaps { color: #00ff88; font-weight: 700; }
+.summary { border-left: 3px solid #00d4ff; }
+.summary h3 { margin-top: .75rem; }
+.summary-focus, .summary-missing { margin: .25rem 0 0; padding-left: 1.2rem;
+  font-size: .9rem; }
+.summary-focus li, .summary-missing li { margin-bottom: .35rem;
+  overflow-wrap: break-word; }
+.summary-agent { border-left: 2px solid #ffb800; padding-left: .6rem;
+  margin: .75rem 0 0; overflow-wrap: break-word; }
 .footer { border: none; background: none; color: #6b6b9a; font-size: .8rem;
   text-align: center; }
 """
