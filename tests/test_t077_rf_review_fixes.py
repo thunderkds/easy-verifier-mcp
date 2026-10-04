@@ -197,8 +197,9 @@ def test_issue_share_reads_the_targets_own_commits_with_relative_paths(
     # without --relative the changed paths are api/src/app.js, never read
     assert not isinstance(metric.outcome, MetricAbstention), metric.derivation
     assert "src/app.js" in metric.computed_from
-    # sibling commits outside the target are not the target's history
-    assert metric.outcome == 1.0, metric.derivation
+    # sibling commits outside the target are not the target's history: 24
+    # referencing commits of the target's 25 (its "init" names no issue)
+    assert metric.outcome == 24 / 25, metric.derivation
 
 
 def test_co_change_share_reads_the_targets_own_commits_with_relative_paths(
@@ -211,6 +212,8 @@ def test_co_change_share_reads_the_targets_own_commits_with_relative_paths(
     )
     metric = _metrics(_pack(target))["code_commits_with_docs_share"]
     assert not isinstance(metric.outcome, MetricAbstention), metric.derivation
-    assert metric.outcome == 1.0, metric.derivation
+    # the target's 5 code commits ("init" changed no document), not the 11
+    # of the whole repository
+    assert metric.outcome == 4 / 5, metric.derivation
     assert "co-changed documents cited: docs/guide.md" in metric.derivation
     assert "docs/guide.md" in metric.computed_from

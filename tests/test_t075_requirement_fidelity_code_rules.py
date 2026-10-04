@@ -368,15 +368,3 @@ def test_ruby_bare_route_tokens_apply_only_in_declared_routes_files(tmp_path) ->
     assert "0 of 1 route(s)" in metric.derivation
     assert "app/services/cache.rb" not in metric.computed_from
 
-
-def test_a_target_inside_a_larger_repository_cites_its_own_files(tmp_path) -> None:
-    # coffee-shop-api is a subdirectory of its git repository: commit paths
-    # must be read relative to the target, or nothing read can be cited.
-    messages = ["init"] + [f"feat: step {i} (#{i})" for i in range(24)]
-    outer = _repo(tmp_path / "outer", {"api/src/routes.js": ROUTES_JS}, messages)
-    _write(outer, {"api/src/log.js": "module.exports = 0;\n"})
-    _git(outer, "add", "-A")
-    _git(outer, "commit", "-qm", "chore: move log (#99)")
-    metric = _metrics(_pack(outer / "api"))["commits_with_issue_reference_share"]
-    assert not isinstance(metric.outcome, MetricAbstention), metric.derivation
-    assert "src/log.js" in metric.computed_from
