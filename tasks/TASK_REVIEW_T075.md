@@ -71,15 +71,15 @@ in declared routes files; conventions (local layer + `.easy-verifier.toml`) embe
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t075_requirement_fidelity_code_rules.py` (25 tests; nested-repo test replaced in T077 because it was a false pass) + `tests/test_t077_rf_review_fixes.py` (9) — pass |
+| Verification command run | ☑ pass | Full suite (T077 agent, final HEAD 87faac6) 1990 passed, 2 skipped, 2 failed (known stale-Docker container tests); ruff clean — pass |
+| Negative cases hold | ☑ pass | no routes → route rule abstains; < 20 commits / shallow / not git → issue-ref rule abstains; no items → items rule abstains; UTF-8/SHA-256/hex colours not issue refs; one-arg app.get(setting) not a route; Ruby routes only in routes files — pass |
+| verify | ☑ pass | Supervisor real-repo runs after T077 fixes (see AFTER): coffee-shop-api 50, kitchd 15→60, bryony honest below-floor abstention (pattern gap → T079) — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Stage 4 found coffee-shop-api scored 0 for wrong reasons (multi-line decorators, plan checklists counted as requirements, nested-repo git path prefix) and AC 7 conflict on requirements_docs_count → fixed in T077 (Supervisor decisions A/B, DDR-0011 addendum). AC 10 conventions replay split to T078 — pass |
+| Full smoke suite still green (no regression) | ☑ pass | 1990 passed; only the 2 pre-existing container failures — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | no UI change |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | no UI change |
+| **UI: Responsiveness at target viewports** | ☐ N/A | no UI change |
 
 ---
 
@@ -100,9 +100,14 @@ bryony overall 66 | architecture 70 | requirement-fidelity below_coverage_floor 
 kitchd overall 58 | architecture 100 | requirement-fidelity 15 | all {'architecture': 100, 'blast-radius': 'all_metrics_abstained', 'code-quality': 'insufficient_measured_weight', 'requirement-fidelity': 15, 'security': 59, 'solution-fit': 'no_static_rule', 'test-strategy': 'insufficient_measured_weight'}
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (Supervisor, 2026-10-04 11:46 UTC, branch `87faac6`, CLI score --scope project):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+coffee-shop-api overall 65; requirement-fidelity below_coverage_floor -> 50 (requirements_doc_missing FAIL, code_commits_with_docs_share 0.21 FAIL, routes_without_test_share 0.0 pass 17/17, commits_with_issue_reference_share 0.0 FAIL, requirement_items_traced_share abstained: no items in 13 docs)
+bryony overall 69; requirement-fidelity below_coverage_floor (0.4 < 0.5): routes written `webapp.get('/api/...')` not matched by curated tokens -> follow-up T079
+kitchd overall 72; requirement-fidelity 15 -> 60 (doc present pass, docs co-change 0.56 pass, routes untested 0.11 pass, issue refs 0.03 FAIL, items traced 0.24 FAIL)
+```
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**DELTA**: requirement-fidelity is rated from routes↔tests, commit issue references and any-form requirement items plus documents; coffee-shop-api and kitchd get honest numbers.
+
+**WITNESS**: Supervisor, 2026-10-04 11:46 UTC — three real-repo score runs.
