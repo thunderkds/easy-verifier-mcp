@@ -218,3 +218,16 @@ def test_co_change_share_reads_the_targets_own_commits_with_relative_paths(
     assert metric.outcome == 4 / 5, metric.derivation
     assert "co-changed documents cited: docs/guide.md" in metric.derivation
     assert "docs/guide.md" in metric.computed_from
+
+
+def test_a_decorator_stack_longer_than_the_line_bound_still_names_the_handler():
+    # coffee-shop-api: @Post() then five decorators over 13 lines; the line
+    # bound applies between decorators, not to the whole stack
+    stack = "".join(
+        f"  @ApiErrorResponse(\n    HttpStatus.E{i},\n    MESSAGES.E{i},\n  )\n"
+        for i in range(5)
+    )
+    head = "class C {\n  @Post()\n  @AdminOnly()\n"
+    text = head + stack + "  async create(dto) {}\n}\n"
+    routes = find_routes(text, _tokens("js-ts"), _syntax(".ts"))
+    assert [(r.method, r.handler) for r in routes] == [("POST", "create")]

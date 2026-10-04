@@ -28,7 +28,8 @@ from .roles import _config_matcher
 from .tokens import LanguageSyntax, strip
 
 MAX_HANDLER_LINES = 10
-"""Lines after a route decorator searched for the handler's declaration."""
+"""Blank lines allowed between one decorator and the next, or the handler's
+declaration; a stack of decorators is skipped whole, however long (T077)."""
 
 MAX_ARGUMENT_CHARS = 2000
 """Characters of a route call's or decorator's argument list examined."""
@@ -228,15 +229,16 @@ def _decorated_name(code: str, position: int) -> str | None:
     many lines they span (``@ApiResponse({\\n ... })``), then the first
     identifier before ``(`` on the declaration line is the name."""
     _, cursor = _arguments(code, position)
-    limit = code.count("\n", 0, cursor) + MAX_HANDLER_LINES
-    while code.count("\n", 0, cursor) <= limit:
-        cursor = _BETWEEN_DECORATORS.match(code, cursor).end()
+    while True:
+        gap = _BETWEEN_DECORATORS.match(code, cursor)
+        if gap[0].count("\n") > MAX_HANDLER_LINES:
+            return None
+        cursor = gap.end()
         head = _DECORATOR_HEAD.match(code, cursor)
         if head is None:
             match = _DECLARED_NAME.search(code[cursor:].partition("\n")[0])
             return match[1] if match else None
         _, cursor = _arguments(code, head.end())
-    return None
 
 
 def _call_handler(code: str, position: int) -> str | None:
