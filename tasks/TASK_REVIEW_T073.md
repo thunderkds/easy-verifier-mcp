@@ -56,15 +56,15 @@ TOML schema, loaded and validated by the same code, extended add-only by the sam
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t073_structure_patterns.py` (38 tests: layer_of incl. tests/ambiguity unclassified; find_routes NestJS/Express/Flask/Spring/ASP.NET/Go…, comment/string blanking, multi-line decorators; requirement items id/line forms; issue references; extension via local conventions.toml and .easy-verifier.toml [conventions]; registry validation). Agent sabotage of each guard turned tests red — pass |
+| Verification command run | ☑ pass | Supervisor 2026-10-04: full suite 1913 passed, 2 skipped, 2 failed (known stale-Docker container tests); ruff All checks passed — pass |
+| Negative cases hold | ☑ pass | coffee-shop-api score payload (ratings, overall, improvement_plan) identical to BEFORE — no score change, as scoped — pass |
+| verify | ☑ pass | Supervisor drove CLI score on coffee-shop-api (unchanged) and ran layer_of over its 106 src .ts files: api 4, service 6, data 12, unclassified 84 (23 are tests). Finding carried to T074: NestJS dto/schema/guard/middleware/filter/interceptor/decorator/migrations unclassified; cross-cutting module/config/util/constant/enum/types need an excluded class — pass (scope of T073 met) |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed core/structure.py, conventions.toml, route_tokens in 9 language files, registry/roles/metric_tables loaders, test_t030 change. code-review: P0–P1 none. P2 → carried to T074/T075: (a) layer coverage on NestJS (above); (b) false positives: Jira-key pattern matches UTF-8/SHA-256, `#<digit>` hex colours, Express `app.get(setting)`, Spring class-level @RequestMapping; (c) Ruby bare route tokens → restrict to routes files; (d) local/config conventions not yet embedded for replay (FR-048) before T075 scores with them. Accepted: `.easy-verifier.toml` citation for config entries (tag user-supplied); citations written from knowledge, spot-check at T075 — pass |
+| Full smoke suite still green (no regression) | ☑ pass | 1913 passed; only the 2 pre-existing container failures — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | no UI change |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | no UI change |
+| **UI: Responsiveness at target viewports** | ☐ N/A | no UI change |
 
 ---
 
@@ -85,9 +85,8 @@ bryony overall 66 | architecture 70 | requirement-fidelity below_coverage_floor 
 kitchd overall 58 | architecture 100 | requirement-fidelity 15 | all {'architecture': 100, 'blast-radius': 'all_metrics_abstained', 'code-quality': 'insufficient_measured_weight', 'requirement-fidelity': 15, 'security': 59, 'solution-fit': 'no_static_rule', 'test-strategy': 'insufficient_measured_weight'}
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: same scores (no rule change by design); new `core/structure.py` finders + `registry/curated/conventions.toml` + `route_tokens` in 9 languages. coffee-shop-api: `layer_of` classifies 22 of 83 non-test sources (api 4, service 6, data 12).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**DELTA**: the engine can now classify layers and find routes, requirement items and issue references from cited, repo-extendable patterns — the inputs T074/T075 score.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-04 — full-suite re-run, unchanged-score check and real-repo layer sanity run.
