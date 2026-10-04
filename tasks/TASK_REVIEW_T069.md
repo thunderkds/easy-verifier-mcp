@@ -33,8 +33,34 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer on `feat/T069-report-summary` at `ae77a8b`, before any code
+change; `S=/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad`):
+
+```
+$ rsync -a --exclude node_modules --exclude reports \
+    /home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api/ $S/coffee-shop-api/
+$ echo '[]' > $S/findings-empty.json
+$ cd <worktree> && date -u && PYTHONPATH=src <main>/.venv/bin/python -m easy_verifier.adapters.cli \
+    write-report --repo $S/coffee-shop-api --scope project --findings $S/findings-empty.json </dev/null > $S/before-out.json
+Sun Oct  4 04:01:53 AM UTC 2026
+exit=0
+  "path": "reports/evidence-report-project-20261004T040154-307470Z.html",
+
+$ date -u; grep -o '<h[12][^>]*>[^<]*' $S/coffee-shop-api/reports/*.html | head -12
+Sun Oct  4 04:01:58 AM UTC 2026
+<h1>Evidence report
+<h2>Before you share this report
+<h2>Context warnings
+<h2>Evidence warnings — no number given
+<h2>Quality score
+<h2>Improvement plan
+<h2>Checklist coverage
+<h2>Dimensions
+```
+
+The report opens straight into warnings, then the score panel and the plan: there is no summary
+section (the only "summary" strings in the file are `<details><summary>` toggles). A copy of this
+report is kept at `$S/before-report.html`.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
