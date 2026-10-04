@@ -4,6 +4,8 @@ Every rating is fixed arithmetic over measured facts. The rules, thresholds, wei
 floors are static data in `src/easy_verifier/core/judge.py`; the registry-field mapping is in
 `src/easy_verifier/core/metric_tables.py` (`FIELD_METRICS`, `ROLE_METRICS`). The session around
 these rules is drawn in [`SCORING_FLOW.md`](SCORING_FLOW.md).
+Which of the 32 evaluation areas each rule belongs to, and which areas have no rule yet, is in
+[`AREA_COVERAGE.md`](AREA_COVERAGE.md).
 
 ## How a dimension is rated
 

@@ -314,6 +314,7 @@ Full guide, with worked examples: [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_G
 | [`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md) | Round-by-round flow of an MCP scoring session (diagram) |
 | [`docs/SCORING_RULES.md`](docs/SCORING_RULES.md) | Every rating rule: threshold, weight, coverage floor, registry fields read |
 | [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_GUIDE.md) | What each part of a score or report means, when to trust a number, how to act on it |
+| [`docs/AREA_COVERAGE.md`](docs/AREA_COVERAGE.md) | Which of the 32 evaluation areas have rules today, which rules, and which task adds the rest |
 | [`docs/RELEASE_GUIDE.md`](docs/RELEASE_GUIDE.md) | Release process |
 
 ## License

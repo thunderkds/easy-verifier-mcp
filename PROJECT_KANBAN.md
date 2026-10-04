@@ -74,6 +74,7 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T072** — Area coverage doc: 32 areas → today's rules, status, planned home (docs/AREA_COVERAGE.md + sync test) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (Covered 4 · Partial 7 · Not yet 21; 6 sync tests)
 - [x] **T071** — Evaluation docs: EVALUATION_GUIDE.md, README "Reading a report", SCORING_FLOW interpretation (Depends on: T070) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (P0–P3 none; 77 doc tests; guide + README + SCORING_FLOW)
 - [x] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1/P2 none, 2 P3; 1792 passed; 0 numbers/links lost on bryony + coffee-shop-api; 400px overflow fixed)
 - [x] **T069** — Report summary first: engine summary (rated areas, top 3 weak points with rule + standard, could-not-evaluate) + optional agent paragraph; detail right after | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none, 1 P2 fixed in-task; 1774 passed; coffee-shop-api + bryony summaries verified)

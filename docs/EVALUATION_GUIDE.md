@@ -36,6 +36,8 @@ Over MCP, a `needs_input` block may ride along (`picks`, `gate_evaluations`, `re
   dimensions contributed, how each was rated (`rules`, `blended (w …)`, `agent-rated`) and which
   abstained and why.
 - Two overalls are comparable only when the same dimensions contributed.
+- A dimension speaks only for the evaluation areas its rules cover. Today 11 of the 32 areas have
+  rules and 21 have none; see [AREA_COVERAGE.md](AREA_COVERAGE.md) for the area-by-area map.
 
 ## When to trust a number
 
