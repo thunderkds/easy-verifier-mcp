@@ -49,7 +49,11 @@ seeks "source files with import statements", so a repository with code and a REA
 0.40 floor. `layer_direction_violations` counts import statements from a lower to a higher layer
 (data → service, service → api, data → api) between files the `layer_paths` conventions classify;
 `shared` files (modules, config, utils, constants, enums, types) and unclassified files never count,
-and the rule abstains when fewer than 50% of the non-shared source files quoted classify.
+and the rule abstains when fewer than 50% of the non-shared source files quoted classify. DTOs,
+schemas, exceptions and providers are `shared` boundary contracts. Only the curated `layer_paths`
+apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in scoring until
+conventions are embedded for replay (T075). A README heading naming "Architecture" fills the
+`architecture-doc` role (coverage) and passes the description rule, citing the same excerpt.
 
 ## Rules and the registry fields they read
 

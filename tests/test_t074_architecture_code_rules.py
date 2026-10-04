@@ -149,10 +149,13 @@ def test_shared_files_leave_the_denominator_and_never_violate(tmp_path: Path) ->
 def test_readme_architecture_section_is_a_description(tmp_path: Path) -> None:
     readme = "# r\n\nIntro.\n\n## Architecture\n\nControllers call services.\n"
     _pack, metrics = _metrics(_repo(tmp_path, {"README.md": readme, **LAYERED}))
+    assert _pack.coverage_score == 0.75
     metric = metrics["architecture_description_missing"]
     assert metric.outcome == 0
     assert "README.md" in metric.derivation and "Architecture" in metric.derivation
     assert any(ref.startswith("README.md") for ref in metric.computed_from)
+    # Supervisor review: the section also fills the role for coverage.
+    assert "architecture-doc" in _pack.sources_found
 
 
 @pytest.mark.parametrize("name", ["ARCHITECTURE.md", "docs/architecture/overview.txt"])
@@ -186,8 +189,11 @@ def test_no_imports_is_a_stated_miss(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("path", "layer"),
     [
-        ("src/users/dto/create-user.dto.ts", "api"),
-        ("src/users/users.schema.ts", "api"),
+        ("src/users/dto/create-user.dto.ts", "shared"),
+        ("src/users/users.schema.ts", "shared"),
+        ("src/users/dto/index.ts", "shared"),
+        ("src/common/exceptions/base.exception.ts", "shared"),
+        ("src/common/providers/auth.provider.ts", "shared"),
         ("src/auth/jwt.guard.ts", "api"),
         ("src/common/middlewares/log.ts", "api"),
         ("src/common/http.filter.ts", "api"),
@@ -212,3 +218,15 @@ def test_no_imports_is_a_stated_miss(tmp_path: Path) -> None:
 )
 def test_nestjs_and_shared_layer_conventions(path: str, layer: str | None) -> None:
     assert layer_of(path) == layer
+
+
+def test_a_repository_importing_a_dto_is_not_a_violation(tmp_path: Path) -> None:
+    """Supervisor review: DTOs/schemas are shared boundary contracts."""
+    files = dict(LAYERED)
+    files["src/app/dto/user_dto.py"] = "import os\n"
+    files["src/app/repositories/user_repository.py"] = "from app.dto import user_dto\n"
+    _pack, metrics = _metrics(_repo(tmp_path, {"README.md": "# r\n", **files}))
+    metric = metrics["layer_direction_violations"]
+    assert metric.outcome == 0
+    assert "3 of 3" in metric.derivation
+    assert "only the curated layer_paths apply" in metric.derivation

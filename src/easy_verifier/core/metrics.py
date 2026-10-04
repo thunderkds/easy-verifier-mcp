@@ -885,7 +885,7 @@ _NOT_FOUND = "not found: no file in the repository matched"
 """Start of the miss reason role resolution gives when its walk was complete
 and nothing matched (``roles.unfilled_reason``): the search ran."""
 
-_ARCHITECTURE_HEADING = re.compile(r"^\s{0,3}#{1,6}[^\n]*\barchitecture\b", re.I | re.M)
+ARCHITECTURE_HEADING = re.compile(r"^\s{0,3}#{1,6}[^\n]*\barchitecture\b", re.I | re.M)
 """A Markdown heading naming the architecture (T074, FR-068)."""
 
 
@@ -907,7 +907,7 @@ def _document_rule(
     presence = _role_presence(role)
 
     def compute(view: _PackView) -> _Computed:
-        if section is not None and role not in view.pack.sources_found:
+        if section is not None:
             excerpt = _readme_section(view, section)
             if excerpt is not None:
                 heading = section.search(excerpt.text).group(0).strip()
@@ -1371,6 +1371,12 @@ MIN_CLASSIFIED_SHARE = 0.50
 """Below this share of non-shared source files in a layer, the layer rule
 abstains (user, DDR-0011)."""
 
+_LAYER_PATHS_NOTE = (
+    "only the curated layer_paths apply: local-layer and .easy-verifier.toml "
+    "layer paths are not used in scoring until conventions are embedded for "
+    "replay (T075)"
+)
+
 MAX_LAYER_EXAMPLES = 5
 """Violating import statements quoted by file:line in the derivation."""
 
@@ -1407,8 +1413,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             reason=(
                 f"{share}, below the declared minimum share of "
                 f"{MIN_CLASSIFIED_SHARE:.2f}, so the layer direction of this "
-                "code is not measurable; a repository declares its own layer "
-                "paths in .easy-verifier.toml [conventions] layer_paths"
+                "code is not measurable; " + _LAYER_PATHS_NOTE
             )
         )
     # A stem shared by files of different layers names no layer: skipped.
@@ -1449,7 +1454,8 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         f"{len(violations)} import statement(s) from a lower to a higher layer "
         "(data -> service, service -> api, data -> api)"
         + (f", e.g. {examples}" if examples else "")
-        + f". {share}; shared and unclassified files never count, and a file "
+        + f". {share} ({_LAYER_PATHS_NOTE}); shared and unclassified files "
+        "never count, and a file "
         "stem shared by files of different layers names none; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
     )
@@ -2458,7 +2464,7 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         "architecture_description_missing",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
-        _document_rule("architecture-doc", _ARCHITECTURE_HEADING),
+        _document_rule("architecture-doc", ARCHITECTURE_HEADING),
     ),
     MetricDefinition(
         "decision_records_missing",

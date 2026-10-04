@@ -7,7 +7,8 @@
 # layer_paths: "<api|service|data|shared>=<repository glob>"; a file matching
 # two layers stays unclassified. "shared" marks cross-cutting files (modules,
 # config, utils, constants, enums, types): they are left out of the layer
-# rule's classified share and never take part in a violation (T074). requirement_item_patterns: "id=<token>" matches
+# rule's classified share and never take part in a violation (T074). DTOs and
+# schemas are boundary contracts every layer uses, so they are shared. requirement_item_patterns: "id=<token>" matches
 # an identifier anywhere, "line=<token>" a line start (the item is the rest of
 # the line). Tokens use the registry token syntax (core/registry.py).
 
@@ -49,8 +50,23 @@ citation_url = "https://docs.djangoproject.com/en/5.1/topics/db/models/"
 source_tag = "curated"
 
 [[layer_paths]]
-value = ["api=**/*.dto.*", "api=**/*.schema.*", "api=**/*.guard.*", "api=**/*.middleware.*", "api=**/middlewares/**", "api=**/*.filter.*", "api=**/*.interceptor.*", "api=**/*.decorator.*"]
+value = ["api=**/*.guard.*", "api=**/*.middleware.*", "api=**/middlewares/**", "api=**/*.filter.*", "api=**/*.interceptor.*", "api=**/*.decorator.*"]
 citation_url = "https://docs.nestjs.com/guards"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.dto.*", "shared=**/dto/**", "shared=**/*.schema.*"]
+citation_url = "https://docs.nestjs.com/techniques/validation"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.exception.*"]
+citation_url = "https://docs.nestjs.com/exception-filters"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.provider.*"]
+citation_url = "https://docs.nestjs.com/fundamentals/custom-providers"
 source_tag = "curated"
 
 [[layer_paths]]

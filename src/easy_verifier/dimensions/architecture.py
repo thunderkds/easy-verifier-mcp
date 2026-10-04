@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from ..core.metrics import ARCHITECTURE_HEADING
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -25,6 +26,8 @@ PURPOSE = (
     "Gather the documents that state how the system is structured and why, "
     "so the calling agent can judge the architecture from cited evidence."
 )
+
+DOC_ROLE = "architecture-doc"
 
 IMPORTS_SOURCE = "source files with import statements"
 """Code evidence counts toward coverage (T074, DDR-0011): a pseudo-source,
@@ -60,7 +63,9 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """
     sources = _code_extract.source_candidates(context, "import excerpts")
     _code_extract.record_sample(context, NAME)
-    yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
+    for excerpt in _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS):
+        _architecture_section(context, excerpt)
+        yield excerpt
     found = IMPORTS_SOURCE in context.sources_found
     for excerpt in _code_extract.import_excerpts(context, sources):
         if not found:
@@ -82,6 +87,20 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
                 ),
             )
         )
+
+
+def _architecture_section(context: DimensionContext, excerpt: Excerpt) -> None:
+    """A README heading naming the architecture fills ``architecture-doc``
+    (T074, FR-068), as the description rule cites it."""
+    name = excerpt.path.rsplit("/", 1)[-1].lower()
+    if not name.startswith("readme") or not ARCHITECTURE_HEADING.search(excerpt.text):
+        return
+    files = context.role_files.get(DOC_ROLE)
+    if files is None:
+        if DOC_ROLE not in context.sources_found:
+            context.sources_found.append(DOC_ROLE)
+    elif excerpt.path not in files:
+        context.role_files[DOC_ROLE] = (*files, excerpt.path)
 
 
 DESCRIPTOR = DimensionDescriptor(
