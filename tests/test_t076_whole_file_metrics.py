@@ -37,9 +37,8 @@ def _module(index: int, other: str) -> str:
     branches = "".join(f"    if x == {i}:\n        x += 1\n" for i in range(index % 13))
     escape = "from typing import Any\n\n\ndef typed(v: Any) -> int:\n    return 1\n"
     todo = "# TODO tidy this\n" if index % 4 == 0 else "# FIXME see ABC-12\n"
-    return (
-        f"import {other}\n{todo}\n\ndef f{index}(x):\n{branches}    return x\n\n"
-        + (escape if index % 3 == 0 else "")
+    return f"import {other}\n{todo}\n\ndef f{index}(x):\n{branches}    return x\n\n" + (
+        escape if index % 3 == 0 else ""
     )
 
 
@@ -79,7 +78,9 @@ def _oracle(repo: Path, dimension: str) -> dict:
 def test_truncated_pack_still_computes_whole_file_metrics(tmp_path) -> None:
     repo = _repo(tmp_path)
     for module, names in WHOLE.items():
-        pack = run_dimension(module.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET)
+        pack = run_dimension(
+            module.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET
+        )
         assert pack.truncated  # FR-027a: still reported (AC3)
         metrics = _metrics(pack)
         oracle = _oracle(repo, module.NAME)
@@ -91,24 +92,32 @@ def test_truncated_pack_still_computes_whole_file_metrics(tmp_path) -> None:
 
 def test_values_are_real_not_degenerate(tmp_path) -> None:
     repo = _repo(tmp_path)
-    pack = run_dimension(code_quality.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET)
+    pack = run_dimension(
+        code_quality.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET
+    )
     metrics = _metrics(pack)
     assert metrics["max_function_ccn"].outcome == 13
-    pack = run_dimension(architecture.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET)
+    pack = run_dimension(
+        architecture.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET
+    )
     assert _metrics(pack)["top_level_import_cycles"].outcome >= 1
 
 
 def test_disclosure_says_all_files_and_never_sample(tmp_path) -> None:
     repo = _repo(tmp_path)
     for module, names in WHOLE.items():
-        pack = run_dimension(module.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET)
+        pack = run_dimension(
+            module.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET
+        )
         assert "sample" not in to_json_dict(pack)
         metrics = _metrics(pack)
         for name in names:
             derivation = metrics[name].derivation
             assert "all 20 source files" in derivation, derivation
             assert "sample" not in derivation
-    payload = score_repository(repo, scope="project", budget_bytes=TINY_BUDGET).serialize()
+    payload = score_repository(
+        repo, scope="project", budget_bytes=TINY_BUDGET
+    ).serialize()
     assert '"samples"' not in payload
     assert "continue_batches" not in payload
 
@@ -116,7 +125,9 @@ def test_disclosure_says_all_files_and_never_sample(tmp_path) -> None:
 def test_secret_bearing_source_is_still_refused(tmp_path) -> None:
     repo = _repo(tmp_path)
     (repo / "alpha/api/.env.py").write_text("TOKEN=FAKEfake\n", encoding="utf-8")
-    pack = run_dimension(code_quality.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET)
+    pack = run_dimension(
+        code_quality.DESCRIPTOR, repo, scope="project", budget_bytes=TINY_BUDGET
+    )
     assert "alpha/api/.env.py" not in pack.files_read
     for metric in _metrics(pack).values():
         assert "alpha/api/.env.py" not in metric.computed_from

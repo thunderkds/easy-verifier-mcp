@@ -501,13 +501,15 @@ def test_unused_facts_leave_the_pack_json_byte_identical(tmp_path: Path, capsys)
     root = _base(tmp_path)
     pack = run_dimension(DIMENSIONS["code-quality"], root, "project")
     emitted = to_json_dict(pack)
-    assert list(emitted) == PRE_T055_PACK_KEYS
+    # T076: a code tier with sources now carries its whole-file metrics.
+    assert list(emitted) == [*PRE_T055_PACK_KEYS, "whole_file"]
     legacy = dataclasses.asdict(pack)
     del legacy["compat"], legacy["doc_history"], legacy["sample"]  # T068 too
     assert json.dumps(emitted) == json.dumps(legacy)
 
     assert cli.main(["code-quality", "--repo", str(root), "--scope", "project"]) == 0
-    assert list(json.loads(capsys.readouterr().out)) == PRE_T055_PACK_KEYS
+    emitted = list(json.loads(capsys.readouterr().out))
+    assert emitted == [*PRE_T055_PACK_KEYS, "whole_file"]
     blast = run_dimension(blast_radius.DESCRIPTOR, root, "project")
     assert list(to_json_dict(blast)) == PRE_T055_PACK_KEYS
 
