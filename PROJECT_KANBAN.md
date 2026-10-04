@@ -68,13 +68,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [~] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T070`, branch `feat/T070-report-readability`)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1/P2 none, 2 P3; 1792 passed; 0 numbers/links lost on bryony + coffee-shop-api; 400px overflow fixed)
 - [x] **T069** — Report summary first: engine summary (rated areas, top 3 weak points with rule + standard, could-not-evaluate) + optional agent paragraph; detail right after | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none, 1 P2 fixed in-task; 1774 passed; coffee-shop-api + bryony summaries verified)
 - [x] **T068** — Large repos: code-tier sources in priority batches (purpose → churn), continue/stop, stateless resume (Depends on: T067) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none, 2 P2 → follow-up; 1740 passed; bryony 0 → 200/400 of 1178 files read, code-quality abstain → 67 over a disclosed sample)
 - [x] **T067** — Evidence floor: no number below 50% measured weight; evidence-lack = warning, never agent-rated | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-03 (P0/P1 none; 1697 passed; bryony code-quality 100 → abstain 0.20 with warning; MCP gate asks only solution-fit; kitchd before/after)
