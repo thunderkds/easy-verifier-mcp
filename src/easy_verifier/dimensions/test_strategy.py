@@ -28,6 +28,7 @@ import re
 from collections.abc import Iterator
 from pathlib import PurePosixPath
 
+from ..core import batches
 from ..core.context import MAX_LINE_CHARS, whole_file_excerpt
 from ..core.metric_tables import curated_metric_tables
 from ..core.metrics import code_kind, expected_test_names
@@ -39,6 +40,7 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.roles import role
+from . import _code_extract
 
 NAME = "test-strategy"
 
@@ -104,11 +106,11 @@ COVERAGE_ARTIFACT_WARNING = (
     "finding of this engine."
 )
 
-UNREAD_SOURCES_WARNING = (
-    "{count} source file(s) in the resolved scope were not read, because "
-    "together with the test evidence they exceed the {cap}-file read cap. The "
-    "pack therefore holds no source file, so source-to-test figures computed "
-    "over it cannot describe this scope's sources."
+BATCH_SOURCES_WARNING = (
+    "{count} in-scope source files do not fit beside the test evidence under "
+    "the {cap}-file read cap; they are read in priority batches of {cap}: "
+    "batches {done} of {total} ({read} of {count} files), ordered by {order}. "
+    "Source-to-test figures describe this sample."
 )
 
 DELETED_TEST_WARNING = (
@@ -316,22 +318,43 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     # Source files are read too (T031), after all test evidence and without an
     # excerpt, so `files_read` shows the sources the correspondence is about and
     # metrics can measure both covered and uncovered ones, without spending the
-    # byte budget. All or none: a silently partial source set would make a
-    # whole-set figure describe an arbitrary subset. Decided before any yield,
-    # so the warning cannot be lost when the budget abandons this generator.
+    # byte budget. When they do not fit beside the test evidence, they are read
+    # in priority batches of the cap instead (T068, DDR-0010; was all or none),
+    # and read here, before any ranked yield, so a budget stop cannot skip them.
     ranked_paths = {path for _rank, path in ranked}
     sources = [
         path
         for path in scope_files
         if _is_source_file(path) and path not in ranked_paths
     ]
+    candidates = _code_extract.code_sources(scope_files)
+    requested = getattr(context, "batches", 1)
     if reader.reads + len(ranked) + len(sources) > MAX_TEST_SOURCES:
-        if sources:
+        if len(candidates) > MAX_TEST_SOURCES:
+            plan = getattr(context, "batch_plan", None) or batches.plan(
+                context.repo_path, candidates, MAX_TEST_SOURCES, requested
+            )
+            context.batch_plan = plan
+            context.sample = _code_extract.sample_facts(plan)
             _warn(
                 context,
-                UNREAD_SOURCES_WARNING.format(count=len(sources), cap=MAX_TEST_SOURCES),
+                BATCH_SOURCES_WARNING.format(
+                    count=len(candidates),
+                    cap=MAX_TEST_SOURCES,
+                    done=plan.batches_done,
+                    total=plan.batches_total,
+                    read=len(plan.selected),
+                    order=plan.order,
+                ),
             )
+            sources = [path for path in plan.selected if path not in ranked_paths]
+        else:
+            batches.resolve_count(requested, 1)
+        for source in sources:
+            context.read_source(source)
         sources = []
+    else:
+        batches.resolve_count(requested, 1)
 
     for _rank, source in ranked:
         if reader.reads >= MAX_TEST_SOURCES:

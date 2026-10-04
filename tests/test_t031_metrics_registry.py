@@ -608,7 +608,9 @@ def test_an_uncovered_source_is_read_so_the_metric_can_count_it(tmp_path):
     assert [e.path for e in pack.excerpts] == ["tests/test_foo.py"]
 
 
-def test_sources_are_read_all_or_none_within_the_cap(tmp_path, monkeypatch):
+def test_sources_over_the_test_cap_are_read_in_batches(tmp_path, monkeypatch):
+    """T068 (DDR-0010) reverses all-or-none: sources that do not fit beside
+    the tests are still read, in priority batches of the cap."""
     repo = _repo(
         tmp_path,
         {
@@ -619,10 +621,11 @@ def test_sources_are_read_all_or_none_within_the_cap(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(test_strategy, "MAX_TEST_SOURCES", 4)
     pack = run_dimension(test_strategy.DESCRIPTOR, repo, scope="project")
-    assert not {"src/a.py", "src/b.py"} & set(pack.files_read)
-    assert any("were not read" in warning for warning in pack.warnings)
-    # Sabotage pair: with room for them, both are read and nothing is warned.
-    monkeypatch.setattr(test_strategy, "MAX_TEST_SOURCES", 5)
-    pack = run_dimension(test_strategy.DESCRIPTOR, repo, scope="project")
     assert {"src/a.py", "src/b.py"} <= set(pack.files_read)
-    assert not any("were not read" in warning for warning in pack.warnings)
+    assert pack.sample is None  # two sources fit in one batch: nothing sampled
+    # Sabotage pair: cap 1 -> two batches, batch 1 read, the sample disclosed.
+    monkeypatch.setattr(test_strategy, "MAX_TEST_SOURCES", 1)
+    pack = run_dimension(test_strategy.DESCRIPTOR, repo, scope="project")
+    assert len({"src/a.py", "src/b.py"} & set(pack.files_read)) == 1
+    assert (pack.sample.batches_done, pack.sample.batches_total) == (1, 2)
+    assert any("batches 1 of 2" in warning for warning in pack.warnings)

@@ -65,6 +65,33 @@ for missing evidence (`insufficient_measured_weight` below the 50% measured-weig
 never asked about: it is listed in the payload's `warnings` and the report's "Evidence warnings"
 block, and an evaluation sent for it is rejected with an error naming the dimension.
 
+## Large repositories: priority batches
+
+When a scope has more source files than a code tier's cap (200), code-quality, architecture and
+test-strategy no longer skip them (DDR-0010, T068). The sources are ordered by purpose class
+(application/server source, other application source, scripts/tooling, generated/vendored — the
+last are ordered last, never dropped; `core/batches.py:PURPOSE_CLASSES`), then by git churn (commits
+touching the file in the last 400 non-merge local commits, most first; without git history: path
+only, and the disclosure says so), then by path, and read in batches of 200.
+
+- Each call reads batches 1…N afresh (stateless): the caller names only the count, never a file
+  count or a metric, and the same count always gives a byte-equal payload.
+- The payload's `samples` lists, per sampled dimension, `batches_done`, `batches_total`,
+  `files_read`, `files_in_scope` and the `order`. Sampled metrics say
+  `sample: batches N of M, X of Y files` in their derivation; code-quality's function, type-escape
+  and debt-marker metrics and architecture's import cycles are computed over the whole text of
+  those files, so the byte budget cutting the quoted excerpts does not make them abstain. The
+  excerpts themselves stay within the budget.
+- MCP: while batches remain, `needs_input.continue_batches` (`batches_done`, `batches_total`,
+  `files_read`, `files_in_scope`, `question`) rides along with any round. Ask the user whether to
+  read the next batch (more tokens) or stop; to continue, call `score` again with the same
+  `agent_input` plus `"batches": N+1` (or `"all"`). Stopping keeps an honest result over the
+  batches read.
+- CLI: `score` / `write-report` take `--batches N` or `--all` (default 1); stderr says how many
+  batches remain and the flag that continues.
+- `batches` of 0, a non-number, or more than the scope has is a validation error, never clamped.
+  At or under the cap nothing changes.
+
 ## Improvement plan
 
 Every `score` result (CLI and MCP alike) carries `improvement_plan`, and the HTML report shows it

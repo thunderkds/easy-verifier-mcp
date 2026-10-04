@@ -390,7 +390,9 @@ def test_corresponding_test_outranks_alphabetically_earlier_filler(
     )
     paths = [excerpt.path for excerpt in pack.excerpts]
 
-    assert len(set(pack.files_read)) <= test_strategy.MAX_TEST_SOURCES
+    # Tests keep the read cap; sources are read in their own batches (T068).
+    tests = {path for path in pack.files_read if path.startswith("tests/")}
+    assert len(tests) <= test_strategy.MAX_TEST_SOURCES
     assert paths[0] == "tests/test_zebra.py"
     assert "tests/test_aaa_0219.py" not in paths
 

@@ -253,6 +253,11 @@ class EvidencePack:
     documents and the code/doc co-change of recent local history. ``None`` for
     every other dimension, and then left out of the serialized pack."""
 
+    sample: SampleFacts | None = field(default=None)
+    """Priority-batch facts (T068): set only when a code tier had more sources
+    than its cap and read batches 1…N of them. ``None`` otherwise, and then
+    left out of the serialized pack."""
+
 
 @dataclass(frozen=True)
 class AcceptanceCriterion:
@@ -391,7 +396,37 @@ class DocHistory:
     """Why no co-change window was read (no git, shallow clone), else ``None``."""
 
 
-_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history"})
+@dataclass(frozen=True)
+class SampledMetric:
+    """One metric computed over the whole text of a sample's files (T068),
+    not over the budgeted excerpts. ``value`` is ``None`` exactly when
+    ``abstention`` gives the reason; ``computed_from`` are paths in
+    ``files_read``."""
+
+    name: str
+    value: float | int | None
+    abstention: str | None
+    computed_from: tuple[str, ...]
+    derivation: str
+
+
+@dataclass(frozen=True)
+class SampleFacts:
+    """Which priority batches of a code tier were read (T068, FR-060)."""
+
+    batches_done: int
+    batches_total: int
+    files_read: int
+    """Files in batches 1…``batches_done``."""
+
+    files_in_scope: int
+    order: str
+    """How the files were ordered (purpose class, churn, path)."""
+
+    metrics: tuple[SampledMetric, ...] = ()
+
+
+_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history", "sample"})
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
 of the serialized pack while unset, so every pack that does not use them
 serializes byte-for-byte as before."""
