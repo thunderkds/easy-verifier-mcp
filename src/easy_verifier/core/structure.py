@@ -36,6 +36,10 @@ MAX_ARGUMENT_CHARS = 2000
 _DECORATOR_STARTS = ("@", "[", "#[")
 _PATH_LITERAL = re.compile(r"\s*\(?\s*(?:\w+\s*[=:]\s*)?([\"'`])([^\"'`\n]{0,200})\1")
 _DECLARED_NAME = re.compile(r"([A-Za-z_]\w*)\s*\(")
+# what separates a decorator from the next one or from the declaration: the
+# closing ``]`` / ``)`` of an attribute, a ``,`` between attributes, blanks
+_BETWEEN_DECORATORS = re.compile(r"[\s\]),]*")
+_DECORATOR_HEAD = re.compile(r"(?:@|#\[|\[)\s*[A-Za-z_][\w.]*")
 _IDENTIFIER = re.compile(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*")
 _KEYWORD_ARGUMENT = re.compile(r"[A-Za-z_]\w*\s*=(?!=)")
 _CLOSERS = {"(": ")", "[": "]", "{": "}"}
@@ -219,15 +223,19 @@ def _arguments(code: str, position: int) -> tuple[str, int]:
 
 
 def _decorated_name(code: str, position: int) -> str | None:
-    _, after = _arguments(code, position)
-    rest_of_line, _, following = code[after:].partition("\n")
-    lines = [rest_of_line.lstrip(" ])\t"), *following.split("\n")[:MAX_HANDLER_LINES]]
-    for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith(_DECORATOR_STARTS):
-            continue
-        match = _DECLARED_NAME.search(stripped)
-        return match[1] if match else None
+    """The handler declared after the route decorator ending at ``position``:
+    each further decorator is skipped whole, its bracketed arguments however
+    many lines they span (``@ApiResponse({\\n ... })``), then the first
+    identifier before ``(`` on the declaration line is the name."""
+    _, cursor = _arguments(code, position)
+    limit = code.count("\n", 0, cursor) + MAX_HANDLER_LINES
+    while code.count("\n", 0, cursor) <= limit:
+        cursor = _BETWEEN_DECORATORS.match(code, cursor).end()
+        head = _DECORATOR_HEAD.match(code, cursor)
+        if head is None:
+            match = _DECLARED_NAME.search(code[cursor:].partition("\n")[0])
+            return match[1] if match else None
+        _, cursor = _arguments(code, head.end())
     return None
 
 
