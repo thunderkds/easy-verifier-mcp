@@ -67,9 +67,58 @@ kitchd at the same commit (second real repo, `Sat Oct  3 03:19:27 PM UTC 2026`):
 architecture 100; code-quality insufficient_measured_weight 0.45; test-strategy
 insufficient_measured_weight 0.30; requirement-fidelity 15; security 59.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: same repos, implementation commit `36ed737` (+ this evidence commit), by the implementing agent.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+$ date -u
+Sun Oct  4 02:57:55 AM UTC 2026
+$ PYTHONPATH=src .../python -m easy_verifier.adapters.cli score --repo .../bryony/bryony --scope project --batches 1 </dev/null
+stderr: warning [batches]: read batches 1 of 6 (200 of 1178 in-scope source files, most important and most-changed first); continue with --batches 2, or --all
+overall 66
+architecture 70 | blast-radius all_metrics_abstained | code-quality 67 | requirement-fidelity below_coverage_floor
+security 50 | solution-fit no_static_rule | test-strategy 75
+samples: architecture / code-quality / test-strategy  1 of 6, 200 of 1178
+  functions_over_ccn_10_share 0.01571890892279242 | ...sample: batches 1 of 6, 200 of 1178 files -- computed over the whole text of those files, not only the excerpts quoted in this pack
+  max_function_ccn 43
+  type_escapes_per_kloc 0.0
+  todo_without_ticket_share 1.0
+
+$ date -u
+Sun Oct  4 02:58:07 AM UTC 2026
+$ ... score ... --batches 2
+stderr: warning [batches]: read batches 2 of 6 (400 of 1178 in-scope source files, most important and most-changed first); continue with --batches 3, or --all
+overall 66; code-quality 67; architecture 70; test-strategy 75
+samples: all three 2 of 6, 400 of 1178
+  functions_over_ccn_10_share 0.013095749248604552 | ...sample: batches 2 of 6, 400 of 1178 files -- ...
+  max_function_ccn 53
+  type_escapes_per_kloc 0.0
+  todo_without_ticket_share 1.0
+
+MCP round (in-process tool function mcp_server.score), Sun Oct  4 02:58:38 AM UTC 2026:
+round1 needs_input keys: ['continue_batches', 'picks', 'reference']
+round1 continue_batches: {"batches_done": 1, "batches_total": 6, "files_read": 200, "files_in_scope": 1178,
+  "question": "Only 200 of 1178 in-scope source files were read (batches 1 of 6, most important and most-changed first), ... call score again with the same agent_input plus \"batches\": 2 (or \"all\" ...); never send a file count or a metric."}
+round2 (agent_input {"batches": 2}) continue_batches: {'batches_done': 2, 'batches_total': 6, 'files_read': 400, 'files_in_scope': 1178}
+batches=7 -> BatchInputError batches: 7 is out of range; this scope has 6 batches of source files
+
+kitchd, Sun Oct  4 02:59:11 AM UTC 2026 (under the code cap, so unchanged by design): overall 58;
+architecture 100; code-quality insufficient_measured_weight 0.45; test-strategy
+insufficient_measured_weight 0.30; requirement-fidelity 15; security 59; no `samples` key.
+```
+
+Report (bryony scratch clone, `write-report --batches 2`): each sampled card shows "Sample: batches
+2 of 6 — 400 of 1,178 in-scope source files read, ordered by …". Screenshots (score panel extracted
+with the report's own `<head>` styles): `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t068_panel_1280.png`,
+`.../t068_panel_400.png` (400px iframe). The disclosure is visible and there is no horizontal page scroll; only the existing `rating-method` class is used.
+
+Payload size (bryony score JSON): 476 KB before → 1.08 MB at batch 1 → 1.64 MB at batch 2. The
+growth is in metrics that already existed and already cite every file read
+(e.g. `source_files_without_covering_test` lists all 200/400 paths). Excerpts stay within the budget (AC9).
+
+**DELTA**: On a repository with more sources than the cap, code-quality, architecture and
+test-strategy now read the highest-priority, most-changed 200 files instead of none (bryony
+code-quality goes from abstained at 20% weight to rated 67 over a disclosed sample), and the user can
+continue batch by batch (`--batches N`/`--all`, or MCP `continue_batches` → `agent_input.batches`) or stop.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
