@@ -216,6 +216,7 @@ what the rules cannot detect or cannot rate with confidence (DDR-0006).
 | FR-069 | architecture adds `layer_direction_violations` (imports from a lower to a higher layer; unclassified files never count; abstains when < 50% of source files classify). Weights: description 10, decision records 10, import cycles 40, layer direction 40. | US-021 |
 | FR-070 | requirement-fidelity adds `routes_without_test_share`, `commits_with_issue_reference_share` (abstains below a declared commit minimum) and `requirement_items_traced_share` (any requirement-item form; replaces the two AC tracing rules; abstains when no items). Weights: requirements docs 10, docs co-change 10, routes 40, issue references 20, requirement items 20. | US-021 |
 | FR-071 | Coverage floors count code evidence: architecture also seeks source files with imports; requirement-fidelity also seeks route files, test files and git history; `task-breakdown` is no longer sought. | US-021, FR-028a |
+| FR-072 | At or under the per-tier cap, code-tier structure metrics (code-quality CCN/type-escape/TODO metrics; architecture import cycles and layer direction) are computed over whole source files, as above the cap (FR-060), so byte-budget truncation of excerpts no longer makes them abstain; the derivation says "all N files" (no sample label). Excerpts and the byte budget are unchanged (NFR-009). *(Added 2026-10-04, T068 follow-up #2, needed by DDR-0011.)* | US-021, US-018 |
 
 ### Entry points
 
