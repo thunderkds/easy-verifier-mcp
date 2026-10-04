@@ -250,3 +250,12 @@ source_tag = "curated"
 value = ["has_secure_password"]
 citation_url = "https://api.rubyonrails.org/classes/ActiveModel/SecurePassword/ClassMethods.html"
 source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked. The routing DSL is a bare call, so a
+# method named get/post/... elsewhere also matches: callers pass route files.
+
+[[route_tokens]]
+value = ["GET=get", "POST=post", "PUT=put", "PATCH=patch", "DELETE=delete", "ANY=match"]
+citation_url = "https://guides.rubyonrails.org/routing.html"
+source_tag = "curated"

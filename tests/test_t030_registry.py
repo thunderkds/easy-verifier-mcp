@@ -86,7 +86,9 @@ def _curated_dir():
 
 def test_curated_layer_ships_exactly_the_nine_languages() -> None:
     names = sorted(
-        item.name for item in _curated_dir().iterdir() if item.name.endswith(".toml")
+        item.name
+        for item in _curated_dir().iterdir()
+        if item.name.endswith(".toml") and item.name != "conventions.toml"  # T073
     )
     assert names == [f"{language}.toml" for language in LANGUAGES]
 

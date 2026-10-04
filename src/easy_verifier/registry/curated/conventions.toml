@@ -1,0 +1,96 @@
+# Language-agnostic convention patterns — curated reference registry entry
+# (T073, DDR-0011, FR-068). Read by core/registry.py load_conventions, never
+# as a language. A repository adds its own forms through the local layer's
+# conventions.toml or .easy-verifier.toml [conventions]; nothing here is the
+# only accepted form.
+#
+# layer_paths: "<api|service|data>=<repository glob>"; a file matching two
+# layers stays unclassified. requirement_item_patterns: "id=<token>" matches
+# an identifier anywhere, "line=<token>" a line start (the item is the rest of
+# the line). Tokens use the registry token syntax (core/registry.py).
+
+# --- layers ------------------------------------------------------------------
+
+[[layer_paths]]
+value = ["api=**/controllers/**", "api=**/*.controller.*", "api=**/*Controller.*"]
+citation_url = "https://docs.nestjs.com/controllers"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["api=**/routes/**", "api=**/*.routes.*", "api=**/handlers/**", "api=**/api/**"]
+citation_url = "https://expressjs.com/en/guide/routing.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["api=**/views.py", "api=**/views/**", "api=**/urls.py"]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/http/views/"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["service=**/services/**", "service=**/service/**", "service=**/*.service.*", "service=**/*Service.*"]
+citation_url = "https://martinfowler.com/eaaCatalog/serviceLayer.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["service=**/usecases/**", "service=**/use_cases/**"]
+citation_url = "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["data=**/repositories/**", "data=**/repository/**", "data=**/*.repository.*", "data=**/*Repository.*", "data=**/dao/**"]
+citation_url = "https://martinfowler.com/eaaCatalog/repository.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["data=**/models/**", "data=**/models.py", "data=**/entities/**", "data=**/*.entity.*"]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/db/models/"
+source_tag = "curated"
+
+# --- requirement items ------------------------------------------------------
+
+[[requirement_item_patterns]]
+value = ["id=FR-<0-9>*", "id=NFR-<0-9>*", "id=REQ-<A-Za-z0-9>*"]
+citation_url = "https://www.iso.org/standard/72089.html"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["id=US-<0-9>*", "id=AC-<0-9>*"]
+citation_url = "https://www.agilealliance.org/glossary/user-stories/"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["line=Scenario:", "line=Scenario Outline:"]
+citation_url = "https://cucumber.io/docs/gherkin/reference/"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["line=- [ ]", "line=- [x]", "line=- [X]"]
+citation_url = "https://github.github.com/gfm/#task-list-items-extension-"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["line=operationId:", "line=\"operationId\":"]
+citation_url = "https://spec.openapis.org/oas/v3.1.0#operation-object"
+source_tag = "curated"
+
+# --- issue references in commit messages ------------------------------------
+
+[[issue_reference_patterns]]
+value = ["#<0-9>*", "GH-<0-9>*", "issues/<0-9>*", "pull/<0-9>*"]
+citation_url = "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/autolinked-references-and-urls"
+source_tag = "curated"
+
+[[issue_reference_patterns]]
+value = ["close #<0-9>*", "closes #<0-9>*", "closed #<0-9>*", "fix #<0-9>*", "fixes #<0-9>*", "fixed #<0-9>*", "resolve #<0-9>*", "resolves #<0-9>*", "resolved #<0-9>*", "Close #<0-9>*", "Closes #<0-9>*", "Closed #<0-9>*", "Fix #<0-9>*", "Fixes #<0-9>*", "Fixed #<0-9>*", "Resolve #<0-9>*", "Resolves #<0-9>*", "Resolved #<0-9>*"]
+citation_url = "https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue"
+source_tag = "curated"
+
+[[issue_reference_patterns]]
+value = ["refs #<0-9>*", "Refs #<0-9>*", "issues/<0-9>*", "merge_requests/<0-9>*"]
+citation_url = "https://docs.gitlab.com/ee/user/project/issues/managing_issues.html"
+source_tag = "curated"
+
+[[issue_reference_patterns]]
+value = ["<A-Z><A-Z><A-Z0-9>*-<0-9>*"]
+citation_url = "https://support.atlassian.com/jira-software-cloud/docs/reference-issues-in-your-development-work/"
+source_tag = "curated"

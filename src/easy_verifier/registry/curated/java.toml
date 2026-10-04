@@ -276,3 +276,19 @@ source_tag = "curated"
 value = [".getSession ("]
 citation_url = "https://jakarta.ee/specifications/servlet/6.0/apidocs/jakarta.servlet/jakarta/servlet/http/httpservletrequest"
 source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked.
+
+[[route_tokens]]
+value = ["GET=@GetMapping", "POST=@PostMapping", "PUT=@PutMapping", "PATCH=@PatchMapping", "DELETE=@DeleteMapping", "ANY=@RequestMapping"]
+citation_url = "https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html"
+source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked.
+
+[[route_tokens]]
+value = ["GET=@GET", "POST=@POST", "PUT=@PUT", "PATCH=@PATCH", "DELETE=@DELETE"]
+citation_url = "https://jakarta.ee/specifications/restful-ws/3.1/jakarta-restful-ws-spec-3.1#resource_methods"
+source_tag = "curated"

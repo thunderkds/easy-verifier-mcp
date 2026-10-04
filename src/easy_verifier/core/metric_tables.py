@@ -302,6 +302,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_strict": _STRICT,
     "type_strict_off": _STRICT,
     "type_config_extends": _STRICT,
+    "route_tokens": (),  # T073: read by core/structure.py; its rule lands in T075
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
