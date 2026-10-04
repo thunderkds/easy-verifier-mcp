@@ -26,6 +26,7 @@ from pathlib import Path
 from ..dimensions import DIMENSIONS
 from ..dimensions import dimension_names as available_dimension_names
 from . import redact as redact_module
+from .batches import BatchInputError, parse_batches
 from .findings import ValidationError
 from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
@@ -60,6 +61,7 @@ def combined_pack(
     ref: str | None = None,
     task_id: str | None = None,
     agent_input: object | None = None,
+    batches: int | str | None = None,
 ) -> CombinedPack:
     """Run each named dimension and return their packs plus aggregate coverage.
 
@@ -97,6 +99,7 @@ def combined_pack(
     # any dimension runs, so this call already uses them (T036).
     if agent_input is not None:
         apply_registry_entries(parse_agent_input(agent_input), repo_path)
+    count = _batch_count(batches, agent_input)
 
     # Canonical, deterministic order regardless of the order requested (AC #10).
     ordered_names = tuple(name for name in available_names if name in requested)
@@ -112,6 +115,7 @@ def combined_pack(
                 ref=ref,
                 task_id=task_id,
                 picks=picks,
+                batches=count,
             )
         except (RepoPathError, ValidationError):
             # NOT isolated. AC #6's robustness is about one *dimension* failing
@@ -136,6 +140,24 @@ def combined_pack(
         coverage=_aggregate_coverage(slots),
         budget_model=BUDGET_MODEL,
     )
+
+
+def _batch_count(explicit: object | None, agent_input: object | None) -> int | str:
+    """The priority-batch count (T068): an adapter's explicit value (CLI
+    ``--batches``/``--all``) or ``agent_input.batches``, default 1. Naming two
+    different counts is an error rather than a silent choice."""
+    named = (
+        parse_agent_input(agent_input).get("batches")
+        if agent_input is not None
+        else None
+    )
+    if explicit is not None and named is not None and explicit != named:
+        raise BatchInputError(
+            "batches: the call names two different batch counts (an adapter "
+            "option and agent_input.batches); name one"
+        )
+    value = explicit if explicit is not None else named
+    return parse_batches(value) if value is not None else 1
 
 
 def _aggregate_coverage(slots: list[DimensionSlot]) -> CoverageSummary:

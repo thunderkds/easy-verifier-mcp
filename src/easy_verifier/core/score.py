@@ -102,6 +102,15 @@ class ScoreResult:
     """MCP-only review gate (T038, FR-047): ``{entries, omitted,
     instructions}`` for local entries awaiting the user's review. Like
     ``reference``, never part of :meth:`to_dict`; the CLI never shows it."""
+    samples: tuple[dict[str, Any], ...] = ()
+    """Per sampled dimension, in canonical order (T068, FR-060): which
+    priority batches of its sources were read. In :meth:`to_dict` for both
+    adapters, only when non-empty, so a repository at or under the cap
+    serialises exactly as before."""
+    continue_batches: dict[str, Any] | None = None
+    """MCP-only (T068, FR-061): ``{batches_done, batches_total, files_read,
+    files_in_scope, question}`` while batches remain. Like ``needs_input``,
+    never part of :meth:`to_dict`."""
 
     @property
     def improvement_plan(self) -> ImprovementPlan:
@@ -127,6 +136,10 @@ class ScoreResult:
             "overall": self.overall.to_dict(),
             "improvement_plan": self.improvement_plan.to_dict(),
             "warnings": self.warnings,
+        }
+        if self.samples:
+            payload["samples"] = [dict(item) for item in self.samples]
+        payload |= {
             "metrics": json.loads(self.metrics.serialize()),
             "provenance": [
                 {
@@ -168,6 +181,7 @@ def score_repository(
     findings: list[dict[str, Any]] | str | bytes | None = None,
     agent_input: dict[str, Any] | str | bytes | None = None,
     detect_gates: bool = False,
+    batches: int | str | None = None,
 ) -> ScoreResult:
     """Gather all seven dimensions and return one complete score result.
 
@@ -182,6 +196,11 @@ def score_repository(
     candidates pending asks for picks only; the call that carries picks (or a
     first call with nothing to pick) asks for gate evaluations; a call that
     carries ``gate_evaluations`` asks nothing.
+
+    ``batches`` (T068) is an adapter's explicit priority-batch count (CLI
+    ``--batches``/``--all``); MCP callers name it as ``agent_input.batches``.
+    While batches remain, the MCP-only ``continue_batches`` question rides
+    along with every round: it asks the user, not the rules.
     """
     document = parse_agent_input(agent_input) if agent_input is not None else None
     evaluations = document.get("gate_evaluations") if document is not None else None
@@ -195,6 +214,7 @@ def score_repository(
         ref=ref,
         task_id=task_id,
         agent_input=document,
+        batches=batches,
     )
     by_dimension: Mapping[str, Sequence[Finding]] | None = None
     if findings is not None:
@@ -211,6 +231,10 @@ def score_repository(
     # One round each: a caller that already supplied agent input gets no
     # detect gate, stateless and unconditional (DDR-0006 §7). No repository
     # walk happens at all in that case, so a picks round costs nothing extra.
+    if detect_gates:
+        result = dataclasses.replace(
+            result, continue_batches=continue_question(result.samples)
+        )
     if not detect_gates or evaluations is not None:
         return result
     # The reference gate rides along with whichever round is asked: it adds
@@ -297,6 +321,18 @@ def score_packs(
         )
         for slot in packs.slots
     )
+    samples = tuple(
+        {
+            "dimension": slot.dimension,
+            "batches_done": slot.pack.sample.batches_done,
+            "batches_total": slot.pack.sample.batches_total,
+            "files_read": slot.pack.sample.files_read,
+            "files_in_scope": slot.pack.sample.files_in_scope,
+            "order": slot.pack.sample.order,
+        }
+        for slot in packs.slots
+        if slot.pack is not None and slot.pack.sample is not None
+    )
     return ScoreResult(
         ratings,
         overall,
@@ -305,7 +341,56 @@ def score_packs(
         comparisons,
         provenance,
         registry_entries=registry.local_entries(name for name, _ in frameworks),
+        samples=samples,
     )
+
+
+CONTINUE_QUESTION = (
+    "Only {read} of {scope} in-scope source files were read (batches {done} of "
+    "{total}, most important and most-changed first), so code-quality, "
+    "architecture and test-strategy describe a sample. Ask the user whether to "
+    "read the next batch (a larger sample, more tokens) or stop here and keep "
+    "this result. To continue, call score again with the same agent_input plus "
+    '"batches": {next} (or "all" for every remaining batch); never send a file '
+    "count or a metric."
+)
+
+
+def continue_note(samples: Sequence[Mapping[str, Any]]) -> str | None:
+    """The CLI's disclosure of remaining batches and the flag that continues
+    (T068, FR-061), or ``None`` when none remain. Here, not in the adapter,
+    so the adapter stays free of arithmetic (FR-021)."""
+    ask = continue_question(samples)
+    if ask is None:
+        return None
+    return (
+        f"read batches {ask['batches_done']} of {ask['batches_total']} "
+        f"({ask['files_read']} of {ask['files_in_scope']} in-scope source files, "
+        "most important and most-changed first); continue with --batches "
+        f"{ask['batches_done'] + 1}, or --all"
+    )
+
+
+def continue_question(samples: Sequence[Mapping[str, Any]]) -> dict[str, Any] | None:
+    """``needs_input.continue_batches`` (T068, FR-061), or ``None`` when every
+    sampled dimension read all its batches. Every code tier batches the same
+    candidate list, so the first unfinished sample speaks for all of them."""
+    for item in samples:
+        if item["batches_done"] < item["batches_total"]:
+            return {
+                "batches_done": item["batches_done"],
+                "batches_total": item["batches_total"],
+                "files_read": item["files_read"],
+                "files_in_scope": item["files_in_scope"],
+                "question": CONTINUE_QUESTION.format(
+                    read=item["files_read"],
+                    scope=item["files_in_scope"],
+                    done=item["batches_done"],
+                    total=item["batches_total"],
+                    next=item["batches_done"] + 1,
+                ),
+            }
+    return None
 
 
 def _evidence_warning(item: RatingAbstention) -> dict[str, Any]:

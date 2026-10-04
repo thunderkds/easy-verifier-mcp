@@ -15,11 +15,14 @@ bearing files are refused there, unread) and every excerpt passes the
 pipeline's budget and redaction like any other. Selection is deterministic:
 sorted paths, then a stable key.
 
-All or none (the T031 pattern): above :data:`MAX_CODE_SOURCES` candidates the
-tier is skipped with a warning, because a silently partial file set would make
-a whole-set metric describe an arbitrary subset. The byte budget can still cut
-the tier; that is reported as truncation and whole-set metrics abstain
-(FR-027a).
+Priority batches (T068, DDR-0010; reverses T031/T050's all-or-none): above
+:data:`MAX_CODE_SOURCES` candidates the tier reads batches 1…N of them, ordered
+by purpose class, git churn and path (``core.batches``), and says so in a
+warning. The tier's sampled metrics are then computed over the whole text of
+those files (:func:`record_sample`), so the byte budget cutting the excerpts
+does not make them abstain; it is still reported as truncation. At or under
+the cap nothing changes: every candidate is read, and the byte budget can cut
+the tier as before (FR-027a).
 """
 
 from __future__ import annotations
@@ -27,18 +30,26 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import PurePosixPath
 
+from ..core import batches
 from ..core.context import MAX_EXCERPT_LINES, MAX_LINE_CHARS
 from ..core.metric_tables import curated_metric_tables
-from ..core.metrics import _is_source_file
-from ..core.models import DimensionContext, Excerpt
+from ..core.metrics import _is_source_file, compute_sampled_metrics
+from ..core.models import (
+    DimensionContext,
+    Excerpt,
+    SampledMetric,
+    SampleFacts,
+)
+from ..core.redact import redact
 from ..core.tokens import LanguageSyntax, approximate_ccn, import_statements
 
 MAX_CODE_SOURCES = 200
-"""Upper bound on source files read for one code tier."""
+"""Source files per priority batch of one code tier (the former all-or-none cap)."""
 
-UNREAD_CODE_WARNING = (
-    "{count} in-scope source files exceed the cap of {cap} for {what}; none were "
-    "read, so metrics over {what} abstain rather than describe an arbitrary subset"
+BATCH_WARNING = (
+    "{count} in-scope source files exceed the cap of {cap} for {what}; read in "
+    "priority batches of {cap}: batches {done} of {total} ({read} of {count} "
+    "files), ordered by {order}. Metrics over {what} describe this sample."
 )
 
 
@@ -130,24 +141,86 @@ def _excerpt(path: str, lines: list[str], start: int, end: int) -> Excerpt | Non
     )
 
 
-def source_candidates(context: DimensionContext, what: str) -> list[str]:
-    """In-scope source files with registry syntax, sorted; ``[]`` above the cap.
-
-    Call before the dimension's first yield: the budget may abandon the
-    generator at any yield, and the warning must not be lost with it.
-    """
+def code_sources(files) -> list[str]:
+    """In-scope source files with registry syntax, sorted: the candidates of
+    every code tier, test-strategy's source batches included (T068)."""
     tables = curated_metric_tables()
-    files = getattr(context.resolved_scope, "files", ()) or ()
-    sources = sorted(
+    return sorted(
         path
         for path in set(files)
         if PurePosixPath(path).suffix in tables.syntax and _is_source_file(path, tables)
     )
-    if len(sources) > MAX_CODE_SOURCES:
-        message = UNREAD_CODE_WARNING.format(
-            count=len(sources), cap=MAX_CODE_SOURCES, what=what
+
+
+def source_candidates(context: DimensionContext, what: str) -> list[str]:
+    """The sources this tier reads: every candidate at or under the cap,
+    else the files of priority batches 1…N (``context.batches``).
+
+    Call before the dimension's first yield: the budget may abandon the
+    generator at any yield, and the warning must not be lost with it. Raises
+    :class:`~easy_verifier.core.batches.BatchInputError` when the requested
+    batch count is out of range for this scope.
+    """
+    files = getattr(context.resolved_scope, "files", ()) or ()
+    sources = code_sources(files)
+    requested = getattr(context, "batches", 1)
+    if len(sources) <= MAX_CODE_SOURCES:
+        batches.resolve_count(requested, 1)
+        return sources
+    plan = getattr(context, "batch_plan", None)
+    if plan is None:
+        plan = batches.plan(context.repo_path, sources, MAX_CODE_SOURCES, requested)
+        context.batch_plan = plan
+    message = BATCH_WARNING.format(
+        count=len(sources),
+        cap=MAX_CODE_SOURCES,
+        what=what,
+        done=plan.batches_done,
+        total=plan.batches_total,
+        read=len(plan.selected),
+        order=plan.order,
+    )
+    if message not in context.warnings:
+        context.warnings = (*context.warnings, message)
+    return list(plan.selected)
+
+
+def record_sample(context: DimensionContext, dimension: str) -> None:
+    """Set ``context.sample`` for a tier that read priority batches.
+
+    Reads each selected file once through ``read_source`` (a secret-bearing
+    file is refused there and counts for nothing) and computes the
+    dimension's sampled metrics over the whole text in memory; only the
+    result is kept, with its paths and derivation redacted like any other
+    pack field. A no-op at or under the cap, and once per context: the budget
+    may call ``collect`` once per tier pass.
+    """
+    plan = getattr(context, "batch_plan", None)
+    if plan is None or getattr(context, "sample", None) is not None:
+        return
+    units = [
+        Excerpt(path=path, start_line=1, end_line=len(lines), text="\n".join(lines))
+        for path, lines, _syntax in _read(context, plan.selected)
+    ]
+    metrics = tuple(
+        SampledMetric(
+            name=item.name,
+            value=item.value,
+            abstention=None if item.abstention is None else redact(item.abstention),
+            computed_from=tuple(redact(path) for path in item.computed_from),
+            derivation=redact(item.derivation),
         )
-        if message not in context.warnings:
-            context.warnings = (*context.warnings, message)
-        return []
-    return sources
+        for item in compute_sampled_metrics(dimension, units, curated_metric_tables())
+    )
+    context.sample = sample_facts(plan, metrics)
+
+
+def sample_facts(plan, metrics=()) -> SampleFacts:
+    return SampleFacts(
+        batches_done=plan.batches_done,
+        batches_total=plan.batches_total,
+        files_read=len(plan.selected),
+        files_in_scope=len(plan.ordered),
+        order=plan.order,
+        metrics=tuple(metrics),
+    )

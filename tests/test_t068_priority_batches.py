@@ -9,6 +9,7 @@ batches 1..N, and replay is byte-equal.
 
 from __future__ import annotations
 
+import io
 import json
 import subprocess
 from pathlib import Path
@@ -84,9 +85,11 @@ def _module(name: str, other: str, index: int) -> str:
     CCN 10, a type escape every 3rd file, a debt marker every 4th, and an
     import of another top-level module (so cycles exist)."""
     branches = "".join(f"    if x == {i}:\n        x += 1\n" for i in range(index % 13))
-    escape = "from typing import Any\n\n\ndef typed(v: Any) -> int:\n    return 1\n" if (
-        index % 3 == 0
-    ) else ""
+    escape = (
+        "from typing import Any\n\n\ndef typed(v: Any) -> int:\n    return 1\n"
+        if index % 3 == 0
+        else ""
+    )
     todo = "# TODO tidy this\n" if index % 4 == 0 else "# FIXME see ABC-12\n"
     return (
         f"import {other}\n{todo}\n\ndef {name}(x):\n{branches}    return x\n\n{escape}"
@@ -154,7 +157,10 @@ def small(tmp_path, monkeypatch) -> Path:
 def _under_cap_repo(root: Path) -> Path:
     """50 sources, no git, project scope: the at-or-under-cap regression."""
     repo = root / "under"
-    files = {"README.md": "# Under\n\nFifty sources.\n", "ruff.toml": "line-length = 88\n"}
+    files = {
+        "README.md": "# Under\n\nFifty sources.\n",
+        "ruff.toml": "line-length = 88\n",
+    }
     files |= {f"src/pkg/m{i:02}.py": _module(f"f{i}", "pkg", i) for i in range(50)}
     files |= {"tests/test_m00.py": "def test_m00():\n    assert True\n"}
     _write(repo, files)
@@ -249,9 +255,11 @@ def test_batch_one_is_200_app_files_most_churned_first(big_repo: Path) -> None:
     sample = pack.sample
     assert (sample.batches_done, sample.batches_total) == (1, 3)
     assert (sample.files_read, sample.files_in_scope) == (200, 450)
-    read = [p for p in dict.fromkeys(pack.files_read) if p.endswith(".py")]
+    # The batch is read first, before any document tier (whose standalone
+    # code fallback may read a few more files on its own account).
+    read = [p for p in dict.fromkeys(pack.files_read) if p.endswith(".py")][:200]
     assert read[:3] == list(HOT)
-    assert len(read) == 200 and all(p.startswith("app/") for p in read)
+    assert all(p.startswith("app/") for p in read)
     assert "app/m197.py" not in read  # path order alone would have read it
     assert any(e.path.startswith("app/") for e in pack.excerpts)
     assert any("batches 1 of 3 (200 of 450 files)" in w for w in pack.warnings)
@@ -313,9 +321,7 @@ def test_metric_over_batches_one_and_two_equals_the_oracle(big_repo, dimension):
     )
     assert len(plan.selected) == 400
     expected = _oracle(big_repo, dimension, plan.selected)
-    measured = {
-        m.name: m for m in compute_metrics(pack, curated_metric_tables())
-    }
+    measured = {m.name: m for m in compute_metrics(pack, curated_metric_tables())}
     for name in SAMPLED[dimension]:
         assert measured[name].outcome == expected[name], name
         assert "sample: batches 2 of 3, 400 of 450 files" in measured[name].derivation
@@ -432,13 +438,23 @@ def test_mcp_asks_to_continue_then_continues(big_repo: Path) -> None:
     assert "continue_batches" not in last.get("needs_input", {})
 
 
+@pytest.fixture
+def no_stdin(monkeypatch) -> None:
+    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(b"")))
+
+
+@pytest.mark.usefixtures("no_stdin")
 def test_mcp_and_cli_payloads_agree_apart_from_needs_input(big_repo, capsys) -> None:
     mcp = mcp_server.score(
         repo=str(big_repo), scope="project", agent_input={"batches": 2}
     )
     mcp.pop("needs_input", None)
-    assert cli.main(["score", "--repo", str(big_repo), "--scope", "project",
-                     "--batches", "2"]) == 0
+    assert (
+        cli.main(
+            ["score", "--repo", str(big_repo), "--scope", "project", "--batches", "2"]
+        )
+        == 0
+    )
     out = capsys.readouterr()
     assert json.loads(out.out) == mcp
     assert "--batches 3" in out.err and "--all" in out.err
@@ -448,14 +464,20 @@ def test_mcp_and_cli_payloads_agree_apart_from_needs_input(big_repo, capsys) -> 
 # AC5: CLI flags
 
 
+@pytest.mark.usefixtures("no_stdin")
 def test_cli_all_and_validation(big_repo: Path, capsys) -> None:
-    assert cli.main(["score", "--repo", str(big_repo), "--scope", "project",
-                     "--all"]) == 0
+    assert (
+        cli.main(["score", "--repo", str(big_repo), "--scope", "project", "--all"]) == 0
+    )
     out = capsys.readouterr()
     assert {s["batches_done"] for s in json.loads(out.out)["samples"]} == {3}
     assert "warning [batches]" not in out.err
-    assert cli.main(["score", "--repo", str(big_repo), "--scope", "project",
-                     "--batches", "9"]) == cli.VALIDATION_EXIT
+    assert (
+        cli.main(
+            ["score", "--repo", str(big_repo), "--scope", "project", "--batches", "9"]
+        )
+        == cli.VALIDATION_EXIT
+    )
     with pytest.raises(SystemExit):
         cli.main(["score", "--repo", str(big_repo), "--batches", "2", "--all"])
 

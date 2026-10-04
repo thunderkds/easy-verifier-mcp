@@ -54,7 +54,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
-from .models import CombinedPack, EvidencePack, Excerpt
+from .models import CombinedPack, EvidencePack, Excerpt, SampledMetric
 from .tokens import (
     MAX_LINE_CHARS,
     LanguageSyntax,
@@ -2421,8 +2421,15 @@ def compute_metrics(
         view = _view(evidence, tables)
         truncated, omitted = _truncation_of(evidence)
         allowed = allowed_refs(evidence)
+        sample = evidence.sample
+        stored = {item.name: item for item in sample.metrics} if sample else {}
         for definition in METRIC_DEFINITIONS:
-            if definition.kind == WHOLE_SET and truncated:
+            if definition.name in stored:
+                # Computed by the dimension over the whole text of the
+                # sample's files (T068), not over the budgeted excerpts, so
+                # the FR-027a truncation rule does not describe it.
+                computed = _stored(stored[definition.name])
+            elif definition.kind == WHOLE_SET and truncated:
                 computed: _Computed = MetricAbstention(
                     reason=_TRUNCATED_ABSTENTION.format(omitted=omitted),
                     omitted_lower_bound=omitted,
@@ -2436,6 +2443,12 @@ def compute_metrics(
                 derivation = "no value: " + computed.reason
             else:
                 outcome, refs, derivation = computed
+            if sample is not None and definition.name in SAMPLE_METRICS.get(
+                dimension, ()
+            ):
+                derivation += "; " + sample_note(
+                    sample, whole_text=definition.name in stored
+                )
 
             metrics.append(
                 Metric(
@@ -2451,6 +2464,95 @@ def compute_metrics(
         check_citations(metrics[-len(METRIC_DEFINITIONS) :], allowed)
 
     return MetricSet(metrics=tuple(metrics), dimensions_without_pack=without)
+
+
+SAMPLED_METRICS: dict[str, tuple[str, ...]] = {
+    "code-quality": (
+        "functions_over_ccn_10_share",
+        "max_function_ccn",
+        "type_escapes_per_kloc",
+        "todo_without_ticket_share",
+    ),
+    "architecture": ("top_level_import_cycles",),
+}
+"""Metrics a code tier computes over the whole text of its priority-batch
+sample (T068) when it has more sources than its cap: the byte budget would
+otherwise truncate the excerpts they read and every whole-set one abstain."""
+
+SAMPLE_METRICS: dict[str, tuple[str, ...]] = {
+    "code-quality": (*SAMPLED_METRICS["code-quality"], "source_file_share"),
+    "architecture": (*SAMPLED_METRICS["architecture"], "source_file_share"),
+    "test-strategy": (
+        "test_to_source_ratio",
+        "source_files_without_covering_test",
+        "source_files_without_covering_test_share",
+        "source_file_share",
+    ),
+}
+"""Metrics whose value depends on which source files a sampled pack read, so
+their derivation states the sample (FR-060)."""
+
+
+def sample_note(sample, *, whole_text: bool = False) -> str:
+    """``sample: batches N of M, X of Y files`` (FR-060, AC3)."""
+    note = (
+        f"sample: batches {sample.batches_done} of {sample.batches_total}, "
+        f"{sample.files_read} of {sample.files_in_scope} files"
+    )
+    if whole_text:
+        note += (
+            " -- computed over the whole text of those files, not only the "
+            "excerpts quoted in this pack"
+        )
+    return note
+
+
+def compute_sampled_metrics(
+    dimension: str, units: Sequence[Excerpt], tables: LanguageTables
+) -> tuple[SampledMetric, ...]:
+    """Run this dimension's :data:`SAMPLED_METRICS` over whole-file ``units``.
+
+    Pure, like every function here: the caller (a dimension) read the files
+    and passes their text as whole-file excerpts; nothing is kept but the
+    result. Refs are mapped from each unit's ``ref`` to its path, which is
+    what the pack's ``files_read`` holds.
+    """
+    pack = EvidencePack(
+        dimension=dimension,
+        mode="",
+        scope="",
+        files_read=tuple(unit.path for unit in units),
+        excerpts=tuple(units),
+        sources_sought=(),
+        sources_found=(),
+        sources_missing=(),
+        coverage_score=None,
+        truncated=False,
+    )
+    view = _view(pack, tables)
+    paths = {unit.ref: unit.path for unit in units}
+    results = []
+    for definition in METRIC_DEFINITIONS:
+        if definition.name not in SAMPLED_METRICS.get(dimension, ()):
+            continue
+        computed = definition.compute(view)
+        if isinstance(computed, MetricAbstention):
+            results.append(
+                SampledMetric(definition.name, None, computed.reason, (), "")
+            )
+        else:
+            value, refs, derivation = computed
+            cited = tuple(sorted({paths.get(ref, ref) for ref in refs}))
+            results.append(
+                SampledMetric(definition.name, value, None, cited, derivation)
+            )
+    return tuple(results)
+
+
+def _stored(item: SampledMetric) -> _Computed:
+    if item.abstention is not None:
+        return MetricAbstention(reason=item.abstention)
+    return item.value, item.computed_from, item.derivation
 
 
 def check_citations(metrics: Sequence[Metric], allowed_refs: frozenset[str]) -> None:

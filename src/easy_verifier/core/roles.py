@@ -32,6 +32,7 @@ from fnmatch import fnmatchcase
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
+from .batches import BatchInputError, parse_batches
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
 from .judge import DocumentationResult, DocumentationRule
@@ -341,6 +342,7 @@ _AGENT_INPUT_KEYS = (
     "registry_entries",
     "reviews",
     "improvements",
+    "batches",
 )
 
 
@@ -377,7 +379,7 @@ def validate_agent_input(
         if key not in _AGENT_INPUT_KEYS:
             errors.append(
                 f"{redact(str(key))}: unknown key; only picks, gate_evaluations, "
-                "registry_entries, reviews and improvements are accepted"
+                "registry_entries, reviews, improvements and batches are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
@@ -387,6 +389,11 @@ def validate_agent_input(
         errors.append(
             "improvements: must be a list of {dimension, metric_name, suggestion}"
         )
+    if "batches" in document:
+        try:
+            parse_batches(document["batches"])
+        except BatchInputError as exc:
+            errors.extend(exc.errors)
     if not isinstance(document.get("gate_evaluations", {}), dict):
         errors.append(
             "gate_evaluations: must be an object mapping a dimension to an evaluation"

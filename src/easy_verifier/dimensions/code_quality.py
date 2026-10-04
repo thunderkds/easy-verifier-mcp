@@ -82,6 +82,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     the type checker's configuration (T056), then whole in-scope functions,
     most complex first (T050), as the last tier."""
     sources = _code_extract.source_candidates(context, "function excerpts")
+    _code_extract.record_sample(context, NAME)
     yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
     yield from _type_config_excerpts(context)
     yield from _code_extract.function_excerpts(context, sources)

@@ -20,7 +20,7 @@ from ..core.pipeline import (
 from ..core.report import ReportWriteError
 from ..core.report import write_report as core_write_report
 from ..core.scope import VALID_KINDS
-from ..core.score import score_repository
+from ..core.score import continue_note, score_repository
 from ..core.synthesis import combined_pack
 from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
 
@@ -82,6 +82,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="findings JSON file; takes precedence over piped stdin",
     )
     _add_agent_input_argument(report)
+    _add_batches_argument(report)
 
     score = commands.add_parser(
         _SCORE,
@@ -94,7 +95,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="optional findings JSON file; takes precedence over piped stdin",
     )
     _add_agent_input_argument(score)
+    _add_batches_argument(score)
     return parser
+
+
+def _add_batches_argument(parser: argparse.ArgumentParser) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--batches",
+        type=int,
+        metavar="N",
+        help="above the source cap, read priority batches 1..N (default 1)",
+    )
+    group.add_argument(
+        "--all",
+        dest="batches",
+        action="store_const",
+        const="all",
+        help="above the source cap, read every priority batch",
+    )
 
 
 def _add_agent_input_argument(parser: argparse.ArgumentParser) -> None:
@@ -192,6 +211,7 @@ def _run_report(args: argparse.Namespace) -> int:
         ref=args.ref,
         task_id=args.task_id,
         agent_input=agent_input,
+        batches=args.batches,
     )
     result = core_write_report(findings, packs, args.repo, agent_input=agent_input)
     return _emit({"path": result.path, "advisory": result.advisory})
@@ -206,9 +226,13 @@ def _run_score(args: argparse.Namespace) -> int:
         task_id=args.task_id,
         findings=_read_findings(args.findings, required=False),
         agent_input=_read_agent_input(args.agent_input),
+        batches=args.batches,
     )
     for note in result.registry_notes:
         print(f"warning [registry]: {note}", file=sys.stderr)
+    note = continue_note(result.samples)
+    if note is not None:
+        print(f"warning [batches]: {note}", file=sys.stderr)
     return _emit(result.to_dict())
 
 

@@ -507,12 +507,14 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         if score.comparisons is not None
         else {}
     )
+    samples = {item["dimension"]: item for item in score.samples}
     cards = "".join(
         _render_score_card(
             ctx,
             rating,
             assessments.get(rating.dimension),
             divergences.get(rating.dimension),
+            samples.get(rating.dimension),
         )
         for rating in score.ratings
     )
@@ -700,6 +702,7 @@ def _render_score_card(
     rating: Rating | RatingAbstention | GatedRating,
     assessment: Assessment | AssessmentAbsence | None,
     divergence: Divergence | DivergenceAbsence | None,
+    sample: dict[str, Any] | None = None,
 ) -> str:
     gated = ""
     if type(rating) is GatedRating:
@@ -763,8 +766,22 @@ def _render_score_card(
 
     return (
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
+        f"{_render_sample(ctx, sample)}"
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
         f"{_render_divergence(ctx, divergence)}</article>"
+    )
+
+
+def _render_sample(ctx: _Ctx, sample: dict[str, Any] | None) -> str:
+    """T068: a sampled dimension says so beside its number (FR-060)."""
+    if sample is None:
+        return ""
+    return (
+        '<p class="rating-method">Sample: batches '
+        f"{ctx.esc(sample['batches_done'])} of {ctx.esc(sample['batches_total'])} — "
+        f"{ctx.esc(format(sample['files_read'], ','))} of "
+        f"{ctx.esc(format(sample['files_in_scope'], ','))} in-scope source files "
+        f"read, ordered by {ctx.esc(sample['order'])}</p>"
     )
 
 

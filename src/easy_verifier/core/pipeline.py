@@ -15,6 +15,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from . import redact as redact_module
+from .batches import parse_batches
 from .budget import DEFAULT_BUDGET_BYTES
 from .budget import budget as _run_budget
 from .context import DEFAULT_SCOPE, RepoPathError, detect_context
@@ -53,12 +54,15 @@ def run_dimension(
     ref: str | None = None,
     task_id: str | None = None,
     picks: Mapping[str, Sequence[str]] | None = None,
+    batches: int | str = 1,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
     Works on any directory; git is not required for ``project`` scope (only
     ``changes`` will need it, in T003). ``picks`` are agent-input picks already
     validated by :func:`easy_verifier.core.roles.validate_agent_input`.
+    ``batches`` is how many priority batches a code tier reads above its
+    source cap (T068): a count of at least 1, or ``"all"``.
     """
     # Path validation lives in `detect_context` (T002), which raises
     # `RepoPathError` for a path that is absent or is not a directory. T004's
@@ -66,6 +70,7 @@ def run_dimension(
     # directory or file name can carry a secret, and an exception message is one
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
+    context.batches = parse_batches(batches)
 
     # Source roles resolve once, before `collect`, so every dimension -- the
     # bespoke three included -- reads from the same role -> files map, and the
@@ -177,6 +182,7 @@ def run_dimension(
         reach=getattr(context, "reach", None),
         compat=getattr(context, "compat", None),
         doc_history=getattr(context, "doc_history", None),
+        sample=getattr(context, "sample", None),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
