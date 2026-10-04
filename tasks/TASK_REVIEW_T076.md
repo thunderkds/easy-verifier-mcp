@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t076_whole_file_metrics.py` (5 tests: truncated under-cap pack still computes cycles/CCN; oracle equals direct computation; 'all N source files' disclosure, no sample/samples/continue_batches; secret-bearing file refused; zero sources abstain). 3 of 5 fail on pre-fix src (agent stash check) — pass |
+| Verification command run | ☑ pass | Agent full suite 1956 passed, 2 skipped, 2 failed (known stale-Docker container tests); ruff clean — pass |
+| Negative cases hold | ☑ pass | secret-bearing source still refused; zero sources abstain; t068 under-cap snapshot: no rating/overall change; type_escapes_per_kloc 19.71→15.99 = removal of double-counted overlapping excerpts (true count 17) — pass |
+| verify | ☑ pass | Supervisor 2026-10-04 10:58 UTC CLI score: coffee-shop-api overall 70 (architecture 80, code-quality 71); bryony 69 (architecture 83, code-quality 67); kitchd 37→61 (architecture insufficient_measured_weight→100 from import cycles over all 185 source files; code-quality insufficient_measured_weight→70) — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed _code_extract.record_sample under-cap path, EvidencePack.whole_file (omitted when absent), compute_metrics merge, pipeline one-liner, test updates. code-review: P0/P1 none. Accepted: new `whole_file` pack key instead of reusing `sample` (keeps AC2). Noted pre-existing: excerpt-based metrics in a non-owning dimension's pack still abstain on truncation (not rated there); doc reads may repeat in files_read — pass |
+| Full smoke suite still green (no regression) | ☑ pass | 1956 passed; only the 2 pre-existing container failures — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | no UI change |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | no UI change |
+| **UI: Responsiveness at target viewports** | ☐ N/A | no UI change |
 
 ---
 
@@ -35,9 +35,8 @@
 
 **BEFORE** (Supervisor, 2026-10-04 10:43 UTC, plan/code-derived-rules at T074): kitchd architecture `insufficient_measured_weight`; `top_level_import_cycles` and `layer_direction_violations` abstained: "whole-set-dependent: the byte budget truncated this pack, so any ratio, density or share computed here describes what survived the budget, not the repository". kitchd architecture pack: 140 files read, 140 excerpts, 119,366 bytes, truncated (omitted 1) — identical before and after T074.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (Supervisor, 2026-10-04 10:58 UTC, `09a2d84`): kitchd architecture 100 (import cycles over all 185 source files), code-quality 70, overall 61; coffee-shop-api and bryony unchanged from T074 (70 / 69).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**DELTA**: small repositories get their code structure metrics computed over whole files, so a truncated excerpt budget no longer hides them.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-04 — three real-repo score runs.
