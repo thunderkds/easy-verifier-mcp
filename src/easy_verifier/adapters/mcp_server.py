@@ -183,7 +183,10 @@ def score(
         '"improvements": [{"dimension": ..., "metric_name": ..., '
         '"suggestion": "..."}]; it is shown labelled agent beside the engine '
         "fix. Naming an item not in the plan, or naming one twice, is a "
-        "validation error."
+        "validation error. To add your own short summary for the user, pass "
+        '"summary": "..." (one paragraph, at most 2000 characters) in '
+        "agent_input; it is shown labelled agent after the engine summary "
+        "that opens the report."
     ),
     structured_output=True,
 )

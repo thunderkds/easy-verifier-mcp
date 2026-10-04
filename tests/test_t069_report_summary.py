@@ -20,14 +20,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
-import easy_verifier.core.report as report
-from easy_verifier.core.findings import ValidationError
-from easy_verifier.core.judge import RATING_RULES, GatedRating
-from easy_verifier.core.report import _Ctx, _render_summary, write_report
-from easy_verifier.core.roles import RoleInputError, validate_agent_input
-from easy_verifier.core.synthesis import combined_pack
-from easy_verifier.dimensions import dimension_names
 from test_t067_evidence_floor import (
     REF,
     _all_abstained,
@@ -39,6 +31,14 @@ from test_t067_evidence_floor import (
     _score,
     _solution_fit,
 )
+
+import easy_verifier.core.report as report
+from easy_verifier.core.findings import ValidationError
+from easy_verifier.core.judge import RATING_RULES, GatedRating
+from easy_verifier.core.report import _Ctx, _render_summary, write_report
+from easy_verifier.core.roles import RoleInputError, validate_agent_input
+from easy_verifier.core.synthesis import combined_pack
+from easy_verifier.dimensions import dimension_names
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIMENSIONS = dimension_names()
@@ -172,7 +172,8 @@ def test_only_the_top_three_p0_p1_items_are_shown_in_plan_order() -> None:
 
 
 def test_project_default_threshold_is_named_plainly_without_a_link() -> None:
-    score = _score(_by_name(security=_rating("security", {"cookie_flags_missing_observed": 2})))
+    security = _rating("security", {"cookie_flags_missing_observed": 2})
+    score = _score(_by_name(security=security))
     (line,) = _items(_summary(score), "summary-focus")
     assert "threshold: project default" in line
     assert line.count("<a ") == 1  # the metric's standard only
@@ -219,7 +220,9 @@ def test_unmeasured_only_gaps_point_to_the_plan() -> None:
     from test_t067_evidence_floor import GONE
 
     score = _score(
-        _by_name(**{"code-quality": _rating("code-quality", {"max_function_ccn": GONE})})
+        _by_name(
+            **{"code-quality": _rating("code-quality", {"max_function_ccn": GONE})}
+        )
     )
     html = _summary(score)
     assert "No measured rule fails; 1 rule could not be measured" in html
@@ -247,7 +250,8 @@ def test_agent_rated_solution_fit_counts_as_rated_and_is_labelled() -> None:
 
 
 def test_blended_dimension_is_labelled_blended() -> None:
-    gated = GatedRating(_rating("blast-radius", {"max_fan_in_changed": 21}), 80, 1, (REF,))
+    near_miss = _rating("blast-radius", {"max_fan_in_changed": 21})
+    gated = GatedRating(near_miss, 80, 1, (REF,))
     html = _summary(_score(_by_name(**{"blast-radius": gated})))
     assert f"blast-radius {gated.value} (blended with an agent evaluation)" in html
 
@@ -371,7 +375,7 @@ def test_agent_summary_is_redacted_escaped_and_labelled_agent(repo: Path) -> Non
 
 
 def test_no_agent_summary_means_no_agent_paragraph(repo: Path) -> None:
-    assert "summary-agent" not in _write(repo)
+    assert 'class="summary-agent"' not in _write(repo)
 
 
 @pytest.mark.parametrize(
@@ -379,7 +383,7 @@ def test_no_agent_summary_means_no_agent_paragraph(repo: Path) -> None:
     [
         ("", "must not be empty"),
         ("   \n\t", "must not be empty"),
-        ("x" * 2001, "at most 2000 characters, got 2001"),
+        ("x" * 2001, "must be at most 2000 characters, got 2001"),
         (123, "must be a string"),
         (None, "must be a string"),
         (["a"], "must be a string"),

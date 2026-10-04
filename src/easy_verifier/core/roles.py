@@ -343,6 +343,7 @@ _AGENT_INPUT_KEYS = (
     "reviews",
     "improvements",
     "batches",
+    "summary",
 )
 
 
@@ -370,6 +371,8 @@ def validate_agent_input(
     applied by :func:`apply_registry_entries`. ``improvements`` (T066) is only
     shape-checked too: its items are named against the report's own plan, so
     ``improve.validate_improvements`` validates it in ``write_report``.
+    ``summary`` (T069) is shape-checked here and fully validated in
+    ``write_report``.
     """
     document = parse_agent_input(document)
 
@@ -379,7 +382,8 @@ def validate_agent_input(
         if key not in _AGENT_INPUT_KEYS:
             errors.append(
                 f"{redact(str(key))}: unknown key; only picks, gate_evaluations, "
-                "registry_entries, reviews, improvements and batches are accepted"
+                "registry_entries, reviews, improvements, batches and summary "
+                "are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
@@ -389,6 +393,8 @@ def validate_agent_input(
         errors.append(
             "improvements: must be a list of {dimension, metric_name, suggestion}"
         )
+    if not isinstance(document.get("summary", ""), str):
+        errors.append("summary: must be a string")
     if "batches" in document:
         try:
             parse_batches(document["batches"])
