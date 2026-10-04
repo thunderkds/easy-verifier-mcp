@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-03
+**Last updated**: 2026-10-04
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -65,7 +65,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T069** — Report summary first: engine summary (rated areas, top 3 weak points with rule + standard, could-not-evaluate) + optional agent paragraph; detail right after | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T069`, branch `feat/T069-report-summary`)
 
 ### Ready for Review
 

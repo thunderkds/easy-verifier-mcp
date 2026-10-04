@@ -57,6 +57,7 @@ so, loudly, as a measurable coverage score. The result is an evaluation a develo
 | US-016 | *(Added 2026-09-28, DDR-0008)* As a Reviewing Agent, I want the 32 evaluation areas I review against (architecture direction … business continuity) to appear by name in the report, each either rated by cited rules or honestly marked "documentation present / missing", so nothing is silently dropped or falsely scored. | P1 |
 | US-017 | *(Added 2026-10-03, DDR-0009)* As the owner of a scored repository, I want a prioritised list of the unmet rules with what fixing each is worth and how to fix it, so I know what to change first to raise the score. | P1, P2 |
 | US-018 | *(Added 2026-10-03, DDR-0010)* As the owner of a large repository, I want the verifier to read my most important and most-changed source first in batches, let me stop when it is enough, and never show a number it did not measure, so I save tokens and can trust every score. | P1, P2 |
+| US-019 | *(Added 2026-10-04)* As the owner of a scored repository, I want the report to open with a short plain summary — how many areas could be rated, my weakest points with the rule and standard behind each, and what to add for the areas that could not be rated — followed directly by the detail, so I know what to do without reading the evidence first. | P1, P2 |
 
 ---
 
@@ -189,6 +190,13 @@ what the rules cannot detect or cannot rate with confidence (DDR-0006).
 | FR-060 | Above the per-tier cap (200), code-tier source files are read in **priority batches** of the cap: purpose class (application/server → other application → scripts/tooling → generated/vendored), then git churn descending, then path. Whole-set metrics over batches are labelled a sample with batches done/total and files read/in scope. | US-018 |
 | FR-061 | MCP: after a batch with more remaining, the response carries `needs_input.continue_batches` (batches done/total, files, the question for the user). CLI: `--batches N` / `--all`, default 1. Stopping yields an honest rating over the batches read. | US-018 |
 | FR-062 | Continuing is stateless and number-free on the agent side: the call names the batch count and the engine recomputes batches 1…N from the files; replay stays byte-equal (DDR-0005). | US-018, FR-038 |
+
+### Report summary *(added 2026-10-04, user request)*
+
+| ID | Requirement | Traces to |
+|----|-------------|-----------|
+| FR-063 | The report opens with an engine **summary** built only from the score: overall value; how many of the declared dimensions were rated, with each rated value; the top items of the improvement plan (P0 then P1, by recomputed gain, at most 3) each with its gain, the rule (metric, threshold) and the cited standard of that rule; and one line per evidence-lack warning naming what is missing. The existing detail sections follow directly after it, unchanged and not folded. Templated sentences only: presentation, never interpretation (FR-026). | US-019 |
+| FR-064 | The calling agent may supply one `summary` paragraph through `write_report` agent input; it is validated (string, non-empty, length cap), redacted and escaped, and shown beside the engine summary labelled `agent`. It never replaces or changes the engine summary or any number. | US-019, FR-024 |
 
 ### Entry points
 
