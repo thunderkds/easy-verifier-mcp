@@ -58,6 +58,7 @@ so, loudly, as a measurable coverage score. The result is an evaluation a develo
 | US-017 | *(Added 2026-10-03, DDR-0009)* As the owner of a scored repository, I want a prioritised list of the unmet rules with what fixing each is worth and how to fix it, so I know what to change first to raise the score. | P1, P2 |
 | US-018 | *(Added 2026-10-03, DDR-0010)* As the owner of a large repository, I want the verifier to read my most important and most-changed source first in batches, let me stop when it is enough, and never show a number it did not measure, so I save tokens and can trust every score. | P1, P2 |
 | US-019 | *(Added 2026-10-04)* As the owner of a scored repository, I want the report to open with a short plain summary — how many areas could be rated, my weakest points with the rule and standard behind each, and what to add for the areas that could not be rated — followed directly by the detail, so I know what to do without reading the evidence first. | P1, P2 |
+| US-020 | *(Added 2026-10-04)* As a human or calling agent receiving a report, I want to answer in under 30 seconds: overall health, how much evidence exists, the 3–5 highest-leverage fixes, and what is still unknown — with everything else one click away — and a single guide that tells me how to read and act on a score. | P1, P2 |
 
 ---
 
@@ -197,6 +198,13 @@ what the rules cannot detect or cannot rate with confidence (DDR-0006).
 |----|-------------|-----------|
 | FR-063 | The report opens with an engine **summary** built only from the score: overall value; how many of the declared dimensions were rated, with each rated value; the top items of the improvement plan (P0 then P1, by recomputed gain, at most 3) each with its gain, the rule (metric, threshold) and the cited standard of that rule; and one line per evidence-lack warning naming what is missing. The existing detail sections follow directly after it, unchanged and not folded. Templated sentences only: presentation, never interpretation (FR-026). | US-019 |
 | FR-064 | The calling agent may supply one `summary` paragraph through `write_report` agent input; it is validated (string, non-empty, length cap), redacted and escaped, and shown beside the engine summary labelled `agent`. It never replaces or changes the engine summary or any number. | US-019, FR-024 |
+
+### Report readability and evaluation guide *(added 2026-10-04, user request)*
+
+| ID | Requirement | Traces to |
+|----|-------------|-----------|
+| FR-065 | Report order: header → share notice (one visible line, full text in `<details>`) → summary (FR-063, plus a factual evidence-status line: rated count, lowest measured share, warning count — never a quality label) → improvement plan as cards (P0/P1 open, top 3 highlighted, P2 collapsed; cited files and unmeasured reasons in `<details>`) → one merged "What we couldn't measure" section (context + evidence warnings, one line each, detail folded) → compact quality-score rows with full rule inputs in closed `<details>` → checklist coverage and raw dimension evidence in closed `<details>`. No JavaScript, no external assets; no number, citation, plan item or warning text is removed or changed — only nesting and order. Every section fits a 400px viewport without horizontal page scroll. | US-020, FR-018 |
+| FR-066 | `docs/EVALUATION_GUIDE.md` is the single place to learn how to read and act on a `ScoreResult` or report (overall, when to trust it, evidence floor and warnings, batches/samples, P0/P1/P2 and gains, agent vs engine text); README carries a short "Reading a report" section pointing to it; SCORING_FLOW.md carries interpretation guidance for the plan and warnings. Precise, philosophy-aligned, no marketing. | US-020 |
 
 ### Entry points
 

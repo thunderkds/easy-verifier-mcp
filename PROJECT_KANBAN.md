@@ -12,6 +12,9 @@
 
 ### Todo
 
+**Wave 14 — Evaluation experience: readable report + evaluation guide (added 2026-10-04, user brief; PRD FR-065/066)**
+- [ ] **T071** — Evaluation docs: EVALUATION_GUIDE.md, README "Reading a report", SCORING_FLOW interpretation (Depends on: T070) | backend-developer | C1 | Risk: Low | P1
+
 **Wave 13 — No number without evidence; large repos in priority batches (added 2026-10-03, user request; DDR-0010, PRD FR-058…FR-062)**
 
 **Wave 12 — Improvement plan for the scored repo (added 2026-10-03, user request; DDR-0009, PRD FR-055…FR-057)**
@@ -65,7 +68,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T070`, branch `feat/T070-report-readability`)
 
 ### Ready for Review
 
