@@ -289,6 +289,22 @@ Each full seven-dimension report includes a score panel with the rule-based rati
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
 an abstention with its coverage boundary, never as zero or a low score.
 
+## Reading a report
+
+A number counts declared rules met, weighted; it is not a judgment of quality. Before acting on one:
+
+- **Overall** is the mean of the dimensions that produced a number. Abstentions are left out, so
+  read it with its disclosure ("N of 7 dimensions contributed").
+- **Trust** a dimension number as far as its evidence: coverage floor, at least 50% of its rule
+  weight measured, a `sample: … files` label on large repositories, and any blended or agent-rated
+  part shown beside it.
+- **Warnings** ("What we couldn't measure") name what to add for a missing number; no agent can
+  fill one in.
+- **Improvement plan**: fix P0 (near miss) first, then P1, by recomputed `overall_gain`; P2 rules
+  need evidence before they can be measured. Open the cited files first.
+
+Full guide, with worked examples: [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_GUIDE.md).
+
 ## Documentation
 
 | Doc | What it covers |
@@ -297,6 +313,7 @@ an abstention with its coverage boundary, never as zero or a low score.
 | [`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md) | Run the hardened container as an MCP server, one registration for every repository, troubleshooting |
 | [`docs/SCORING_FLOW.md`](docs/SCORING_FLOW.md) | Round-by-round flow of an MCP scoring session (diagram) |
 | [`docs/SCORING_RULES.md`](docs/SCORING_RULES.md) | Every rating rule: threshold, weight, coverage floor, registry fields read |
+| [`docs/EVALUATION_GUIDE.md`](docs/EVALUATION_GUIDE.md) | What each part of a score or report means, when to trust a number, how to act on it |
 | [`docs/RELEASE_GUIDE.md`](docs/RELEASE_GUIDE.md) | Release process |
 
 ## License

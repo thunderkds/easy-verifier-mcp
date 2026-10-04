@@ -58,12 +58,20 @@ divergence and is never blended into it.
 
 The CLI runs the same core but never asks: one pass, rules-only ratings, no `needs_input`.
 
+## Evidence warnings
+
 Only two things are gated (DDR-0010): solution-fit, which declares no static rule
 (`no_static_rule`), and a dimension with a rule input within ±10% of its threshold. An abstention
 for missing evidence (`insufficient_measured_weight` below the 50% measured-weight floor,
 `below_coverage_floor`, `coverage_not_applicable`, `all_metrics_abstained`, `dimension_failed`) is
 never asked about: it is listed in the payload's `warnings` and the report's "Evidence warnings"
 block, and an evaluation sent for it is rejected with an error naming the dimension.
+
+**Reading a warning.** A warned dimension has no number and is left out of the overall, so the
+overall describes fewer dimensions, not a better repository. Each warning lists `unmeasured_rules`
+and `sources_missing`: adding those to the repository (or widening the scope, for example
+`--scope changes` for blast-radius) is the only way to get a number. Do not ask the calling agent
+to supply one. See [`EVALUATION_GUIDE.md`](EVALUATION_GUIDE.md#warnings-what-could-not-be-measured).
 
 ## Large repositories: priority batches
 
@@ -113,3 +121,10 @@ the high end), then dimension, then metric name. A dimension without a rules rat
 `abstained` line with its reason code instead of items; when it has unmeasured rules (for example
 `insufficient_measured_weight`) the line lists them as `unmeasured` with reason and fix text. When every group is empty the report says
 "No gaps".
+
+**Acting on the plan.** Open an item's cited files and confirm the finding before changing code: a
+rule counts scanner matches, and a false match (for example a filename read as a secret) is still
+counted. Then fix P0 before P1, each by `overall_gain`. Gains are per item and do not add up;
+score again after each change. A P2 item needs evidence before it is measurable, and measuring it
+can lower the number (the low end of its range). See
+[`EVALUATION_GUIDE.md`](EVALUATION_GUIDE.md#improvement-plan).
