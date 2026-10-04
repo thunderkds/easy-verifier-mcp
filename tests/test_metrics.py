@@ -326,6 +326,8 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "destructive_migration_ops",
         "requirements_docs_count",
         "code_commits_with_docs_share",
+        # T077: only the requirement-fidelity pack seeks the requirements-doc role.
+        "requirements_doc_missing",
         # T075: computed only by the requirement-fidelity dimension.
         "routes_without_test_share",
         "commits_with_issue_reference_share",

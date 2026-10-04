@@ -473,7 +473,7 @@ _METRIC_TEXT: dict[str, str] = {
     "requirement_items_traced_share": (
         "share of requirement items traced to code or tests"
     ),
-    "requirements_docs_count": "number of requirements documents",
+    "requirements_doc_missing": "no requirements document",
     "code_commits_with_docs_share": "share of code commits that also update docs",
     # code-quality
     "functions_over_ccn_10_share": "share of functions with complexity over 10",

@@ -2561,6 +2561,12 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         _compat_count("ops"),
     ),
     MetricDefinition(
+        "requirements_doc_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _document_rule("requirements-doc"),
+    ),
+    MetricDefinition(
         "requirements_docs_count",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,

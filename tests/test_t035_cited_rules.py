@@ -58,8 +58,8 @@ APPROVED = {
     "solution-fit": [],
     "requirement-fidelity": [
         # DDR-0011 (T075, user sign-off 2026-10-04): documents 20 / code 80.
-        ("requirements_docs_count", 10, "at_most", 1, ("26514", "29148"),
-         PROJECT_DEFAULT),
+        # T077 (DDR-0011 addendum): a missing requirements document fails.
+        ("requirements_doc_missing", 10, "at_most", 0, ("29148",), "29148"),
         ("code_commits_with_docs_share", 10, "at_least", 0.30, ("26514",),
          PROJECT_DEFAULT),
         ("routes_without_test_share", 40, "at_most", 0.20, ("29119-4", "29148"),
@@ -353,7 +353,7 @@ def test_ac_trace_metrics_abstain_with_a_stated_reason_without_a_trace_search():
     } <= names
     # T055: the #27 rules abstain too; this synthetic pack has no doc_history.
     assert {n for n, _r in result.unavailable_metrics} >= {
-        "requirements_docs_count",
+        "requirements_doc_missing",
         "code_commits_with_docs_share",
     }
 

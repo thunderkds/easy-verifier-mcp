@@ -1,6 +1,6 @@
 """T075 — requirement-fidelity from code + documents (DDR-0011, FR-067..072).
 
-Documents carry 20 (requirements_docs_count 10, code_commits_with_docs_share
+Documents carry 20 (requirements_doc_missing 10, code_commits_with_docs_share
 10), code 80: routes_without_test_share 40, commits_with_issue_reference_share
 20, requirement_items_traced_share 20. The two acceptance-criteria trace rules
 are gone; requirement items in any declared form replace them. The coverage
@@ -111,7 +111,7 @@ def test_requirement_fidelity_rules_are_the_ddr_0011_table() -> None:
     assert {
         name: (r.weight, r.threshold, r.comparison) for name, r in rules.items()
     } == {
-        "requirements_docs_count": (10, 1, "at_most"),
+        "requirements_doc_missing": (10, 0, "at_most"),
         "code_commits_with_docs_share": (10, 0.30, "at_least"),
         "routes_without_test_share": (40, 0.20, "at_most"),
         "commits_with_issue_reference_share": (20, 0.50, "at_least"),

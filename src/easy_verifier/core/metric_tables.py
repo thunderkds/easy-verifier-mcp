@@ -357,6 +357,7 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),
     "decision-record": ("decision_records_missing",),
+    "requirements-doc": ("requirements_doc_missing",),
 }
 """Role-presence metrics per role: a local ``roles.<role>`` glob matching a
 file in the pack tags them."""

@@ -11,16 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from easy_verifier.core import judge
-from easy_verifier.core import registry as reg
-from easy_verifier.core.metrics import MetricAbstention
-from easy_verifier.core.roles import GENERIC_PATTERNS
-from easy_verifier.core.structure import (
-    convention_values,
-    find_requirement_items,
-    find_routes,
-    route_tokens_for,
-)
+from test_t073_structure_patterns import _syntax, _tokens
 from test_t075_requirement_fidelity_code_rules import (
     ROUTES_JS,
     TESTS_JS,
@@ -31,7 +22,17 @@ from test_t075_requirement_fidelity_code_rules import (
     _value,
     _write,
 )
-from test_t073_structure_patterns import _syntax, _tokens
+
+from easy_verifier.core import judge
+from easy_verifier.core import registry as reg
+from easy_verifier.core.metrics import MetricAbstention
+from easy_verifier.core.roles import GENERIC_PATTERNS
+from easy_verifier.core.structure import (
+    convention_values,
+    find_requirement_items,
+    find_routes,
+    route_tokens_for,
+)
 
 RF = "requirement-fidelity"
 
@@ -45,7 +46,7 @@ def test_requirements_doc_missing_is_rated_and_the_count_is_not() -> None:
     rules = judge.RATING_RULES[RF]
     rule = rules["requirements_doc_missing"]
     assert (rule.weight, rule.threshold, rule.comparison) == (10, 0, "at_most")
-    assert "29148" in rule.metric_citation[0].title
+    assert "29148" in rule.metric_citation[0].label
     assert "requirements_docs_count" not in rules
     assert sum(r.weight for r in rules.values()) == 100
 

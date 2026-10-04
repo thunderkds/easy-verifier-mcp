@@ -268,11 +268,13 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
     "solution-fit": {},
     # Documents 20 / code 80, user-signed via DDR-0011 (T075, 2026-10-04): the
     # two acceptance-criteria trace rules are replaced by requirement items in
-    # any declared form.
+    # any declared form. A missing requirements document fails its rule
+    # (requirements_doc_missing; requirements_docs_count stays computed,
+    # unrated — DDR-0011 addendum, T077).
     "requirement-fidelity": _rules(
         RatingRule(
-            "requirements_docs_count", 10, 1, "at_most",
-            (_ISO_26514, _ISO_29148), PROJECT_DEFAULT,
+            "requirements_doc_missing", 10, 0, "at_most",
+            (_ISO_29148,), _ISO_29148,
             area=AREAS[26],
         ),
         RatingRule(

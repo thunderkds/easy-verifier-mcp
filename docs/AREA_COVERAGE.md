@@ -64,7 +64,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 24 | Database HA, backups, restore, DR | Not yet | — | infrastructure (T042) | class S / X |
 | 25 | Incident response, change mgmt, access review | Not yet | — | operations (T046) | class X |
 | 26 | Configuration ownership & operational readiness | Not yet | — | operations (T046) | class S |
-| 27 | Documentation source-of-truth governance | Covered | `requirement-fidelity` · `requirements_docs_count`<br>`requirement-fidelity` · `code_commits_with_docs_share` | — |  |
+| 27 | Documentation source-of-truth governance | Covered | `requirement-fidelity` · `requirements_doc_missing`<br>`requirement-fidelity` · `code_commits_with_docs_share` | — |  |
 | 28 | Vendor, BAA, data classification, residency | Not yet | — | healthcare pack (T047) | class X |
 | 29 | AI-assisted-development safety | Not yet | — | operations (T046) | class S |
 | 30 | Developer experience & deterministic local setup | Not yet | — | operations (T046) | class S |

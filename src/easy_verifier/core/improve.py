@@ -64,9 +64,9 @@ FIX_HINTS: dict[str, str] = {
         "from the code or test that implements it, and drop items no longer "
         "intended."
     ),
-    "requirements_docs_count": (
-        "Consolidate requirements into one authoritative document and point the "
-        "others at it."
+    "requirements_doc_missing": (
+        "Add one requirements document (e.g. PRD.md or docs/requirements.md) "
+        "listing what the system must do, with identifiable items."
     ),
     "code_commits_with_docs_share": (
         "Update the affected documentation in the same commit as behavior "
