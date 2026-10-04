@@ -42,7 +42,7 @@ from ..core.models import (
     TraceSearch,
 )
 from ..core.redact import redact
-from ..core.roles import _registry, role
+from ..core.roles import _config_matcher, _registry, role
 from ..core.structure import (
     _curated as _curated_conventions,
 )
@@ -579,15 +579,31 @@ def _with_note(metric: SampledMetric, note: str) -> SampledMetric:
     )
 
 
-def _suffix_tokens(conventions) -> dict[str, tuple[str, ...]]:
-    """Source suffix -> its language's route tokens plus repository-wide ones."""
+def _suffix_tokens(conventions) -> dict[str, list[tuple[object, tuple[str, ...]]]]:
+    """Source suffix -> ``(route-file matcher or None, route tokens)`` per
+    language: its tokens plus repository-wide ones. A language named in the
+    ``route_files`` convention (bare routing DSL, e.g. Ruby) has its tokens
+    applied only in files matching those globs (T075)."""
     registry = _registry()
-    tokens: dict[str, tuple[str, ...]] = {}
+    globs: dict[str, list[str]] = {}
+    for value in convention_values(conventions, "route_files"):
+        language, _, glob = value.partition("=")
+        globs.setdefault(language, []).append(glob)
+    tokens: dict[str, list[tuple[object, tuple[str, ...]]]] = {}
     for name, entry in sorted(registry.languages.items()):
         found = route_tokens_for(registry, name, conventions)
+        matcher = _config_matcher(tuple(globs[name])) if name in globs else None
         for suffix in convention_values(entry, "source_extensions"):
-            tokens[suffix] = tuple(dict.fromkeys(tokens.get(suffix, ()) + found))
+            tokens.setdefault(suffix, []).append((matcher, found))
     return tokens
+
+
+def _tokens_for(by_suffix, path: str) -> tuple[str, ...]:
+    found: tuple[str, ...] = ()
+    for matcher, tokens in by_suffix.get(PurePosixPath(path).suffix, ()):
+        if matcher is None or matcher(path):
+            found += tokens
+    return tuple(dict.fromkeys(found))
 
 
 def _static_prefix(path: str | None) -> str:
@@ -609,7 +625,7 @@ def _routes_fact(
     for path, text in source_texts.items():
         suffix = PurePosixPath(path).suffix
         for route in find_routes(
-            text, by_suffix.get(suffix, ()), tables.syntax.get(suffix)
+            text, _tokens_for(by_suffix, path), tables.syntax.get(suffix)
         ):
             routes.append((path, route))
     _found(

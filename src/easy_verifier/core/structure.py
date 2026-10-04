@@ -166,9 +166,13 @@ def find_routes(
     for start, end, method, token in sorted(found, key=lambda f: (f[0], f[0] - f[1])):
         if start < taken:
             continue
+        decorator = token.startswith(_DECORATOR_STARTS)
+        if not decorator and _one_argument(code, text, end):
+            # one argument is no route: Express app.get(name) reads a setting
+            # (T075, carried from the T073 review)
+            continue
         taken = end
         literal = _PATH_LITERAL.match(text, end)
-        decorator = token.startswith(_DECORATOR_STARTS)
         routes.append(
             Route(
                 line=code.count("\n", 0, start) + 1,
@@ -228,7 +232,16 @@ def _decorated_name(code: str, position: int) -> str | None:
 
 
 def _call_handler(code: str, position: int) -> str | None:
-    arguments, _ = _arguments(code, position)
+    parts = _split_arguments(_arguments(code, position)[0])
+    positional = [p for p in parts if p and not _KEYWORD_ARGUMENT.match(p)]
+    if positional and _IDENTIFIER.fullmatch(positional[-1]):
+        return positional[-1].rsplit(".", 1)[-1]
+    return None
+
+
+def _split_arguments(arguments: str) -> list[str]:
+    """Top-level arguments of an argument list's text, stripped; a string
+    blanked by ``strip`` is an empty one."""
     parts: list[str] = []
     depth, current = 0, []
     for char in arguments:
@@ -242,10 +255,15 @@ def _call_handler(code: str, position: int) -> str | None:
         else:
             current.append(char)
     parts.append("".join(current).strip())
-    positional = [p for p in parts if p and not _KEYWORD_ARGUMENT.match(p)]
-    if positional and _IDENTIFIER.fullmatch(positional[-1]):
-        return positional[-1].rsplit(".", 1)[-1]
-    return None
+    return parts
+
+
+def _one_argument(code: str, text: str, position: int) -> bool:
+    """Whether the call opened at ``position`` has exactly one argument:
+    no top-level comma in the blanked ``code``, something in ``text``."""
+    if len(_split_arguments(_arguments(code, position)[0])) != 1:
+        return False
+    return bool(_arguments(text, position)[0].strip())
 
 
 # ---------------------------------------------------------------------------
@@ -312,14 +330,19 @@ def _item_patterns(values: tuple[str, ...]):
 
 
 def find_issue_references(
-    message: str, patterns: Sequence[str] | None = None
+    message: str,
+    patterns: Sequence[str] | None = None,
+    exclusions: Sequence[str] | None = None,
 ) -> tuple[str, ...]:
     """Issue references in one commit message's raw text (prose: nothing is
     blanked), distinct, in text order.
 
     ``patterns`` are tokens (default: curated), matched not right after a
     letter, digit or ``_``. Where two match at one place the longest wins, so
-    ``Fixes #4`` is one reference, not two.
+    ``Fixes #4`` is one reference, not two. A reference matching one of
+    ``exclusions`` whole (default: curated ``issue_reference_exclusions``,
+    e.g. ``UTF-8``, ``SHA-256``) is dropped, as is one whose number holds a
+    letter (``#3a3a3a`` is a hex colour, never an issue number) (T075).
     """
     values = (
         convention_values(_curated(), "issue_reference_patterns")
@@ -337,7 +360,22 @@ def find_issue_references(
         if start >= taken:
             taken = end
             references.append(message[start:end])
-    return tuple(dict.fromkeys(references))
+    excluded = _reference_patterns(
+        convention_values(_curated(), "issue_reference_exclusions")
+        if exclusions is None
+        else tuple(exclusions)
+    )
+    return tuple(
+        dict.fromkeys(
+            ref
+            for ref in references
+            if _NUMBER.search(ref) and not any(x.fullmatch(ref) for x in excluded)
+        )
+    )
+
+
+_NUMBER = re.compile(r"[0-9]+$")
+"""An issue reference ends in its number: digits only."""
 
 
 @lru_cache(maxsize=32)

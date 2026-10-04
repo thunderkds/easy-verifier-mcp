@@ -328,3 +328,42 @@ def test_missing_documents_fail_the_co_change_rule_instead_of_abstaining(
         tmp_path / "r", {"src/routes.js": ROUTES_JS, "test/api.test.js": TESTS_JS}
     )
     assert _value(_pack(repo), "code_commits_with_docs_share") == 0
+
+
+# ---------------------------------------------------------------------------
+# AC 9 — false positives carried from the T073 review
+# ---------------------------------------------------------------------------
+
+
+def test_encoding_hash_and_date_names_and_hex_colours_are_not_issue_references():
+    from easy_verifier.core.structure import find_issue_references
+
+    message = (
+        "Read files as UTF-8, hash with SHA-256, dates in ISO-8601; "
+        "colour #3a3a3a and #1e90ff. Fixes #12, see ABC-34"
+    )
+    assert find_issue_references(message) == ("Fixes #12", "ABC-34")
+    # declared and extendable: an exclusion list a caller passes replaces it
+    assert "UTF-8" in find_issue_references("UTF-8", exclusions=())
+
+
+def test_a_single_argument_express_call_is_a_settings_read_not_a_route():
+    from easy_verifier.core.structure import find_routes
+    tables = curated_metric_tables()
+    code = "const env = app.get('env');\napp.get('/users', listUsers);\n"
+    routes = find_routes(code, ("GET=app.get(",), tables.syntax[".js"])
+    assert [(r.path, r.handler) for r in routes] == [("/users", "listUsers")]
+
+
+def test_ruby_bare_route_tokens_apply_only_in_declared_routes_files(tmp_path) -> None:
+    files = {
+        "config/routes.rb": "Rails.application.routes.draw do\n"
+        "  get '/users', to: 'users#index'\nend\n",
+        "app/services/cache.rb": "class Cache\n  def read\n    get 'key'\n"
+        "    delete 'other'\n  end\nend\n",
+        "spec/users_spec.rb": "get '/users'\n",
+    }
+    repo = _repo(tmp_path / "r", files)
+    metric = _metrics(_pack(repo))["routes_without_test_share"]
+    assert "0 of 1 route(s)" in metric.derivation
+    assert "app/services/cache.rb" not in metric.computed_from
