@@ -12,6 +12,10 @@
 
 ### Todo
 
+**Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
+- [ ] **T074** — architecture from code + documents (20/80): layer direction, widened doc conventions, code-aware floor (Depends on: T073) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T075** — requirement-fidelity from code + documents (20/80): routes↔tests, commit issue refs, flexible requirement items, code-aware floor (Depends on: T073) | backend-developer | C3 | Risk: Med | P1
+
 **Wave 14 — Evaluation experience: readable report + evaluation guide (added 2026-10-04, user brief; PRD FR-065/066)**
 
 **Wave 13 — No number without evidence; large repos in priority batches (added 2026-10-03, user request; DDR-0010, PRD FR-058…FR-062)**
@@ -67,7 +71,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [~] **T073** — Structure convention patterns: layers, routes, requirement items, issue references (cited registry, extendable) | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-04 (worktree `../easy-verifier-mcp-T073`, branch `feat/T073-structure-patterns`)
 
 ### Ready for Review
 
