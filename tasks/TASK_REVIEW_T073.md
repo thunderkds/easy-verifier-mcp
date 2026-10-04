@@ -10,6 +10,48 @@
 
 ---
 
+## Design
+
+Written by the implementer (backend-developer) before any T073 code. No conflict found between
+DDR-0011 and the DDR-0007 registry model: every new convention is a cited-value field in the same
+TOML schema, loaded and validated by the same code, extended add-only by the same local layer.
+
+**Where the patterns live.**
+- Language-specific `route_tokens` → a new `ENTRY_FIELDS` field in each language's curated file
+  (`registry/curated/<lang>.toml`), so a framework entry or the local layer adds to it exactly like
+  `import_syntax`. Listed in `FIELD_METRICS` with no metric yet (`()`), so `required_fields()` does
+  not ask for it until T075 maps it to a rule (parity unchanged).
+- Language-agnostic `layer_paths`, `requirement_item_patterns`, `issue_reference_patterns` (and an
+  optional repo-wide `route_tokens`) → one reserved entry, `conventions.toml`, in the curated
+  directory (shipped) and optionally in the local layer directory (`$EASY_VERIFIER_SOT`).
+  `load_registry` skips the reserved name; `load_conventions()` loads it with the same
+  `_cited_values` validation (curated tag in the package, `LOCAL_TAGS` + local shape bounds in the
+  local layer). Curated wins value by value, as in `overlay`.
+
+**Field shapes** (each value one string; a `kind=` prefix keeps `CitedValue` unchanged, like
+`frameworks`' `<framework>=<dependency>`):
+- `layer_paths`: `"<api|service|data>=<repo glob>"`, e.g. `"api=**/*.controller.*"`; globs match with
+  the bounded `roles._config_matcher`. A file matching two layers is unclassified (never guess); a
+  test file is never classified.
+- `route_tokens`: `"<GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|ANY>=<code token>"`, e.g. `"GET=@Get("`.
+  Token syntax is the registry's existing one (`metric_tables.token_regex`), so no value can inject
+  regex. A token starting with `@`, `[` or `#[` is a decorator (handler = next declaration);
+  otherwise a call (handler = last identifier argument).
+- `requirement_item_patterns`: `"id=<token>"` (an identifier anywhere, e.g. `"id=AC-<0-9>*"`) or
+  `"line=<token>"` (at line start; the item is the rest of the line, e.g. `"line=Scenario:"`).
+- `issue_reference_patterns`: `"<token>"`, e.g. `"#<0-9>*"`, `"<A-Z><A-Z><A-Z0-9>*-<0-9>*"`.
+
+**Extension path.** (1) local layer: `$EASY_VERIFIER_SOT/conventions.toml` (shared fields) or
+`<lang>.toml` (`route_tokens`), tagged `LOCAL_TAGS`; (2) `.easy-verifier.toml` `[conventions]
+<field> = ["value", …]`, validated in `load_repo_config` alongside `[roles]` and tagged
+`user-supplied` with the config file as its source. Both are add-only.
+
+**Pure functions** (`core/structure.py`, no file reads; callers pass text and patterns):
+`layer_of`, `find_routes` (on comment/string-blanked code), `find_requirement_items` and
+`find_issue_references` (on raw prose). No rule, weight, floor, payload or report change.
+
+---
+
 ## Evidence
 
 | Check | Result | Notes / output snippet |
