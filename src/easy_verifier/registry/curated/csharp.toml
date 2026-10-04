@@ -258,3 +258,16 @@ source_tag = "curated"
 value = ["HttpContext.Session"]
 citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/app-state"
 source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked.
+
+[[route_tokens]]
+value = ["GET=[HttpGet", "POST=[HttpPost", "PUT=[HttpPut", "PATCH=[HttpPatch", "DELETE=[HttpDelete"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/mvc/controllers/routing"
+source_tag = "curated"
+
+[[route_tokens]]
+value = ["GET=.MapGet(", "POST=.MapPost(", "PUT=.MapPut(", "PATCH=.MapPatch(", "DELETE=.MapDelete("]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis"
+source_tag = "curated"

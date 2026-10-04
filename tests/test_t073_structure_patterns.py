@@ -45,7 +45,11 @@ def _tokens(language: str) -> tuple[str, ...]:
 def test_curated_conventions_entry_is_cited_and_has_every_shared_field():
     entry, warnings = reg.load_conventions()
     assert warnings == ()
-    for field in ("layer_paths", "requirement_item_patterns", "issue_reference_patterns"):
+    for field in (
+        "layer_paths",
+        "requirement_item_patterns",
+        "issue_reference_patterns",
+    ):
         cited = entry.fields[field]
         assert cited, field
         for item in cited:
@@ -60,7 +64,8 @@ def test_conventions_file_is_not_loaded_as_a_language():
 
 
 @pytest.mark.parametrize(
-    "language", ["js-ts", "python", "java", "kotlin", "csharp", "go", "rust", "php"]
+    "language",
+    ["js-ts", "python", "java", "kotlin", "csharp", "go", "rust", "php", "ruby"],
 )
 def test_each_curated_language_declares_cited_route_tokens(language):
     entry = reg.load_registry(known_roles=GENERIC_PATTERNS).languages[language]
@@ -177,7 +182,9 @@ def test_spring_mapping_with_named_path_argument():
 def test_unknown_language_or_no_syntax_finds_nothing_and_never_raises():
     assert find_routes(NEST, (), _syntax(".ts")) == ()
     assert find_routes(NEST, _tokens("js-ts"), None) == ()
-    assert route_tokens_for(reg.load_registry(known_roles=GENERIC_PATTERNS), "cobol") == ()
+    assert (
+        route_tokens_for(reg.load_registry(known_roles=GENERIC_PATTERNS), "cobol") == ()
+    )
 
 
 # --- success criterion 4: requirement items -------------------------------------
@@ -202,7 +209,9 @@ def test_requirement_ids_match_as_whole_identifiers_only():
 
 
 def test_openapi_operation_id_is_an_item():
-    items = find_requirement_items("paths:\n  /u:\n    get:\n      operationId: getUser\n")
+    items = find_requirement_items(
+        "paths:\n  /u:\n    get:\n      operationId: getUser\n"
+    )
     assert [i.text for i in items] == ["getUser"]
 
 
@@ -248,7 +257,9 @@ def test_easy_verifier_toml_rejects_a_bad_convention(tmp_path: Path):
     assert len(caught.value.errors) == 2
 
 
-def test_local_layer_conventions_add_only_and_keep_their_tag(tmp_path: Path, monkeypatch):
+def test_local_layer_conventions_add_only_and_keep_their_tag(
+    tmp_path: Path, monkeypatch
+):
     (tmp_path / "conventions.toml").write_text(
         "[[requirement_item_patterns]]\n"
         'value = ["id=STORY-<0-9>*", "id=AC-<0-9>*"]\n'
@@ -258,12 +269,41 @@ def test_local_layer_conventions_add_only_and_keep_their_tag(tmp_path: Path, mon
     monkeypatch.setenv(reg.SOT_ENV, str(tmp_path))
     entry, warnings = reg.layered_conventions()
     local = [
-        c for c in entry.fields["requirement_item_patterns"] if c.source_tag != reg.CURATED
+        c
+        for c in entry.fields["requirement_item_patterns"]
+        if c.source_tag != reg.CURATED
     ]
     assert [c.value for c in local] == [("id=STORY-<0-9>*",)]  # curated wins AC-
     assert local[0].source_tag == reg.USER_SUPPLIED
     assert any("curated wins" in w for w in warnings)
     patterns = [v for c in entry.fields["requirement_item_patterns"] for v in c.value]
-    assert [i.text for i in find_requirement_items("STORY-7 done", patterns)] == ["STORY-7"]
+    assert [i.text for i in find_requirement_items("STORY-7 done", patterns)] == [
+        "STORY-7"
+    ]
     # The reserved file never becomes a language of the layered registry.
-    assert "conventions" not in reg.layered_registry(known_roles=GENERIC_PATTERNS).languages
+    assert (
+        "conventions"
+        not in reg.layered_registry(known_roles=GENERIC_PATTERNS).languages
+    )
+
+
+def test_two_tokens_matching_at_one_place_yield_one_route_the_longest():
+    routes = find_routes(
+        "@Get('x')\nshow() {}\n", ["ANY=@Get", "GET=@Get("], _syntax(".ts")
+    )
+    assert [(r.method, r.path, r.handler) for r in routes] == [("GET", "x", "show")]
+
+
+def test_patterns_starting_with_a_class_or_symbol_match_only_as_whole_words():
+    items = find_requirement_items("xAB-1 and AB-2", ["id=<A-Z><A-Z>-<0-9>*"])
+    assert [i.text for i in items] == ["AB-2"]
+    assert find_issue_references("colour abc#12, see #3") == ("#3",)
+
+
+def test_rails_routing_dsl_route_with_path():
+    text = (
+        'Rails.application.routes.draw do\n  get "photos/:id", to: "photos#show"\nend\n'
+    )
+    assert find_routes(text, _tokens("ruby"), _syntax(".rb")) == (
+        Route(line=2, method="GET", path="photos/:id", handler=None),
+    )

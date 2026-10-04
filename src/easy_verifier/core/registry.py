@@ -123,6 +123,20 @@ The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
   one of the language's manifests declares that dependency. Its framework
   entry, if any, is ``<framework>.toml`` with ``extends = "<language>"``.
 
+The convention fields (T073, DDR-0011, FR-068) are read by
+``core/structure.py``. Each value is ``<kind>=<pattern>`` or a token:
+
+* ``route_tokens`` — per language: ``"<METHOD>=<token>"``, a code token that
+  declares a route handler (``"GET=@Get("``), ``ANY`` when the token does not
+  fix the method;
+* the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
+  and local layer, never a language) holds the language-agnostic
+  :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data>=<glob>"``),
+  ``requirement_item_patterns`` (``"id=<token>"`` anywhere or ``"line=<token>"``
+  at a line start) and ``issue_reference_patterns`` (tokens), plus optional
+  repository-wide ``route_tokens``. A repository's ``.easy-verifier.toml``
+  ``[conventions]`` adds to them (:func:`with_config_conventions`).
+
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
 
@@ -241,6 +255,9 @@ _TOKEN_FIELDS = frozenset(
         "type_strict",
         "type_strict_off",
         "type_config_extends",
+        "route_tokens",
+        "requirement_item_patterns",
+        "issue_reference_patterns",
     }
 )
 
@@ -274,8 +291,32 @@ ENTRY_FIELDS = (
     "type_strict",
     "type_strict_off",
     "type_config_extends",
+    "route_tokens",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
+
+CONVENTIONS_ENTRY = "conventions"
+"""Reserved entry name (T073, DDR-0011): ``conventions.toml`` in the curated
+directory or the local layer holds the language-agnostic convention patterns.
+:func:`load_registry` skips it; :func:`load_conventions` reads it."""
+
+CONVENTION_FIELDS = (
+    "layer_paths",
+    "requirement_item_patterns",
+    "issue_reference_patterns",
+    "route_tokens",
+)
+"""Fields of the ``conventions`` entry. ``route_tokens`` there applies to every
+language (a repository's own framework); per language it is an
+:data:`ENTRY_FIELDS` field."""
+
+LAYERS = ("api", "service", "data")
+HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
+REQUIREMENT_ITEM_KINDS = ("id", "line")
+
+CONFIG_SOURCE = ".easy-verifier.toml"
+"""The ``citation_url`` of a convention a repository's own config declares
+(:func:`with_config_conventions`): its source is that file, not a link."""
 
 _DELIMITER = re.compile(r"^[^\s\\]{1,4}( [^\s\\]{1,4})?$")
 
@@ -314,8 +355,27 @@ _VALUE_SHAPES = {
         re.compile(r"^[a-z0-9][a-z0-9-]*=[A-Za-z0-9@][A-Za-z0-9@/._:+-]*$"),
         "<framework>=<dependency>, e.g. express=express",
     ),
+    "layer_paths": (
+        re.compile(rf"^({'|'.join(LAYERS)})=\S+$"),
+        "<layer>=<glob> with layer api, service or data, e.g. api=**/controllers/**",
+    ),
+    "route_tokens": (
+        re.compile(rf"^({'|'.join(HTTP_METHODS)})=\S.*$"),
+        "<METHOD>=<token> with METHOD one of " + ", ".join(HTTP_METHODS)
+        + ", e.g. GET=@Get(",
+    ),
+    "requirement_item_patterns": (
+        re.compile(r"^(id|line)=\S.*$"),
+        "id=<token> (an identifier anywhere) or line=<token> (at a line start)",
+    ),
 }
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
+
+_PREFIXED_FIELDS = frozenset(
+    {"layer_paths", "route_tokens", "requirement_item_patterns"}
+)
+"""Fields whose values are ``<kind>=<pattern>``: path and local-shape checks
+apply to the pattern after the first ``=``."""
 
 _CITED_KEYS = {"value", "citation_url", "source_tag"}
 _CWE = re.compile(r"^CWE-[1-9][0-9]{0,5}$")
@@ -540,7 +600,12 @@ def load_registry(
     frameworks: dict[str, RegistryEntry] = {}
 
     files = sorted(
-        (item for item in root.iterdir() if item.name.endswith(".toml")),
+        (
+            item
+            for item in root.iterdir()
+            if item.name.endswith(".toml")
+            and item.name != f"{CONVENTIONS_ENTRY}.toml"
+        ),
         key=lambda item: item.name,
     )
     if local and len(files) > MAX_LOCAL_FILES:
@@ -577,7 +642,11 @@ def load_registry(
 
 
 def _load_entry(
-    item: Traversable, known_roles: frozenset[str], *, local: bool = False
+    item: Traversable,
+    known_roles: frozenset[str],
+    *,
+    local: bool = False,
+    allowed: Sequence[str] = ENTRY_FIELDS,
 ) -> tuple[RegistryEntry | None, list[str]]:
     name = item.name.removesuffix(".toml")
     if not _ENTRY_NAME.fullmatch(name):
@@ -614,15 +683,16 @@ def _load_entry(
         extends = None
 
     fields: dict[str, tuple[CitedValue, ...]] = {}
+    known = _known_fields(allowed)
     for key, value in data.items():
         if key in ("extends", "roles"):
             continue
-        if key in ENTRY_FIELDS:
+        if key in allowed:
             fields[key] = _cited_values(key, value, errors, local=local)
         elif isinstance(value, list):
-            errors.append(f"{redact(key)}: unknown field; known: {_known_fields()}")
+            errors.append(f"{redact(key)}: unknown field; known: {known}")
         else:
-            errors.append(f"{redact(key)}: unknown key; known: {_known_fields()}")
+            errors.append(f"{redact(key)}: unknown key; known: {known}")
 
     roles: dict[str, tuple[CitedValue, ...]] = {}
     table = data.get("roles", {})
@@ -635,7 +705,12 @@ def _load_entry(
         else:
             roles[role] = _cited_values(f"roles.{role}", value, errors, local=local)
 
-    if not local and data.get("extends") is None and not fields.get("manifests"):
+    if (
+        not local
+        and "manifests" in allowed
+        and data.get("extends") is None
+        and not fields.get("manifests")
+    ):
         errors.append("manifests: a language entry needs at least one manifest")
     if data.get("extends") is not None and "manifests" in data:
         errors.append("manifests: a framework entry adds to its language only")
@@ -674,8 +749,8 @@ def _live(
     return {key: values for key, values in kept.items() if values}
 
 
-def _known_fields() -> str:
-    return ", ".join(("extends", *ENTRY_FIELDS, "roles"))
+def _known_fields(allowed: Sequence[str] = ENTRY_FIELDS) -> str:
+    return ", ".join(("extends", *allowed, "roles"))
 
 
 def _cited_values(
@@ -739,15 +814,9 @@ def _cited_value_problem(
     if len(values) > MAX_VALUES_PER_FIELD:
         return f"value: at most {MAX_VALUES_PER_FIELD} entries"
     for value in values:
-        problem = _pattern_problem(value, path=field not in _DELIMITER_FIELDS)
+        problem = _value_problem(field, value, local=local)
         if problem:
             return f"value: {problem}"
-        shape = _VALUE_SHAPES.get(field)
-        if shape and not shape[0].fullmatch(value):
-            return f"value: {redact(value)!r} is not {shape[1]}"
-        problem = _local_shape_problem(field, value) if local else None
-        if problem:
-            return f"value: {redact(value)!r}: {problem}"
 
     url = item["citation_url"]
     if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not _is_https(url):
@@ -757,6 +826,32 @@ def _cited_value_problem(
     if not local and item["source_tag"] != CURATED:
         return f"source_tag: must be {CURATED!r}"
     return None
+
+
+def _value_problem(field: str, value: object, *, local: bool) -> str | None:
+    """Why one value of ``field`` is malformed, or ``None``."""
+    problem = _pattern_problem(value, path=False)
+    if problem:
+        return problem
+    shape = _VALUE_SHAPES.get(field)
+    if shape and not shape[0].fullmatch(value):
+        return f"{redact(value)!r} is not {shape[1]}"
+    body = value.split("=", 1)[1] if field in _PREFIXED_FIELDS else value
+    problem = _pattern_problem(body, path=field not in _DELIMITER_FIELDS)
+    if problem:
+        return problem
+    problem = _local_shape_problem(field, body) if local else None
+    if problem:
+        return f"{redact(value)!r}: {problem}"
+    return None
+
+
+def convention_value_problem(field: str, value: object) -> str | None:
+    """Why ``value`` cannot extend convention ``field`` from a repository's
+    ``.easy-verifier.toml``, or ``None``: the local layer's checks (T073)."""
+    if field not in CONVENTION_FIELDS:
+        return f"unknown field; known: {', '.join(CONVENTION_FIELDS)}"
+    return _value_problem(field, value, local=True)
 
 
 def _review_problem(item: Mapping) -> str | None:
@@ -1082,6 +1177,82 @@ def _add_entry(
         fields=dict(sorted(fields.items())),
         rejected=dict(sorted(rejected.items())),
     )
+
+
+# ---------------------------------------------------------------------------
+# convention patterns (T073, DDR-0011, FR-068)
+# ---------------------------------------------------------------------------
+
+
+def load_conventions(
+    root: Traversable | None = None, *, local: bool = False
+) -> tuple[RegistryEntry, tuple[str, ...]]:
+    """The ``conventions`` entry under ``root`` (default: the curated layer)
+    and any warnings; an empty entry when the file is absent or rejected.
+
+    Same schema and validation as a language entry, restricted to
+    :data:`CONVENTION_FIELDS`; ``local`` applies the local layer's tags and
+    shape bounds and refuses a symlinked file.
+    """
+    root = curated_root() if root is None else root
+    empty = RegistryEntry(name=CONVENTIONS_ENTRY, extends=None, manifests=(), roles={})
+    item = root / f"{CONVENTIONS_ENTRY}.toml"
+    label = f"{CONVENTIONS_ENTRY}.toml: entry rejected: "
+    if local and Path(str(item)).is_symlink():
+        return empty, (label + "is a symlink",)
+    if not item.is_file():
+        return empty, ()
+    entry, errors = _load_entry(
+        item, frozenset(), local=local, allowed=CONVENTION_FIELDS
+    )
+    if errors:
+        return empty, (label + "; ".join(errors),)
+    return entry, ()
+
+
+def layered_conventions() -> tuple[RegistryEntry, tuple[str, ...]]:
+    """The curated ``conventions`` entry plus the local layer's (at
+    :func:`sot_root`), added value by value; curated always wins."""
+    curated, warnings = load_conventions()
+    root = sot_root()
+    problem = local_root_problem(root)
+    if problem:
+        return curated, (*warnings, f"local layer ignored: {problem}")
+    if not root.is_dir():
+        return curated, warnings
+    try:
+        local, more = load_conventions(root, local=True)
+    except OSError:
+        return curated, (*warnings, "local layer ignored: could not be read")
+    notes = [*warnings, *more]
+    return _add_entry(curated, local, notes), tuple(notes)
+
+
+def with_config_conventions(
+    entry: RegistryEntry, config: Mapping[str, Sequence[str]]
+) -> RegistryEntry:
+    """``entry`` plus a repository's ``.easy-verifier.toml`` ``[conventions]``
+    values (already validated), tagged :data:`USER_SUPPLIED` with
+    :data:`CONFIG_SOURCE` as their source. Add-only: a value ``entry``
+    already has is not repeated."""
+    extra = RegistryEntry(
+        name=entry.name,
+        extends=None,
+        manifests=(),
+        roles={},
+        fields={
+            field: (
+                CitedValue(
+                    value=tuple(values),
+                    citation_url=CONFIG_SOURCE,
+                    source_tag=USER_SUPPLIED,
+                ),
+            )
+            for field, values in config.items()
+            if values
+        },
+    )
+    return _add_entry(entry, extra, [])
 
 
 def save_local_entries(

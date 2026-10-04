@@ -331,3 +331,21 @@ source_tag = "curated"
 value = ["\"extends\" :", "extends ="]
 citation_url = "https://microsoft.github.io/pyright/#/configuration"
 source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked.
+
+[[route_tokens]]
+value = ["ANY=@*.route("]
+citation_url = "https://flask.palletsprojects.com/en/stable/quickstart/#routing"
+source_tag = "curated"
+
+[[route_tokens]]
+value = ["GET=@*.get(", "POST=@*.post(", "PUT=@*.put(", "PATCH=@*.patch(", "DELETE=@*.delete("]
+citation_url = "https://fastapi.tiangolo.com/tutorial/first-steps/#define-a-path-operation-decorator"
+source_tag = "curated"
+
+[[route_tokens]]
+value = ["ANY=path(", "ANY=re_path("]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/http/urls/"
+source_tag = "curated"
