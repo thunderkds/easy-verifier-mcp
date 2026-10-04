@@ -752,6 +752,9 @@ def _commit_messages(repo: object) -> Iterator[tuple[str, str, tuple[str, ...]]]
             "log",
             "--no-merges",
             "--name-only",
+            # paths relative to the target, which may be a subdirectory of
+            # its repository (coffee-shop-api, T075)
+            "--relative",
             f"--format={_COMMIT_MARK}%H{_BODY_MARK}%B{_END_MARK}",
             "-n",
             str(CO_CHANGE_WINDOW),
