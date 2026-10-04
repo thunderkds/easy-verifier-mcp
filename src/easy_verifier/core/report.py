@@ -468,13 +468,12 @@ _METRIC_TEXT: dict[str, str] = {
     "top_level_import_cycles": "import cycles between top-level modules",
     "layer_direction_violations": "imports from a lower to a higher layer",
     # requirement-fidelity
-    "acceptance_criteria_traced_to_code_share": (
-        "share of acceptance criteria traced to code"
+    "routes_without_test_share": "share of routes no test calls",
+    "commits_with_issue_reference_share": "share of commits naming an issue",
+    "requirement_items_traced_share": (
+        "share of requirement items traced to code or tests"
     ),
-    "acceptance_criteria_traced_to_test_share": (
-        "share of acceptance criteria traced to tests"
-    ),
-    "requirements_docs_count": "number of requirements documents",
+    "requirements_doc_missing": "no requirements document",
     "code_commits_with_docs_share": "share of code commits that also update docs",
     # code-quality
     "functions_over_ccn_10_share": "share of functions with complexity over 10",
@@ -515,7 +514,6 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "decision-record": "decision records",
     "requirements-doc": "requirements doc",
     "spec-doc": "spec doc",
-    "task-breakdown": "task breakdown",
     "contributing-guide": "contributing guide",
     "lint-config": "linter config",
     "format-config": "formatter config",
@@ -531,6 +529,9 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "git history (out of scope for v1)": None,
     "source-to-test correspondence for files in the active scope": None,
     "source files with import statements": None,
+    "route handlers in source files": None,
+    "test files": "test files",
+    "git history": None,
     "referencing files (textual reference search over repository code)": None,
     "git co-change history (local `git log --name-only`)": None,
     "repository change hotspots (local git history)": None,

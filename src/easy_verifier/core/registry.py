@@ -258,6 +258,7 @@ _TOKEN_FIELDS = frozenset(
         "route_tokens",
         "requirement_item_patterns",
         "issue_reference_patterns",
+        "issue_reference_exclusions",
     }
 )
 
@@ -305,6 +306,8 @@ CONVENTION_FIELDS = (
     "requirement_item_patterns",
     "issue_reference_patterns",
     "route_tokens",
+    "issue_reference_exclusions",
+    "route_files",
 )
 """Fields of the ``conventions`` entry. ``route_tokens`` there applies to every
 language (a repository's own framework); per language it is an
@@ -366,6 +369,10 @@ _VALUE_SHAPES = {
         "<METHOD>=<token> with METHOD one of " + ", ".join(HTTP_METHODS)
         + ", e.g. GET=@Get(",
     ),
+    "route_files": (
+        re.compile(r"^[a-z0-9][a-z0-9-]*=\S+$"),
+        "<language>=<glob>, e.g. ruby=config/routes.rb (T075)",
+    ),
     "requirement_item_patterns": (
         re.compile(r"^(id|line)=\S.*$"),
         "id=<token> (an identifier anywhere) or line=<token> (at a line start)",
@@ -374,7 +381,7 @@ _VALUE_SHAPES = {
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
 
 _PREFIXED_FIELDS = frozenset(
-    {"layer_paths", "route_tokens", "requirement_item_patterns"}
+    {"layer_paths", "route_tokens", "requirement_item_patterns", "route_files"}
 )
 """Fields whose values are ``<kind>=<pattern>``: path and local-shape checks
 apply to the pattern after the first ``=``."""

@@ -196,10 +196,10 @@ def test_requirement_items_in_any_recognised_form():
         "Feature: checkout\n  Scenario: pay\n\n- [ ] user can see the total\n"
     )
     items = find_requirement_items(text)
+    # a checklist line is a plan task, not a curated item form (T077)
     assert [(i.line, i.text) for i in items] == [
         (3, "AC-3"),
         (6, "pay"),
-        (8, "user can see the total"),
     ]
 
 

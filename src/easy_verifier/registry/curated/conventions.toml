@@ -11,6 +11,8 @@
 # schemas are boundary contracts every layer uses, so they are shared. requirement_item_patterns: "id=<token>" matches
 # an identifier anywhere, "line=<token>" a line start (the item is the rest of
 # the line). Tokens use the registry token syntax (core/registry.py).
+# Checklist lines ("- [ ]") are plan tasks, not requirement items, so they are
+# not curated; a repository may declare them (DDR-0011 addendum, T077).
 
 # --- layers ------------------------------------------------------------------
 
@@ -102,11 +104,6 @@ citation_url = "https://cucumber.io/docs/gherkin/reference/"
 source_tag = "curated"
 
 [[requirement_item_patterns]]
-value = ["line=- [ ]", "line=- [x]", "line=- [X]"]
-citation_url = "https://github.github.com/gfm/#task-list-items-extension-"
-source_tag = "curated"
-
-[[requirement_item_patterns]]
 value = ["line=operationId:", "line=\"operationId\":"]
 citation_url = "https://spec.openapis.org/oas/v3.1.0#operation-object"
 source_tag = "curated"
@@ -131,4 +128,33 @@ source_tag = "curated"
 [[issue_reference_patterns]]
 value = ["<A-Z><A-Z><A-Z0-9>*-<0-9>*"]
 citation_url = "https://support.atlassian.com/jira-software-cloud/docs/reference-issues-in-your-development-work/"
+source_tag = "curated"
+
+# --- issue-reference exclusions (T075, FR-068) --------------------------------
+# Names shaped like a ticket key that are not one: a reference matching one of
+# these whole is dropped. A reference whose number holds a letter (#3a3a3a, a
+# hex colour) is never an issue number and is dropped by rule, not by list.
+
+[[issue_reference_exclusions]]
+value = ["UTF-<0-9>*", "UCS-<0-9>*"]
+citation_url = "https://www.iana.org/assignments/character-sets/character-sets.xhtml"
+source_tag = "curated"
+
+[[issue_reference_exclusions]]
+value = ["SHA-<0-9>*", "AES-<0-9>*", "RSA-<0-9>*"]
+citation_url = "https://csrc.nist.gov/pubs/fips/180-4/upd1/final"
+source_tag = "curated"
+
+[[issue_reference_exclusions]]
+value = ["ISO-<0-9>*"]
+citation_url = "https://www.iso.org/iso-8601-date-and-time-format.html"
+source_tag = "curated"
+
+# --- route files (T075, FR-068) ------------------------------------------------
+# "<language>=<glob>": a language listed here has bare routing-DSL tokens
+# (Ruby's get/post/...), so its route_tokens apply only in these files.
+
+[[route_files]]
+value = ["ruby=config/routes.rb", "ruby=config/routes/**/*.rb", "ruby=**/config/routes.rb"]
+citation_url = "https://guides.rubyonrails.org/routing.html"
 source_tag = "curated"

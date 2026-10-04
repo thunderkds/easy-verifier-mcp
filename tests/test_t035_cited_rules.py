@@ -57,14 +57,16 @@ APPROVED = {
     ],
     "solution-fit": [],
     "requirement-fidelity": [
-        # T055 (user sign-off 2026-09-29): 50/50 -> 35/35 plus the #27 group.
-        ("acceptance_criteria_traced_to_code_share", 35, "at_least", 0.80,
-         ("29148",), PROJECT_DEFAULT),
-        ("acceptance_criteria_traced_to_test_share", 35, "at_least", 0.80,
-         ("29148",), PROJECT_DEFAULT),
-        ("requirements_docs_count", 15, "at_most", 1, ("26514", "29148"),
+        # DDR-0011 (T075, user sign-off 2026-10-04): documents 20 / code 80.
+        # T077 (DDR-0011 addendum): a missing requirements document fails.
+        ("requirements_doc_missing", 10, "at_most", 0, ("29148",), "29148"),
+        ("code_commits_with_docs_share", 10, "at_least", 0.30, ("26514",),
          PROJECT_DEFAULT),
-        ("code_commits_with_docs_share", 15, "at_least", 0.30, ("26514",),
+        ("routes_without_test_share", 40, "at_most", 0.20, ("29119-4", "29148"),
+         PROJECT_DEFAULT),
+        ("commits_with_issue_reference_share", 20, "at_least", 0.50,
+         ("29148",), PROJECT_DEFAULT),
+        ("requirement_items_traced_share", 20, "at_least", 0.80, ("29148",),
          PROJECT_DEFAULT),
     ],
     "code-quality": [
@@ -340,11 +342,18 @@ def test_ac_trace_metrics_abstain_with_a_stated_reason_without_a_trace_search():
     result = rate(metrics, _full_coverage("requirement-fidelity"))
     assert isinstance(result, RatingAbstention)
     assert result.reason_code == "all_metrics_abstained"
-    trace = [r for n, r in result.unavailable_metrics if n.startswith("acceptance")]
-    assert len(trace) == 2 and all("never inferred" in reason for reason in trace)
+    # T075: the AC trace rules are gone; the code facts abstain without the
+    # dimension's whole-file records, saying why.
+    names = {n for n, _r in result.unavailable_metrics}
+    assert not any(n.startswith("acceptance") for n in names)
+    assert {
+        "routes_without_test_share",
+        "commits_with_issue_reference_share",
+        "requirement_items_traced_share",
+    } <= names
     # T055: the #27 rules abstain too; this synthetic pack has no doc_history.
     assert {n for n, _r in result.unavailable_metrics} >= {
-        "requirements_docs_count",
+        "requirements_doc_missing",
         "code_commits_with_docs_share",
     }
 

@@ -562,20 +562,23 @@ SIGNED_OFF = {
         OPS: (15, 0, "at_most", BACKWARD),
     },
     "requirement-fidelity": {
-        "acceptance_criteria_traced_to_code_share": (
-            35,
+        # DDR-0011 (T075): documents 10/10, code 40/20/20.
+        # T077 (DDR-0011 addendum): the count stays computed, unrated.
+        "requirements_doc_missing": (10, 0, "at_most", DOC_TRUTH),
+        CO_CHANGE: (10, 0.30, "at_least", DOC_TRUTH),
+        "routes_without_test_share": (40, 0.20, "at_most", "Business-rule correctness"),
+        "commits_with_issue_reference_share": (
+            20,
+            0.50,
+            "at_least",
+            "Business-rule correctness",
+        ),
+        "requirement_items_traced_share": (
+            20,
             0.80,
             "at_least",
             "Business-rule correctness",
         ),
-        "acceptance_criteria_traced_to_test_share": (
-            35,
-            0.80,
-            "at_least",
-            "Business-rule correctness",
-        ),
-        DOCS: (15, 1, "at_most", DOC_TRUTH),
-        CO_CHANGE: (15, 0.30, "at_least", DOC_TRUTH),
     },
 }
 
@@ -612,10 +615,12 @@ def test_the_new_rules_are_unmet_on_the_success_fixtures(tmp_path: Path):
     for i in range(3):
         _commit(two, {"a.py": f"A = {i}\n"})
     rf = _rf(two)
-    for name in (DOCS, CO_CHANGE):
-        assert not _passes(
-            _metric(rf, name).outcome, RATING_RULES["requirement-fidelity"][name]
-        )
+    # T077: the count of two documents is still computed, but unrated.
+    assert _metric(rf, DOCS).outcome == 2
+    assert DOCS not in RATING_RULES["requirement-fidelity"]
+    assert not _passes(
+        _metric(rf, CO_CHANGE).outcome, RATING_RULES["requirement-fidelity"][CO_CHANGE]
+    )
 
 
 def test_an_unknown_language_is_asked_for_public_declarations_too():
