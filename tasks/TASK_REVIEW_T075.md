@@ -10,6 +10,63 @@
 
 ---
 
+## Design (implementer, C3 — written before implementation code)
+
+**Where the work happens.** The three new metrics are computed by the requirement-fidelity
+dimension in `collect`, before its first yield and once per context (the budget calls `collect`
+per tier pass), over the **whole text** of the files it reads (AC 11), and recorded as
+`SampledMetric` records on `context.whole_file` — the T076 path `compute_metrics` already
+prefers over the budgeted excerpts. The metric definitions in `core/metrics.py` abstain in every
+other pack ("only the requirement-fidelity pack ..."). No new model type, no new pack field.
+
+**Inputs read (whole files, through `read_source`, so secret-bearing files stay refused).**
+- Source files: `_code_extract.source_candidates(context, "route evidence")` — all at or under the
+  cap (200), else priority batches 1..N; when batched every route-derived derivation carries the
+  `sample: batches N of M` note (edge case "labelled sample").
+- Test files: in-scope files `code_kind == "test"`, sorted, at most `MAX_TEST_FILES` (2000); more
+  is stated in the derivation (lower bound).
+- Requirement documents: the files filling `requirements-doc` and `spec-doc` (rules + config).
+
+**`routes_without_test_share` (40, at most 0.20).** Routes = `structure.find_routes` per source
+file with the language's `route_tokens` (+ conventions). A route is **tested** when some test
+file contains (a) its path literal's static prefix — the segments before the first parameter
+(`:id`, `{id}`, `<id>`, `*`), e.g. `/users/:id` -> `users`, matched after a `/` or quote and not
+followed by `[\w-]` — or else (b) its handler name as a whole word (fallback for helper-built
+paths such as coffee-shop-api's `api-path.util.ts`). Value = untested / routes; derivation gives
+route count, tested count, matched-by counts (path / handler) and up to 5 untested examples
+(`file:line METHOD path handler`). Abstains when no route is found (states the source files read
+and tokens used). Cites route files + matching test files.
+
+**`commits_with_issue_reference_share` (20, at least 0.50).** Same window as #27: the last
+`CO_CHANGE_WINDOW` (200) non-merge local commits, message bodies (`%B`). A commit counts when
+`structure.find_issue_references` finds at least one reference minus the declared exclusion list
+(AC 9). Abstains below `MIN_ISSUE_COMMITS` = 20 commits (squash-merged / young history) and on a
+non-git or shallow repository, stating what bounded it. Cites the files changed by the window's
+commits that this pack read (first 20), else abstains for lack of a citable file.
+
+**`requirement_items_traced_share` (20, at least 0.80, project default).** Items =
+`structure.find_requirement_items` over every requirement document read (any form the patterns
+declare: ids such as `FR-012`/`AC-3`, Gherkin `Scenario:` lines, task-list lines, OpenAPI
+`operationId:`). An `id` item is traced when it appears as a whole word in a source or test file;
+a `line` item when its text appears (case-insensitive, whitespace collapsed) in one. Abstains when
+no item is found. Cites the documents + tracing files.
+
+**Rules / floor.** `RATING_RULES['requirement-fidelity']` = requirements_docs_count 10,
+code_commits_with_docs_share 10, routes_without_test_share 40, commits_with_issue_reference_share
+20, requirement_items_traced_share 20 (DDR-0011); the two AC-trace rules leave the table (their
+metrics stay as unrated evidence). `ROLES` drops `task-breakdown` and gains three pseudo-sources —
+`route handlers`, `test files`, `git history` — filled when found, so a repo with routes, tests and
+history but no documents reaches 3/5 = 0.6 >= the 0.50 floor. Role patterns gain
+`**/docs/requirements*/**`, OpenAPI/Swagger files (spec-doc); `specs/**/plan.md` is already covered.
+
+**Documents missing (AC 7).** `code_commits_with_docs_share` no longer abstains when no document
+was read: with history it reports the real share (0 when nothing co-changed), citing code files
+read. `requirements_docs_count` keeps `at_most 1` (see report: zero documents vs "fail").
+
+**AC 9 / 10** follow in later commits: a declared `issue_reference_exclusions` convention list
+(UTF-8, SHA-256, ISO-8601, hex colours); single-argument call routes skipped; Ruby bare tokens only
+in declared routes files; conventions (local layer + `.easy-verifier.toml`) embedded for replay.
+
 ## Evidence
 
 | Check | Result | Notes / output snippet |
