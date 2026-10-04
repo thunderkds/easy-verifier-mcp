@@ -293,6 +293,11 @@ class LanguageTables:
     statement that sets a cookie, and per flag of :data:`COOKIE_FLAGS` the
     language declares, the tokens that set it inside that statement."""
 
+    layer_of: Callable[[str], str | None] | None = field(default=None, compare=False)
+    """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
+    declared ``layer_paths`` conventions, bound by the builder
+    (``metric_tables``); ``None`` classifies nothing."""
+
     auth_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
     """Source suffix -> the language's authentication/session tokens (T056):
     the gate the cookie metric computes behind, never scored itself."""
@@ -876,6 +881,61 @@ def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
 # ---------------------------------------------------------------------------
 
 
+_NOT_FOUND = "not found: no file in the repository matched"
+"""Start of the miss reason role resolution gives when its walk was complete
+and nothing matched (``roles.unfilled_reason``): the search ran."""
+
+ARCHITECTURE_HEADING = re.compile(r"^\s{0,3}#{1,6}[^\n]*\barchitecture\b", re.I | re.M)
+"""A Markdown heading naming the architecture (T074, FR-068)."""
+
+
+def _readme_section(view: _PackView, pattern: re.Pattern[str]) -> Excerpt | None:
+    for excerpt in view.pack.excerpts:
+        name = PurePosixPath(excerpt.path).name.lower()
+        if name.startswith("readme") and pattern.search(excerpt.text):
+            return excerpt
+    return None
+
+
+def _document_rule(
+    role: str, section: re.Pattern[str] | None = None
+) -> Callable[[_PackView], _Computed]:
+    """Role presence for architecture's document rules (T074, DDR-0011): a
+    missing document fails (1) whenever the role search ran to completion,
+    even if the byte budget later truncated the pack; ``section`` also fills
+    the role with a README heading, cited."""
+    presence = _role_presence(role)
+
+    def compute(view: _PackView) -> _Computed:
+        if section is not None:
+            excerpt = _readme_section(view, section)
+            if excerpt is not None:
+                heading = section.search(excerpt.text).group(0).strip()
+                return (
+                    0,
+                    (excerpt.ref,),
+                    f"source role {role!r} is filled by the README section "
+                    f"{heading!r} in {excerpt.ref}: 0 when a role file or a "
+                    "README heading naming the architecture was read, else 1",
+                )
+        computed = presence(view)
+        searched = any(
+            miss.source == role and miss.reason.startswith(_NOT_FOUND)
+            for miss in view.pack.sources_missing
+        )
+        if isinstance(computed, MetricAbstention) and searched and view.files:
+            return (
+                1,
+                tuple(sorted(view.files)),
+                f"source role {role!r} is not filled: no file in the repository "
+                "matched its patterns (the search ran to completion), so the "
+                "document is missing (1), whatever else the byte budget cut",
+            )
+        return computed
+
+    return compute
+
+
 def _role_presence(*roles: str) -> Callable[[_PackView], _Computed]:
     named = " or ".join(repr(role) for role in roles)
 
@@ -1300,6 +1360,103 @@ def _top_level_import_cycles(view: _PackView) -> _Computed:
         f"directory shared by the {len(files)} source file(s) quoted here (a file "
         "directly there is its own module); a cycle is a set of two or more "
         "modules each reaching the others, counted once; only the import "
+        "statements quoted in this pack are seen; " + _IMPORT_METHOD,
+    )
+
+
+LAYER_RANK = {"data": 0, "service": 1, "api": 2}
+"""Lower to higher (T074, DDR-0011); ``shared`` has no rank and never counts."""
+
+MIN_CLASSIFIED_SHARE = 0.50
+"""Below this share of non-shared source files in a layer, the layer rule
+abstains (user, DDR-0011)."""
+
+_LAYER_PATHS_NOTE = (
+    "only the curated layer_paths apply: local-layer and .easy-verifier.toml "
+    "layer paths are not used in scoring until conventions are embedded for "
+    "replay (T075)"
+)
+
+MAX_LAYER_EXAMPLES = 5
+"""Violating import statements quoted by file:line in the derivation."""
+
+
+def _layer_direction_violations(view: _PackView) -> _Computed:
+    files = sorted(
+        {
+            e.path
+            for e in view.pack.excerpts
+            if _is_source_file(e.path, view.tables)
+            and PurePosixPath(e.path).suffix in view.tables.syntax
+        }
+    )
+    statements = []
+    for excerpt in view.pack.excerpts:
+        syntax = view.tables.syntax.get(PurePosixPath(excerpt.path).suffix)
+        if syntax is None or excerpt.path not in files:
+            continue
+        for line, text in import_statements(excerpt.text, syntax):
+            statements.append((excerpt, excerpt.start_line + line - 1, text))
+    if not statements:
+        return _no_imports("source-file")
+    layer_of = view.tables.layer_of or (lambda _path: None)
+    layers = {path: layer_of(path) for path in files}
+    considered = [path for path in files if layers[path] != "shared"]
+    classified = {p: layers[p] for p in considered if layers[p] in LAYER_RANK}
+    share = (
+        f"{len(classified)} of {len(considered)} non-shared source file(s) quoted "
+        "here classify into a layer (api, service, data) by the declared "
+        "layer_paths conventions"
+    )
+    if not considered or len(classified) / len(considered) < MIN_CLASSIFIED_SHARE:
+        return MetricAbstention(
+            reason=(
+                f"{share}, below the declared minimum share of "
+                f"{MIN_CLASSIFIED_SHARE:.2f}, so the layer direction of this "
+                "code is not measurable; " + _LAYER_PATHS_NOTE
+            )
+        )
+    # A stem shared by files of different layers names no layer: skipped.
+    by_name: dict[str, set[str]] = {}
+    for path, layer in classified.items():
+        by_name.setdefault(_file_name(path), set()).add(layer)
+    targets = {
+        name: found.pop()
+        for name, found in by_name.items()
+        if len(found) == 1 and name
+    }
+    patterns = {name: _names_pattern([name]) for name in targets}
+    violations: list[tuple[Excerpt, int, str, str]] = []
+    for excerpt, line, text in statements:
+        source = classified.get(excerpt.path)
+        if source is None:
+            continue
+        higher = sorted(
+            {
+                target
+                for name, target in targets.items()
+                if LAYER_RANK[target] > LAYER_RANK[source]
+                and name != _file_name(excerpt.path)
+                and patterns[name].search(text)
+            },
+            key=LAYER_RANK.get,
+        )
+        if higher:
+            violations.append((excerpt, line, source, higher[-1]))
+    refs = {e.ref for e, *_rest in violations} or {e.ref for e, _l, _t in statements}
+    examples = "; ".join(
+        f"{e.path}:{line} ({source} -> {target})"
+        for e, line, source, target in violations[:MAX_LAYER_EXAMPLES]
+    )
+    return (
+        len(violations),
+        tuple(sorted(refs)),
+        f"{len(violations)} import statement(s) from a lower to a higher layer "
+        "(data -> service, service -> api, data -> api)"
+        + (f", e.g. {examples}" if examples else "")
+        + f". {share} ({_LAYER_PATHS_NOTE}); shared and unclassified files "
+        "never count, and a file "
+        "stem shared by files of different layers names none; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
     )
 
@@ -1846,9 +2003,15 @@ def _code_commits_with_docs_share(view: _PackView) -> _Computed:
     cited = {*facts.docs_cited, *facts.requirements_docs}
     refs = sorted(path for path in cited if path in view.files)
     if not refs:
+        # A missing document fails the rule, never abstains (T075, FR-067):
+        # the share is still read from history, cited by the code files read.
+        refs = [path for path in view.files if code_kind(path, view.tables)][
+            :MAX_CODE_FILES_CITED
+        ]
+    if not refs:
         return MetricAbstention(
-            reason="no document of this pack was read, so there is no evidence "
-            "to cite beside the share"
+            reason="no document or code file of this pack was read, so there is "
+            "no evidence to cite beside the share"
         )
     return (
         facts.code_commits_with_docs / facts.code_commits,
@@ -1861,6 +2024,30 @@ def _code_commits_with_docs_share(view: _PackView) -> _Computed:
         + "; code = a file the registry classifies as source or test code; "
         "documentation = a .md/.rst/.adoc/.txt file or a file under doc/ or "
         "docs/",
+    )
+
+
+MAX_CODE_FILES_CITED = 20
+"""Code files cited by a history share when no document can be (T075)."""
+
+
+def _code_fact(view: _PackView) -> MetricAbstention:
+    """The T075 code metrics are computed by the requirement-fidelity
+    dimension over whole files and stored on ``pack.whole_file``; reaching
+    this function means they were not."""
+    pack = view.pack
+    if pack.dimension != REQUIREMENT_FIDELITY:
+        return MetricAbstention(
+            reason=(
+                "only the requirement-fidelity pack records route, commit and "
+                f"requirement-item facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no route, commit "
+            "or requirement-item facts were gathered"
+        )
     )
 
 
@@ -2259,6 +2446,12 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         _top_level_import_cycles,
     ),
     MetricDefinition(
+        "layer_direction_violations",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _layer_direction_violations,
+    ),
+    MetricDefinition(
         "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
     ),
     MetricDefinition(
@@ -2301,13 +2494,13 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         "architecture_description_missing",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
-        _role_presence("architecture-doc"),
+        _document_rule("architecture-doc", ARCHITECTURE_HEADING),
     ),
     MetricDefinition(
         "decision_records_missing",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
-        _role_presence("decision-record"),
+        _document_rule("decision-record"),
     ),
     MetricDefinition(
         "acceptance_criteria_traced_to_code_share",
@@ -2368,6 +2561,12 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         _compat_count("ops"),
     ),
     MetricDefinition(
+        "requirements_doc_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _document_rule("requirements-doc"),
+    ),
+    MetricDefinition(
         "requirements_docs_count",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
@@ -2378,6 +2577,25 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
         _code_commits_with_docs_share,
+    ),
+    # T075: computed by the requirement-fidelity dimension (whole files)
+    MetricDefinition(
+        "routes_without_test_share",
+        FAMILY_TEST_STRENGTH,
+        EVIDENCE_LOCAL,
+        _code_fact,
+    ),
+    MetricDefinition(
+        "commits_with_issue_reference_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _code_fact,
+    ),
+    MetricDefinition(
+        "requirement_items_traced_share",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _code_fact,
     ),
     MetricDefinition(
         "cookie_flags_missing_observed",
@@ -2423,10 +2641,12 @@ def compute_metrics(
         allowed = allowed_refs(evidence)
         sample = evidence.sample
         stored = {item.name: item for item in sample.metrics} if sample else {}
+        stored |= {item.name: item for item in evidence.whole_file or ()}
         for definition in METRIC_DEFINITIONS:
             if definition.name in stored:
                 # Computed by the dimension over the whole text of the
-                # sample's files (T068), not over the budgeted excerpts, so
+                # sample's files (T068) or of every source file at or under
+                # the cap (T076), not over the budgeted excerpts, so
                 # the FR-027a truncation rule does not describe it.
                 computed = _stored(stored[definition.name])
             elif definition.kind == WHOLE_SET and truncated:
@@ -2473,7 +2693,7 @@ SAMPLED_METRICS: dict[str, tuple[str, ...]] = {
         "type_escapes_per_kloc",
         "todo_without_ticket_share",
     ),
-    "architecture": ("top_level_import_cycles",),
+    "architecture": ("top_level_import_cycles", "layer_direction_violations"),
 }
 """Metrics a code tier computes over the whole text of its priority-batch
 sample (T068) when it has more sources than its cap: the byte budget would

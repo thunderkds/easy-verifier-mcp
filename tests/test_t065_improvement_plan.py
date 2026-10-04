@@ -109,17 +109,18 @@ def _item(plan, metric_name):
     return found[0]
 
 
-def _requirement_fidelity_30() -> Rating:
-    """30 = (15 + 15) / 100: code share 0.75 vs at_least 0.80 (gap 0.05,
-    inside the 0.08 band -> P0), test share 0.5 (gap 0.30 -> P1)."""
+def _requirement_fidelity_40() -> Rating:
+    """40 = (10 + 10 + 20) / 100 (DDR-0011, T075): items share 0.75 vs at_least
+    0.80 (gap 0.05, inside the 0.08 band -> P0), routes without a test 0.5 vs
+    at_most 0.20 (gap 0.30 -> P1)."""
     rating = _rating(
         "requirement-fidelity",
         {
-            "acceptance_criteria_traced_to_code_share": 0.75,
-            "acceptance_criteria_traced_to_test_share": 0.5,
+            "requirement_items_traced_share": 0.75,
+            "routes_without_test_share": 0.5,
         },
     )
-    assert type(rating) is Rating and rating.value == 30
+    assert type(rating) is Rating and rating.value == 40
     return rating
 
 
@@ -129,42 +130,42 @@ def _requirement_fidelity_30() -> Rating:
 
 
 def test_plan_shape_and_every_item_field() -> None:
-    plan = _plan(_ratings(requirement_fidelity=_requirement_fidelity_30()))
+    plan = _plan(_ratings(requirement_fidelity=_requirement_fidelity_40()))
     assert list(plan["groups"]) == ["P0", "P1", "P2"]
-    item = _item(plan, "acceptance_criteria_traced_to_code_share")
+    item = _item(plan, "requirement_items_traced_share")
     assert item == {
         "group": "P0",
         "dimension": "requirement-fidelity",
         "area": RATING_RULES["requirement-fidelity"][
-            "acceptance_criteria_traced_to_code_share"
+            "requirement_items_traced_share"
         ].area,
-        "metric_name": "acceptance_criteria_traced_to_code_share",
+        "metric_name": "requirement_items_traced_share",
         "metric_value": 0.75,
         "unavailable_reason": None,
         "comparison": "at_least",
         "threshold": 0.8,
-        "weight": 35,
+        "weight": 20,
         "computed_from": ["src/app.py"],
-        # 30 -> 65; sole contributor, so the overall moves 30 -> 65 too
-        "dimension_gain": 35,
-        "overall_gain": 35,
+        # 40 -> 60; sole contributor, so the overall moves 40 -> 60 too
+        "dimension_gain": 20,
+        "overall_gain": 20,
         "gain_basis": "final",
         "fix": {
-            "text": FIX_HINTS["acceptance_criteria_traced_to_code_share"],
+            "text": FIX_HINTS["requirement_items_traced_share"],
             "source": "engine",
         },
     }
 
 
 def test_near_miss_is_p0_and_far_failure_is_p1() -> None:
-    plan = _plan(_ratings(requirement_fidelity=_requirement_fidelity_30()))
+    plan = _plan(_ratings(requirement_fidelity=_requirement_fidelity_40()))
     names = {
         group: [item["metric_name"] for item in items]
         for group, items in plan["groups"].items()
     }
     assert names == {
-        "P0": ["acceptance_criteria_traced_to_code_share"],
-        "P1": ["acceptance_criteria_traced_to_test_share"],
+        "P0": ["requirement_items_traced_share"],
+        "P1": ["routes_without_test_share"],
         "P2": [],
     }
 
@@ -195,19 +196,24 @@ def test_at_most_near_miss_respects_direction() -> None:
 
 
 def test_rounding_tie_uses_recomputed_gain_not_weight_share() -> None:
-    # requirement-fidelity 30 + security 100 -> overall round(130/2) = 65.
-    # Fixing the code share: 30 -> 65; overall round(165/2) = round(82.5)
-    # = 82 (ties to even) -> gain 17. A weight share would say
-    # round(35 / 2) = round(17.5) = 18.
-    ratings = _ratings(
-        requirement_fidelity=_requirement_fidelity_30(),
-        security=_rating("security"),
+    # Re-based for DDR-0011 (T075): requirement-fidelity 40 + security 100 +
+    # architecture 83 -> overall round(223/3) = round(74.33) = 74. Fixing the
+    # routes rule: 40 -> 80; overall round(263/3) = round(87.67) = 88 -> gain
+    # 14. A weight share would say round(40 / 3) = 13.
+    architecture = _rating(
+        "architecture",
+        {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
     )
-    assert rate_overall(ratings).value == 65
-    item = _item(_plan(ratings), "acceptance_criteria_traced_to_code_share")
-    assert item["dimension_gain"] == 35
-    assert item["overall_gain"] == 17
-    assert item["overall_gain"] != round(35 / 2)
+    ratings = _ratings(
+        requirement_fidelity=_requirement_fidelity_40(),
+        security=_rating("security"),
+        architecture=architecture,
+    )
+    assert rate_overall(ratings).value == 74
+    item = _item(_plan(ratings), "routes_without_test_share")
+    assert item["dimension_gain"] == 40
+    assert item["overall_gain"] == 14
+    assert item["overall_gain"] != round(40 / 3)
 
 
 # ---------------------------------------------------------------------------
@@ -216,25 +222,26 @@ def test_rounding_tie_uses_recomputed_gain_not_weight_share() -> None:
 
 
 def test_abstained_metric_is_p2_with_a_range_and_negative_low() -> None:
-    # architecture: description met (30), decision records unmet (30),
-    # import cycles abstained -> 30/60 = 50; sole contributor -> overall 50.
-    # Cycles measured and failing: 30/100 = 30 -> [-20]; passing: 70 -> [+20].
+    # DDR-0011 (T074) weights 10/10/40/40: description met (10), decision
+    # records unmet (10), import cycles abstained, layers met (40) -> 50/60 =
+    # 83; sole contributor -> overall 83. Cycles measured and failing: 50/100
+    # = 50 -> [-33]; passing: 90 -> [+7].
     rating = _rating(
         "architecture",
         {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
     )
-    assert rating.value == 50
+    assert rating.value == 83
     plan = _plan(_ratings(architecture=rating))
     item = _item(plan, "top_level_import_cycles")
     assert item["group"] == "P2"
-    assert item["dimension_gain"] == [-20, 20]
-    assert item["overall_gain"] == [-20, 20]
+    assert item["dimension_gain"] == [-33, 7]
+    assert item["overall_gain"] == [-33, 7]
     assert item["metric_value"] is None
     assert item["unavailable_reason"] == UNAVAILABLE.reason
     assert item["computed_from"] == []
-    # the unmet measured rule: 50 -> 100
+    # the unmet measured rule: 83 -> 100
     decision = _item(plan, "decision_records_missing")
-    assert (decision["group"], decision["overall_gain"]) == ("P1", 50)
+    assert (decision["group"], decision["overall_gain"]) == ("P1", 17)
 
 
 # ---------------------------------------------------------------------------
@@ -243,9 +250,9 @@ def test_abstained_metric_is_p2_with_a_range_and_negative_low() -> None:
 
 
 def test_order_is_gain_desc_then_dimension_then_metric() -> None:
-    # architecture 50 (decision records unmet, w30 of 60) and security
-    # 30 (redaction 35 + sink 35 unmet; lockfile 15 + cookie 15 met).
-    # overall round(80/2) = 40.
+    # DDR-0011 (T074): architecture 83 (decision records unmet, w10 of 60
+    # measured) and security 30 (redaction 35 + sink 35 unmet; lockfile 15 +
+    # cookie 15 met). overall round(113/2) = 56.
     architecture = _rating(
         "architecture",
         {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
@@ -258,12 +265,12 @@ def test_order_is_gain_desc_then_dimension_then_metric() -> None:
         (i["overall_gain"], i["dimension"], i["metric_name"])
         for i in plan["groups"]["P1"]
     ]
-    # architecture fix: 100 -> round(130/2) = 65 -> +25
-    # each security fix: 65 -> round(115/2) = round(57.5) = 58 -> +18
+    # each security fix: 65 -> round(148/2) = 74 -> +18
+    # architecture fix: 100 -> round(130/2) = 65 -> +9
     assert p1 == [
-        (25, "architecture", "decision_records_missing"),
         (18, "security", "redaction_hits_observed"),
         (18, "security", "sink_hits_observed"),
+        (9, "architecture", "decision_records_missing"),
     ]
     # determinism: same input, same bytes
     assert json.dumps(plan) == json.dumps(
@@ -308,19 +315,20 @@ def test_gated_dimension_gain_is_rules_part_and_labelled() -> None:
         {"decision_records_missing": 1, "top_level_import_cycles": UNAVAILABLE},
     )
     gated = GatedRating(rules, 90, 1, ("README.md:1-3",))
-    assert gated.value == 70  # 50 x 0.5 + 90 x 0.5
+    # DDR-0011 (T074) weights: rules part 83 (see above).
+    assert gated.value == 87  # 83 x 0.5 + 90 x 0.5 = 86.5
     plan = _plan(_ratings(architecture=gated, security=_rating("security")))
     item = _item(plan, "decision_records_missing")
     assert item["gain_basis"] == "rules"
-    # rules part 50 -> 100; overall on the rules basis round(150/2) = 75
-    # -> round(200/2) = 100: +25. Never the blended 70.
-    assert item["dimension_gain"] == 50
-    assert item["overall_gain"] == 25
+    # rules part 83 -> 100; overall on the rules basis round(183/2) = 92
+    # -> round(200/2) = 100: +8. Never the blended 87.
+    assert item["dimension_gain"] == 17
+    assert item["overall_gain"] == 8
     assert _item(plan, "top_level_import_cycles")["gain_basis"] == "rules"
 
 
 def test_non_gated_items_carry_final_basis() -> None:
-    plan = _plan(_ratings(requirement_fidelity=_requirement_fidelity_30()))
+    plan = _plan(_ratings(requirement_fidelity=_requirement_fidelity_40()))
     assert {
         item["gain_basis"] for items in plan["groups"].values() for item in items
     } == {"final"}

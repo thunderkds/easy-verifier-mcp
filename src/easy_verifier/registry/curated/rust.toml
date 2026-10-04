@@ -195,3 +195,16 @@ source_tag = "curated"
 value = ["SessionMiddleware", "session.insert ("]
 citation_url = "https://docs.rs/actix-session/latest/actix_session/"
 source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked.
+
+[[route_tokens]]
+value = ["GET=#[get(", "POST=#[post(", "PUT=#[put(", "PATCH=#[patch(", "DELETE=#[delete("]
+citation_url = "https://actix.rs/docs/url-dispatch/"
+source_tag = "curated"
+
+[[route_tokens]]
+value = ["ANY=.route("]
+citation_url = "https://docs.rs/axum/latest/axum/routing/struct.Router.html#method.route"
+source_tag = "curated"

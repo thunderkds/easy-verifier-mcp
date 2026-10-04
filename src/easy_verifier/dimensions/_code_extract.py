@@ -21,8 +21,10 @@ by purpose class, git churn and path (``core.batches``), and says so in a
 warning. The tier's sampled metrics are then computed over the whole text of
 those files (:func:`record_sample`), so the byte budget cutting the excerpts
 does not make them abstain; it is still reported as truncation. At or under
-the cap nothing changes: every candidate is read, and the byte budget can cut
-the tier as before (FR-027a).
+the cap every candidate is read, and the same metrics are computed over the
+whole text of all of them as one full batch (T076, FR-072), disclosed as "all
+N source files" rather than a sample; the byte budget still cuts the excerpts
+and is reported (FR-027a).
 """
 
 from __future__ import annotations
@@ -108,10 +110,13 @@ def _read(
     """``(path, lines, syntax)`` per readable source, lazily.
 
     Lines split on ``\\n`` only, as ``core.tokens`` does, so a function's line
-    numbers are the same in the file and in the excerpt cut from it.
+    numbers are the same in the file and in the excerpt cut from it. At or
+    under the cap the texts were already read once by :func:`record_sample`
+    (``context.source_texts``), so a file is read and recorded only once.
     """
+    texts = getattr(context, "source_texts", None) or {}
     for path in sources:
-        text = context.read_source(path)
+        text = texts[path] if path in texts else context.read_source(path)
         if text:
             lines = [line.removesuffix("\r") for line in text.split("\n")]
             yield (
@@ -185,34 +190,64 @@ def source_candidates(context: DimensionContext, what: str) -> list[str]:
     return list(plan.selected)
 
 
-def record_sample(context: DimensionContext, dimension: str) -> None:
-    """Set ``context.sample`` for a tier that read priority batches.
+def record_sample(
+    context: DimensionContext, dimension: str, sources: list[str]
+) -> None:
+    """Compute the tier's structure metrics over the whole text of ``sources``.
 
-    Reads each selected file once through ``read_source`` (a secret-bearing
-    file is refused there and counts for nothing) and computes the
-    dimension's sampled metrics over the whole text in memory; only the
-    result is kept, with its paths and derivation redacted like any other
-    pack field. A no-op at or under the cap, and once per context: the budget
-    may call ``collect`` once per tier pass.
+    Above the cap these are the files of priority batches 1…N and the result
+    is ``context.sample`` (T068); at or under it, every candidate is one full
+    batch and the result is ``context.whole_file``, disclosed as "all N source
+    files", never as a sample (T076). Reads each file once through
+    ``read_source`` (a secret-bearing file is refused there and counts for
+    nothing); at or under the cap the texts are kept on the context for the
+    excerpt tier, so nothing is read twice. Only the metric result reaches the
+    pack, with its paths and derivation redacted like any other pack field.
+    Once per context: the budget may call ``collect`` once per tier pass. No
+    sources, no result: the metrics then abstain as before.
     """
     plan = getattr(context, "batch_plan", None)
-    if plan is None or getattr(context, "sample", None) is not None:
+    if getattr(context, "sample", None) is not None:
         return
+    if getattr(context, "whole_file", None) is not None or not sources:
+        return
+    if not plan:
+        context.source_texts = {path: context.read_source(path) for path in sources}
     units = [
         Excerpt(path=path, start_line=1, end_line=len(lines), text="\n".join(lines))
-        for path, lines, _syntax in _read(context, plan.selected)
+        for path, lines, _syntax in _read(context, plan.selected if plan else sources)
     ]
+    note = ""
+    if not plan:
+        read = sum(text is not None for text in context.source_texts.values())
+        note = "; " + _whole_note(read, len(sources))
     metrics = tuple(
         SampledMetric(
             name=item.name,
             value=item.value,
-            abstention=None if item.abstention is None else redact(item.abstention),
+            abstention=(
+                None if item.abstention is None else redact(item.abstention + note)
+            ),
             computed_from=tuple(redact(path) for path in item.computed_from),
-            derivation=redact(item.derivation),
+            derivation=redact(item.derivation + note) if item.derivation else "",
         )
         for item in compute_sampled_metrics(dimension, units, curated_metric_tables())
     )
-    context.sample = sample_facts(plan, metrics)
+    if plan:
+        context.sample = sample_facts(plan, metrics)
+    else:
+        context.whole_file = metrics
+
+
+def _whole_note(read: int, candidates: int) -> str:
+    """``all N source files`` (T076, FR-072), naming any refused unread."""
+    note = f"all {read} source files"
+    if candidates > read:
+        note += f" ({candidates - read} more refused unread or unreadable)"
+    return (
+        note + " -- computed over the whole text of those files, not only the "
+        "excerpts quoted in this pack"
+    )
 
 
 def sample_facts(plan, metrics=()) -> SampleFacts:

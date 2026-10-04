@@ -487,6 +487,21 @@ def test_cli_all_and_validation(big_repo: Path, capsys) -> None:
 
 
 def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
+    # Snapshot regenerated for T074 (DDR-0011 architecture 10/10/40/40, code
+    # evidence counts toward coverage): only architecture changed (below
+    # floor -> 67) and the layer_direction_violations metric was added.
+    # Regenerated for T076 (whole-file metrics at or under the cap): no rating
+    # changed; the whole-file metrics cite file paths instead of excerpt refs
+    # and say "all 50 source files", and type_escapes_per_kloc dropped from
+    # 34 escapes / 1725 lines (overlapping excerpts counted twice) to the true
+    # 17 / 1063.
+    # Regenerated for T075 (DDR-0011 requirement-fidelity 10/10/40/20/20): no
+    # rating or overall changed; requirement-fidelity seeks route handlers,
+    # test files and git history instead of task-breakdown (coverage 0 ->
+    # 0.2, still below its floor) and the three code-fact metrics were added.
+    # Regenerated for T077 (requirements_doc_missing replaces the count in the
+    # rating): no rating or overall changed; the requirements_doc_missing
+    # metric was added (1 where the role is sought and unfilled, else abstains).
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

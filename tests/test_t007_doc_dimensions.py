@@ -74,10 +74,12 @@ def test_standalone_docs_prevent_code_fallback(tmp_path: Path, module) -> None:
 
     # T050: code-quality and architecture read in-scope source once more, in
     # their own trailing code tier (a function / its import lines); the doc
-    # fallback firing would read it a second time or quote it whole.
-    code_tier = module.NAME in ("code-quality", "architecture")
+    # fallback firing would read it a second time or quote it whole. T076:
+    # that one read happens first, for the whole-file metrics.
+    # T075: requirement-fidelity reads code whole for its route facts.
+    code_tier = module.NAME in ("code-quality", "architecture", "requirement-fidelity")
     assert pack.files_read == (
-        ("README.md", "implementation.py") if code_tier else ("README.md",)
+        ("implementation.py", "README.md") if code_tier else ("README.md",)
     )
     assert {excerpt.ref for excerpt in pack.excerpts} == (
         {"README.md:1-1", "implementation.py:1-2"}
@@ -251,6 +253,9 @@ def test_architecture_pack_matches_pre_refactor_snapshot(tmp_path: Path) -> None
         Path(__file__).resolve().parent / "snapshots" / "architecture_pack.json"
     )
     expected = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    # T074 (DDR-0011): the checklist gained the "source files with import
+    # statements" pseudo-source (code evidence counts toward coverage), so the
+    # snapshot's sources_sought / sources_missing / coverage_score changed.
     # T055: the adapters' serializer; the snapshot predates T055, so this also
     # proves unused new pack facts leave the JSON byte-identical (DDR-0005).
     actual = json.loads(json.dumps(to_json_dict(pack)))
@@ -349,15 +354,10 @@ def test_requirement_fidelity_collects_task_acceptance_criteria(
 
     pack = run_dimension(requirement_fidelity.DESCRIPTOR, tmp_path)
 
-    # T026: the task guide fills the `task-breakdown` role.
-    assert "task-breakdown" in pack.sources_sought
-    assert "task-breakdown" in pack.sources_found
+    # T075 (FR-071): `task-breakdown` is no longer sought; the guide is
+    # still read for its acceptance-criteria evidence.
+    assert "task-breakdown" not in pack.sources_sought
     assert "tasks/TASK_GUIDE_T123.md" in pack.files_read
-    assert any(
-        excerpt.path == "tasks/TASK_GUIDE_T123.md"
-        and "returns citable evidence" in excerpt.text
-        for excerpt in pack.excerpts
-    )
 
 
 def test_task_guide_glob_does_not_follow_outside_symlink(tmp_path: Path) -> None:
@@ -412,7 +412,10 @@ def test_requirement_fidelity_standalone_with_no_frs_states_the_miss_plainly(
     assert pack.mode == MODE_STANDALONE
     assert pack.coverage_score == 0.0
     for miss in pack.sources_missing:
-        assert "not found" in miss.reason or "excluded" in miss.reason
+        # T075: git history is "not examined" outside a git repository.
+        assert any(
+            word in miss.reason for word in ("not found", "excluded", "not examined")
+        )
 
 
 def test_line_numbers_correct_with_crlf_line_endings(tmp_path: Path) -> None:
@@ -619,9 +622,4 @@ def test_task_guide_glob_alias_to_secret_bearing_file_is_excluded(
 
     assert "tasks/TASK_GUIDE_T123.md" not in pack.files_read
     assert not any("raw secret bytes" in excerpt.text for excerpt in pack.excerpts)
-    # T026: the only file matching `task-breakdown` resolves to a
-    # secret-bearing file, so the role is excluded, not merely unreadable.
-    assert any(
-        miss.source == "task-breakdown" and miss.reason == "excluded: secret-bearing"
-        for miss in pack.sources_missing
-    )
+    # T075: `task-breakdown` is no longer sought, so no miss names it.

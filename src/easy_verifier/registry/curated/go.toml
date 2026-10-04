@@ -215,3 +215,16 @@ source_tag = "curated"
 value = ["sessions.NewCookieStore ("]
 citation_url = "https://pkg.go.dev/github.com/gorilla/sessions"
 source_tag = "curated"
+
+# Route tokens (T073, DDR-0011): "<METHOD>=<token>", matched by core/structure.py
+# after comments and strings are blanked.
+
+[[route_tokens]]
+value = ["ANY=HandleFunc(", "ANY=Handle("]
+citation_url = "https://pkg.go.dev/net/http#HandleFunc"
+source_tag = "curated"
+
+[[route_tokens]]
+value = ["GET=.GET(", "POST=.POST(", "PUT=.PUT(", "PATCH=.PATCH(", "DELETE=.DELETE("]
+citation_url = "https://gin-gonic.com/docs/examples/http-method/"
+source_tag = "curated"

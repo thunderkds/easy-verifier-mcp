@@ -207,8 +207,10 @@ def test_byte_budget_truncation_is_reported_and_keeps_the_most_complex(
 
     assert pack.truncated and _code_refs(pack) == ["src/app/alpha.py:4-22"]
     assert _metric(metrics, "code-quality", "max_function_ccn").numeric_value == 12
+    # T076: below the cap the share is computed over the whole text of every
+    # source file, so the truncation (still reported above) no longer hides it.
     share = _metric(metrics, "code-quality", "functions_over_ccn_10_share")
-    assert share.abstained and "truncated" in share.abstention.reason
+    assert not share.abstained and "all 3 source files" in share.derivation
 
 
 def test_changes_scope_reads_only_changed_source(repo: Path) -> None:

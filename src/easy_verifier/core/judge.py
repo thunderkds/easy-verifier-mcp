@@ -196,6 +196,11 @@ _MARTIN_ADP = Citation(
     "https://web.archive.org/web/2015/http://www.objectmentor.com/resources/"
     "articles/granularity.pdf",
 )
+_MARTIN_SDP = Citation(
+    "Martin 1997, Stability (Stable Dependencies Principle)",
+    "https://web.archive.org/web/2015/http://www.objectmentor.com/resources/"
+    "articles/stability.pdf",
+)
 _ISO_29148 = Citation(
     "ISO/IEC/IEEE 29148:2018 (requirements engineering, traceability)",
     "https://www.iso.org/standard/72089.html",
@@ -237,14 +242,15 @@ def _rules(*rules: RatingRule) -> dict[str, RatingRule]:
 # rule earns its weight; missing it earns zero. Each non-empty dimension's
 # weights total 100. solution-fit declares no rule by design (FR-036).
 RATING_RULES: dict[str, dict[str, RatingRule]] = {
+    # Documents 20 / code 80, user-signed via DDR-0011 (T074, 2026-10-04).
     "architecture": _rules(
         RatingRule(
-            "architecture_description_missing", 30, 0, "at_most",
+            "architecture_description_missing", 10, 0, "at_most",
             (_ISO_42010,), _ISO_42010,
             area=AREAS[0],
         ),
         RatingRule(
-            "decision_records_missing", 30, 0, "at_most",
+            "decision_records_missing", 10, 0, "at_most",
             (_ISO_42010,), _ISO_42010,
             area=AREAS[0],
         ),
@@ -253,30 +259,43 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             (_MARTIN_ADP,), _MARTIN_ADP,
             area=AREAS[0],
         ),
+        RatingRule(
+            "layer_direction_violations", 40, 0, "at_most",
+            (_MARTIN_SDP,), _MARTIN_SDP,
+            area=AREAS[0],
+        ),
     ),
     "solution-fit": {},
-    # Weights re-balanced by T055 for the #27 rule group (user sign-off
-    # 2026-09-29).
+    # Documents 20 / code 80, user-signed via DDR-0011 (T075, 2026-10-04): the
+    # two acceptance-criteria trace rules are replaced by requirement items in
+    # any declared form. A missing requirements document fails its rule
+    # (requirements_doc_missing; requirements_docs_count stays computed,
+    # unrated — DDR-0011 addendum, T077).
     "requirement-fidelity": _rules(
         RatingRule(
-            "acceptance_criteria_traced_to_code_share", 35, 0.80, "at_least",
-            (_ISO_29148,), PROJECT_DEFAULT,
-            area=AREAS[1],
-        ),
-        RatingRule(
-            "acceptance_criteria_traced_to_test_share", 35, 0.80, "at_least",
-            (_ISO_29148,), PROJECT_DEFAULT,
-            area=AREAS[1],
-        ),
-        RatingRule(
-            "requirements_docs_count", 15, 1, "at_most",
-            (_ISO_26514, _ISO_29148), PROJECT_DEFAULT,
+            "requirements_doc_missing", 10, 0, "at_most",
+            (_ISO_29148,), _ISO_29148,
             area=AREAS[26],
         ),
         RatingRule(
-            "code_commits_with_docs_share", 15, 0.30, "at_least",
+            "code_commits_with_docs_share", 10, 0.30, "at_least",
             (_ISO_26514,), PROJECT_DEFAULT,
             area=AREAS[26],
+        ),
+        RatingRule(
+            "routes_without_test_share", 40, 0.20, "at_most",
+            (_ISO_29119_4, _ISO_29148), PROJECT_DEFAULT,
+            area=AREAS[1],
+        ),
+        RatingRule(
+            "commits_with_issue_reference_share", 20, 0.50, "at_least",
+            (_ISO_29148,), PROJECT_DEFAULT,
+            area=AREAS[1],
+        ),
+        RatingRule(
+            "requirement_items_traced_share", 20, 0.80, "at_least",
+            (_ISO_29148,), PROJECT_DEFAULT,
+            area=AREAS[1],
         ),
     ),
     # Weights re-balanced by T040 for the #17 and #31 rule groups (user

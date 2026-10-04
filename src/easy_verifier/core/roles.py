@@ -39,9 +39,11 @@ from .judge import DocumentationResult, DocumentationRule
 from .models import SourceRole
 from .redact import redact
 from .registry import (
+    CONVENTION_FIELDS,
     REJECTED,
     Registry,
     apply_reviews,
+    convention_value_problem,
     layered_registry,
     local_write_problem,
     parse_local_entries,
@@ -98,7 +100,13 @@ def _source_roots(*keywords: str) -> tuple[str, ...]:
 
 GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     "readme": ("README*", "Readme*", "readme*"),
-    "architecture-doc": ("PROJECT_SPEC.md", *_docs("architecture", "design")),
+    "architecture-doc": (
+        "PROJECT_SPEC.md",
+        "ARCHITECTURE.md",
+        "**/docs/architecture*",
+        "**/docs/architecture/**",
+        *_docs("architecture", "design"),
+    ),
     "decision-record": (
         "BRAINSTORMING_LOG*.md",
         "**/adr/**",
@@ -108,12 +116,26 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "**/decisions/**",
         *_docs("decision"),
     ),
-    "requirements-doc": ("PRD*.md", "**/PRD*.md", *_docs("requirement")),
+    "requirements-doc": (
+        "PRD*.md",
+        "**/PRD*.md",
+        *_docs("requirement"),
+        # T075 (FR-068): a requirements directory, e.g. docs/requirements/x.md
+        "docs/requirements*/**",
+        "**/docs/requirements*/**",
+    ),
     "spec-doc": (
         "PROJECT_SPEC.md",
         "**/specs/**/*.md",
         "**/specification/**/*.md",
         *_docs("spec"),
+        # T075 (FR-068): OpenAPI / Swagger contracts, anywhere
+        *(
+            f"{prefix}{name}*.{suffix}"
+            for prefix in ("", "**/")
+            for name in ("openapi", "swagger")
+            for suffix in ("yaml", "yml", "json")
+        ),
     ),
     "task-breakdown": (
         "tasks/TASK_GUIDE_*.md",
@@ -277,13 +299,29 @@ class RoleInputError(ValidationError):
 def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
     """Read and validate the target's optional ``.easy-verifier.toml``.
 
-    Absent file → ``{}``: nothing changes (NFR-005). The only accepted shape
-    is ``[roles] <role> = ["glob", …]``, adding globs to an existing role.
+    Absent file → ``{}``: nothing changes (NFR-005). The accepted shapes are
+    ``[roles] <role> = ["glob", …]``, adding globs to an existing role, and
+    ``[conventions] <field> = ["value", …]`` (T073), adding convention
+    patterns; the latter is validated here and returned by
+    :func:`load_repo_conventions`.
     """
+    return _repo_config(repo)[0]
+
+
+def load_repo_conventions(repo: str | Path) -> dict[str, tuple[str, ...]]:
+    """The validated ``[conventions]`` table of the target's optional
+    ``.easy-verifier.toml``: :data:`~easy_verifier.core.registry.CONVENTION_FIELDS`
+    field → values to add (``registry.with_config_conventions``)."""
+    return _repo_config(repo)[1]
+
+
+def _repo_config(
+    repo: str | Path,
+) -> tuple[dict[str, tuple[str, ...]], dict[str, tuple[str, ...]]]:
     root = Path(repo)
     path = root / CONFIG_FILENAME
     if not path.exists() and not path.is_symlink():
-        return {}
+        return {}, {}
 
     def fail(reason: str) -> RoleInputError:
         return RoleInputError(CONFIG_FILENAME, [reason])
@@ -301,10 +339,11 @@ def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
 
     errors: list[str] = []
     for key in data:
-        if key != "roles":
+        if key not in ("roles", "conventions"):
             errors.append(
-                f"{redact(key)}: unknown key; only [roles] is accepted, and it may "
-                "only add paths to existing roles (no floors, rules or removals)"
+                f"{redact(key)}: unknown key; only [roles] and [conventions] are "
+                "accepted, and they may only add paths to existing roles or "
+                "patterns to conventions (no floors, rules or removals)"
             )
     configured = data.get("roles", {})
     if not isinstance(configured, dict):
@@ -331,8 +370,35 @@ def load_repo_config(repo: str | Path) -> dict[str, tuple[str, ...]]:
                 else:
                     valid.append(glob)
             result[name] = tuple(valid)
+    conventions = _config_conventions(data.get("conventions", {}), errors)
     if errors:
         raise RoleInputError(CONFIG_FILENAME, errors)
+    return dict(sorted(result.items())), conventions
+
+
+def _config_conventions(
+    table: object, errors: list[str]
+) -> dict[str, tuple[str, ...]]:
+    """``[conventions]``: each field a non-empty list of values that pass the
+    local layer's checks (``registry.convention_value_problem``)."""
+    if not isinstance(table, dict):
+        errors.append("conventions: must be a table of field = [values]")
+        return {}
+    result: dict[str, tuple[str, ...]] = {}
+    for name, values in table.items():
+        field = f"conventions.{redact(str(name))}"
+        if name not in CONVENTION_FIELDS:
+            errors.append(
+                f"{field}: unknown field; known: {', '.join(CONVENTION_FIELDS)}"
+            )
+        elif not isinstance(values, list) or not values:
+            errors.append(f"{field}: must be a non-empty list of patterns")
+        else:
+            for index, value in enumerate(values):
+                problem = convention_value_problem(name, value)
+                if problem:
+                    errors.append(f"{field}[{index}]: {problem}")
+            result[name] = tuple(values)
     return dict(sorted(result.items()))
 
 

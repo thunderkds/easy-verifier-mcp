@@ -12,6 +12,11 @@
 
 ### Todo
 
+**Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
+
+- [ ] **T079** — Route tokens: generic Express-style `<any>.get('/…')` / `.post("/…")` forms (bryony's `webapp.get('/api/...')` unmatched → requirement-fidelity below floor) | backend-developer | C1 | Risk: Low | P1
+- [ ] **T078** — Embed repo-local / .easy-verifier.toml conventions for byte-equal replay, then use them in scoring (T075 AC 10, split out) | backend-developer | C2 | Risk: Med | P1
+
 **Wave 14 — Evaluation experience: readable report + evaluation guide (added 2026-10-04, user brief; PRD FR-065/066)**
 
 **Wave 13 — No number without evidence; large repos in priority batches (added 2026-10-03, user request; DDR-0010, PRD FR-058…FR-062)**
@@ -74,6 +79,11 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T077** — T075 review fixes: requirements_doc_missing, no checklist items by default, multi-line decorator handlers, --relative test, co-change path prefix | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-04 (coffee-shop-api requirement-fidelity 0→50 honest; 1990 passed)
+- [x] **T075** — requirement-fidelity from code + documents (20/80): routes↔tests, commit issue refs, flexible requirement items, code-aware floor (Depends on: T073) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-04 with T077 (coffee 50, kitchd 15→60, bryony below floor → T079)
+- [x] **T076** — Whole-file code metrics below the cap (no truncation abstention for structure metrics; T068 follow-up #2, needed by DDR-0011) | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-04 (kitchd architecture → 100, code-quality → 70, overall 37 → 61; 1956 passed)
+- [x] **T074** — architecture from code + documents (20/80): layer direction, widened doc conventions, code-aware floor (Depends on: T073) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (coffee arch →80, bryony 70→83; kitchd no number — under-cap truncation → T076)
+- [x] **T073** — Structure convention patterns: layers, routes, requirement items, issue references (cited registry, extendable) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1 none; 1913 passed; no score change; P2 findings carried to T074/T075)
 - [x] **T072** — Area coverage doc: 32 areas → today's rules, status, planned home (docs/AREA_COVERAGE.md + sync test) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (Covered 4 · Partial 7 · Not yet 21; 6 sync tests)
 - [x] **T071** — Evaluation docs: EVALUATION_GUIDE.md, README "Reading a report", SCORING_FLOW interpretation (Depends on: T070) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-04 (P0–P3 none; 77 doc tests; guide + README + SCORING_FLOW)
 - [x] **T070** — Report readability: summary first, plan cards (P0/P1 open, P2 folded), merged unknowns, compact score rows, raw evidence folded, 400px | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-04 (P0/P1/P2 none, 2 P3; 1792 passed; 0 numbers/links lost on bryony + coffee-shop-api; 400px overflow fixed)

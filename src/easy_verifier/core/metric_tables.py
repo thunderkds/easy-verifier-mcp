@@ -111,7 +111,7 @@ def metric_tables(
             )
 
     assertions = _union(entries, "assertions")
-    return LanguageTables(
+    tables = LanguageTables(
         source_suffixes=frozenset(suffixes),
         test_name_patterns=tuple(
             re.compile(translate(glob))
@@ -154,6 +154,14 @@ def metric_tables(
         type_strict=type_tokens["type_strict"],
         type_strict_off=type_tokens["type_strict_off"],
         type_config_extends=type_tokens["type_config_extends"],
+    )
+    # The curated layer_paths (T074); structure imports this module, hence
+    # the late import. Local / .easy-verifier.toml layer paths are not bound
+    # here until conventions are embedded for replay (FR-048).
+    from .structure import layer_of
+
+    return dataclasses.replace(
+        tables, layer_of=lambda path: layer_of(path, tables=tables)
     )
 
 
@@ -254,7 +262,11 @@ _TEST_MATCH = (
 )
 _ASSERTIONS = ("assertion_density_per_test", "assertions_observed")
 _CCN = ("functions_over_ccn_10_share", "max_function_ccn")
-_IMPORTS = ("top_level_import_cycles", "max_fan_in_changed")
+_IMPORTS = (
+    "top_level_import_cycles",
+    "layer_direction_violations",
+    "max_fan_in_changed",
+)
 _AC_TRACE = (
     "acceptance_criteria_traced_to_code_share",
     "acceptance_criteria_traced_to_test_share",
@@ -302,6 +314,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_strict": _STRICT,
     "type_strict_off": _STRICT,
     "type_config_extends": _STRICT,
+    "route_tokens": (),  # T073: read by core/structure.py; its rule lands in T075
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -344,6 +357,7 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),
     "decision-record": ("decision_records_missing",),
+    "requirements-doc": ("requirements_doc_missing",),
 }
 """Role-presence metrics per role: a local ``roles.<role>`` glob matching a
 file in the pack tags them."""

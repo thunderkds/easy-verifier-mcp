@@ -140,7 +140,9 @@ def test_every_file_backed_role_takes_its_patterns_from_the_generic_table() -> N
         assert role.name in GENERIC_PATTERNS
         assert role.patterns == GENERIC_PATTERNS[role.name]
     used = {role.name for role in _file_roles()}
-    assert used == set(GENERIC_PATTERNS)
+    # T075 (FR-071): task-breakdown stays a declared role (registry entries
+    # may extend it) but no dimension seeks it any more.
+    assert used == set(GENERIC_PATTERNS) - {"task-breakdown"}
 
 
 def test_list_dimensions_lists_roles_and_their_patterns(capsys) -> None:

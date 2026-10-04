@@ -258,6 +258,12 @@ class EvidencePack:
     than its cap and read batches 1…N of them. ``None`` otherwise, and then
     left out of the serialized pack."""
 
+    whole_file: tuple[SampledMetric, ...] | None = field(default=None)
+    """Structure metrics a code tier computed over the whole text of every
+    source file when it had no more sources than its cap (T076, FR-072): one
+    full batch, so no sample. ``None`` otherwise, and then left out of the
+    serialized pack."""
+
 
 @dataclass(frozen=True)
 class AcceptanceCriterion:
@@ -398,8 +404,9 @@ class DocHistory:
 
 @dataclass(frozen=True)
 class SampledMetric:
-    """One metric computed over the whole text of a sample's files (T068),
-    not over the budgeted excerpts. ``value`` is ``None`` exactly when
+    """One metric computed over the whole text of a sample's files (T068), or
+    of every source file at or under the cap (T076), not over the budgeted
+    excerpts. ``value`` is ``None`` exactly when
     ``abstention`` gives the reason; ``computed_from`` are paths in
     ``files_read``."""
 
@@ -426,7 +433,7 @@ class SampleFacts:
     metrics: tuple[SampledMetric, ...] = ()
 
 
-_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history", "sample"})
+_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history", "sample", "whole_file"})
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
 of the serialized pack while unset, so every pack that does not use them
 serializes byte-for-byte as before."""

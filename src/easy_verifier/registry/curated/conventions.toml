@@ -1,0 +1,160 @@
+# Language-agnostic convention patterns — curated reference registry entry
+# (T073, DDR-0011, FR-068). Read by core/registry.py load_conventions, never
+# as a language. A repository adds its own forms through the local layer's
+# conventions.toml or .easy-verifier.toml [conventions]; nothing here is the
+# only accepted form.
+#
+# layer_paths: "<api|service|data|shared>=<repository glob>"; a file matching
+# two layers stays unclassified. "shared" marks cross-cutting files (modules,
+# config, utils, constants, enums, types): they are left out of the layer
+# rule's classified share and never take part in a violation (T074). DTOs and
+# schemas are boundary contracts every layer uses, so they are shared. requirement_item_patterns: "id=<token>" matches
+# an identifier anywhere, "line=<token>" a line start (the item is the rest of
+# the line). Tokens use the registry token syntax (core/registry.py).
+# Checklist lines ("- [ ]") are plan tasks, not requirement items, so they are
+# not curated; a repository may declare them (DDR-0011 addendum, T077).
+
+# --- layers ------------------------------------------------------------------
+
+[[layer_paths]]
+value = ["api=**/controllers/**", "api=**/*.controller.*", "api=**/*Controller.*"]
+citation_url = "https://docs.nestjs.com/controllers"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["api=**/routes/**", "api=**/*.routes.*", "api=**/handlers/**", "api=**/api/**"]
+citation_url = "https://expressjs.com/en/guide/routing.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["api=**/views.py", "api=**/views/**", "api=**/urls.py"]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/http/views/"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["service=**/services/**", "service=**/service/**", "service=**/*.service.*", "service=**/*Service.*"]
+citation_url = "https://martinfowler.com/eaaCatalog/serviceLayer.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["service=**/usecases/**", "service=**/use_cases/**"]
+citation_url = "https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["data=**/repositories/**", "data=**/repository/**", "data=**/*.repository.*", "data=**/*Repository.*", "data=**/dao/**"]
+citation_url = "https://martinfowler.com/eaaCatalog/repository.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["data=**/models/**", "data=**/models.py", "data=**/entities/**", "data=**/*.entity.*"]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/db/models/"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["api=**/*.guard.*", "api=**/*.middleware.*", "api=**/middlewares/**", "api=**/*.filter.*", "api=**/*.interceptor.*", "api=**/*.decorator.*"]
+citation_url = "https://docs.nestjs.com/guards"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.dto.*", "shared=**/dto/**", "shared=**/*.schema.*"]
+citation_url = "https://docs.nestjs.com/techniques/validation"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.exception.*"]
+citation_url = "https://docs.nestjs.com/exception-filters"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.provider.*"]
+citation_url = "https://docs.nestjs.com/fundamentals/custom-providers"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["data=**/migrations/**"]
+citation_url = "https://martinfowler.com/articles/evodb.html"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/*.module.*", "shared=**/config*/**", "shared=**/*.config.*", "shared=**/main.*"]
+citation_url = "https://docs.nestjs.com/modules"
+source_tag = "curated"
+
+[[layer_paths]]
+value = ["shared=**/utils/**", "shared=**/*.util.*", "shared=**/constants/**", "shared=**/*.constant.*", "shared=**/enums/**", "shared=**/*.enum.*", "shared=**/types/**", "shared=**/*.d.ts", "shared=**/*.interface.*"]
+citation_url = "https://www.typescriptlang.org/docs/handbook/declaration-files/introduction.html"
+source_tag = "curated"
+
+# --- requirement items ------------------------------------------------------
+
+[[requirement_item_patterns]]
+value = ["id=FR-<0-9>*", "id=NFR-<0-9>*", "id=REQ-<A-Za-z0-9>*"]
+citation_url = "https://www.iso.org/standard/72089.html"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["id=US-<0-9>*", "id=AC-<0-9>*"]
+citation_url = "https://www.agilealliance.org/glossary/user-stories/"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["line=Scenario:", "line=Scenario Outline:"]
+citation_url = "https://cucumber.io/docs/gherkin/reference/"
+source_tag = "curated"
+
+[[requirement_item_patterns]]
+value = ["line=operationId:", "line=\"operationId\":"]
+citation_url = "https://spec.openapis.org/oas/v3.1.0#operation-object"
+source_tag = "curated"
+
+# --- issue references in commit messages ------------------------------------
+
+[[issue_reference_patterns]]
+value = ["#<0-9>*", "GH-<0-9>*", "issues/<0-9>*", "pull/<0-9>*"]
+citation_url = "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/autolinked-references-and-urls"
+source_tag = "curated"
+
+[[issue_reference_patterns]]
+value = ["close #<0-9>*", "closes #<0-9>*", "closed #<0-9>*", "fix #<0-9>*", "fixes #<0-9>*", "fixed #<0-9>*", "resolve #<0-9>*", "resolves #<0-9>*", "resolved #<0-9>*", "Close #<0-9>*", "Closes #<0-9>*", "Closed #<0-9>*", "Fix #<0-9>*", "Fixes #<0-9>*", "Fixed #<0-9>*", "Resolve #<0-9>*", "Resolves #<0-9>*", "Resolved #<0-9>*"]
+citation_url = "https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue"
+source_tag = "curated"
+
+[[issue_reference_patterns]]
+value = ["refs #<0-9>*", "Refs #<0-9>*", "issues/<0-9>*", "merge_requests/<0-9>*"]
+citation_url = "https://docs.gitlab.com/ee/user/project/issues/managing_issues.html"
+source_tag = "curated"
+
+[[issue_reference_patterns]]
+value = ["<A-Z><A-Z><A-Z0-9>*-<0-9>*"]
+citation_url = "https://support.atlassian.com/jira-software-cloud/docs/reference-issues-in-your-development-work/"
+source_tag = "curated"
+
+# --- issue-reference exclusions (T075, FR-068) --------------------------------
+# Names shaped like a ticket key that are not one: a reference matching one of
+# these whole is dropped. A reference whose number holds a letter (#3a3a3a, a
+# hex colour) is never an issue number and is dropped by rule, not by list.
+
+[[issue_reference_exclusions]]
+value = ["UTF-<0-9>*", "UCS-<0-9>*"]
+citation_url = "https://www.iana.org/assignments/character-sets/character-sets.xhtml"
+source_tag = "curated"
+
+[[issue_reference_exclusions]]
+value = ["SHA-<0-9>*", "AES-<0-9>*", "RSA-<0-9>*"]
+citation_url = "https://csrc.nist.gov/pubs/fips/180-4/upd1/final"
+source_tag = "curated"
+
+[[issue_reference_exclusions]]
+value = ["ISO-<0-9>*"]
+citation_url = "https://www.iso.org/iso-8601-date-and-time-format.html"
+source_tag = "curated"
+
+# --- route files (T075, FR-068) ------------------------------------------------
+# "<language>=<glob>": a language listed here has bare routing-DSL tokens
+# (Ruby's get/post/...), so its route_tokens apply only in these files.
+
+[[route_files]]
+value = ["ruby=config/routes.rb", "ruby=config/routes/**/*.rb", "ruby=**/config/routes.rb"]
+citation_url = "https://guides.rubyonrails.org/routing.html"
+source_tag = "curated"
