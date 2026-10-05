@@ -49,6 +49,37 @@ A narrow scope with no selector is a refusal, not a fallback: `task` without `--
 `changes` without `--ref` both gather nothing and say so in a warning, rather than quietly
 evaluating the whole project.
 
+### Checking a feature or bugfix
+
+To rate only what a branch changes, use the `changes` scope with the range the branch adds on top
+of its base:
+
+```console
+python -m easy_verifier.adapters.cli score --repo . --scope changes --ref main...HEAD < /dev/null
+```
+
+- `--ref main...HEAD` (three dots) diffs from the point the branch left `main`, so the whole branch
+  is rated and later commits on `main` are not.
+- A bare commit or branch name (`--ref 09be767d0`, `--ref fix/login`) means **that one commit**
+  against its parent, not the whole branch.
+- Uncommitted work: `--scope worktree` (no `--ref`).
+- Through MCP, ask the agent to *"score my changes against main with easy-verifier"*; the `score`
+  tool takes `scope="changes"` and `ref="main...HEAD"`.
+- `< /dev/null`: when stdin is not a terminal, `score` reads optional findings JSON from it. A
+  script or agent shell that leaves stdin open makes it wait forever.
+
+> **Read a change score as partial (2026-10-05).** The `changes` scope narrows which files are read,
+> but most rules are still repository-health rules:
+> - test-strategy and security usually abstain (`below_coverage_floor`): their test config, CI and
+>   lockfile are not in the diff. A bugfix without a regression test is **not penalised**; the gap
+>   only shows in `sources_missing` as "no test discovered for N file(s)".
+> - architecture rates the repository's documents, not the change.
+> - blast-radius `max_fan_in_changed` abstains when the reference sweep stops at its file ceiling.
+>
+> Example: a one-file bryony bugfix with no test scored 97 (architecture 90, code-quality 100,
+> blast-radius 100; test-strategy, security and requirement-fidelity abstained). Read
+> `overall.abstentions` and `warnings` before trusting the number.
+
 ## Two modes: kit-aware and standalone
 
 If the target repository carries kit artifacts (`PROJECT_SPEC.md`, `PRD.md`,

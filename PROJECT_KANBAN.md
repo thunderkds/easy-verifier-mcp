@@ -11,7 +11,7 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T080** — Evaluation guide refresh after DDR-0011 (T074–T077) | Supervisor | C1 | Risk: Low | P1
+- [ ] **T081** — Guide for checking a feature or bugfix (changes scope) | Supervisor | C1 | Risk: Low | P1
 
 **Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
 
@@ -80,6 +80,7 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T081** — Guide for checking a feature or bugfix: README § Checking a feature or bugfix + DOCKER_MCP_GUIDE § 5 (`--scope changes --ref main...HEAD < /dev/null`, bare ref = one commit, stdin wait, change score is partial: bryony no-test bugfix scored 97) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (5 new tests, 3 fail on old docs; 2006 passed; follow-up: change-risk rules vision — test-strategy/security abstain in changes scope, symbol-level reach, stdin hang — to be planned)
 - [x] **T080** — Evaluation guide refresh after DDR-0011: requirement-fidelity code rules, missing-document = failed rule, worked examples re-run | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (coffee 65 over 4 dims, bryony 69; 2001 passed)
 - [x] **T077** — T075 review fixes: requirements_doc_missing, no checklist items by default, multi-line decorator handlers, --relative test, co-change path prefix | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-04 (coffee-shop-api requirement-fidelity 0→50 honest; 1990 passed)
 - [x] **T075** — requirement-fidelity from code + documents (20/80): routes↔tests, commit issue refs, flexible requirement items, code-aware floor (Depends on: T073) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-04 with T077 (coffee 50, kitchd 15→60, bryony below floor → T079)
