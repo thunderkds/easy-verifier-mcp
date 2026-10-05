@@ -225,6 +225,18 @@ Inside the container, tools evaluate `/workspace`, which is the default `repo`. 
 unset. Compose deliberately doesn't publish the loopback-only HTTP/SSE opt-in, so use stdio across
 the container boundary.
 
+## 5. Check a feature or bugfix
+
+Open the agent on the branch and ask *"score my changes against main with easy-verifier"*. The
+`score` tool then takes `scope="changes"` and `ref="main...HEAD"`: three dots rate the whole branch
+from the point it left `main`. A bare commit or branch name rates only that one commit. For
+uncommitted work use `scope="worktree"`. The local `main` ref must exist in the mounted repository;
+nothing is fetched.
+
+A change score is partial today: test-strategy and security usually abstain, so a bugfix without a
+regression test is not penalised. See "Checking a feature or bugfix" in the README before trusting the
+number.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
