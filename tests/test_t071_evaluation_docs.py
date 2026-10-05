@@ -92,7 +92,15 @@ DECLARED = {
     "improvements": '"improvements"',
     "redaction_hits_observed": '"redaction_hits_observed"',
     "max_function_ccn": '"max_function_ccn"',
-    "strict_type_config_missing": '"strict_type_config_missing"',
+    "architecture_description_missing": '"architecture_description_missing"',
+    "decision_records_missing": '"decision_records_missing"',
+    "requirements_doc_missing": '"requirements_doc_missing"',
+    "routes_without_test_share": '"routes_without_test_share"',
+    "commits_with_issue_reference_share": '"commits_with_issue_reference_share"',
+    "requirement_items_traced_share": '"requirement_items_traced_share"',
+    "source_files_without_covering_test_share": (
+        '"source_files_without_covering_test_share"'
+    ),
 }
 
 _IDENTIFIER = re.compile(r"^(--)?[A-Za-z_][A-Za-z0-9_.-]*$")
@@ -202,7 +210,7 @@ def test_guide_relative_links_resolve() -> None:
 def test_numeric_examples_are_sourced_or_illustrative() -> None:
     guide = _text(GUIDE)
     examples = _section(guide, "Worked examples")
-    assert "2026-10-04" in examples and "`score`" in examples
+    assert "2026-10-05" in examples and "`score`" in examples
     assert "coffee-shop-api" in examples and "bryony" in examples
     assert "false positives" in examples
     assert "74 = rules 68 + agent 88 (w 0.30)` (illustrative)" in guide

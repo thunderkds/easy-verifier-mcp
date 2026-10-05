@@ -50,16 +50,21 @@ A dimension number is as good as the evidence under it. Check these, in order:
    of its declared rule weight (`MEASURED_WEIGHT_FLOOR`). Below it, it abstains
    `insufficient_measured_weight`. Above it, the unmeasured rules are listed as P2 in the
    improvement plan; the report's Summary names the lowest measured share.
-3. **Sample label.** On a large repository, code-quality, architecture and test-strategy may be
+3. **Missing documents are failed rules.** architecture and requirement-fidelity weigh documents 20
+   and code 80. Once the role search has run, a missing architecture description, decision record or
+   requirements document fails its rule (`architecture_description_missing`,
+   `decision_records_missing`, `requirements_doc_missing`) and lowers the number. It is not a warning:
+   the rule appears in the improvement plan, and adding the document fixes it.
+4. **Sample label.** On a large repository, code-quality, architecture and test-strategy may be
    computed over a sample. The derivation says `sample: batches N of M, X of Y files` and the
    Summary says `(sample: X of Y files)`. A sample number describes the files read, not the whole
    repository (see [Large repositories](#large-repositories-batches)).
-4. **Gated and agent-rated parts.** Over MCP, the calling agent may add a score only at a gate:
+5. **Gated and agent-rated parts.** Over MCP, the calling agent may add a score only at a gate:
    solution-fit (`no_static_rule`) and any dimension with a rule input within ±10% of its threshold
    (`BORDERLINE_BAND`). A blended number is shown with its parts, for example
    `74 = rules 68 + agent 88 (w 0.30)` (illustrative). An `agent-rated` number is the agent's alone:
    no rule supports it. Treat it as the agent's view, not a measurement.
-5. **Known false positives.** A rule counts what a scanner matched, not what a human confirmed. Read
+6. **Known false positives.** A rule counts what a scanner matched, not what a human confirmed. Read
    the cited files before acting on a security count (see the coffee-shop-api example below).
 
 ## Warnings: what could not be measured
@@ -75,8 +80,12 @@ couldn't measure" section). The reasons are the evidence-lack set (`EVIDENCE_LAC
   (source and why it was not found); `measured_share` is present when known. Add what they name, then
   score again.
 - Some rules cannot be measured at every scope. blast-radius reads a change: at `project` scope the
-  Summary says to run with `--scope changes`. The requirement-fidelity traceability metrics always
-  abstain from a read-only pack (see [`SCORING_RULES.md`](SCORING_RULES.md)).
+  Summary says to run with `--scope changes`. The requirement-fidelity code rules abstain only when
+  they have nothing to count: `routes_without_test_share` with no route found,
+  `commits_with_issue_reference_share` below 20 commits, `requirement_items_traced_share` with no
+  requirement item in the documents read (see [`SCORING_RULES.md`](SCORING_RULES.md)).
+- A route written in a form the registry's route tokens do not match is not found. Without routes
+  and requirement documents, requirement-fidelity can fall below its coverage floor (bryony below).
 
 ## Large repositories: batches
 
@@ -152,16 +161,24 @@ Full grouping and ordering rules: [`SCORING_FLOW.md`](SCORING_FLOW.md#improvemen
 
 ## Worked examples
 
-From Supervisor runs on 2026-10-04 with the develop code, `score` at `project` scope.
+From Supervisor runs on 2026-10-05 with the develop code (`7d64f08`), CLI `score` at `project` scope.
 
-**coffee-shop-api** — overall 65; 2 of 7 dimensions rated (code-quality 71, security 59), so 65 is
-the mean of those two only. Top fixes by `overall_gain`: security `redaction_hits_observed` +21,
-code-quality `max_function_ccn` +9, `strict_type_config_missing` +5. Warnings: architecture,
-blast-radius, requirement-fidelity, and test-strategy (30% of its rule weight measured, below the
-50% floor). The security number is lowered by known scanner false positives (long spec filenames
-and `${VAR}` references matched as secrets): read the cited files before treating the +21 as a real
-finding.
+**coffee-shop-api**: overall 65; 4 of 7 dimensions rated: architecture 80, code-quality 71,
+requirement-fidelity 50, security 59. Architecture loses 20 because there is no architecture
+description and no decision record; import cycles and layer direction pass. Requirement-fidelity:
+all 17 routes are tested (pass), but there is no requirements document, 9 of 42 code-changing
+commits also change a document (21%, needs 30%), and 0 of 51 commits reference an issue. Requirement items abstained because the
+13 documents read declare none. Top fixes by `overall_gain`: security `redaction_hits_observed` +10,
+requirement-fidelity `commits_with_issue_reference_share` +6, code-quality `max_function_ccn` +4.
+Warnings: blast-radius (project scope) and test-strategy (30% of its rule weight measured, below the
+50% floor). On 2026-10-04 this repository also scored 65, but as the mean of 2 dimensions. The same
+overall over different contributors is not the same result. The security number is lowered by known
+scanner false positives (long spec filenames and `${VAR}` references matched as secrets): read the
+cited files before treating the +10 as a real finding.
 
-**bryony** — overall 66; 4 of 7 rated: architecture 70, code-quality 67, test-strategy 75, security
+**bryony**: overall 69; 4 of 7 rated: architecture 83, code-quality 67, test-strategy 75, security
 50. Architecture, code-quality and test-strategy are a sample of 200 of 1,178 files (batch 1 of 6);
-reading more batches can change them.
+reading more batches can change them. Requirement-fidelity is below its coverage floor: there is no
+requirements or spec document, and the routes (`webapp.get('/api/...')`) are written in a form the
+route tokens do not match yet. Top fixes: security `redaction_hits_observed` +9, test-strategy
+`source_files_without_covering_test_share` +6, architecture `decision_records_missing` +4.
