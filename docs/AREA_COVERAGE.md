@@ -19,14 +19,14 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 4 | At least one rule measures the area as planned |
-| Partial | 11 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 17 | No rule; the planned dimension or pack is not built |
+| Partial | 12 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 16 | No rule; the planned dimension or pack is not built |
 
-8 dimensions exist today: the original 7 and reliability (T043), plus the optional healthcare pack
-(T047), which rates only in repositories that enable it (`.easy-verifier.toml` `packs = ["healthcare"]`
-or an agent pick). The 5 remaining planned dimensions (supply-chain, infrastructure, api, data,
-operations) and the 2 remaining optional packs (finance, frontend accessibility) are tasks T041,
-T042, T044–T046, T048 and T049 on the Kanban.
+8 dimensions exist today: the original 7 and reliability (T043), plus the optional healthcare
+(T047) and finance (T048) packs, which rate only in repositories that enable them
+(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 5 remaining
+planned dimensions (supply-chain, infrastructure, api, data, operations) and the remaining optional
+pack (frontend accessibility) are tasks T041, T042, T044–T046 and T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -36,7 +36,7 @@ either not rated for lack of evidence or have no rule at all.
 Every score now says this itself: the payload's `areas_measured` and `areas_without_rule` (both in
 area order, derived from the rule tables) and the report's "Areas no rule covers yet" list (T082).
 An optional pack's rules count there only in a run where the pack is enabled: in any other run areas 9
-and 28 stay listed, because nothing measured them.
+and 28 (healthcare) and 3 (finance) stay listed, because nothing measured them.
 
 Class (planned areas): **S** static rule from code/config · **G** evidence gathered, judgment at the
 agent gate · **X** process or live-system fact: only documentation presence is checked.
@@ -47,7 +47,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 |---|---|---|---|---|---|
 | 1 | Architecture & dependency direction | Partial | `architecture` · `architecture_description_missing`<br>`architecture` · `decision_records_missing`<br>`architecture` · `top_level_import_cycles`<br>`architecture` · `layer_direction_violations` | — | layers from curated `layer_paths` conventions (local/config paths from T075); abstains below 50% classified |
 | 2 | Business-rule correctness | Partial | `requirement-fidelity` · `routes_without_test_share`<br>`requirement-fidelity` · `commits_with_issue_reference_share`<br>`requirement-fidelity` · `requirement_items_traced_share` | — | textual: routes ↔ tests by path segments or handler name, commit issue references, requirement items in any declared form (T075, DDR-0011) |
-| 3 | Financial integrity & historical reconstruction | Not yet | — | finance pack (T048) | class G |
+| 3 | Financial integrity & historical reconstruction | Partial | `finance` · `float_money_observed`<br>`finance` · `ledger_tables_without_audit_columns_observed`<br>`finance` · `ledger_rows_mutated_observed` | — | optional pack, rated only when enabled; money-named fields declared as binary floating point (integer minor units and decimal types are exact); ledger audit columns and update/delete of ledger rows only where a ledger, transaction or payment table is declared (else both abstain); ledger correctness is judgment, quoted for the agent (class G) |
 | 4 | Data model, constraints, migrations | Not yet | — | data (T045) | class S |
 | 5 | Backward compatibility & upgrade safety | Partial | `blast-radius` · `max_fan_in_changed`<br>`blast-radius` · `changed_files_in_churn_hotspots_share`<br>`blast-radius` · `public_symbols_removed`<br>`blast-radius` · `destructive_migration_ops` | — | measured only at `--scope changes` |
 | 6 | Transactions, concurrency, idempotency | Not yet | — | reliability (T043), evidence only | class G: no rule by design (needs judgment); the reliability pack quotes transaction, lock and idempotency code (registry `transaction_markers`) for the calling agent |

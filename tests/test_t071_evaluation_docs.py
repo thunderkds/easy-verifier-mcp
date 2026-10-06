@@ -61,6 +61,7 @@ DECLARED = {
     "agent-rated": '"agent-rated"',
     "COVERAGE_FLOORS": "COVERAGE_FLOORS",
     "healthcare": '"healthcare"',
+    "finance": '"finance"',
     "below_coverage_floor": '"below_coverage_floor"',
     "MEASURED_WEIGHT_FLOOR": "MEASURED_WEIGHT_FLOOR",
     "insufficient_measured_weight": '"insufficient_measured_weight"',
