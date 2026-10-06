@@ -48,6 +48,7 @@ from easy_verifier.core.improve import (
     validate_improvements,
 )
 from easy_verifier.core.judge import (
+    AREAS,
     BORDERLINE_BAND,
     PROJECT_DEFAULT,
     RATING_RULES,
@@ -897,9 +898,29 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         "confidence) or stand alone as agent-rated, always shown with its parts. "
         "An assessment appears only when caller findings were submitted; divergence "
         "is shown separately and never blended.</p>"
-        f'{overall_html}<div class="score-grid">{cards}</div>'
+        f"{overall_html}{_render_area_coverage(ctx, score)}"
+        f'<div class="score-grid">{cards}</div>'
         f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
     )
+
+
+def _render_area_coverage(ctx: _Ctx, score: ScoreResult) -> str:
+    """FR-073: how many evaluation areas the score speaks for, and a folded
+    list of the areas no declared rule covers yet."""
+    missing = score.areas_without_rule
+    text = (
+        f"This score measured {len(score.areas_measured)} of {len(AREAS)} "
+        f"evaluation areas; {len(missing)} have no rule yet, so it says nothing "
+        "about them."
+    )
+    rows = "".join(f"<li>{ctx.esc(area)}</li>" for area in missing)
+    folded = (
+        '<details class="areas-without-rule"><summary>Areas no rule covers yet '
+        f'({len(missing)})</summary><ul class="miss-list">{rows}</ul></details>'
+        if missing
+        else ""
+    )
+    return f'<div class="area-coverage"><p>{ctx.esc(text)}</p>{folded}</div>'
 
 
 _GROUP_TITLES = {

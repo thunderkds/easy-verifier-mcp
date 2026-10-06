@@ -502,6 +502,9 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T077 (requirements_doc_missing replaces the count in the
     # rating): no rating or overall changed; the requirements_doc_missing
     # metric was added (1 where the role is sought and unfilled, else abstains).
+    # Regenerated for T082 (FR-073): no rating or overall changed; the payload
+    # gained areas_measured and areas_without_rule, and the overall disclosure
+    # gained "measured 3 of 32 evaluation areas". Nothing else differs.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 
