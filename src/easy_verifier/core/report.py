@@ -50,6 +50,7 @@ from easy_verifier.core.improve import (
 from easy_verifier.core.judge import (
     AREAS,
     BORDERLINE_BAND,
+    PACK_FLOORS,
     PROJECT_DEFAULT,
     RATING_RULES,
     GatedRating,
@@ -96,6 +97,13 @@ class ReportWriteError(OSError):
     traceback out of ``open()``. Covers the read-only mount case (NFR-013)."""
 
 
+def _scoreable(names: tuple[str, ...]) -> bool:
+    """Every dimension in canonical order, then only active optional packs
+    (T047): the set ``score`` rates, so the report shows the same score."""
+    core = dimension_names()
+    return names[: len(core)] == core and set(names[len(core) :]) <= set(PACK_FLOORS)
+
+
 def write_report(
     findings: list[dict[str, Any]] | str | bytes,
     packs: CombinedPack,
@@ -138,7 +146,7 @@ def write_report(
         score_packs(
             packs, validated.by_dimension, document_input.get("gate_evaluations")
         )
-        if tuple(slot.dimension for slot in packs.slots) == dimension_names()
+        if _scoreable(tuple(slot.dimension for slot in packs.slots))
         else None
     )
     # T066: agent suggestions name items of the plan this report renders --
@@ -510,6 +518,9 @@ _METRIC_TEXT: dict[str, str] = {
     "outbound_calls_without_timeout_observed": "outbound calls with no timeout",
     "retries_without_backoff_observed": "retries with no backoff",
     "queries_in_loops_observed": "database queries inside loops",
+    # healthcare pack (T047)
+    "phi_values_in_test_data_observed": "PHI-shaped values in test data",
+    "phi_values_in_log_statements_observed": "PHI-shaped values in log statements",
 }
 """One plain description per declared rule metric, for the summary (FR-063).
 Presentation only."""
@@ -544,6 +555,8 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "source files of a registry language": None,
     "outbound HTTP client calls in source files": None,
     "database access calls in source files": None,
+    "test data files (the pack's test_data_paths)": "test data files",
+    "log statements in source files (the pack's log_calls)": None,
 }
 """Plain name per declared sought source (every dimension's
 ``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks

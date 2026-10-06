@@ -9,6 +9,7 @@ from easy_verifier.core import judge
 from easy_verifier.core.judge import (
     AREAS,
     DOCUMENTATION_RULES,
+    PACK_FLOORS,
     RATING_RULES,
     Citation,
     DocumentationRule,
@@ -135,20 +136,36 @@ def test_areas_without_rule_are_the_not_yet_rows_of_the_area_doc():
     # tests/ is on sys.path under pytest's default prepend import mode.
     from test_t072_area_coverage_doc import _rows
 
+    # "Not yet" means no rating rule (T072); a documentation-only area such as
+    # #32 is still "Not yet" there but has a rule here, so only rows whose
+    # "Rules today" cell is empty ("—") are uncovered.
     not_yet = tuple(
-        row["area"] for _n, row in sorted(_rows().items()) if row["status"] == "Not yet"
+        row["area"]
+        for _n, row in sorted(_rows().items())
+        if row["status"] == "Not yet" and row["rules"] == "—"
     )
-    assert len(not_yet) == 21
-    assert areas_without_rule() == not_yet
+    assert not_yet
+    # Every optional pack active (T047): the whole rule table is counted.
+    assert areas_without_rule(tuple(PACK_FLOORS)) == not_yet
+    # No pack active (the default): a pack's areas are uncovered in that run.
+    pack_areas = {
+        rule.area
+        for name in PACK_FLOORS
+        for rule in (*RATING_RULES[name].values(), *DOCUMENTATION_RULES[name])
+    }
+    assert areas_without_rule() == tuple(
+        a for a in AREAS if a in not_yet or a in pack_areas
+    )
 
 
 def test_adding_a_documentation_rule_removes_its_area(monkeypatch):
     financial = AREAS[2]
+    before = len(areas_without_rule())
     assert financial in areas_without_rule()
     rule = DocumentationRule(financial, ("**/ledger*.md",), (FIXTURE_CITATION,))
     monkeypatch.setitem(DOCUMENTATION_RULES, "solution-fit", (rule,))
     assert financial not in areas_without_rule()
-    assert len(areas_without_rule()) == 20
+    assert len(areas_without_rule()) == before - 1
 
 
 def test_adding_a_rating_rule_removes_its_area(monkeypatch):
@@ -290,8 +307,8 @@ def test_report_panel_shows_count_and_folded_uncovered_list(tmp_path):
     # names carrying '&' are escaped like all other report text
     assert "Data model, constraints, migrations" in document
     assert "Vendor, BAA, data classification, residency" in document
-    assert "Error handling &amp; safe degradation" in document
-    assert "Error handling & safe degradation" not in document
+    assert "Financial integrity &amp; historical reconstruction" in document
+    assert "Financial integrity & historical reconstruction" not in document
     assert '<details class="areas-without-rule">' in document
 
 

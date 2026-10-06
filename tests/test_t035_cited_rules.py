@@ -23,6 +23,7 @@ from easy_verifier.core.gate import detect_evaluate_gates
 from easy_verifier.core.judge import (
     COVERAGE_FLOORS,
     CURATED,
+    PACK_FLOORS,
     PROJECT_DEFAULT,
     RATING_RULES,
     Citation,
@@ -128,7 +129,7 @@ APPROVED = {
 
 
 def test_rule_table_equals_the_approved_table():
-    assert list(RATING_RULES) == list(COVERAGE_FLOORS)
+    assert list(RATING_RULES) == [*COVERAGE_FLOORS, *PACK_FLOORS]
     for dimension, rows in APPROVED.items():
         rules = RATING_RULES[dimension]
         assert list(rules) == [row[0] for row in rows], dimension

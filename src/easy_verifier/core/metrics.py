@@ -2694,6 +2694,29 @@ class MetricDefinition:
     compute: Callable[[_PackView], _Computed]
 
 
+PACK_METRICS: dict[str, tuple[str, ...]] = {
+    "healthcare": (
+        "phi_values_in_test_data_observed",
+        "phi_values_in_log_statements_observed",
+    ),
+}
+"""Metrics of an optional pack (T047). A pack's evidence computes only these, and
+no other dimension computes them, so a repository that does not enable the
+pack serializes exactly as before. The pack computes them over whole files
+(``EvidencePack.whole_file``)."""
+
+_PACK_METRIC_NAMES = frozenset(
+    name for names in PACK_METRICS.values() for name in names
+)
+
+
+def _pack_only(_view: _PackView) -> _Computed:
+    return MetricAbstention(
+        reason="computed only by its pack over whole files, and this pack holds "
+        "no such result"
+    )
+
+
 METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     MetricDefinition(
         "test_to_source_ratio", FAMILY_TEST_STRENGTH, WHOLE_SET, _test_to_source_ratio
@@ -2938,6 +2961,12 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         )
         for name in _RELIABILITY_RULES
     ),
+    # T047: optional packs; computed over whole files by the pack itself
+    *(
+        MetricDefinition(name, FAMILY_SECURITY_SURFACE, EVIDENCE_LOCAL, _pack_only)
+        for names in PACK_METRICS.values()
+        for name in names
+    ),
 )
 
 METRIC_NAMES: tuple[str, ...] = tuple(d.name for d in METRIC_DEFINITIONS)
@@ -2971,7 +3000,15 @@ def compute_metrics(
         sample = evidence.sample
         stored = {item.name: item for item in sample.metrics} if sample else {}
         stored |= {item.name: item for item in evidence.whole_file or ()}
+        own = PACK_METRICS.get(dimension)
+        first = len(metrics)
         for definition in METRIC_DEFINITIONS:
+            if (
+                definition.name not in own
+                if own is not None
+                else definition.name in _PACK_METRIC_NAMES
+            ):
+                continue  # a pack's metrics stay in that pack (T047)
             if definition.name in stored:
                 # Computed by the dimension over the whole text of the
                 # sample's files (T068) or of every source file at or under
@@ -3010,7 +3047,7 @@ def compute_metrics(
                     derivation=derivation,
                 )
             )
-        check_citations(metrics[-len(METRIC_DEFINITIONS) :], allowed)
+        check_citations(metrics[first:], allowed)
 
     return MetricSet(metrics=tuple(metrics), dimensions_without_pack=without)
 

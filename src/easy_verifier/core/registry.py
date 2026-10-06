@@ -422,11 +422,21 @@ _VALUE_SHAPES = {
         re.compile(r"^(id|line)=\S.*$"),
         "id=<token> (an identifier anywhere) or line=<token> (at a line start)",
     ),
+    "phi_values": (
+        re.compile(r"^[a-z]+=\S.*$"),
+        "<kind>=<regular expression>, e.g. ssn=... (T047)",
+    ),
 }
 """Per-field value shapes beyond :func:`_pattern_problem`'s generic checks."""
 
 _PREFIXED_FIELDS = frozenset(
-    {"layer_paths", "route_tokens", "requirement_item_patterns", "route_files"}
+    {
+        "layer_paths",
+        "route_tokens",
+        "requirement_item_patterns",
+        "route_files",
+        "phi_values",
+    }
 )
 """Fields whose values are ``<kind>=<pattern>``: path and local-shape checks
 apply to the pattern after the first ``=``."""
@@ -891,6 +901,12 @@ def _value_problem(field: str, value: object, *, local: bool) -> str | None:
     if shape and not shape[0].fullmatch(value):
         return f"{redact(value)!r} is not {shape[1]}"
     body = value.split("=", 1)[1] if field in _PREFIXED_FIELDS else value
+    if field in _REGEX_FIELDS:
+        try:
+            re.compile(body)
+        except re.error as exc:
+            return f"not a valid regular expression: {exc}"
+        return None
     problem = _pattern_problem(body, path=field not in _DELIMITER_FIELDS)
     if problem:
         return problem
@@ -1262,6 +1278,47 @@ def load_conventions(
     if errors:
         return empty, (label + "; ".join(errors),)
     return entry, ()
+
+
+PACK_FIELDS: dict[str, tuple[str, ...]] = {
+    "healthcare": ("phi_values", "phi_placeholders", "test_data_paths", "log_calls"),
+}
+"""Optional packs (T047, DDR-0008 §4): ``registry/packs/<pack>.toml`` holds a
+pack's cited patterns, read by :func:`load_pack` and never as a language.
+
+The healthcare fields (areas #9, #28):
+
+* ``phi_values`` — ``<kind>=<regular expression>`` of a PHI-shaped value;
+  the named group ``value`` (else the whole match) is the value checked
+  against placeholders and never echoed;
+* ``phi_placeholders`` — regular expressions a value fully matching is a
+  documented placeholder, not counted;
+* ``test_data_paths`` — globs of test data (fixtures, seeds, test files);
+* ``log_calls`` — regular expressions of a log statement in source code.
+"""
+
+_REGEX_FIELDS = frozenset({"phi_values", "phi_placeholders", "log_calls"})
+"""Pack fields whose values are Python regular expressions (compiled on load),
+not globs or tokens."""
+
+
+def packs_root() -> Traversable:
+    return resources.files("easy_verifier") / "registry" / "packs"
+
+
+def load_pack(name: str, root: Traversable | None = None) -> RegistryEntry:
+    """The curated pattern entry of pack ``name``. Shipped data, so a missing
+    or invalid file is a packaging bug and raises ``ValueError``."""
+    root = packs_root() if root is None else root
+    entry, errors = _load_entry(
+        root / f"{name}.toml", frozenset(), allowed=PACK_FIELDS[name]
+    )
+    if errors:
+        raise ValueError(f"packs/{name}.toml: entry rejected: " + "; ".join(errors))
+    missing = sorted(set(PACK_FIELDS[name]) - set(entry.fields))
+    if missing:
+        raise ValueError(f"packs/{name}.toml: missing {', '.join(missing)}")
+    return entry
 
 
 def layered_conventions() -> tuple[RegistryEntry, tuple[str, ...]]:
