@@ -33,8 +33,21 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured on develop f7994d3 (no T047 commit yet) against a scratch git repo with `tests/fixtures/patient.json` = `{"name": "Jane", "ssn": "<SSN-shaped value>"}`. With the pack configured the config is rejected; without the config, #9 ("PHI minimization, retention, test-data safety") and #28 ("Vendor, BAA, data classification, residency") are in `areas_without_rule`:
+
+```text
+2026-10-06T05:11:38Z
+$ cat .easy-verifier.toml
+packs = ["healthcare"]
+$ python -m easy_verifier.adapters.cli score --repo <demo>
+validation error: .easy-verifier.toml: 1 error(s): packs: unknown key; only [roles] and [conventions] are accepted, and they may only add paths to existing roles or patterns to conventions (no floors, rules or removals)
+exit=2
+
+2026-10-06T05:11:44Z
+$ python -m easy_verifier.adapters.cli score --repo <demo without .easy-verifier.toml> | jq areas_without_rule
+exit=0
+.areas_without_rule ["Financial integrity & historical reconstruction", "Data model, constraints, migrations", "Transactions, concurrency, idempotency", "API contracts, validation, versioning", "PHI minimization, retention, test-data safety", "Infra security: IAM, networking, KMS, secrets", "Observability, auditing, SLOs, error budgets", "Accessibility, responsive UX, browser compat", "CI quality & reproducibility", "Artifact provenance, SBOM, signing, promotion, rollback", "Terraform state, environment, account, drift", "Database HA, backups, restore, DR", "Incident response, change mgmt, access review", "Configuration ownership & operational readiness", "Vendor, BAA, data classification, residency", "AI-assisted-development safety", "Developer experience & deterministic local setup"]
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
