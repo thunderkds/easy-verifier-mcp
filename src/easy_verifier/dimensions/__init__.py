@@ -39,6 +39,7 @@ DIMENSIONS: dict[str, DimensionDescriptor] = {
 }
 
 
+
 @dataclass(frozen=True)
 class DimensionDiscovery:
     """Caller-facing static metadata for one available dimension."""

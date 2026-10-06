@@ -48,6 +48,26 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     "reliability": CoverageFloor(0.25, "inclusive"),
 }
 
+# Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
+# into through ``.easy-verifier.toml`` ``packs = [...]`` or an agent pick, never
+# guessed. A pack rates like a dimension, but only when active: it is not in
+# ``COVERAGE_FLOORS``, so every repository that does not enable it is scored
+# exactly as before. Floor 0.25 inclusive, user-approved 2026-10-06.
+PACK_FLOORS: dict[str, CoverageFloor] = {
+    "healthcare": CoverageFloor(0.25, "inclusive"),
+}
+
+
+def floor_of(dimension: str) -> CoverageFloor | None:
+    """The declared coverage floor of a dimension or a pack, else ``None``."""
+    return COVERAGE_FLOORS.get(dimension) or PACK_FLOORS.get(dimension)
+
+
+def declared_dimensions(names: Sequence[str] = ()) -> tuple[str, ...]:
+    """The dimensions a result must hold, in canonical order: every dimension,
+    then each pack named in ``names`` (an active pack), in declared order."""
+    return (*COVERAGE_FLOORS, *(name for name in PACK_FLOORS if name in names))
+
 
 @dataclass(frozen=True)
 class Citation:
@@ -254,6 +274,33 @@ _CWE_1050 = Citation(
 _ISO_22301 = Citation(
     "ISO 22301:2019 (business continuity management systems)",
     "https://www.iso.org/standard/75106.html",
+)
+# Healthcare pack (T047): #9 and #28.
+_HIPAA_514 = Citation(
+    "HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: "
+    "SSNs, medical record numbers and birth dates are identifiers)",
+    "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/"
+    "subpart-E/section-164.514",
+)
+_HIPAA_316 = Citation(
+    "HIPAA Security Rule 45 CFR §164.316(b)(2)(i) (retain required "
+    "documentation six years)",
+    "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/"
+    "subpart-C/section-164.316",
+)
+_HIPAA_BAA = Citation(
+    "HIPAA 45 CFR §164.504(e) and §164.308(b) (business associate contracts)",
+    "https://www.hhs.gov/hipaa/for-professionals/covered-entities/"
+    "sample-business-associate-agreement-provisions/index.html",
+)
+_FIPS_199 = Citation(
+    "NIST FIPS 199 (security categorization of information and systems)",
+    "https://csrc.nist.gov/pubs/fips/199/final",
+)
+_NIST_800_144 = Citation(
+    "NIST SP 800-144 §4.2 data location (guidelines on security and privacy "
+    "in public cloud computing)",
+    "https://csrc.nist.gov/pubs/sp/800/144/final",
 )
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
@@ -472,6 +519,21 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "queries_in_loops_observed", 20, 0, "at_most",
             (_CWE_1050, _ISO_5055), PROJECT_DEFAULT,
             area=AREAS[14],
+        ),
+    ),
+    # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
+    # PHI-shaped value fails safe-harbor de-identification, hence at most 0.
+    # Weights 50/50 user-approved 2026-10-06 (T047 review).
+    "healthcare": _rules(
+        RatingRule(
+            "phi_values_in_test_data_observed", 50, 0, "at_most",
+            (_HIPAA_514,), _HIPAA_514,
+            area=AREAS[8],
+        ),
+        RatingRule(
+            "phi_values_in_log_statements_observed", 50, 0, "at_most",
+            (_HIPAA_514,), _HIPAA_514,
+            area=AREAS[8],
         ),
     ),
 }
@@ -905,6 +967,13 @@ class OverallRating:
             for item in self.abstentions
         )
         suffix = f"; abstained: {abstained}" if abstained else "; none abstained"
+        packs = [
+            name
+            for name in PACK_FLOORS
+            if name in (*self.contributors, *(i.dimension for i in self.abstentions))
+        ]
+        if packs:
+            suffix += f"; packs active: {', '.join(packs)}"
         labels = [label for _name, label in self.rated_by]
         rules = labels.count("rules")
         agent = labels.count("agent-rated")
@@ -976,7 +1045,7 @@ def rate(
         )
     documentation = tuple(documentation or ())
 
-    floor = COVERAGE_FLOORS.get(dimension)
+    floor = floor_of(dimension)
     if floor is None:
         raise ValueError(f"no coverage floor declared for dimension {dimension!r}")
     rules = RATING_RULES[dimension]
@@ -1188,7 +1257,7 @@ def rate_overall(
     A :class:`GatedRating` contributes its blended or agent-rated value; the
     disclosure counts each kind (FR-038)."""
     _validate_declared_data()
-    expected = tuple(COVERAGE_FLOORS)
+    expected = declared_dimensions([getattr(item, "dimension", "") for item in ratings])
     if len(ratings) != len(expected):
         raise ValueError("rate_overall requires exactly the declared dimensions")
 
@@ -1212,7 +1281,7 @@ def rate_overall(
             _revalidate_abstention(item)
 
     names = tuple(item.dimension for item in ratings)
-    unknown = tuple(name for name in names if name not in COVERAGE_FLOORS)
+    unknown = tuple(name for name in names if floor_of(name) is None)
     if unknown:
         raise ValueError(f"unknown rating dimension(s): {', '.join(unknown)}")
     duplicates = tuple(name for name in expected if names.count(name) > 1)
@@ -1246,12 +1315,25 @@ def rate_overall(
     )
 
 
-def areas_without_rule() -> tuple[str, ...]:
+def areas_without_rule(packs: Sequence[str] = ()) -> tuple[str, ...]:
     """FR-073: the :data:`AREAS` no declared rating or documentation rule
     names, in ``AREAS`` order. Read from the live tables, so a new rule
-    removes its area here without any other change."""
-    ruled = {rule.area for rules in RATING_RULES.values() for rule in rules.values()}
-    ruled.update(rule.area for rules in DOCUMENTATION_RULES.values() for rule in rules)
+    removes its area here without any other change. A pack's rules count only
+    when the pack is in ``packs`` (active, T047): an inactive pack measures
+    nothing in that run, so its areas stay listed."""
+    inactive = set(PACK_FLOORS) - set(packs)
+    ruled = {
+        rule.area
+        for dimension, rules in RATING_RULES.items()
+        if dimension not in inactive
+        for rule in rules.values()
+    }
+    ruled.update(
+        rule.area
+        for dimension, rules in DOCUMENTATION_RULES.items()
+        if dimension not in inactive
+        for rule in rules
+    )
     return tuple(area for area in AREAS if area not in ruled)
 
 
@@ -1333,7 +1415,7 @@ def _passes(value: float | int, rule: RatingRule) -> bool:
 
 
 def _validate_declared_data() -> None:
-    for name, floor in COVERAGE_FLOORS.items():
+    for name, floor in {**COVERAGE_FLOORS, **PACK_FLOORS}.items():
         if type(floor) is not CoverageFloor:
             raise ValueError(f"coverage floor for {name!r} is not CoverageFloor data")
         _validate_unit_number(floor.value, f"coverage floor for {name!r}")
@@ -1343,12 +1425,14 @@ def _validate_declared_data() -> None:
                 f"{floor.boundary!r}"
             )
 
-    if set(RATING_RULES) != set(COVERAGE_FLOORS):
+    if set(COVERAGE_FLOORS) & set(PACK_FLOORS):
+        raise ValueError("a pack cannot share a dimension's name")
+    if set(RATING_RULES) != set(COVERAGE_FLOORS) | set(PACK_FLOORS):
         raise ValueError(
             "rating rules must be declared for exactly the known dimensions"
         )
     for dimension, doc_rules in DOCUMENTATION_RULES.items():
-        if dimension not in COVERAGE_FLOORS:
+        if floor_of(dimension) is None:
             raise ValueError(f"documentation rules name unknown {dimension!r}")
         if type(doc_rules) is not tuple or any(
             type(rule) is not DocumentationRule for rule in doc_rules
@@ -1460,7 +1544,7 @@ def _validate_abstention(value: RatingAbstention) -> None:
     if value.coverage_floor is not None:
         _validate_unit_number(value.coverage_floor, "abstention coverage_floor")
         if value.reason_code != "no_dimension_rated":
-            declared_floor = COVERAGE_FLOORS[value.dimension].value
+            declared_floor = floor_of(value.dimension).value
             if value.coverage_floor != declared_floor:
                 raise ValueError(
                     "abstention coverage_floor must equal declared floor "
@@ -1573,9 +1657,8 @@ def _validate_abstention(value: RatingAbstention) -> None:
         )
         complete = (
             value.dimension == "overall"
-            and len(value.abstentions) == len(COVERAGE_FLOORS)
             and nested_are_abstentions
-            and nested_names == tuple(COVERAGE_FLOORS)
+            and nested_names == declared_dimensions(nested_names)
             and value.coverage_floor is None
             and value.achieved_coverage is None
             and not value.sources_missing
@@ -1591,7 +1674,7 @@ def _validate_abstention(value: RatingAbstention) -> None:
 
 
 def _validate_leaf_abstention_dimension(value: RatingAbstention) -> None:
-    if value.dimension not in COVERAGE_FLOORS:
+    if floor_of(value.dimension) is None:
         raise ValueError(
             f"unknown dimension for rating abstention: {value.dimension!r}"
         )
@@ -1730,7 +1813,7 @@ def _matches_rule(value: RatingInput, rule: RatingRule) -> bool:
 def _validate_rating(value: Rating) -> None:
     _validate_declared_data()
     _validate_rating_value(value.value, "rating value")
-    if value.dimension not in COVERAGE_FLOORS:
+    if floor_of(value.dimension) is None:
         raise ValueError(f"unknown dimension for rating: {value.dimension!r}")
     if value.method != _RATING_METHOD:
         raise ValueError("rating method must equal the declared arithmetic method")
@@ -1806,9 +1889,14 @@ def _validate_overall_rating(value: OverallRating) -> None:
         value.contributor_values
     ):
         raise ValueError("overall contributor_count does not match contributor_values")
+    declared = declared_dimensions(
+        [*value.contributors, *(getattr(i, "dimension", "") for i in value.abstentions)]
+        if type(value.contributors) is tuple and type(value.abstentions) is tuple
+        else ()
+    )
     if type(
         value.total_dimension_count
-    ) is not int or value.total_dimension_count != len(COVERAGE_FLOORS):
+    ) is not int or value.total_dimension_count != len(declared):
         raise ValueError("overall total_dimension_count must equal known dimensions")
     if type(value.contributors) is not tuple or not value.contributors:
         raise ValueError("overall contributors must be a non-empty tuple")
@@ -1850,15 +1938,15 @@ def _validate_overall_rating(value: OverallRating) -> None:
 
     abstained_names = tuple(item.dimension for item in value.abstentions)
     names = value_names + abstained_names
-    if len(set(names)) != len(names) or set(names) != set(COVERAGE_FLOORS):
+    if len(set(names)) != len(names) or set(names) != set(declared):
         raise ValueError(
             "overall contributors and abstentions must partition known dimensions"
         )
-    expected_order = tuple(name for name in COVERAGE_FLOORS if name in value_names)
+    expected_order = tuple(name for name in declared if name in value_names)
     if value_names != expected_order:
         raise ValueError("overall contributors are not in canonical dimension order")
     expected_abstention_order = tuple(
-        name for name in COVERAGE_FLOORS if name in abstained_names
+        name for name in declared if name in abstained_names
     )
     if abstained_names != expected_abstention_order:
         raise ValueError("overall abstentions are not in canonical dimension order")
@@ -1940,4 +2028,34 @@ _CONTINUITY_PATTERNS = tuple(
 )
 DOCUMENTATION_RULES["reliability"] = (
     DocumentationRule(AREAS[31], _CONTINUITY_PATTERNS, (_ISO_22301,)),
+)
+
+
+# Healthcare pack (T047): #9 retention and #28 BAA, data classification and
+# residency are processes and contracts no repository can show, so only their
+# documents are checked; the pack reads a matching document for each.
+def _keyword_docs(*keywords: str) -> tuple[str, ...]:
+    return tuple(
+        f"**/*{variant}*{suffix}"
+        for keyword in keywords
+        for variant in (keyword, keyword.capitalize(), keyword.upper())
+        for suffix in (".md", ".rst", ".adoc")
+    )
+
+
+DOCUMENTATION_RULES["healthcare"] = (
+    DocumentationRule(AREAS[8], _keyword_docs("retention"), (_HIPAA_316,)),
+    DocumentationRule(
+        AREAS[27],
+        _keyword_docs("baa", "business-associate", "business_associate"),
+        (_HIPAA_BAA,),
+    ),
+    DocumentationRule(
+        AREAS[27],
+        _keyword_docs("classification", "data-class", "data_class"),
+        (_FIPS_199,),
+    ),
+    DocumentationRule(
+        AREAS[27], _keyword_docs("residency", "data-location"), (_NIST_800_144,)
+    ),
 )

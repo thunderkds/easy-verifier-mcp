@@ -18,9 +18,9 @@ from mcp.server.fastmcp import FastMCP
 from ..core.models import to_json_dict
 from ..core.pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE, run_dimension
 from ..core.report import write_report as core_write_report
-from ..core.score import score_repository
+from ..core.score import report_dimensions, score_repository
 from ..core.synthesis import combined_pack
-from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
+from ..dimensions import DIMENSIONS, list_dimensions
 
 LOOPBACK_HOST = "127.0.0.1"
 mcp = FastMCP(
@@ -122,8 +122,12 @@ def gather_combined(
         "than one read: only the listed share was read, in priority order. "
         "Ask the user its question -- read the next batch (more tokens) or "
         "stop -- and to continue call score again with the same agent_input "
-        'plus "batches": batches_done + 1 (or "all"). Otherwise use the '
-        "response as-is."
+        'plus "batches": batches_done + 1 (or "all"). Optional domain packs '
+        "are never guessed: only if the user confirms the repository handles "
+        "patient health information, send agent_input.packs = "
+        '["healthcare"] (PHI in test data and logs, BAA and residency '
+        "documents); a repository may also list them in .easy-verifier.toml "
+        "packs. Otherwise use the response as-is."
     ),
     structured_output=True,
 )
@@ -201,14 +205,16 @@ def render_report(
     agent_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Gather the cited dimensions, validate findings, and write the report."""
+    default, active = report_dimensions(repo, agent_input)
     packs = combined_pack(
-        dimensions or dimension_names(),
+        dimensions or default,
         repo_path=repo,
         scope=scope,
         budget_bytes=budget_bytes,
         ref=ref,
         task_id=task_id,
         agent_input=agent_input,
+        packs=active,
     )
     result = core_write_report(findings, packs, repo, agent_input=agent_input)
     return {"path": result.path, "advisory": result.advisory}

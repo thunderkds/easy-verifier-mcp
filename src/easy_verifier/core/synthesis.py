@@ -25,6 +25,7 @@ from pathlib import Path
 
 from ..dimensions import DIMENSIONS
 from ..dimensions import dimension_names as available_dimension_names
+from ..packs import PACKS
 from . import redact as redact_module
 from .batches import BatchInputError, parse_batches
 from .findings import ValidationError
@@ -62,6 +63,7 @@ def combined_pack(
     task_id: str | None = None,
     agent_input: object | None = None,
     batches: int | str | None = None,
+    packs: tuple[str, ...] = (),
 ) -> CombinedPack:
     """Run each named dimension and return their packs plus aggregate coverage.
 
@@ -71,8 +73,14 @@ def combined_pack(
     list of valid names. Duplicate names are deduplicated; a dimension that
     raises does not abort the call, and carries a structured error in its slot
     instead of a pack.
+
+    ``packs`` are the active optional packs (T047, ``roles.active_packs``):
+    only those may be named besides the dimensions, and they run after them.
     """
-    available_names = available_dimension_names()
+    available_names = (
+        *available_dimension_names(),
+        *(name for name in PACKS if name in packs),
+    )
     if not dimension_names:
         raise ValueError(
             "combined_pack requires at least one dimension name; valid "
@@ -108,7 +116,7 @@ def combined_pack(
     for name in ordered_names:
         try:
             pack = run_dimension(
-                DIMENSIONS[name],
+                DIMENSIONS[name] if name in DIMENSIONS else PACKS[name],
                 repo_path=repo_path,
                 scope=scope,
                 budget_bytes=budget_bytes,

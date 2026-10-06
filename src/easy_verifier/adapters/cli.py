@@ -20,9 +20,9 @@ from ..core.pipeline import (
 from ..core.report import ReportWriteError
 from ..core.report import write_report as core_write_report
 from ..core.scope import VALID_KINDS
-from ..core.score import continue_note, score_repository
+from ..core.score import continue_note, report_dimensions, score_repository
 from ..core.synthesis import combined_pack
-from ..dimensions import DIMENSIONS, dimension_names, list_dimensions
+from ..dimensions import DIMENSIONS, list_dimensions
 
 VALIDATION_EXIT = 2
 OPERATIONAL_EXIT = 3
@@ -203,8 +203,9 @@ def _run_combined(args: argparse.Namespace) -> int:
 def _run_report(args: argparse.Namespace) -> int:
     findings = _read_findings(args.findings)
     agent_input = _read_agent_input(args.agent_input)
+    default, active = report_dimensions(args.repo, agent_input)
     packs = combined_pack(
-        _parse_dimensions(args.dimensions) if args.dimensions else dimension_names(),
+        _parse_dimensions(args.dimensions) if args.dimensions else default,
         repo_path=args.repo,
         scope=args.scope,
         budget_bytes=args.budget_bytes,
@@ -212,6 +213,7 @@ def _run_report(args: argparse.Namespace) -> int:
         task_id=args.task_id,
         agent_input=agent_input,
         batches=args.batches,
+        packs=active,
     )
     result = core_write_report(findings, packs, args.repo, agent_input=agent_input)
     return _emit({"path": result.path, "advisory": result.advisory})

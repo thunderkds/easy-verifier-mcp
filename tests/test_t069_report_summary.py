@@ -564,8 +564,10 @@ def test_cli_and_mcp_write_the_same_summary(tmp_path: Path) -> None:
 
 def test_every_declared_source_has_a_plain_name_or_is_marked_derived() -> None:
     from easy_verifier.dimensions import list_dimensions
+    from easy_verifier.packs import PACKS
 
     declared = {s for item in list_dimensions() for s in item.sources_sought}
+    declared |= {s for item in PACKS.values() for s in item.sources_sought}
     assert set(report._SOURCE_TEXT) == declared
 
 
