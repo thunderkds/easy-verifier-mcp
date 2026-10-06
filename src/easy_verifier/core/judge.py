@@ -832,6 +832,10 @@ class OverallRating:
     method: str = _OVERALL_RATING_METHOD
     rated_by: tuple[tuple[str, str], ...] = field(default=())
     """Per contributor: ``rules``, ``blended (w …)`` or ``agent-rated``."""
+    areas_measured: tuple[str, ...] = field(default=())
+    """:func:`areas_measured` of the ratings (FR-073), counted in the
+    disclosure. The score payload lists it beside the overall, so it is not
+    repeated in :meth:`to_dict`."""
 
     def __post_init__(self) -> None:
         _validate_overall_rating(self)
@@ -854,7 +858,8 @@ class OverallRating:
         return (
             f"{self.contributor_count} of {self.total_dimension_count} dimensions "
             f"contributed ({rules} rule-rated, {blended} blended, {agent} "
-            "agent-rated); ratings average contributors only, so abstention can "
+            f"agent-rated); measured {len(self.areas_measured)} of {len(AREAS)} "
+            "evaluation areas; ratings average contributors only, so abstention can "
             f"raise the overall{suffix}"
         )
 
@@ -1183,7 +1188,35 @@ def rate_overall(
         abstentions=abstentions,
         contributor_values=tuple((item.dimension, item.value) for item in contributors),
         rated_by=tuple((item.dimension, _rated_by(item)) for item in contributors),
+        areas_measured=areas_measured(ordered),
     )
+
+
+def areas_without_rule() -> tuple[str, ...]:
+    """FR-073: the :data:`AREAS` no declared rating or documentation rule
+    names, in ``AREAS`` order. Read from the live tables, so a new rule
+    removes its area here without any other change."""
+    ruled = {rule.area for rules in RATING_RULES.values() for rule in rules.values()}
+    ruled.update(rule.area for rules in DOCUMENTATION_RULES.values() for rule in rules)
+    return tuple(area for area in AREAS if area not in ruled)
+
+
+def areas_measured(
+    ratings: Sequence[Rating | RatingAbstention | GatedRating],
+) -> tuple[str, ...]:
+    """FR-073: the :data:`AREAS` this run measured, in ``AREAS`` order.
+
+    An area counts when a rated dimension (rules or blended) has a measured
+    rule input for it, or when any dimension has a documentation result for
+    it. An abstained metric or dimension measures nothing by rule, and an
+    agent-rated dimension has no rule inputs."""
+    measured: set[str] = set()
+    for item in ratings:
+        rules = item.rules if type(item) is GatedRating else item
+        if type(rules) is Rating:
+            measured.update(entry.area for entry in rules.inputs)
+        measured.update(result.area for result in rules.documentation)
+    return tuple(area for area in AREAS if area in measured)
 
 
 def _dimension_of(metrics: MetricSet, coverage: CoverageSummary) -> str:
@@ -1775,6 +1808,11 @@ def _validate_overall_rating(value: OverallRating) -> None:
     )
     if abstained_names != expected_abstention_order:
         raise ValueError("overall abstentions are not in canonical dimension order")
+    areas = value.areas_measured
+    if type(areas) is not tuple or areas != tuple(a for a in AREAS if a in areas):
+        raise ValueError(
+            "overall areas_measured must be distinct evaluation areas in AREAS order"
+        )
     expected = overall_value([rating for _name, rating in value.contributor_values])
     if value.value != expected:
         raise ValueError(
