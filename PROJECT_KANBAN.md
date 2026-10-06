@@ -72,13 +72,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T047` — implementer done `b7a36a5` (2133 passed; bryony/coffee healthcare 100); weights 50/50 user-approved; NEXT: Supervisor Stage 4/5, then merge, then T048
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (packs via `.easy-verifier.toml` / `agent_input.packs`; healthcare #9 PHI 50/50 + #9/#28 doc rules, floor 0.25; inactive = byte-identical; coffee 72→77 & bryony 67→73 with pack, healthcare 100; 2136 passed)
 - [x] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-06 (weights 35/35/10/20 + floor 0.25 user-approved; #6 evidence-only; coffee 100 (65→72), bryony 61 (69→67), kitchd 0 (72→58, real N+1); 2087 passed; container image rebuild after merge)
 - [x] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-06 (coffee-shop-api 65 unchanged, now "measured 8 of 32 evaluation areas" + 21 uncovered listed; 2021 passed; branch `feat/T082-uncovered-areas` merges after T043 — gate blocks merges while any task is In Progress; follow-up: refresh AREA_COVERAGE coffee example)
 - [x] **T081** — Guide for checking a feature or bugfix: README § Checking a feature or bugfix + DOCKER_MCP_GUIDE § 5 (`--scope changes --ref main...HEAD < /dev/null`, bare ref = one commit, stdin wait, change score is partial: bryony no-test bugfix scored 97) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (5 new tests, 3 fail on old docs; 2006 passed; follow-up: change-risk rules vision — test-strategy/security abstain in changes scope, symbol-level reach, stdin hang — to be planned)
