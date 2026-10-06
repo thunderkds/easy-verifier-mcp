@@ -72,7 +72,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T047` (floor 0.25 user-approved)
+- [ ] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T047` — implementer done `b7a36a5` (2133 passed; bryony/coffee healthcare 100); weights 50/50 user-approved; NEXT: Supervisor Stage 4/5, then merge, then T048
 
 ### Ready for Review
 
