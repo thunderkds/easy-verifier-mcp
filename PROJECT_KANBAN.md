@@ -73,16 +73,15 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T082`
-- [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T043` (floor 0.25 user-approved)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
-- [x] **T082** — The score names the evaluation areas it does not measure | backend-developer | C2 | Risk: Medium | P1
- | ✅ Done 2026-10-06 (coffee-shop-api 65 unchanged, now "measured 8 of 32 evaluation areas" + 21 uncovered listed; 2021 passed; branch `feat/T082-uncovered-areas` merges after T043 — gate blocks merges while any task is In Progress; follow-up: refresh AREA_COVERAGE coffee example)
+- [x] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-06 (weights 35/35/10/20 + floor 0.25 user-approved; #6 evidence-only; coffee 100 (65→72), bryony 61 (69→67), kitchd 0 (72→58, real N+1); 2087 passed; container image rebuild after merge)
+- [x] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-06 (coffee-shop-api 65 unchanged, now "measured 8 of 32 evaluation areas" + 21 uncovered listed; 2021 passed; branch `feat/T082-uncovered-areas` merges after T043 — gate blocks merges while any task is In Progress; follow-up: refresh AREA_COVERAGE coffee example)
 - [x] **T081** — Guide for checking a feature or bugfix: README § Checking a feature or bugfix + DOCKER_MCP_GUIDE § 5 (`--scope changes --ref main...HEAD < /dev/null`, bare ref = one commit, stdin wait, change score is partial: bryony no-test bugfix scored 97) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (5 new tests, 3 fail on old docs; 2006 passed; follow-up: change-risk rules vision — test-strategy/security abstain in changes scope, symbol-level reach, stdin hang — to be planned)
 - [x] **T080** — Evaluation guide refresh after DDR-0011: requirement-fidelity code rules, missing-document = failed rule, worked examples re-run | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (coffee 65 over 4 dims, bryony 69; 2001 passed)
 - [x] **T077** — T075 review fixes: requirements_doc_missing, no checklist items by default, multi-line decorator handlers, --relative test, co-change path prefix | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-04 (coffee-shop-api requirement-fidelity 0→50 honest; 1990 passed)
