@@ -39,10 +39,12 @@ Decided E1: finance is an optional pack; area #3 financial integrity & historica
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy)
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (Supervisor, 2026-10-06 — user: "start the list of tasks with automatic")
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+
+**Supervisor addendum (2026-10-06)** — this guide predates DDR-0010 (measured-weight floor 50%, priority batches) and DDR-0011 (code-derived rules, 20/80 code/documents, cited extendable pattern lists in `core/structure.py` / registry). Follow the current contracts in code, not the 2026-09-28 wording, where they differ. **Coverage floor decided by the user: 0.25 inclusive** — the HITL floor step is pre-approved; do not stop for it. **Real-repo run required before Done** (bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`, kitchd, coffee-shop-api): paste before/after numbers; an abstention on a repo that clearly has the code is a defect. Update `docs/AREA_COVERAGE.md` rows + the T082 uncovered-area list stays derived (no hand edits).
 
 > An agent must NOT start implementing until this gate is checked. If anything here is unclear,
 > STOP and ask the Supervisor (Karpathy: Think Before Coding).

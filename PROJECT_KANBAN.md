@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-05
+**Last updated**: 2026-10-06
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,7 +11,10 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T081** — Guide for checking a feature or bugfix (changes scope) | Supervisor | C1 | Risk: Low | P1
+
+**Wave 16 — Business-domain area coverage (added 2026-10-06, user request: uncovered business-domain areas; run order T082 → T043 → T047 → T048, floors 0.25 user-approved)**
+- [ ] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T082** — The score names the evaluation areas it does not measure | backend-developer | C2 | Risk: Medium | P1
 
 **Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
 
