@@ -33,8 +33,28 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-10-06T04:03:36Z–04:03:53Z on worktree HEAD `eb16069` (no implementation
+commit exists), by backend-developer, target coffee-shop-api, `--scope project`:
+
+```
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli score \
+    --repo .../nestjs-training/coffee-shop-api --scope project < /dev/null > before.json   # exit=0
+$ python -c "d=json.load(open('before.json')); o=d['overall']; print(sorted(o)); print(o['disclosure'])"
+['abstentions', 'contributor_count', 'contributor_values', 'contributors', 'disclosure', 'kind',
+ 'method', 'rated_by', 'total_dimension_count', 'value']
+disclosure: 4 of 7 dimensions contributed (4 rule-rated, 0 blended, 0 agent-rated); ratings average
+contributors only, so abstention can raise the overall; abstained: solution-fit (no_static_rule: ...),
+test-strategy (insufficient_measured_weight: ...), blast-radius (all_metrics_abstained: ...)
+$ "areas_measured" / "areas_without_rule" / "evaluation areas" anywhere in before.json -> False False False
+overall value: 65
+
+$ ... write-report --repo .../coffee-shop-api --scope project --findings empty.json < /dev/null
+{"path": "reports/evidence-report-project-20261006T040354-734779Z.html", "advisory": null}  # exit=0
+$ grep -c "evaluation area\|Areas no rule" <that report>  ->  0
+```
+
+The payload has no area count and no uncovered-area list; the disclosure names dimensions only; the
+HTML score panel never mentions evaluation areas.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
