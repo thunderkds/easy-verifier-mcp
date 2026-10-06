@@ -23,8 +23,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..dimensions import DIMENSIONS, PACKS
+from ..dimensions import DIMENSIONS
 from ..dimensions import dimension_names as available_dimension_names
+from ..packs import PACKS
 from . import redact as redact_module
 from .batches import BatchInputError, parse_batches
 from .findings import ValidationError

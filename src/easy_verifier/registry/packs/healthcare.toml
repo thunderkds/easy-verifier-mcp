@@ -20,10 +20,11 @@ citation_url = "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/pa
 source_tag = "curated"
 
 # Medical record number: §164.514(b)(2)(i)(H). No national format exists, so
-# only a value labelled MRN / medical record number counts.
+# only a value labelled MRN / medical record number counts. The label may be
+# followed by ":", "=" or whitespace alone ("MRN 4812973"); so may DOB's.
 [[phi_values]]
 value = [
-    'mrn=(?i)(?<![a-z0-9])(?:mrn|medical_?record_?(?:number|num|no)?)(?![a-z0-9])["\x27]?\s*[:=]\s*["\x27]?(?P<value>(?=[a-z0-9-]{5,})[a-z0-9-]*\d[a-z0-9-]*)',
+    'mrn=(?i)(?<![a-z0-9])(?:mrn|medical_?record_?(?:number|num|no)?)(?![a-z0-9])["\x27]?(?:\s*[:=]\s*|\s+)["\x27]?(?P<value>(?=[a-z0-9-]{5,})[a-z0-9-]*\d[a-z0-9-]*)',
 ]
 citation_url = "https://www.hhs.gov/hipaa/for-professionals/privacy/special-topics/de-identification/index.html"
 source_tag = "curated"
@@ -32,7 +33,7 @@ source_tag = "curated"
 # individual except year). Only a date labelled DOB / date of birth counts.
 [[phi_values]]
 value = [
-    'dob=(?i)(?<![a-z0-9])(?:dob|date_?of_?birth|birth_?date)(?![a-z0-9])["\x27]?\s*[:=]\s*["\x27]?(?P<value>\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})',
+    'dob=(?i)(?<![a-z0-9])(?:dob|date_?of_?birth|birth_?date)(?![a-z0-9])["\x27]?(?:\s*[:=]\s*|\s+)["\x27]?(?P<value>\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})',
 ]
 citation_url = "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514"
 source_tag = "curated"
