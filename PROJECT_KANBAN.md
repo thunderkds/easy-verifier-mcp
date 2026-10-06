@@ -71,13 +71,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T048` (pack floor 0.25 user-approved)
+_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (float money 50 + ledger audit 25 + ledger mutation 25, user-approved; TS `number` persistence-only; coffee 72→77 finance 100, kitchd 58→48 (4 real float money columns), bryony 67→56 (12 Mongoose Number); inactive byte-identical; 2207 passed)
 - [x] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (packs via `.easy-verifier.toml` / `agent_input.packs`; healthcare #9 PHI 50/50 + #9/#28 doc rules, floor 0.25; inactive = byte-identical; coffee 72→77 & bryony 67→73 with pack, healthcare 100; 2136 passed)
 - [x] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-06 (weights 35/35/10/20 + floor 0.25 user-approved; #6 evidence-only; coffee 100 (65→72), bryony 61 (69→67), kitchd 0 (72→58, real N+1); 2087 passed; container image rebuild after merge)
 - [x] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-06 (coffee-shop-api 65 unchanged, now "measured 8 of 32 evaluation areas" + 21 uncovered listed; 2021 passed; branch `feat/T082-uncovered-areas` merges after T043 — gate blocks merges while any task is In Progress; follow-up: refresh AREA_COVERAGE coffee example)
