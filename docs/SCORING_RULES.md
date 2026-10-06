@@ -43,6 +43,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | test-strategy | 0.20 |
 | blast-radius | 0.25 |
 | reliability | 0.25 |
+| healthcare *(optional pack)* | 0.25 |
 
 architecture (DDR-0011, T074): documents carry 20 and code 80. A missing architecture description or
 decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
@@ -66,6 +67,21 @@ retry statement or query call was found: a repository with nothing to judge earn
 Transaction, lock and idempotency code (#6) needs judgment, so it is quoted in the pack as evidence
 for the calling agent and feeds no rule. Business continuity (#32) is a documentation rule: a
 continuity, BCP, degraded-mode, resilience or fallback document is reported present or missing.
+
+healthcare (optional pack, T047, floor user-approved 2026-10-06): rated only when the target's
+`.easy-verifier.toml` lists it (`packs = ["healthcare"]`) or the agent picks it
+(`agent_input.packs`); it is never guessed, and a repository that does not enable it is scored
+exactly as before. Its roles are two pseudo-roles (test data files; log statements in source files),
+so either one reaches the 0.25 floor. Both rules count PHI-shaped values (dashed SSNs, labelled
+medical record numbers, labelled birth dates) over whole files: test data is any file under a
+`test_data_paths` glob (the first 200 in path order), log statements are source lines matching
+`log_calls`. Documented placeholders (`phi_placeholders`, e.g. `000-00-0000`, `123-45-6789`, a digit
+repeated, `1970-01-01`) never count. A matched value is never shown: excerpts read
+`[PHI <kind> redacted]`, and derivations give only path, line and kind. The log rule abstains when no
+log statement was found. Retention (#9), business associate agreements, data classification and
+residency (#28) are documentation rules: the document is reported present or missing. The pack's
+patterns live in `registry/packs/healthcare.toml`, each with its citation. The 50/50 weights are
+a proposal pending user sign-off.
 
 ## Rules and the registry fields they read
 
@@ -111,11 +127,14 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `outbound_calls_without_timeout_observed` | 35 | = 0 | same file fields, `outbound_calls` / `call_timeouts` / `client_timeouts` *(opt)*; a call statement with no deadline token inside it, unless its file sets a client-wide deadline (a wrapper); abstains with no outbound call |
 | | `retries_without_backoff_observed` | 10 | = 0 | same file fields, `retry_calls` / `retry_backoff` *(opt)*; abstains with no retry statement |
 | | `queries_in_loops_observed` | 20 | = 0 | same file fields, `function_start`, `query_calls` / `loop_keywords` *(opt)*; a query on a line enclosed by a loop line (by indentation, up to its function) or after a `.method` loop token on its own line; a loop header runs its query once and never counts; abstains with no query call |
+| healthcare *(optional pack)* | `phi_values_in_test_data_observed` | 50 | = 0 | pack fields `phi_values`, `phi_placeholders`, `test_data_paths` |
+| | `phi_values_in_log_statements_observed` | 50 | = 0 | pack fields `phi_values`, `phi_placeholders`, `log_calls`; source files as reliability; abstains with no log statement |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 Every threshold carries a citation in the output: ISO/IEC 42010, 29148, 26514, 5055, 29119,
 McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, Henry–Kafura,
-Nagappan–Ball, SemVer, ISO 22301 (documentation rule), or
+Nagappan–Ball, SemVer, ISO 22301 (documentation rule), HIPAA 45 CFR §164.514 (healthcare pack;
+§164.316, §164.504(e), NIST FIPS 199 and SP 800-144 for its documentation rules), or
 `project default` where no external standard fixes the number.
 
 ### Fields that feed no rule directly

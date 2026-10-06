@@ -17,9 +17,9 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 
 | Key in the `score` payload | What it holds |
 |---|---|
-| `ratings` | One entry per dimension (eight since T043 added reliability): a number with its rule inputs, or an abstention with a `reason_code` |
+| `ratings` | One entry per dimension (eight since T043 added reliability), then one per optional pack the repository enabled (T047, e.g. `healthcare`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
 | `overall` | The overall `value`, its `contributors`, `rated_by` and `abstentions`, and a one-line `disclosure` |
-| `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet; both present even when the overall is withheld |
+| `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet (an optional pack's areas count only in a run where it is enabled); both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |
 | `samples` | Present only for large repositories: which batches of source files were read |
 | `improvement_plan` | Every unmet or unmeasured rule of every rated dimension, grouped and ranked by gain |
@@ -37,8 +37,10 @@ Over MCP, a `needs_input` block may ride along (`picks`, `gate_evaluations`, `re
   dimensions contributed, how each was rated (`rules`, `blended (w …)`, `agent-rated`) and which
   abstained and why.
 - Two overalls are comparable only when the same dimensions contributed.
-- A dimension speaks only for the evaluation areas its rules cover. Today 11 of the 32 areas have
-  rules and 21 have none; see [AREA_COVERAGE.md](AREA_COVERAGE.md) for the area-by-area map.
+- A dimension speaks only for the evaluation areas its rules cover. Today 15 of the 32 areas have
+  rating rules and 17 have none (#32, and #28 in the optional healthcare pack, are checked only for
+  their documents); #9 is rated only when the healthcare pack is enabled. See
+  [AREA_COVERAGE.md](AREA_COVERAGE.md) for the area-by-area map.
 
 ## When to trust a number
 
