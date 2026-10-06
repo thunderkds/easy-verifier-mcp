@@ -44,6 +44,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | blast-radius | 0.25 |
 | reliability | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
+| finance *(optional pack)* | 0.25 |
 
 architecture (DDR-0011, T074): documents carry 20 and code 80. A missing architecture description or
 decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
@@ -81,6 +82,27 @@ repeated, `1970-01-01`) never count. A matched value is never shown: excerpts re
 log statement was found. Retention (#9), business associate agreements, data classification and
 residency (#28) are documentation rules: the document is reported present or missing. The pack's
 patterns live in `registry/packs/healthcare.toml`, each with its citation. The 50/50 weights are
+a proposal pending user sign-off.
+
+finance (optional pack, T048, floor 0.25 user-approved 2026-10-06): enabled like healthcare
+(`packs = ["finance"]` or `agent_input.packs`), never guessed. Two pseudo-roles (a money-named field
+declaration; a ledger, transaction or payment table or model), so either one reaches the floor.
+Identifier names are split into words; a name is money-named when a word is in `money_names`
+(amount, price, balance, fee, cost, subtotal, …) and none is in `money_excluded_words` (count, qty,
+items, pages, cents, micros, rate, id, …), so `amount_of_items`, `total_pages` and `amount_cents`
+never count, and bare `total` (as often a row count) is not a money name. A money-named declaration
+whose type matches `float_types` (TS/JS `number`, Python `float`, Java/C#/Kotlin `double`, SQL
+`float`/`real`/`double precision`, Prisma `Float`, Go `float64`, Rust `f64`, Mongoose `Number`)
+counts; `Decimal`, `BigDecimal`, `decimal`, `numeric(…)` and integer minor units are exact. The
+float rule abstains when no money-named declaration exists. A ledger is a table or model whose name
+holds a `ledger_names` word (ledger, journal, transaction, payment, transfer, posting) and does not
+end in a `non_ledger_heads` word (PaymentMethod, TransactionStatus are not ledgers). Its audit
+column (created_at / created_by / timestamps, …) is looked for in its own declaration; one that
+inherits from a base, audit or timestamp class is never counted. Update / delete sites (SQL `UPDATE
+… SET`, `DELETE FROM`, ORM `update` / `delete` / `remove` / `destroy` calls) count only when their
+target is a ledger declared in the same repository. With no ledger, both ledger rules abstain
+(nothing to judge, never 0). Whether a ledger balances or is correct is judgment: ledger declarations
+and mutation sites are quoted in the pack for the agent and feed no rule. The 50/25/25 weights are
 a proposal pending user sign-off.
 
 ## Rules and the registry fields they read
@@ -129,12 +151,17 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `queries_in_loops_observed` | 20 | = 0 | same file fields, `function_start`, `query_calls` / `loop_keywords` *(opt)*; a query on a line enclosed by a loop line (by indentation, up to its function) or after a `.method` loop token on its own line; a loop header runs its query once and never counts; abstains with no query call |
 | healthcare *(optional pack)* | `phi_values_in_test_data_observed` | 50 | = 0 | pack fields `phi_values`, `phi_placeholders`, `test_data_paths` |
 | | `phi_values_in_log_statements_observed` | 50 | = 0 | pack fields `phi_values`, `phi_placeholders`, `log_calls`; source files as reliability; abstains with no log statement |
+| finance *(optional pack)* | `float_money_observed` | 50 | = 0 | pack fields `money_names`, `money_excluded_words`, `money_declarations`, `float_types`, `schema_paths`; source files as reliability plus schema files; abstains with no money-named declaration |
+| | `ledger_tables_without_audit_columns_observed` | 25 | = 0 | pack fields `ledger_names`, `non_ledger_heads`, `name_suffixes`, `ledger_declarations`, `entity_classes`, `entity_markers`, `audit_columns`; abstains with no ledger |
+| | `ledger_rows_mutated_observed` | 25 | = 0 | pack field `ledger_mutations` against the declared ledgers; abstains with no ledger |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 Every threshold carries a citation in the output: ISO/IEC 42010, 29148, 26514, 5055, 29119,
 McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, Henry–Kafura,
 Nagappan–Ball, SemVer, ISO 22301 (documentation rule), HIPAA 45 CFR §164.514 (healthcare pack;
-§164.316, §164.504(e), NIST FIPS 199 and SP 800-144 for its documentation rules), or
+§164.316, §164.504(e), NIST FIPS 199 and SP 800-144 for its documentation rules), CWE-1339,
+PostgreSQL numeric types, NIST SP 800-53 AU-3, SEC Rule 17a-4(f) and Fowler's Reversal Adjustment
+(finance pack; per-language decimal-type documentation in `registry/packs/finance.toml`), or
 `project default` where no external standard fixes the number.
 
 ### Fields that feed no rule directly

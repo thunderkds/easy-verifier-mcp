@@ -184,6 +184,19 @@ FIX_HINTS: dict[str, str] = {
         "Stop logging patient identifiers: log an internal reference instead, "
         "or mask the value before it reaches the log."
     ),
+    # finance pack (T048)
+    "float_money_observed": (
+        "Hold money in a decimal type (Decimal, BigDecimal, numeric) or in "
+        "integer minor units (cents), never in a binary float."
+    ),
+    "ledger_tables_without_audit_columns_observed": (
+        "Record when and by whom each ledger row was written (created_at, "
+        "created_by) on the ledger table itself."
+    ),
+    "ledger_rows_mutated_observed": (
+        "Keep ledger rows append-only: correct an entry by posting a reversing "
+        "entry instead of updating or deleting the row."
+    ),
 }
 """One static engine fix line per declared rule metric (FR-057). Each line
 names the real remedy, never a move that only satisfies the metric."""

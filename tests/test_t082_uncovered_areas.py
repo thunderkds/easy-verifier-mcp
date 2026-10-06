@@ -151,7 +151,10 @@ def test_areas_without_rule_are_the_not_yet_rows_of_the_area_doc():
     pack_areas = {
         rule.area
         for name in PACK_FLOORS
-        for rule in (*RATING_RULES[name].values(), *DOCUMENTATION_RULES[name])
+        for rule in (
+            *RATING_RULES[name].values(),
+            *DOCUMENTATION_RULES.get(name, ()),
+        )
     }
     assert areas_without_rule() == tuple(
         a for a in AREAS if a in not_yet or a in pack_areas

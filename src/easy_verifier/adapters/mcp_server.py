@@ -126,7 +126,10 @@ def gather_combined(
         "are never guessed: only if the user confirms the repository handles "
         "patient health information, send agent_input.packs = "
         '["healthcare"] (PHI in test data and logs, BAA and residency '
-        "documents); a repository may also list them in .easy-verifier.toml "
+        "documents), or that it handles money, send agent_input.packs = "
+        '["finance"] (float money fields, ledger audit columns and '
+        "append-only ledgers); a repository may also list them in "
+        ".easy-verifier.toml "
         "packs. Otherwise use the response as-is."
     ),
     structured_output=True,
