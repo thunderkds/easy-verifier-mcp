@@ -39,12 +39,12 @@ from ..dimensions import _doc_extract
 from .context import _is_secret_bearing, _resolved_repo, _walk
 from .judge import (
     BORDERLINE_BAND,
-    COVERAGE_FLOORS,
     EVIDENCE_LACK_REASONS,
     RATING_RULES,
     GatedRating,
     Rating,
     RatingAbstention,
+    floor_of,
     within_band,
 )
 from .metric_tables import FIELD_METRICS, OPTIONAL_FIELDS, ROLE_METRICS
@@ -330,7 +330,7 @@ def apply_gate_evaluations(
     accepted: dict[str, tuple[int | float, int | float, tuple[str, ...]]] = {}
     for name, entry in document.items():
         field = f"gate_evaluations.{redact(str(name))}"
-        if name not in COVERAGE_FLOORS:
+        if floor_of(name) is None:
             errors.append(f"{field}: unknown dimension")
             continue
         if name in documentation_only:

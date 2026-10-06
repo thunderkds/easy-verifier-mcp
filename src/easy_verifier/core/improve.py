@@ -175,6 +175,15 @@ FIX_HINTS: dict[str, str] = {
         "Fetch the rows in one batched query (IN list, join or bulk API) "
         "instead of one query per loop iteration."
     ),
+    # healthcare pack (T047)
+    "phi_values_in_test_data_observed": (
+        "Replace real-looking SSNs, record numbers and birth dates in test data "
+        "with synthetic or documented placeholder values (e.g. 000-00-0000)."
+    ),
+    "phi_values_in_log_statements_observed": (
+        "Stop logging patient identifiers: log an internal reference instead, "
+        "or mask the value before it reaches the log."
+    ),
 }
 """One static engine fix line per declared rule metric (FR-057). Each line
 names the real remedy, never a move that only satisfies the metric."""

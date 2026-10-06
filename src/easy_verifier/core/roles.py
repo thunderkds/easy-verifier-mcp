@@ -35,7 +35,7 @@ from pathlib import Path, PurePosixPath
 from .batches import BatchInputError, parse_batches
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
-from .judge import DocumentationResult, DocumentationRule
+from .judge import PACK_FLOORS, DocumentationResult, DocumentationRule
 from .models import SourceRole
 from .redact import redact
 from .registry import (
@@ -315,13 +315,51 @@ def load_repo_conventions(repo: str | Path) -> dict[str, tuple[str, ...]]:
     return _repo_config(repo)[1]
 
 
+def load_repo_packs(repo: str | Path) -> tuple[str, ...]:
+    """The pack names the target's optional ``.easy-verifier.toml`` lists in
+    ``packs = [...]`` (T047), as written: :func:`active_packs` keeps the known
+    ones. Absent file or key → ``()``."""
+    return _repo_config(_resolved_repo(repo))[2]
+
+
+def active_packs(
+    repo: str | Path, document: Mapping | None
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The optional packs this call runs (T047, FR-053), in declared order,
+    and one note per unknown name (ignored, never an error).
+
+    A pack is active only when ``.easy-verifier.toml`` lists it or the agent
+    picks it (``agent_input.packs``); nothing is ever guessed from the
+    repository's contents."""
+    requested = list(load_repo_packs(repo))
+    if document is not None:
+        requested.extend(_agent_packs(document.get("packs", []), []))
+    known = tuple(name for name in PACK_FLOORS if name in requested)
+    notes = tuple(
+        f"unknown pack {_quote(name)} ignored; known packs: {', '.join(PACK_FLOORS)}"
+        for name in dict.fromkeys(requested)
+        if name not in PACK_FLOORS
+    )
+    return known, notes
+
+
+def _agent_packs(value: object, errors: list[str]) -> tuple[str, ...]:
+    """``packs``: a list of pack names (strings); shape errors join ``errors``."""
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item for item in value
+    ):
+        errors.append("packs: must be a list of pack names, e.g. [\"healthcare\"]")
+        return ()
+    return tuple(value)
+
+
 def _repo_config(
     repo: str | Path,
-) -> tuple[dict[str, tuple[str, ...]], dict[str, tuple[str, ...]]]:
+) -> tuple[dict[str, tuple[str, ...]], dict[str, tuple[str, ...]], tuple[str, ...]]:
     root = Path(repo)
     path = root / CONFIG_FILENAME
     if not path.exists() and not path.is_symlink():
-        return {}, {}
+        return {}, {}, ()
 
     def fail(reason: str) -> RoleInputError:
         return RoleInputError(CONFIG_FILENAME, [reason])
@@ -339,11 +377,12 @@ def _repo_config(
 
     errors: list[str] = []
     for key in data:
-        if key not in ("roles", "conventions"):
+        if key not in ("roles", "conventions", "packs"):
             errors.append(
-                f"{redact(key)}: unknown key; only [roles] and [conventions] are "
-                "accepted, and they may only add paths to existing roles or "
-                "patterns to conventions (no floors, rules or removals)"
+                f"{redact(key)}: unknown key; only [roles], [conventions] and "
+                "packs are accepted, and they may only add paths to existing "
+                "roles, patterns to conventions or optional packs (no floors, "
+                "rules or removals)"
             )
     configured = data.get("roles", {})
     if not isinstance(configured, dict):
@@ -371,9 +410,10 @@ def _repo_config(
                     valid.append(glob)
             result[name] = tuple(valid)
     conventions = _config_conventions(data.get("conventions", {}), errors)
+    packs = _agent_packs(data.get("packs", []), errors)
     if errors:
         raise RoleInputError(CONFIG_FILENAME, errors)
-    return dict(sorted(result.items())), conventions
+    return dict(sorted(result.items())), conventions, packs
 
 
 def _config_conventions(
@@ -404,6 +444,7 @@ def _config_conventions(
 
 _AGENT_INPUT_KEYS = (
     "picks",
+    "packs",
     "gate_evaluations",
     "registry_entries",
     "reviews",
@@ -447,9 +488,9 @@ def validate_agent_input(
     for key in document:
         if key not in _AGENT_INPUT_KEYS:
             errors.append(
-                f"{redact(str(key))}: unknown key; only picks, gate_evaluations, "
-                "registry_entries, reviews, improvements, batches and summary "
-                "are accepted"
+                f"{redact(str(key))}: unknown key; only picks, packs, "
+                "gate_evaluations, registry_entries, reviews, improvements, "
+                "batches and summary are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
@@ -461,6 +502,7 @@ def validate_agent_input(
         )
     if not isinstance(document.get("summary", ""), str):
         errors.append("summary: must be a string")
+    _agent_packs(document.get("packs", []), errors)
     if "batches" in document:
         try:
             parse_batches(document["batches"])

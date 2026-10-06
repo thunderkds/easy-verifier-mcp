@@ -1,0 +1,146 @@
+# Healthcare pack — curated pattern entry (T047, DDR-0008 §4, FR-052/053).
+# Read by core/registry.py load_pack, never as a language. Active only when a
+# repository lists it in .easy-verifier.toml (packs = ["healthcare"]) or the
+# agent picks it; an inactive pack reads nothing.
+#
+# phi_values: "<kind>=<Python regular expression>"; the named group "value" is
+# the PHI-shaped value. It is checked against phi_placeholders and never shown:
+# excerpts and derivations replace it with "[PHI <kind> redacted]". Matching is
+# textual and deliberately conservative (labelled MRN / birth-date values only;
+# SSNs only in the dashed form), so a count is a lower bound and a place to
+# look, never proof of real patient data.
+
+# --- PHI-shaped values (area #9) ----------------------------------------------
+
+# SSN: 45 CFR §164.514(b)(2)(i)(G). Area 000, 666 and 900-999, group 00 and
+# serial 0000 are never issued (SSA randomization), so they never match.
+[[phi_values]]
+value = ['ssn=(?<![\w-])(?P<value>(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4})(?![\w-])']
+citation_url = "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514"
+source_tag = "curated"
+
+# Medical record number: §164.514(b)(2)(i)(H). No national format exists, so
+# only a value labelled MRN / medical record number counts.
+[[phi_values]]
+value = [
+    'mrn=(?i)(?<![a-z0-9])(?:mrn|medical_?record_?(?:number|num|no)?)(?![a-z0-9])["\x27]?\s*[:=]\s*["\x27]?(?P<value>(?=[a-z0-9-]{5,})[a-z0-9-]*\d[a-z0-9-]*)',
+]
+citation_url = "https://www.hhs.gov/hipaa/for-professionals/privacy/special-topics/de-identification/index.html"
+source_tag = "curated"
+
+# Birth date: §164.514(b)(2)(i)(C) (all elements of dates related to an
+# individual except year). Only a date labelled DOB / date of birth counts.
+[[phi_values]]
+value = [
+    'dob=(?i)(?<![a-z0-9])(?:dob|date_?of_?birth|birth_?date)(?![a-z0-9])["\x27]?\s*[:=]\s*["\x27]?(?P<value>\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})',
+]
+citation_url = "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514"
+source_tag = "curated"
+
+# --- documented placeholders (never counted) --------------------------------
+
+# SSNs the SSA documents as publicly misused sample numbers (the Woolworth
+# wallet card and an SSA pamphlet).
+[[phi_placeholders]]
+value = ['078-05-1120', '219-09-9999']
+citation_url = "https://www.ssa.gov/history/ssn/misused.html"
+source_tag = "curated"
+
+# Never-issued SSN parts (000 area, 00 group, 0000 serial; cited). The
+# obvious fakes are project-declared, not SSA data: one digit repeated
+# (111-11-1111, 0000000) and ascending runs (123-45-6789, 1234567).
+[[phi_placeholders]]
+value = [
+    '000-\d{2}-\d{4}|\d{3}-00-\d{4}|\d{3}-\d{2}-0000',
+    '123-45-6789',
+    '(\d)\1\1-\1\1-\1\1\1\1',
+    '(?i)(?:mrn-?)?(\d)\1*',
+    '(?i)(?:mrn-?)?0*1234(?:5(?:6(?:7(?:8(?:9(?:0)?)?)?)?)?)?',
+]
+citation_url = "https://www.ssa.gov/employer/randomization.html"
+source_tag = "curated"
+
+# Sentinel birth dates used as fakes. The Unix epoch is cited; 1900-01-01,
+# 2000-01-01 and 0000-00-00 are project-declared sentinels.
+[[phi_placeholders]]
+value = [
+    '(?:1900|1970|2000)-01-01|0000-00-00',
+    '0?1/0?1/(?:1900|1970|2000)',
+]
+citation_url = "https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_16"
+source_tag = "curated"
+
+# --- where test data lives ---------------------------------------------------
+
+[[test_data_paths]]
+value = ["**/tests/**", "**/test/**", "**/testing/**"]
+citation_url = "https://docs.pytest.org/en/stable/explanation/goodpractices.html"
+source_tag = "curated"
+
+[[test_data_paths]]
+value = ["**/__tests__/**", "**/__mocks__/**", "**/__fixtures__/**", "**/mocks/**"]
+citation_url = "https://jestjs.io/docs/manual-mocks"
+source_tag = "curated"
+
+[[test_data_paths]]
+value = ["**/testdata/**", "**/test-data/**", "**/test_data/**"]
+citation_url = "https://pkg.go.dev/cmd/go#hdr-Test_packages"
+source_tag = "curated"
+
+[[test_data_paths]]
+value = ["**/spec/**", "**/fixtures/**", "**/seeds/**", "**/seed/**", "**/factories/**"]
+citation_url = "https://guides.rubyonrails.org/testing.html"
+source_tag = "curated"
+
+# --- log statements in source code -------------------------------------------
+
+[[log_calls]]
+value = [
+    '(?<![\w.])(?:self\.)?(?:logging|logger|log|_log|_logger|LOGGER|LOG)\.(?:debug|info|warning|warn|error|exception|critical|fatal|log)\s*\(',
+    '(?<![\w.])print\s*\(',
+]
+citation_url = "https://docs.python.org/3/library/logging.html"
+source_tag = "curated"
+
+[[log_calls]]
+value = ['(?<![\w.])console\.(?:log|info|warn|error|debug|trace)\s*\(']
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/API/console"
+source_tag = "curated"
+
+# NestJS and other class-held loggers: this.logger.log(...), this.logger.error(...)
+[[log_calls]]
+value = ['(?<![\w.])this\.(?:_?logger|_?log)\.(?:log|error|warn|debug|verbose|fatal|info|trace)\s*\(']
+citation_url = "https://docs.nestjs.com/techniques/logger"
+source_tag = "curated"
+
+[[log_calls]]
+value = [
+    '(?<![\w.])(?:System\.(?:out|err)\.print(?:ln|f)?|(?:log|logger|LOG|LOGGER)\.(?:trace|debug|info|warn|error))\s*\(',
+]
+citation_url = "https://www.slf4j.org/manual.html"
+source_tag = "curated"
+
+[[log_calls]]
+value = ['(?<![\w.])(?:log|fmt|slog)\.(?:Print|Fatal|Panic|Info|Warn|Error|Debug)\w*\s*\(']
+citation_url = "https://pkg.go.dev/log"
+source_tag = "curated"
+
+[[log_calls]]
+value = ['(?<![\w.])(?:puts|Rails\.logger\.\w+|logger\.(?:debug|info|warn|error|fatal))[\s(]']
+citation_url = "https://guides.rubyonrails.org/debugging_rails_applications.html#the-logger"
+source_tag = "curated"
+
+[[log_calls]]
+value = ['(?<![\w.>$])(?:error_log|syslog)\s*\(|\$(?:this->)?logger->(?:debug|info|notice|warning|error|critical)\s*\(']
+citation_url = "https://www.php-fig.org/psr/psr-3/"
+source_tag = "curated"
+
+[[log_calls]]
+value = ['(?<![\w.])(?:_?logger|_log)\.Log(?:Trace|Debug|Information|Warning|Error|Critical)\s*\(|Console\.Write(?:Line)?\s*\(']
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging"
+source_tag = "curated"
+
+[[log_calls]]
+value = ['(?<![\w.])(?:log::)?(?:trace|debug|info|warn|error|println|eprintln)!\s*\(']
+citation_url = "https://docs.rs/log/latest/log/"
+source_tag = "curated"

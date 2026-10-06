@@ -9,6 +9,7 @@ from easy_verifier.core import judge
 from easy_verifier.core.judge import (
     AREAS,
     DOCUMENTATION_RULES,
+    PACK_FLOORS,
     RATING_RULES,
     Citation,
     DocumentationRule,
@@ -144,7 +145,17 @@ def test_areas_without_rule_are_the_not_yet_rows_of_the_area_doc():
         if row["status"] == "Not yet" and row["rules"] == "—"
     )
     assert not_yet
-    assert areas_without_rule() == not_yet
+    # Every optional pack active (T047): the whole rule table is counted.
+    assert areas_without_rule(tuple(PACK_FLOORS)) == not_yet
+    # No pack active (the default): a pack's areas are uncovered in that run.
+    pack_areas = {
+        rule.area
+        for name in PACK_FLOORS
+        for rule in (*RATING_RULES[name].values(), *DOCUMENTATION_RULES[name])
+    }
+    assert areas_without_rule() == tuple(
+        a for a in AREAS if a in not_yet or a in pack_areas
+    )
 
 
 def test_adding_a_documentation_rule_removes_its_area(monkeypatch):

@@ -25,6 +25,7 @@ from easy_verifier.core.metrics import (
     EVIDENCE_LOCAL,
     FAMILIES,
     METRIC_DEFINITIONS,
+    PACK_METRICS,
     WHOLE_SET,
     Metric,
     MetricAbstained,
@@ -45,6 +46,10 @@ from easy_verifier.core.models import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+_CORE_METRICS = len(METRIC_DEFINITIONS) - sum(map(len, PACK_METRICS.values()))
+"""Metrics every dimension computes; a pack's own (T047) stay in that pack."""
 
 
 def compute_metrics(pack):
@@ -118,7 +123,7 @@ def named(metric_set, name):
 def test_compute_metrics_returns_metrics_with_name_kind_and_citations():
     metrics = compute_metrics(make_pack())
 
-    assert len(metrics) == len(METRIC_DEFINITIONS)
+    assert len(metrics) == _CORE_METRICS
     for metric in metrics:
         assert isinstance(metric, Metric)
         assert metric.name
@@ -602,7 +607,7 @@ def test_an_empty_but_untruncated_pack_abstains_and_never_raises():
         coverage_score=None,
     )
     metrics = compute_metrics(pack)
-    assert len(metrics) == len(METRIC_DEFINITIONS)
+    assert len(metrics) == _CORE_METRICS
     for metric in metrics:
         assert metric.abstained, metric.name
         assert metric.abstention.omitted_lower_bound is None, (
@@ -676,7 +681,7 @@ def test_a_combined_pack_yields_each_metric_once_per_surviving_dimension():
     )
     metrics = compute_metrics(combined)
 
-    assert len(metrics) == 2 * len(METRIC_DEFINITIONS)
+    assert len(metrics) == 2 * _CORE_METRICS
     # Truncation is per-pack: only the security slot's whole_set metrics abstain.
     per_dimension = {
         (m.dimension, m.abstained) for m in metrics if m.name == "test_to_source_ratio"

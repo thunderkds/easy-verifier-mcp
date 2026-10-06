@@ -30,6 +30,7 @@ from .judge import (
     DOCUMENTATION_RULES,
     EVIDENCE_LACK_REASONS,
     MEASURED_WEIGHT_FLOOR,
+    PACK_FLOORS,
     GatedRating,
     OverallRating,
     Rating,
@@ -52,6 +53,7 @@ from .registry import sot_root
 from .roles import (
     GENERIC_PATTERNS,
     _registry,
+    active_packs,
     documentation_present,
     load_repo_config,
     parse_agent_input,
@@ -140,8 +142,9 @@ class ScoreResult:
 
     @property
     def areas_without_rule(self) -> tuple[str, ...]:
-        """FR-073: the evaluation areas no declared rule covers yet."""
-        return areas_without_rule()
+        """FR-073: the evaluation areas no declared rule covers yet; an
+        optional pack's rules count only when it ran (T047)."""
+        return areas_without_rule([item.dimension for item in self.ratings])
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -221,8 +224,11 @@ def score_repository(
     evaluations = document.get("gate_evaluations") if document is not None else None
     # Before the answers change the layer: which of them will be ignored.
     ignored_reviews = review_notes(document)
+    # T047: optional packs run only when configured or picked, after the
+    # dimensions; an unknown name is a note, never an error.
+    pack_names, pack_notes = active_packs(repo_path, document)
     packs = combined_pack(
-        dimension_names(),
+        (*dimension_names(), *pack_names),
         repo_path=repo_path,
         scope=scope,
         budget_bytes=budget_bytes,
@@ -230,6 +236,7 @@ def score_repository(
         task_id=task_id,
         agent_input=document,
         batches=batches,
+        packs=pack_names,
     )
     by_dimension: Mapping[str, Sequence[Finding]] | None = None
     if findings is not None:
@@ -240,7 +247,9 @@ def score_repository(
     result = dataclasses.replace(
         result,
         stack=stack,
-        registry_notes=registry_notes(document, repo_path) + ignored_reviews,
+        registry_notes=registry_notes(document, repo_path)
+        + ignored_reviews
+        + pack_notes,
     )
 
     # One round each: a caller that already supplied agent input gets no
@@ -268,6 +277,17 @@ def score_repository(
     return dataclasses.replace(result, needs_input=needs_input, gate_requests=requests)
 
 
+def report_dimensions(
+    repo_path: str | Path, agent_input: object | None = None
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """``(dimensions to gather, active packs)`` for ``write_report`` (T047):
+    every dimension, then the packs ``.easy-verifier.toml`` or
+    ``agent_input.packs`` enable, so the report scores what ``score`` does."""
+    document = parse_agent_input(agent_input) if agent_input is not None else None
+    names, _notes = active_packs(repo_path, document)
+    return (*dimension_names(), *names), names
+
+
 def score_packs(
     packs: CombinedPack,
     findings_by_dimension: Mapping[str, Sequence[Finding]] | None = None,
@@ -287,8 +307,13 @@ def score_packs(
     each one's registry entry is merged into its language before the metric
     tables are compiled, so framework fields reach the rules.
     """
-    expected = dimension_names()
     actual = tuple(slot.dimension for slot in packs.slots)
+    # Every dimension in canonical order, then any active optional packs
+    # (T047) in declared order.
+    expected = (
+        *dimension_names(),
+        *(name for name in PACK_FLOORS if name in actual),
+    )
     if actual != expected:
         raise ValueError(
             "score requires all declared dimensions in canonical order; got "
@@ -325,8 +350,18 @@ def score_packs(
     assessments = None
     comparisons = None
     if findings_by_dimension is not None:
-        assessments = assess(findings_by_dimension)
-        comparisons = compare(rules_ratings, assessments)
+        # Assessments cover the dimensions only; packs are rules-only (T047).
+        assessments = assess(
+            {
+                name: items
+                for name, items in findings_by_dimension.items()
+                if name not in PACK_FLOORS
+            }
+        )
+        comparisons = compare(
+            tuple(r for r in rules_ratings if r.dimension not in PACK_FLOORS),
+            assessments,
+        )
     provenance = tuple(
         (
             slot.dimension,
@@ -473,4 +508,4 @@ def _coverage_for(packs: CombinedPack, dimension: str) -> CoverageSummary:
     )
 
 
-__all__ = ["ScoreResult", "score_packs", "score_repository"]
+__all__ = ["ScoreResult", "report_dimensions", "score_packs", "score_repository"]

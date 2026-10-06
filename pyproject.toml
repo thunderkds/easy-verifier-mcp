@@ -29,7 +29,11 @@ where = ["src"]
 # The curated reference registry (T030, DDR-0007) and its vendored source
 # snapshots (T032, DDR-0007 item 9) ship inside the package.
 [tool.setuptools.package-data]
-easy_verifier = ["registry/curated/*.toml", "registry/vendored/*"]
+easy_verifier = [
+    "registry/curated/*.toml",
+    "registry/packs/*.toml",
+    "registry/vendored/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

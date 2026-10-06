@@ -312,6 +312,7 @@ def eight_dimensions(monkeypatch):
     }
     monkeypatch.setattr(judge, "COVERAGE_FLOORS", floors)
     monkeypatch.setattr(judge, "RATING_RULES", rules)
+    monkeypatch.setattr(judge, "PACK_FLOORS", {})
     monkeypatch.setattr(judge, "DOCUMENTATION_RULES", {})
     return citation
 

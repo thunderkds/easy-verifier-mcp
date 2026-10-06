@@ -39,6 +39,13 @@ DIMENSIONS: dict[str, DimensionDescriptor] = {
 }
 
 
+# Optional packs (T047, DDR-0008 §4): not dimensions. Discovery, the CLI
+# subcommands and ``dimension_names`` never list them; a pack runs only when
+# ``roles.active_packs`` names it. Imported here, after DIMENSIONS, because a
+# pack reuses this package's helpers.
+from ..packs import PACKS  # noqa: E402, F401 - re-exported
+
+
 @dataclass(frozen=True)
 class DimensionDiscovery:
     """Caller-facing static metadata for one available dimension."""
