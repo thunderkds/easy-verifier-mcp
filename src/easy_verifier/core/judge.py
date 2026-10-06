@@ -55,6 +55,8 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
 # exactly as before. Floor 0.25 inclusive, user-approved 2026-10-06.
 PACK_FLOORS: dict[str, CoverageFloor] = {
     "healthcare": CoverageFloor(0.25, "inclusive"),
+    # T048: one of two pseudo-roles (a money field, a ledger) reaches it.
+    "finance": CoverageFloor(0.25, "inclusive"),
 }
 
 
@@ -274,6 +276,31 @@ _CWE_1050 = Citation(
 _ISO_22301 = Citation(
     "ISO 22301:2019 (business continuity management systems)",
     "https://www.iso.org/standard/75106.html",
+)
+# Finance pack (T048): #3.
+_CWE_1339 = Citation(
+    "CWE-1339 Insufficient Precision or Accuracy of a Real Number",
+    "https://cwe.mitre.org/data/definitions/1339.html",
+)
+_PG_NUMERIC = Citation(
+    "PostgreSQL documentation, Numeric Types (numeric is recommended for "
+    "monetary amounts; float types are inexact)",
+    "https://www.postgresql.org/docs/current/datatype-numeric.html",
+)
+_NIST_800_53_AU3 = Citation(
+    "NIST SP 800-53 Rev. 5 AU-3 Content of Audit Records (when the event "
+    "occurred and the identity associated with it)",
+    "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+)
+_SEC_17A4 = Citation(
+    "SEC Rule 17a-4(f)(2)(i) (records kept with a time-stamped audit trail of "
+    "every modification and deletion, or non-rewriteable and non-erasable)",
+    "https://www.ecfr.gov/current/title-17/chapter-II/part-240/section-240.17a-4",
+)
+_FOWLER_REVERSAL = Citation(
+    "Fowler, Reversal Adjustment (an accounting entry is corrected by a "
+    "reversing entry, not edited)",
+    "https://martinfowler.com/eaaDev/ReversalAdjustment.html",
 )
 # Healthcare pack (T047): #9 and #28.
 _HIPAA_514 = Citation(
@@ -534,6 +561,28 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "phi_values_in_log_statements_observed", 50, 0, "at_most",
             (_HIPAA_514,), _HIPAA_514,
             area=AREAS[8],
+        ),
+    ),
+    # T048 finance pack (PACK_FLOORS): #3 financial integrity and historical
+    # reconstruction. Any float money field or unaudited / mutated ledger row
+    # is a place to look, hence at most 0. The ledger rules abstain when no
+    # ledger is declared. Weights 50/25/25 user-approved 2026-10-06 (T048
+    # review).
+    "finance": _rules(
+        RatingRule(
+            "float_money_observed", 50, 0, "at_most",
+            (_CWE_1339, _ISO_5055, _PG_NUMERIC), PROJECT_DEFAULT,
+            area=AREAS[2],
+        ),
+        RatingRule(
+            "ledger_tables_without_audit_columns_observed", 25, 0, "at_most",
+            (_NIST_800_53_AU3, _SEC_17A4), PROJECT_DEFAULT,
+            area=AREAS[2],
+        ),
+        RatingRule(
+            "ledger_rows_mutated_observed", 25, 0, "at_most",
+            (_SEC_17A4, _FOWLER_REVERSAL), PROJECT_DEFAULT,
+            area=AREAS[2],
         ),
     ),
 }

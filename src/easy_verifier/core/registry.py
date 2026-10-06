@@ -1282,6 +1282,23 @@ def load_conventions(
 
 PACK_FIELDS: dict[str, tuple[str, ...]] = {
     "healthcare": ("phi_values", "phi_placeholders", "test_data_paths", "log_calls"),
+    "finance": (
+        "money_names",
+        "money_excluded_words",
+        "money_declarations",
+        "float_types",
+        "persistence_float_types",
+        "persistence_paths",
+        "schema_paths",
+        "ledger_names",
+        "non_ledger_heads",
+        "name_suffixes",
+        "ledger_declarations",
+        "entity_classes",
+        "entity_markers",
+        "audit_columns",
+        "ledger_mutations",
+    ),
 }
 """Optional packs (T047, DDR-0008 §4): ``registry/packs/<pack>.toml`` holds a
 pack's cited patterns, read by :func:`load_pack` and never as a language.
@@ -1295,9 +1312,29 @@ The healthcare fields (areas #9, #28):
   documented placeholder, not counted;
 * ``test_data_paths`` — globs of test data (fixtures, seeds, test files);
 * ``log_calls`` — regular expressions of a log statement in source code.
+
+The finance fields (area #3) are described in ``registry/packs/finance.toml``:
+word lists (``money_names``, ``money_excluded_words``, ``ledger_names``,
+``non_ledger_heads``, ``name_suffixes``), globs (``schema_paths``,
+``persistence_paths``) and
+regular expressions (the rest).
 """
 
-_REGEX_FIELDS = frozenset({"phi_values", "phi_placeholders", "log_calls"})
+_REGEX_FIELDS = frozenset(
+    {
+        "phi_values",
+        "phi_placeholders",
+        "log_calls",
+        "money_declarations",
+        "float_types",
+        "persistence_float_types",
+        "ledger_declarations",
+        "entity_classes",
+        "entity_markers",
+        "audit_columns",
+        "ledger_mutations",
+    }
+)
 """Pack fields whose values are Python regular expressions (compiled on load),
 not globs or tokens."""
 

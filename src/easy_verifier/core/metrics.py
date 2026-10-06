@@ -2699,6 +2699,11 @@ PACK_METRICS: dict[str, tuple[str, ...]] = {
         "phi_values_in_test_data_observed",
         "phi_values_in_log_statements_observed",
     ),
+    "finance": (
+        "float_money_observed",
+        "ledger_tables_without_audit_columns_observed",
+        "ledger_rows_mutated_observed",
+    ),
 }
 """Metrics of an optional pack (T047). A pack's evidence computes only these, and
 no other dimension computes them, so a repository that does not enable the

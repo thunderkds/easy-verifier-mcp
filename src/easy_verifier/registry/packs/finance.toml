@@ -1,0 +1,273 @@
+# Finance pack — curated pattern entry (T048, DDR-0008 §4, FR-053).
+# Read by core/registry.py load_pack, never as a language. Active only when a
+# repository lists it in .easy-verifier.toml (packs = ["finance"]) or the agent
+# picks it; an inactive pack reads nothing.
+#
+# Area #3 (financial integrity & historical reconstruction). Matching is
+# textual and deliberately conservative: a count is a lower bound and a place
+# to look, never proof of a defect. Whether a ledger is *correct* is judgment;
+# the pack only quotes ledger code for the calling agent.
+#
+# Identifier names are split into lower-case words (snake_case, camelCase,
+# PascalCase): "costPerUnit" -> cost, per, unit.
+
+# --- money-named fields (float_money_observed) ---------------------------------
+
+# A name is money-named when one of its words is here ...
+[[money_names]]
+value = [
+    "amount", "amounts", "price", "prices", "balance", "balances", "fee", "fees",
+    "cost", "costs", "subtotal", "salary", "salaries", "revenue", "refund",
+    "refunds", "payout", "payouts",
+]
+citation_url = "https://cwe.mitre.org/data/definitions/1339.html"
+source_tag = "curated"
+
+# ... and none of its words is here: counts, quantities, ratios and integer
+# minor units (amount_cents, price_micros) are not a money value held in a
+# float. Bare "total" is not a money name: it is as often a row count
+# (pagination "total") as a sum; "totalPrice" still counts through "price".
+[[money_excluded_words]]
+value = [
+    "count", "counts", "qty", "quantity", "quantities", "item", "items", "page",
+    "pages", "number", "num", "cents", "cent", "pence", "micros", "minor",
+    "satoshi", "satoshis", "percent", "percentage", "pct", "bps", "rate", "rates",
+    "ratio", "factor", "weight", "id", "ids", "index", "idx", "type", "kind",
+    "currency", "code", "format", "precision", "scale", "digits", "decimals",
+]
+citation_url = "https://docs.python.org/3/library/decimal.html"
+source_tag = "curated"
+
+# Declarations of a named field or variable with its type, as Python regular
+# expressions with named groups "name" and "type". A money-named declaration
+# of any type is a money field; one whose type matches float_types counts.
+# Annotations: TypeScript, Python, Rust, Kotlin, Swift ("price: number",
+# "amount: Optional[float]", "price: f64"). A value such as z.number() is
+# a call, not a type: the type may not be followed by "(".
+[[money_declarations]]
+value = [
+    '(?<![\w.])(?P<name>[A-Za-z_]\w*)\s*[?!]?\s*:\s*(?P<type>[A-Za-z_][\w.]*(?:\[[\w., |]*\])?(?:\s*\|\s*[A-Za-z_][\w.]*)*)(?![\w.(\[])',
+]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number"
+source_tag = "curated"
+
+# Type-first declarations: Java, C#, Kotlin/Java boxed types ("double price;",
+# "public decimal Price { get; set; }", "BigDecimal amount =").
+[[money_declarations]]
+value = [
+    '(?<![\w.])(?P<type>double|float|Double|Float|BigDecimal|decimal|long|Long|int|Integer|Money|MonetaryAmount)\s+(?P<name>[A-Za-z_]\w*)\s*(?:[;=,){]|$)',
+]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigDecimal.html"
+source_tag = "curated"
+
+# Name-then-type columns and fields: SQL ("price" numeric(10,2), amount FLOAT,
+# also inside migration strings), Prisma (costPerUnit Float, price Decimal) and
+# Go struct fields (Price float64).
+[[money_declarations]]
+value = [
+    '(?<![\w.])["`\[]?(?P<name>[A-Za-z_]\w*)["`\]]?\s+(?P<type>(?i:double\s+precision|float(?:4|8|32|64)?|real|numeric|decimal|money|integer|int[248]?|bigint|smallint)|\*?decimal\.Decimal)(?![\w])',
+]
+citation_url = "https://www.postgresql.org/docs/current/datatype-numeric.html"
+source_tag = "curated"
+
+# ORM field constructors: Django (price = models.FloatField()), SQLAlchemy
+# (amount = Column(Float), price: Mapped[...] = mapped_column(Numeric(10, 2))).
+[[money_declarations]]
+value = [
+    '(?<![\w.])(?P<name>[A-Za-z_]\w*)\s*=\s*(?:models\.)?(?P<type>\w+Field)\(',
+    '(?<![\w.])(?P<name>[A-Za-z_]\w*)\s*(?::\s*Mapped\[[^\]]*\])?\s*=\s*(?:sa\.|db\.)?(?:Column|mapped_column)\(\s*(?:sa\.|db\.)?(?P<type>[A-Za-z_]\w*)',
+]
+citation_url = "https://docs.djangoproject.com/en/stable/ref/models/fields/"
+source_tag = "curated"
+
+# Mongoose schema paths: amount: { type: Number } (amount: Number is an
+# annotation above).
+[[money_declarations]]
+value = ['(?<![\w.])(?P<name>[A-Za-z_]\w*)\s*:\s*\{\s*type\s*:\s*(?P<type>[A-Za-z_][\w.]*)']
+citation_url = "https://mongoosejs.com/docs/schematypes.html"
+source_tag = "curated"
+
+# Binary floating-point types, searched in a declaration's type, in any file.
+# Mongoose Number is an IEEE 754 double (Decimal128 is exact).
+[[float_types]]
+value = ['(?<![\w.])Number(?![\w(])']
+citation_url = "https://mongoosejs.com/docs/schematypes.html"
+source_tag = "curated"
+
+# Python float (Django FloatField, SQLAlchemy Float); decimal.Decimal is exact.
+[[float_types]]
+value = ['(?<![\w])(?:float|Float|FloatField|FLOAT)(?![\w])']
+citation_url = "https://docs.python.org/3/library/decimal.html"
+source_tag = "curated"
+
+# Java / Kotlin / C# double and float; BigDecimal / decimal are exact.
+[[float_types]]
+value = ['(?<![\w])(?:double|Double|DOUBLE)(?![\w])']
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/floating-point-numeric-types"
+source_tag = "curated"
+
+# SQL float, real and double precision; numeric / decimal are exact.
+[[float_types]]
+value = ['(?i)(?<![\w])(?:double\s+precision|float[48]|real)(?![\w])']
+citation_url = "https://www.postgresql.org/docs/current/datatype-numeric.html"
+source_tag = "curated"
+
+# Go float32 / float64.
+[[float_types]]
+value = ['(?<![\w])float(?:32|64)(?![\w])']
+citation_url = "https://go.dev/ref/spec#Numeric_types"
+source_tag = "curated"
+
+# Rust f32 / f64.
+[[float_types]]
+value = ['(?<![\w])f(?:32|64)(?![\w])']
+citation_url = "https://doc.rust-lang.org/std/primitive.f64.html"
+source_tag = "curated"
+
+# JavaScript / TypeScript number is an IEEE 754 double, but a DTO, request /
+# response type or view model often carries an amount the database holds
+# exactly. So number counts only in a persistence_paths file (user decision
+# 2026-10-06, T048 review).
+[[persistence_float_types]]
+value = ['(?<![\w.])number(?![\w(])']
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number"
+source_tag = "curated"
+
+# The persistence layer: entity, model, schema and migration files. The
+# entity / model globs are the curated data layer of conventions.toml
+# layer_paths without its repositories (data-access code, not declarations).
+[[persistence_paths]]
+value = ["**/entities/**", "**/*.entity.*", "**/entity/**"]
+citation_url = "https://typeorm.io/docs/entity/entities/"
+source_tag = "curated"
+
+[[persistence_paths]]
+value = ["**/models/**", "**/models.py", "**/*.model.*"]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-basics/"
+source_tag = "curated"
+
+[[persistence_paths]]
+value = ["**/schemas/**", "**/schema/**", "**/*.prisma"]
+citation_url = "https://mongoosejs.com/docs/guide.html"
+source_tag = "curated"
+
+[[persistence_paths]]
+value = ["**/migrations/**", "**/migration/**", "**/*.sql"]
+citation_url = "https://typeorm.io/docs/advanced-topics/migrations/"
+source_tag = "curated"
+
+# Schema files read besides source files of a registry language.
+[[schema_paths]]
+value = ["**/*.prisma"]
+citation_url = "https://www.prisma.io/docs/orm/reference/prisma-schema-reference"
+source_tag = "curated"
+
+[[schema_paths]]
+value = ["**/*.sql"]
+citation_url = "https://www.postgresql.org/docs/current/sql-createtable.html"
+source_tag = "curated"
+
+# --- ledgers (ledger_tables_without_audit_columns_observed,
+#     ledger_rows_mutated_observed) ----------------------------------------------
+
+# A table or model is a ledger when one of its words (plural "s"/"ies"
+# folded) is here, unless its last word is in non_ledger_heads
+# (PaymentMethod and TransactionStatus are not ledgers).
+[[ledger_names]]
+value = ["ledger", "journal", "transaction", "payment", "transfer", "posting"]
+citation_url = "https://martinfowler.com/eaaDev/AccountingEntry.html"
+source_tag = "curated"
+
+[[non_ledger_heads]]
+value = [
+    "method", "methods", "type", "types", "status", "statuses", "state", "kind",
+    "provider", "gateway", "config", "configuration", "setting", "settings",
+    "option", "options", "category", "categories", "template", "id",
+]
+citation_url = "https://martinfowler.com/eaaDev/AccountingEntry.html"
+source_tag = "curated"
+
+# Words dropped from the end of a name before ledger matching, so a
+# repository or schema variable names its entity (paymentRepository -> payment).
+[[name_suffixes]]
+value = ["repository", "repo", "dao", "model", "entity", "table", "collection", "schema"]
+citation_url = "https://martinfowler.com/eaaCatalog/repository.html"
+source_tag = "curated"
+
+# Table and model declarations, named group "name": SQL CREATE TABLE (also in
+# migration strings), Prisma model, Rails create_table, SQLAlchemy / Django /
+# SQLModel classes, Mongoose schemas.
+[[ledger_declarations]]
+value = [
+    '(?i)\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?(?:[\w"`\[\]]+\.)?["`\[]?(?P<name>\w+)',
+    '^\s*model\s+(?P<name>\w+)\s*\{',
+]
+citation_url = "https://www.postgresql.org/docs/current/sql-createtable.html"
+source_tag = "curated"
+
+[[ledger_declarations]]
+value = ['\bcreate_table\s*\(?\s*[:"\x27](?P<name>\w+)']
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html"
+source_tag = "curated"
+
+[[ledger_declarations]]
+value = [
+    '^\s*class\s+(?P<name>\w+)\s*\([^)]*\b(?:Base|Model|models\.Model|db\.Model|SQLModel|DeclarativeBase)\b',
+]
+citation_url = "https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html"
+source_tag = "curated"
+
+[[ledger_declarations]]
+value = ['(?P<name>\w+?)_?[Ss]chema\s*=\s*new\s+(?:mongoose\.)?Schema\s*\(']
+citation_url = "https://mongoosejs.com/docs/guide.html"
+source_tag = "curated"
+
+# A class is a table only when an entity annotation precedes it (within the
+# five lines above): TypeORM / MikroORM @Entity, JPA @Entity / @Table.
+[[entity_classes]]
+value = ['\bclass\s+(?P<name>[A-Za-z_]\w*)']
+citation_url = "https://typeorm.io/docs/entity/entities/"
+source_tag = "curated"
+
+[[entity_markers]]
+value = ['@Entity\b', '@Table\b']
+citation_url = "https://jakarta.ee/specifications/persistence/3.1/apidocs/jakarta.persistence/jakarta/persistence/entity"
+source_tag = "curated"
+
+# Audit columns (when and by whom a row was recorded), searched in a ledger
+# declaration's body. A declaration that inherits from an audit / timestamp /
+# base class may hold them out of sight, so it is never counted as missing them.
+[[audit_columns]]
+value = [
+    '(?i)\b(?:created|inserted|recorded|posted)_?(?:at|on|by|date|time)\b',
+    '(?i)\btimestamps\b|@CreateDateColumn|@CreatedDate|@CreationTimestamp|auto_now_add',
+    '\b(?:extends|inherits)\s+\w*(?:Base|Audit|Timestamp|Tracked)\w*',
+    '^\s*class\s+\w+\s*\([^)]*(?:Audit|Timestamp|Tracked)\w*',
+]
+citation_url = "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final"
+source_tag = "curated"
+
+# Statements and ORM calls that change or remove existing rows, named group
+# "name" = the target. A site counts only when its target is a ledger
+# declared in the same repository.
+[[ledger_mutations]]
+value = [
+    '(?i)\bupdate\s+["`\[]?(?:\w+\.)?(?P<name>\w+)["`\]]?\s+set\b',
+    '(?i)\bdelete\s+from\s+["`\[]?(?:\w+\.)?(?P<name>\w+)',
+]
+citation_url = "https://www.ecfr.gov/current/title-17/chapter-II/part-240/section-240.17a-4"
+source_tag = "curated"
+
+[[ledger_mutations]]
+value = [
+    '(?<![\w])(?P<name>[A-Za-z_]\w*)\s*\.\s*(?:update|updateMany|updateOne|nativeUpdate|findOneAndUpdate|findByIdAndUpdate)\s*\(',
+    '(?<![\w])(?P<name>[A-Za-z_]\w*)\s*\.\s*(?:delete|deleteMany|deleteOne|remove|destroy|nativeDelete|findOneAndDelete|findByIdAndDelete)\s*\(',
+    '\.(?:update|delete|nativeUpdate|nativeDelete|remove)\(\s*(?P<name>[A-Z]\w*)\s*,',
+]
+citation_url = "https://martinfowler.com/eaaDev/ReversalAdjustment.html"
+source_tag = "curated"
+
+[[ledger_mutations]]
+value = ['\b(?P<name>[A-Z]\w*)\.objects\b[^\n#]*\.(?:update|delete)\(']
+citation_url = "https://docs.djangoproject.com/en/stable/topics/db/queries/"
+source_tag = "curated"

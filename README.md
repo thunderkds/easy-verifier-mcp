@@ -187,6 +187,9 @@ every rule shipped in the package), and the HTML report shows them as links.
 | `reliability` | `queries_in_loops_observed` | ≤ 0 | 20 | [CWE-1050 Excessive Platform Resource Consumption within a Loop (an ISO/IEC 5055 performance efficiency weakness)](https://cwe.mitre.org/data/definitions/1050.html); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
 | `healthcare` | `phi_values_in_test_data_observed` | ≤ 0 | 50 | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) |
 | `healthcare` | `phi_values_in_log_statements_observed` | ≤ 0 | 50 | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) |
+| `finance` | `float_money_observed` | ≤ 0 | 50 | [CWE-1339 Insufficient Precision or Accuracy of a Real Number](https://cwe.mitre.org/data/definitions/1339.html); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html); [PostgreSQL documentation, Numeric Types (numeric is recommended for monetary amounts; float types are inexact)](https://www.postgresql.org/docs/current/datatype-numeric.html) | project-default |
+| `finance` | `ledger_tables_without_audit_columns_observed` | ≤ 0 | 25 | [NIST SP 800-53 Rev. 5 AU-3 Content of Audit Records (when the event occurred and the identity associated with it)](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final); [SEC Rule 17a-4(f)(2)(i) (records kept with a time-stamped audit trail of every modification and deletion, or non-rewriteable and non-erasable)](https://www.ecfr.gov/current/title-17/chapter-II/part-240/section-240.17a-4) | project-default |
+| `finance` | `ledger_rows_mutated_observed` | ≤ 0 | 25 | [SEC Rule 17a-4(f)(2)(i) (records kept with a time-stamped audit trail of every modification and deletion, or non-rewriteable and non-erasable)](https://www.ecfr.gov/current/title-17/chapter-II/part-240/section-240.17a-4); [Fowler, Reversal Adjustment (an accounting entry is corrected by a reversing entry, not edited)](https://martinfowler.com/eaaDev/ReversalAdjustment.html) | project-default |
 <!-- rating-rules:end -->
 
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
@@ -225,7 +228,13 @@ role with its glob patterns. Roles are filled in this order:
 
    The healthcare pack rates PHI-shaped values in test data and log statements (area 9, values
    never shown) and checks retention, BAA, data classification and residency documents (areas 9
-   and 28). An unknown pack name is a warning and is ignored. Without `packs`, output is unchanged.
+   and 28). The finance pack (`packs = ["finance"]`, T048) rates area 3: money-named fields
+   declared as binary floating point (`amount: float`, `costPerUnit Float`, and TS/JS
+   `price: number` only in entity, model, schema and migration files), and,
+   only where a ledger, transaction or payment table or model is declared, ledger tables with no
+   audit column and updates or deletes of ledger rows; with no ledger those two rules abstain.
+   Whether a ledger is correct is judgment: its code is quoted for the agent, never rated. An
+   unknown pack name is a warning and is ignored. Without `packs`, output is unchanged.
 
    Any other key, an unknown role, a wrong type, an empty list, or an attempt to set a floor is a
    validation error that names the key (exit 2). Without the file, output is unchanged.

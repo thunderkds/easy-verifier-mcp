@@ -521,6 +521,12 @@ _METRIC_TEXT: dict[str, str] = {
     # healthcare pack (T047)
     "phi_values_in_test_data_observed": "PHI-shaped values in test data",
     "phi_values_in_log_statements_observed": "PHI-shaped values in log statements",
+    # finance pack (T048)
+    "float_money_observed": "money fields held in binary floating point",
+    "ledger_tables_without_audit_columns_observed": (
+        "ledger tables with no audit column"
+    ),
+    "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
 }
 """One plain description per declared rule metric, for the summary (FR-063).
 Presentation only."""
@@ -557,6 +563,8 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "database access calls in source files": None,
     "test data files (the pack's test_data_paths)": "test data files",
     "log statements in source files (the pack's log_calls)": None,
+    "money-named field declarations (the pack's money_declarations)": None,
+    "ledger, transaction or payment tables (the pack's ledger_declarations)": None,
 }
 """Plain name per declared sought source (every dimension's
 ``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks
