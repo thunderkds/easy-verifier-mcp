@@ -1,4 +1,4 @@
-# TASK_REVIEW — T048: [Short Title]
+# TASK_REVIEW — T048: Finance pack (#3 financial integrity & historical reconstruction)
 
 > Sibling of `tasks/TASK_GUIDE_T048.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,23 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer before any T048 implementation commit, worktree HEAD = develop 1e7b3a5; demo repo = scratch git repo with `.easy-verifier.toml` `packs = ["finance"]` and `src/payments.py` declaring `amount: float`):
+
+```text
+$ date -u; git -C easy-verifier-mcp-T048 rev-parse --short HEAD
+2026-10-06T08:43:49Z
+1e7b3a5
+$ python -m easy_verifier.adapters.cli score --repo demo < /dev/null   # demo: .easy-verifier.toml packs = ["finance"], src/payments.py 'amount: float'
+exit=0
+stderr:
+warning [registry]: unknown pack 'finance' ignored; known packs: healthcare
+ratings dimensions: ['architecture', 'blast-radius', 'code-quality', 'reliability', 'requirement-fidelity', 'security', 'solution-fit', 'test-strategy']
+area #3 in areas_without_rule: True
+finance in payload: False | float_money in payload: False
+overall: 67 lared floor of this dimension's rule weight was measured, so no number is given)
+```
+
+The finance pack is unknown (noted and ignored), no finance slot/metric exists, and area #3 "Financial integrity & historical reconstruction" is listed in `areas_without_rule`.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
