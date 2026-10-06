@@ -229,7 +229,8 @@ role with its glob patterns. Roles are filled in this order:
    The healthcare pack rates PHI-shaped values in test data and log statements (area 9, values
    never shown) and checks retention, BAA, data classification and residency documents (areas 9
    and 28). The finance pack (`packs = ["finance"]`, T048) rates area 3: money-named fields
-   declared as binary floating point (`price: number`, `amount: float`, `costPerUnit Float`), and,
+   declared as binary floating point (`amount: float`, `costPerUnit Float`, and TS/JS
+   `price: number` only in entity, model, schema and migration files), and,
    only where a ledger, transaction or payment table or model is declared, ledger tables with no
    audit column and updates or deletes of ledger rows; with no ledger those two rules abstain.
    Whether a ledger is correct is judgment: its code is quoted for the agent, never rated. An

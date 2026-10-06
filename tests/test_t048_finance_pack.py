@@ -99,7 +99,7 @@ def test_finance_rules_are_cited_labelled_and_pending() -> None:
     assert PACK_FLOORS["finance"].value == 0.25
     assert "finance" in PACKS
     source = Path("src/easy_verifier/core/judge.py").read_text(encoding="utf-8")
-    assert "PENDING user" in source  # weights are a proposal
+    assert "user-approved 2026-10-06" in source and "PENDING" not in source
 
 
 def test_pack_patterns_live_in_the_registry_with_citations() -> None:
@@ -193,8 +193,12 @@ def test_decimal_amount_is_met(tmp_path) -> None:
         # None: no money-named field at all, so nothing to judge (abstains);
         # a counted non-money name would give 1.
         # TypeScript / JavaScript number is a double
-        ("src/a.ts", "export class Dto {\n  price!: number;\n}\n", 1),
-        ("src/a.ts", "export interface I {\n  price?: number | null;\n}\n", 1),
+        # ... but only in the persistence layer (persistence_paths, user
+        # decision 2026-10-06); DTOs and other TS types are skipped
+        ("src/pay.entity.ts", "export class Pay {\n  price!: number;\n}\n", 1),
+        ("src/models/pay.ts", "export interface I {\n  price?: number | null;\n}\n", 1),
+        ("src/a.dto.ts", "export class Dto {\n  price!: number;\n}\n", 0),
+        ("src/a.ts", "export interface I {\n  price?: number | null;\n}\n", 0),
         ("src/a.ts", "export class Dto {\n  price!: string;\n}\n", 0),
         ("src/a.ts", "const s = z.object({\n  price: z.number(),\n});\n", None),
         ("src/a.ts", "export class C {\n  amountCents!: number;\n}\n", None),
@@ -265,6 +269,33 @@ def test_no_money_field_abstains_and_below_floor(tmp_path) -> None:
     assert _metric(result, FLOAT)["outcome"]["abstained"] is True
     assert "nothing to judge" in _metric(result, FLOAT)["outcome"]["reason"]
     assert _rating(result)["kind"] == "rating_abstention"
+
+
+def test_ts_number_counts_only_in_the_persistence_layer(tmp_path) -> None:
+    files = {
+        "src/payments/dto/create-payment.dto.ts": (
+            "export class CreatePaymentDto {\n  price!: number;\n}\n"
+        ),
+        "src/payments/entities/payment.entity.ts": (
+            "@Entity()\nexport class Payment {\n  @Column('float')\n"
+            "  price!: number;\n  @Column('decimal')\n  fee!: string;\n}\n"
+        ),
+        "src/migrations/001.sql": "CREATE TABLE fees (\n  fee REAL\n);\n",
+    }
+    metric = _metric(_score(_repo(tmp_path, files)), FLOAT)
+    assert metric["outcome"] == {"abstained": False, "value": 2}
+    derivation = metric["derivation"]
+    assert "payment.entity.ts:4 (price: number)" in derivation
+    assert "src/migrations/001.sql:2 (fee: REAL)" in derivation
+    assert "create-payment.dto.ts" not in derivation.split(";")[0]
+
+
+def test_persistence_paths_live_in_the_registry() -> None:
+    entry = load_pack("finance")
+    globs = [v for item in entry.fields["persistence_paths"] for v in item.value]
+    assert "**/*.entity.*" in globs and "**/migrations/**" in globs
+    source = Path("src/easy_verifier/packs/finance.py").read_text(encoding="utf-8")
+    assert "entity.*" not in source and "migrations/**" not in source
 
 
 # ---------------------------------------------------------------------------

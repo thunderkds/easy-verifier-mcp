@@ -91,9 +91,11 @@ Identifier names are split into words; a name is money-named when a word is in `
 (amount, price, balance, fee, cost, subtotal, …) and none is in `money_excluded_words` (count, qty,
 items, pages, cents, micros, rate, id, …), so `amount_of_items`, `total_pages` and `amount_cents`
 never count, and bare `total` (as often a row count) is not a money name. A money-named declaration
-whose type matches `float_types` (TS/JS `number`, Python `float`, Java/C#/Kotlin `double`, SQL
+whose type matches `float_types` (Python `float`, Java/C#/Kotlin `double`, SQL
 `float`/`real`/`double precision`, Prisma `Float`, Go `float64`, Rust `f64`, Mongoose `Number`)
-counts; `Decimal`, `BigDecimal`, `decimal`, `numeric(…)` and integer minor units are exact. The
+counts in any file; TS/JS `number` (`persistence_float_types`) counts only in a `persistence_paths`
+file (entities, models, schemas, Prisma schema, migrations), so DTOs, request/response types and
+view models are skipped (user decision 2026-10-06); `Decimal`, `BigDecimal`, `decimal`, `numeric(…)` and integer minor units are exact. The
 float rule abstains when no money-named declaration exists. A ledger is a table or model whose name
 holds a `ledger_names` word (ledger, journal, transaction, payment, transfer, posting) and does not
 end in a `non_ledger_heads` word (PaymentMethod, TransactionStatus are not ledgers). Its audit
@@ -103,7 +105,7 @@ inherits from a base, audit or timestamp class is never counted. Update / delete
 target is a ledger declared in the same repository. With no ledger, both ledger rules abstain
 (nothing to judge, never 0). Whether a ledger balances or is correct is judgment: ledger declarations
 and mutation sites are quoted in the pack for the agent and feed no rule. The 50/25/25 weights are
-a proposal pending user sign-off.
+user-approved (2026-10-06).
 
 ## Rules and the registry fields they read
 
@@ -151,7 +153,7 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `queries_in_loops_observed` | 20 | = 0 | same file fields, `function_start`, `query_calls` / `loop_keywords` *(opt)*; a query on a line enclosed by a loop line (by indentation, up to its function) or after a `.method` loop token on its own line; a loop header runs its query once and never counts; abstains with no query call |
 | healthcare *(optional pack)* | `phi_values_in_test_data_observed` | 50 | = 0 | pack fields `phi_values`, `phi_placeholders`, `test_data_paths` |
 | | `phi_values_in_log_statements_observed` | 50 | = 0 | pack fields `phi_values`, `phi_placeholders`, `log_calls`; source files as reliability; abstains with no log statement |
-| finance *(optional pack)* | `float_money_observed` | 50 | = 0 | pack fields `money_names`, `money_excluded_words`, `money_declarations`, `float_types`, `schema_paths`; source files as reliability plus schema files; abstains with no money-named declaration |
+| finance *(optional pack)* | `float_money_observed` | 50 | = 0 | pack fields `money_names`, `money_excluded_words`, `money_declarations`, `float_types`, `persistence_float_types`, `persistence_paths`, `schema_paths`; source files as reliability plus schema files; abstains with no money-named declaration |
 | | `ledger_tables_without_audit_columns_observed` | 25 | = 0 | pack fields `ledger_names`, `non_ledger_heads`, `name_suffixes`, `ledger_declarations`, `entity_classes`, `entity_markers`, `audit_columns`; abstains with no ledger |
 | | `ledger_rows_mutated_observed` | 25 | = 0 | pack field `ledger_mutations` against the declared ledgers; abstains with no ledger |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |

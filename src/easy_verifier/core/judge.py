@@ -566,8 +566,8 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
     # T048 finance pack (PACK_FLOORS): #3 financial integrity and historical
     # reconstruction. Any float money field or unaudited / mutated ledger row
     # is a place to look, hence at most 0. The ledger rules abstain when no
-    # ledger is declared. Weights 50/25/25 are a proposal PENDING user
-    # sign-off (Supervisor, T048 review).
+    # ledger is declared. Weights 50/25/25 user-approved 2026-10-06 (T048
+    # review).
     "finance": _rules(
         RatingRule(
             "float_money_observed", 50, 0, "at_most",

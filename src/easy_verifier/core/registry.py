@@ -1287,6 +1287,8 @@ PACK_FIELDS: dict[str, tuple[str, ...]] = {
         "money_excluded_words",
         "money_declarations",
         "float_types",
+        "persistence_float_types",
+        "persistence_paths",
         "schema_paths",
         "ledger_names",
         "non_ledger_heads",
@@ -1313,7 +1315,8 @@ The healthcare fields (areas #9, #28):
 
 The finance fields (area #3) are described in ``registry/packs/finance.toml``:
 word lists (``money_names``, ``money_excluded_words``, ``ledger_names``,
-``non_ledger_heads``, ``name_suffixes``), globs (``schema_paths``) and
+``non_ledger_heads``, ``name_suffixes``), globs (``schema_paths``,
+``persistence_paths``) and
 regular expressions (the rest).
 """
 
@@ -1324,6 +1327,7 @@ _REGEX_FIELDS = frozenset(
         "log_calls",
         "money_declarations",
         "float_types",
+        "persistence_float_types",
         "ledger_declarations",
         "entity_classes",
         "entity_markers",
