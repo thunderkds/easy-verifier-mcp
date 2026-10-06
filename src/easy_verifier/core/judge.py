@@ -523,7 +523,7 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
     ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
     # PHI-shaped value fails safe-harbor de-identification, hence at most 0.
-    # Weights 50/50 are a PROPOSAL, PENDING user sign-off at T047 review.
+    # Weights 50/50 user-approved 2026-10-06 (T047 review).
     "healthcare": _rules(
         RatingRule(
             "phi_values_in_test_data_observed", 50, 0, "at_most",
