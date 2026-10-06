@@ -190,6 +190,8 @@ class _Scan:
     floats: list[tuple[str, int, str, str]]
     ledgers: list[_Ledger]
     mutations: list[tuple[str, int, str]]
+    unread: int = 0
+    """In-scope source files of later batches, not read in this run."""
 
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
@@ -225,12 +227,12 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
 
 def _scan(context: DimensionContext) -> _Scan:
     patterns = _patterns()
+    candidates = _code_extract.source_candidates(
+        context, "finance money and ledger checks"
+    )
     sources = [
         (path, lines)
-        for path, lines, _syntax in _code_extract._read(
-            context,
-            _code_extract.source_candidates(context, "finance money and ledger checks"),
-        )
+        for path, lines, _syntax in _code_extract._read(context, candidates)
     ]
     read = {path for path, _lines in sources}
     scope_files = tuple(getattr(context.resolved_scope, "files", ()) or ())
@@ -275,7 +277,8 @@ def _scan(context: DimensionContext) -> _Scan:
             if entity_key(match["name"]) in keys
         }
     )
-    return _Scan(files, money, floats, ledgers, mutations)
+    unread = len(_code_extract.code_sources(scope_files)) - len(candidates)
+    return _Scan(files, money, floats, ledgers, mutations, max(0, unread))
 
 
 def _ledgers(path: str, lines: list[str]) -> Iterator[_Ledger]:
@@ -327,6 +330,11 @@ def _indent(line: str) -> int:
 
 def _metrics(scan: _Scan) -> tuple[SampledMetric, ...]:
     where = f"in {len(scan.files)} source and schema file(s)"
+    if scan.unread:
+        where += (
+            f" (the batches read; {scan.unread} source file(s) of later batches "
+            "were not read and may hold one)"
+        )
     if not scan.files:
         floats = _abstain(
             FLOAT_METRIC,

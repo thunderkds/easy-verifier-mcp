@@ -370,6 +370,16 @@ def test_ledger_code_is_quoted_for_the_agent(tmp_path) -> None:
     assert "CREATE TABLE ledger_entries" in text
 
 
+def test_a_batched_read_says_later_batches_were_not_read(tmp_path) -> None:
+    # tapchat-apis (2026-10-06): 200 of 450 sources read; its transactions
+    # table sat in a later batch, and "no ledger found" read as a fact.
+    files = {f"src/m{i:03}.py": f"def f{i}():\n    return {i}\n" for i in range(205)}
+    files["src/payments.py"] = PY_FLOAT
+    result = _score(_repo(tmp_path, files))
+    reason = _metric(result, AUDIT)["outcome"]["reason"]
+    assert "later batches were not read" in reason
+
+
 # ---------------------------------------------------------------------------
 # AC3 inactive
 
