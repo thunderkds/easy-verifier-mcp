@@ -185,6 +185,8 @@ every rule shipped in the package), and the HTML report shows them as links.
 | `reliability` | `outbound_calls_without_timeout_observed` | ≤ 0 | 35 | [CWE-400 Uncontrolled Resource Consumption](https://cwe.mitre.org/data/definitions/400.html); [Google SRE book, Addressing Cascading Failures (deadlines; retries with randomized exponential backoff)](https://sre.google/sre-book/addressing-cascading-failures/) | project-default |
 | `reliability` | `retries_without_backoff_observed` | ≤ 0 | 10 | [Google SRE book, Addressing Cascading Failures (deadlines; retries with randomized exponential backoff)](https://sre.google/sre-book/addressing-cascading-failures/) | project-default |
 | `reliability` | `queries_in_loops_observed` | ≤ 0 | 20 | [CWE-1050 Excessive Platform Resource Consumption within a Loop (an ISO/IEC 5055 performance efficiency weakness)](https://cwe.mitre.org/data/definitions/1050.html); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `healthcare` | `phi_values_in_test_data_observed` | ≤ 0 | 50 | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) |
+| `healthcare` | `phi_values_in_log_statements_observed` | ≤ 0 | 50 | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) | [HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: SSNs, medical record numbers and birth dates are identifiers)](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.514) |
 <!-- rating-rules:end -->
 
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
@@ -213,6 +215,17 @@ role with its glob patterns. Roles are filled in this order:
    requirements-doc = ["docs/specs/*.md"]
    lint-config = ["tools/lint/*.json"]
    ```
+
+   The same file may switch on an optional pack (T047); a pack is never switched on any other way
+   except an agent pick (`{"packs": ["healthcare"]}` in the agent-input document):
+
+   ```toml
+   packs = ["healthcare"]
+   ```
+
+   The healthcare pack rates PHI-shaped values in test data and log statements (area 9, values
+   never shown) and checks retention, BAA, data classification and residency documents (areas 9
+   and 28). An unknown pack name is a warning and is ignored. Without `packs`, output is unchanged.
 
    Any other key, an unknown role, a wrong type, an empty list, or an attempt to set a floor is a
    validation error that names the key (exit 2). Without the file, output is unchanged.

@@ -19,12 +19,14 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 4 | At least one rule measures the area as planned |
-| Partial | 10 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 18 | No rule; the planned dimension or pack is not built |
+| Partial | 11 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 17 | No rule; the planned dimension or pack is not built |
 
-8 dimensions exist today: the original 7 and reliability (T043). The 5 remaining planned dimensions
-(supply-chain, infrastructure, api, data, operations) and the 3 optional packs (healthcare, finance,
-frontend accessibility) are tasks T041, T042 and T044–T049 on the Kanban.
+8 dimensions exist today: the original 7 and reliability (T043), plus the optional healthcare pack
+(T047), which rates only in repositories that enable it (`.easy-verifier.toml` `packs = ["healthcare"]`
+or an agent pick). The 5 remaining planned dimensions (supply-chain, infrastructure, api, data,
+operations) and the 2 remaining optional packs (finance, frontend accessibility) are tasks T041,
+T042, T044–T046, T048 and T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -33,6 +35,8 @@ either not rated for lack of evidence or have no rule at all.
 
 Every score now says this itself: the payload's `areas_measured` and `areas_without_rule` (both in
 area order, derived from the rule tables) and the report's "Areas no rule covers yet" list (T082).
+An optional pack's rules count there only in a run where the pack is enabled: in any other run areas 9
+and 28 stay listed, because nothing measured them.
 
 Class (planned areas): **S** static rule from code/config · **G** evidence gathered, judgment at the
 agent gate · **X** process or live-system fact: only documentation presence is checked.
@@ -49,7 +53,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 6 | Transactions, concurrency, idempotency | Not yet | — | reliability (T043), evidence only | class G: no rule by design (needs judgment); the reliability pack quotes transaction, lock and idempotency code (registry `transaction_markers`) for the calling agent |
 | 7 | API contracts, validation, versioning | Not yet | — | api (T044) | class S |
 | 8 | AuthN/Z, sessions, offboarding | Partial | `security` · `cookie_flags_missing_observed`<br>`security` documentation check | — | offboarding is process (documentation check only) |
-| 9 | PHI minimization, retention, test-data safety | Not yet | — | healthcare pack (T047) | class S / X |
+| 9 | PHI minimization, retention, test-data safety | Partial | `healthcare` · `phi_values_in_test_data_observed`<br>`healthcare` · `phi_values_in_log_statements_observed`<br>`healthcare` documentation check | — | optional pack, rated only when enabled; PHI-shaped values (SSN, labelled MRN / birth date; placeholders excluded) in test data and log statements; retention is a documentation check; minimization in production data is not verifiable |
 | 10 | Threat modeling, abuse cases, appsec | Covered | `security` · `redaction_hits_observed`<br>`security` · `sink_hits_observed` | — |  |
 | 11 | Infra security: IAM, networking, KMS, secrets | Not yet | — | infrastructure (T042) | class S |
 | 12 | Error handling & safe degradation | Partial | `reliability` · `swallowed_errors_observed` | — | empty handlers only (registry `swallowed_errors`; a handler holding a comment, and Go's `if err != nil` handling, never count); safe degradation not measured |
@@ -68,7 +72,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 25 | Incident response, change mgmt, access review | Not yet | — | operations (T046) | class X |
 | 26 | Configuration ownership & operational readiness | Not yet | — | operations (T046) | class S |
 | 27 | Documentation source-of-truth governance | Covered | `requirement-fidelity` · `requirements_doc_missing`<br>`requirement-fidelity` · `code_commits_with_docs_share` | — |  |
-| 28 | Vendor, BAA, data classification, residency | Not yet | — | healthcare pack (T047) | class X |
+| 28 | Vendor, BAA, data classification, residency | Not yet | `healthcare` documentation check | healthcare pack (T047), documentation only | class X: optional pack; only BAA, data-classification and residency documents' presence is checked (never a number) |
 | 29 | AI-assisted-development safety | Not yet | — | operations (T046) | class S |
 | 30 | Developer experience & deterministic local setup | Not yet | — | operations (T046) | class S |
 | 31 | Technical-debt lifecycle & closure evidence | Partial | `code-quality` · `todo_without_ticket_share` | — | debt age via git blame not yet measured |
