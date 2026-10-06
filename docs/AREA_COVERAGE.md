@@ -19,12 +19,12 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 4 | At least one rule measures the area as planned |
-| Partial | 7 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 21 | No rule; the planned dimension or pack is not built |
+| Partial | 10 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 18 | No rule; the planned dimension or pack is not built |
 
-Only the original 7 dimensions exist today. The 6 planned dimensions (supply-chain, infrastructure,
-reliability, api, data, operations) and the 3 optional packs (healthcare, finance, frontend
-accessibility) are tasks T041–T049 on the Kanban.
+8 dimensions exist today: the original 7 and reliability (T043). The 5 remaining planned dimensions
+(supply-chain, infrastructure, api, data, operations) and the 3 optional packs (healthcare, finance,
+frontend accessibility) are tasks T041, T042 and T044–T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -43,16 +43,16 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 3 | Financial integrity & historical reconstruction | Not yet | — | finance pack (T048) | class G |
 | 4 | Data model, constraints, migrations | Not yet | — | data (T045) | class S |
 | 5 | Backward compatibility & upgrade safety | Partial | `blast-radius` · `max_fan_in_changed`<br>`blast-radius` · `changed_files_in_churn_hotspots_share`<br>`blast-radius` · `public_symbols_removed`<br>`blast-radius` · `destructive_migration_ops` | — | measured only at `--scope changes` |
-| 6 | Transactions, concurrency, idempotency | Not yet | — | reliability (T043) | class G |
+| 6 | Transactions, concurrency, idempotency | Not yet | — | reliability (T043), evidence only | class G: no rule by design (needs judgment); the reliability pack quotes transaction, lock and idempotency code (registry `transaction_markers`) for the calling agent |
 | 7 | API contracts, validation, versioning | Not yet | — | api (T044) | class S |
 | 8 | AuthN/Z, sessions, offboarding | Partial | `security` · `cookie_flags_missing_observed`<br>`security` documentation check | — | offboarding is process (documentation check only) |
 | 9 | PHI minimization, retention, test-data safety | Not yet | — | healthcare pack (T047) | class S / X |
 | 10 | Threat modeling, abuse cases, appsec | Covered | `security` · `redaction_hits_observed`<br>`security` · `sink_hits_observed` | — |  |
 | 11 | Infra security: IAM, networking, KMS, secrets | Not yet | — | infrastructure (T042) | class S |
-| 12 | Error handling & safe degradation | Not yet | — | reliability (T043) | class S |
-| 13 | Retries, deadlines, unknown outcomes, vendor outages | Not yet | — | reliability (T043) | class S / G |
+| 12 | Error handling & safe degradation | Partial | `reliability` · `swallowed_errors_observed` | — | empty handlers only (registry `swallowed_errors`; a handler holding a comment, and Go's `if err != nil` handling, never count); safe degradation not measured |
+| 13 | Retries, deadlines, unknown outcomes, vendor outages | Partial | `reliability` · `outbound_calls_without_timeout_observed`<br>`reliability` · `retries_without_backoff_observed` | — | calls and retry libraries with no default deadline or delay (curated per language); unknown outcomes and vendor outages not measured |
 | 14 | Observability, auditing, SLOs, error budgets | Not yet | — | operations (T046) | class S / X |
-| 15 | Performance, scalability, capacity, cost | Not yet | — | reliability (T043) | class G / X |
+| 15 | Performance, scalability, capacity, cost | Partial | `reliability` · `queries_in_loops_observed` | — | query-in-loop only (textual, by indentation); capacity and cost not verifiable from a repository |
 | 16 | Test strategy, coverage, false confidence, isolation | Covered | `test-strategy` · `source_files_without_covering_test_share`<br>`test-strategy` · `assertion_density_per_test`<br>`test-strategy` · `test_config_and_ci_missing`<br>`test-strategy` · `tests_without_assertions_share`<br>`test-strategy` · `skipped_test_share`<br>`test-strategy` · `network_calls_in_unit_tests_observed` | — |  |
 | 17 | Type safety & code quality | Covered | `code-quality` · `lint_config_missing`<br>`code-quality` · `format_config_missing`<br>`code-quality` · `type_escapes_per_kloc`<br>`code-quality` · `strict_type_config_missing` | — |  |
 | 18 | Maintainability, reuse, library judgment, patterns | Partial | `code-quality` · `functions_over_ccn_10_share`<br>`code-quality` · `max_function_ccn` | — | duplication not yet measured |
@@ -69,7 +69,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 29 | AI-assisted-development safety | Not yet | — | operations (T046) | class S |
 | 30 | Developer experience & deterministic local setup | Not yet | — | operations (T046) | class S |
 | 31 | Technical-debt lifecycle & closure evidence | Partial | `code-quality` · `todo_without_ticket_share` | — | debt age via git blame not yet measured |
-| 32 | Business continuity & degraded modes | Not yet | — | reliability (T043) | class X / G |
+| 32 | Business continuity & degraded modes | Not yet | `reliability` documentation check | reliability (T043), documentation only | class X: only a continuity, BCP, degraded-mode, resilience or fallback document's presence is checked (never a number) |
 
 ## Keeping this page current
 
