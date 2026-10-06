@@ -1,4 +1,4 @@
-# TASK_REVIEW — T043: [Short Title]
+# TASK_REVIEW — T043: New dimension: reliability
 
 > Sibling of `tasks/TASK_GUIDE_T043.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,28 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer in worktree `easy-verifier-mcp-T043` at `eb16069` (develop, no T043 commit yet).
+
+```text
+$ PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli list-dimensions < /dev/null   # 2026-10-06T04:04:09Z
+dimension names: architecture, blast-radius, code-quality, requirement-fidelity, security, solution-fit, test-strategy  (7 dimensions; no 'reliability')
+exit=0
+
+$ ... cli score --repo /home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api --scope project < /dev/null   # 2026-10-06T04:04:25Z .. 2026-10-06T04:04:27Z, exit=0
+overall 65 (4 of 7 dimensions)
+ratings: architecture=80 blast-radius=all_metrics_abstained code-quality=71 requirement-fidelity=50 security=59 solution-fit=no_static_rule test-strategy=insufficient_measured_weight
+'reliability' anywhere in the payload: False
+
+$ ... cli score --repo /home/hungnguyenhuu/workspace/project/bryony/bryony --scope project < /dev/null   # 2026-10-06T04:04:39Z .. 2026-10-06T04:04:51Z, exit=0
+overall 69 (4 of 7 dimensions)
+ratings: architecture=83 blast-radius=all_metrics_abstained code-quality=67 requirement-fidelity=below_coverage_floor security=50 solution-fit=no_static_rule test-strategy=75
+'reliability' anywhere in the payload: False
+
+$ ... cli score --repo /home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd --scope project < /dev/null   # 2026-10-06T04:04:51Z .. 2026-10-06T04:04:56Z, exit=0
+overall 72 (4 of 7 dimensions)
+ratings: architecture=100 blast-radius=all_metrics_abstained code-quality=70 requirement-fidelity=60 security=59 solution-fit=no_static_rule test-strategy=insufficient_measured_weight
+'reliability' anywhere in the payload: False
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
