@@ -118,7 +118,13 @@ def phi_spans(line: str) -> list[tuple[int, int, str]]:
             value = match.group(group)
             if not any(p.fullmatch(value) for p in patterns.placeholders):
                 spans.append((match.start(group), match.end(group), kind))
-    return sorted(spans)
+    # One value, one span: "MRN 512-44-8812" is both a labelled MRN and an
+    # SSN shape; the first pattern (registry order) wins, overlaps are dropped.
+    kept: list[tuple[int, int, str]] = []
+    for span in sorted(spans, key=lambda s: (s[0], -s[1])):
+        if not kept or span[0] >= kept[-1][1]:
+            kept.append(span)
+    return kept
 
 
 def mask(line: str) -> str:

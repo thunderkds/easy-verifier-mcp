@@ -33,7 +33,8 @@ from easy_verifier.core.registry import PACK_FIELDS, load_pack
 from easy_verifier.core.roles import RoleInputError, active_packs, load_repo_packs
 from easy_verifier.core.score import score_repository
 from easy_verifier.core.synthesis import combined_pack
-from easy_verifier.dimensions import PACKS, dimension_names
+from easy_verifier.dimensions import dimension_names
+from easy_verifier.packs import PACKS
 
 # Assembled at runtime: no realistic identifier is committed as a literal.
 SSN = "-".join(("512", "44", "8812"))
@@ -405,3 +406,59 @@ def test_cited_paths_are_redacted_like_files_read(tmp_path) -> None:
     )
     metric = _metric(score_repository(repo, scope="project"), LOGS)
     assert metric["outcome"] == {"abstained": False, "value": 0}
+
+
+def test_packs_package_imports_on_its_own() -> None:
+    # Stage 4 P1: packs -> healthcare -> dimensions -> (re-export) packs
+    # was a cycle that only worked when dimensions was imported first.
+    import subprocess
+    import sys
+
+    done = subprocess.run(
+        [sys.executable, "-c", "import easy_verifier.packs"],
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+
+
+# Stage 4 P2: a label followed only by whitespace ("DOB 1984-03-12").
+SPACED = f"MRN {SSN} DOB {DOB}"
+
+
+def test_space_separated_labels_are_masked() -> None:
+    from easy_verifier.packs.healthcare import mask, phi_spans
+
+    kinds = {kind for _s, _e, kind in phi_spans(SPACED)}
+    assert "dob" in kinds
+    masked = mask(SPACED)
+    assert SSN not in masked and DOB not in masked
+    assert mask(f"MRN {MRN}") == "MRN [PHI mrn redacted]"
+    assert mask("DOB 1970-01-01") == "DOB 1970-01-01"  # placeholder kept
+
+
+def test_space_separated_labels_count_and_never_leak_as_context(tmp_path) -> None:
+    repo = _repo(tmp_path, config='packs = ["healthcare"]\n')
+    _write(
+        repo,
+        {
+            "tests/fixtures/notes.txt": f"patient {SSN}\nseen: DOB {DOB}\n",
+            "tests/fixtures/chart.txt": f"{SPACED}\n",
+        },
+    )
+    result = score_repository(repo, scope="project")
+    derivation = _metric(result, TEST_DATA)["derivation"]
+    assert "tests/fixtures/notes.txt:2 (dob)" in derivation
+    assert "tests/fixtures/chart.txt:1 (dob)" in derivation
+    packs = combined_pack(
+        (*dimension_names(), "healthcare"),
+        repo_path=repo,
+        scope="project",
+        packs=("healthcare",),
+    )
+    slot = next(s for s in packs.slots if s.dimension == "healthcare")
+    text = json.dumps(to_json_dict(slot.pack))
+    assert DOB not in text and SSN not in text
+    assert DOB not in result.serialize()
