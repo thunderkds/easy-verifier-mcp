@@ -451,7 +451,7 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
     ),
     # T043: areas #12, #13 and #15 (query-in-loop only). #6 transactions and
     # idempotency need judgment: quoted as evidence, never scored (user).
-    # Weights are a proposal (Supervisor sign-off pending, 2026-10-06).
+    # Weights 35/35/10/20 user-approved 2026-10-06.
     "reliability": _rules(
         RatingRule(
             "swallowed_errors_observed", 35, 0, "at_most",
