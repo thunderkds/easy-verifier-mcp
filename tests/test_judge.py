@@ -168,6 +168,7 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "security",
         "test-strategy",
         "blast-radius",
+        "reliability",
     )
     assert set(COVERAGE_FLOORS) == set(dimension_names())
     assert {name: floor.value for name, floor in COVERAGE_FLOORS.items()} == {
@@ -178,6 +179,7 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "security": 0.25,
         "test-strategy": 0.20,
         "blast-radius": 0.25,
+        "reliability": 0.25,
     }
     assert all(floor.boundary == "inclusive" for floor in COVERAGE_FLOORS.values())
 
@@ -434,8 +436,8 @@ def test_rate_rejects_combined_coverage_that_differs_from_sole_dimension():
 
 
 def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
-    strong_names = DIMENSIONS[:6]
-    weak_name = DIMENSIONS[6]
+    weak_name = "blast-radius"
+    strong_names = tuple(name for name in DIMENSIONS if name != weak_name)
     strong = tuple(_rating_with_value(name, 50) for name in strong_names)
     weak_metrics = _numeric_metrics(weak_name, passing_names=set())
     floor = COVERAGE_FLOORS[weak_name].value
@@ -454,13 +456,14 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
     all_seven = rate_overall(strong + (weak_rating,))
     with_abstention = rate_overall(strong + (weak_abstention,))
 
-    assert isinstance(all_seven, OverallRating) and all_seven.value == 43
+    # 7 x 50 + 0 over 8 = 43.75, rounded once (T043 added the eighth).
+    assert isinstance(all_seven, OverallRating) and all_seven.value == 44
     assert isinstance(with_abstention, OverallRating) and with_abstention.value == 50
     assert with_abstention.value > all_seven.value
-    assert with_abstention.contributor_count == 6
-    assert with_abstention.total_dimension_count == 7
+    assert with_abstention.contributor_count == 7
+    assert with_abstention.total_dimension_count == 8
     assert with_abstention.abstentions == (weak_abstention,)
-    assert "6 of 7" in with_abstention.disclosure
+    assert "7 of 8" in with_abstention.disclosure
     assert "abstention can raise the overall" in with_abstention.disclosure
     assert weak_name in with_abstention.disclosure
     assert "below_coverage_floor" in with_abstention.disclosure
@@ -679,10 +682,11 @@ def test_abstention_rejects_unknown_dimensions_and_surplus_reason_fields():
 
 
 def test_abstention_validates_source_miss_values_at_construction_and_revalidation():
+    # blast-radius declares no documentation rule, so only the miss is forged.
     kwargs = {
-        "dimension": DIMENSIONS[-1],
+        "dimension": "blast-radius",
         "reason_code": "below_coverage_floor",
-        "coverage_floor": COVERAGE_FLOORS[DIMENSIONS[-1]].value,
+        "coverage_floor": COVERAGE_FLOORS["blast-radius"].value,
         "achieved_coverage": 0.20,
     }
     with pytest.raises(ValueError, match="SourceMiss"):
@@ -701,7 +705,9 @@ def test_abstention_validates_source_miss_values_at_construction_and_revalidatio
         sources_missing=(SourceMiss("go.mod", "not found in target"),),
     )
     object.__setattr__(valid, "sources_missing", (object(),))
-    ratings = tuple(_rating_with_value(name, 50) for name in DIMENSIONS[:-1])
+    ratings = tuple(
+        _rating_with_value(name, 50) for name in DIMENSIONS if name != "blast-radius"
+    )
     with pytest.raises(ValueError, match="SourceMiss|malformed RatingAbstention"):
         rate_overall(ratings + (valid,))
 

@@ -31,7 +31,12 @@ from test_t069_report_summary import (
     _security_three_failures,
 )
 
-from easy_verifier.core.judge import RATING_RULES, GatedRating, _measured_share
+from easy_verifier.core.judge import (
+    DOCUMENTATION_RULES,
+    RATING_RULES,
+    GatedRating,
+    _measured_share,
+)
 from easy_verifier.core.report import (
     SENSITIVITY_ADVISORY,
     _Ctx,
@@ -186,7 +191,7 @@ def test_summary_has_a_factual_evidence_status_line() -> None:
     )
     line = re.search(r'<p class="summary-evidence">(.*?)</p>', summary).group(1)
     assert line == (
-        "Evidence: 3 of 7 dimensions rated; lowest measured rule weight "
+        "Evidence: 4 of 8 dimensions rated; lowest measured rule weight "
         f"{share * 100:.0f}% (code-quality); 3 warnings — see What we "
         "couldn&#x27;t measure."
     )
@@ -390,6 +395,11 @@ def test_no_script_and_only_citation_links(tmp_path: Path) -> None:
         for rule in rules.values()
         for citation in (*rule.metric_citation, rule.threshold_citation)
         if not isinstance(citation, str)
+    } | {  # T043: documentation rules cite their standard too
+        citation.url
+        for rules in DOCUMENTATION_RULES.values()
+        for rule in rules
+        for citation in rule.citation
     }
     hrefs = set(re.findall(r'href="([^"]*)"', document))
     assert hrefs <= {html.escape(u, quote=True) for u in urls}

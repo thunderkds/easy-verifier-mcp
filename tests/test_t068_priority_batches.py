@@ -380,7 +380,12 @@ def test_batches_all_equals_batches_total_and_replay_is_byte_equal(big_repo) -> 
 def test_score_payload_discloses_samples(big_repo: Path) -> None:
     payload = json.loads(_payload(big_repo))
     samples = {item["dimension"]: item for item in payload["samples"]}
-    assert set(samples) == {"architecture", "code-quality", "test-strategy"}
+    assert set(samples) == {
+        "architecture",
+        "code-quality",
+        "test-strategy",
+        "reliability",  # T043: its rule metrics read the same batches
+    }
     assert samples["code-quality"] == {
         "dimension": "code-quality",
         "batches_done": 1,
@@ -502,6 +507,12 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T077 (requirements_doc_missing replaces the count in the
     # rating): no rating or overall changed; the requirements_doc_missing
     # metric was added (1 where the role is sought and unfilled, else abstains).
+    # Regenerated for T043 (reliability dimension): every existing rating,
+    # metric and the overall (61) are byte-identical; added are the
+    # reliability rating (insufficient_measured_weight: no outbound call,
+    # retry or query in the fixture), its pack's metrics, the four
+    # reliability metrics in every pack, and reliability's warning,
+    # provenance and abstained plan line.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 
@@ -526,5 +537,5 @@ def test_secret_bearing_files_are_still_refused(small: Path) -> None:
 def test_report_card_shows_the_sample(big_repo: Path) -> None:
     result = score_repository(big_repo, scope="project")
     html = _render_score_panel(_Ctx(big_repo), result)
-    assert html.count("Sample: batches 1 of 3") == 3
+    assert html.count("Sample: batches 1 of 3") == 4  # + reliability (T043)
     assert "200 of 450 in-scope source files" in html

@@ -158,6 +158,23 @@ FIX_HINTS: dict[str, str] = {
         "Make schema changes expand-then-contract: add the new structure, migrate "
         "data, and drop the old one in a later release."
     ),
+    # reliability
+    "swallowed_errors_observed": (
+        "Handle or propagate each caught error: log it with context, recover, "
+        "or re-raise; if ignoring it is intended, say why in a comment."
+    ),
+    "outbound_calls_without_timeout_observed": (
+        "Give every outbound HTTP or database call a deadline (a timeout or an "
+        "abort signal), or route it through a client configured with one."
+    ),
+    "retries_without_backoff_observed": (
+        "Wait between retries with capped, randomized exponential backoff and "
+        "limit the attempts."
+    ),
+    "queries_in_loops_observed": (
+        "Fetch the rows in one batched query (IN list, join or bulk API) "
+        "instead of one query per loop iteration."
+    ),
 }
 """One static engine fix line per declared rule metric (FR-057). Each line
 names the real remedy, never a move that only satisfies the metric."""

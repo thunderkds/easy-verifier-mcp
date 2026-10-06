@@ -336,6 +336,10 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "cookie_flags_missing_observed",
         # T056: the fixture quotes no type-checker configuration.
         "strict_type_config_missing",
+        # T043: the fixture makes no outbound call, retry or query call.
+        "outbound_calls_without_timeout_observed",
+        "retries_without_backoff_observed",
+        "queries_in_loops_observed",
     }
 
     # AC #5: unaffected by truncation, both ways.

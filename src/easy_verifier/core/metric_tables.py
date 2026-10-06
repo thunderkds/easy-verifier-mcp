@@ -70,6 +70,9 @@ def metric_tables(
     auth: dict[str, re.Pattern[str]] = {}
     type_configs: list[TypeConfigFile] = []
     type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
+    reliability: dict[str, dict[str, re.Pattern[str]]] = {
+        f: {} for f in RELIABILITY_FIELDS
+    }
     for entry in entries:
         extensions = _values(entry, "source_extensions")
         compiled = _syntax(entry)
@@ -93,6 +96,11 @@ def metric_tables(
                 )
             if _values(entry, "auth_markers"):
                 auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
+            for name in RELIABILITY_FIELDS:
+                if _values(entry, name):
+                    reliability[name].setdefault(
+                        extension, _guarded(_values(entry, name))
+                    )
         for value in _values(entry, "type_config_files"):
             glob, _space, header = value.partition(" ")
             type_configs.append(
@@ -154,6 +162,7 @@ def metric_tables(
         type_strict=type_tokens["type_strict"],
         type_strict_off=type_tokens["type_strict_off"],
         type_config_extends=type_tokens["type_config_extends"],
+        **reliability,
     )
     # The curated layer_paths (T074); structure imports this module, hence
     # the late import. Local / .easy-verifier.toml layer paths are not bound
@@ -167,6 +176,18 @@ def metric_tables(
 
 _AREA_FIELDS = ("skip_markers", "network_calls", "type_escapes")
 _TYPE_FIELDS = ("type_strict", "type_strict_off", "type_config_extends")
+RELIABILITY_FIELDS = (
+    "swallowed_errors",
+    "outbound_calls",
+    "call_timeouts",
+    "client_timeouts",
+    "retry_calls",
+    "retry_backoff",
+    "query_calls",
+    "loop_keywords",
+    "transaction_markers",
+)
+"""The T043 reliability token fields; each compiles like a sink token."""
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -280,24 +301,29 @@ _COMPAT = ("public_symbols_removed",)
 _CO_CHANGE = ("code_commits_with_docs_share",)
 _COOKIES = ("cookie_flags_missing_observed",)
 _STRICT = ("strict_type_config_missing",)
+_SWALLOWED = ("swallowed_errors_observed",)
+_TIMEOUTS = ("outbound_calls_without_timeout_observed",)
+_RETRIES = ("retries_without_backoff_observed",)
+_LOOPS = ("queries_in_loops_observed",)
+_RELIABILITY = _SWALLOWED + _TIMEOUTS + _RETRIES + _LOOPS
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
-    + _TYPE_ESCAPES + _TODO + _COMPAT + _CO_CHANGE + _COOKIES,
+    + _TYPE_ESCAPES + _TODO + _COMPAT + _CO_CHANGE + _COOKIES + _RELIABILITY,
     "test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE + _TEST_AREA
-    + _NETWORK + _COMPAT + _CO_CHANGE + _COOKIES,
+    + _NETWORK + _COMPAT + _CO_CHANGE + _COOKIES + _RELIABILITY,
     "colocated_test_name_patterns": _TEST_MATCH + _ASSERTIONS + _AC_TRACE
-    + _TEST_AREA + _NETWORK + _COMPAT + _CO_CHANGE + _COOKIES,
+    + _TEST_AREA + _NETWORK + _COMPAT + _CO_CHANGE + _COOKIES + _RELIABILITY,
     "test_candidates": _TEST_MATCH[1:3],
     "test_declarations": _ASSERTIONS[:1] + _TEST_AREA,
     "assertions": _ASSERTIONS + _TEST_AREA[:1],
     "branch_keywords": _CCN,
     "comment_delimiters": _CCN + _IMPORTS + _SINKS + _TEST_AREA + _NETWORK
-    + _TYPE_ESCAPES + _TODO + _COOKIES,
+    + _TYPE_ESCAPES + _TODO + _COOKIES + _RELIABILITY,
     "string_delimiters": _CCN + _IMPORTS + _SINKS + _TEST_AREA + _NETWORK
-    + _TYPE_ESCAPES + _TODO + _COOKIES,
+    + _TYPE_ESCAPES + _TODO + _COOKIES + _RELIABILITY,
     "interpolating_strings": _SINKS,
-    "function_start": _CCN,
+    "function_start": _CCN + _LOOPS,
     "import_syntax": _IMPORTS,
     "security_sinks": _SINKS,
     "skip_markers": _TEST_AREA[1:],
@@ -315,6 +341,15 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_strict_off": _STRICT,
     "type_config_extends": _STRICT,
     "route_tokens": (),  # T073: read by core/structure.py; its rule lands in T075
+    "swallowed_errors": _SWALLOWED,
+    "outbound_calls": _TIMEOUTS,
+    "call_timeouts": _TIMEOUTS,
+    "client_timeouts": _TIMEOUTS,
+    "retry_calls": _RETRIES,
+    "retry_backoff": _RETRIES,
+    "query_calls": _LOOPS,
+    "loop_keywords": _LOOPS,
+    "transaction_markers": (),  # T043: quoted evidence for #6, no rule
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -343,6 +378,12 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         ("type_config_files", "type_strict", "type_strict_off", "type_config_extends"),
         "only languages with a type checker have a type-checker configuration; "
         "for the rest the strict-config rule abstains (user 2026-09-29)",
+    ),
+    **dict.fromkeys(
+        RELIABILITY_FIELDS,
+        "only languages whose libraries have the pattern declare it; a language "
+        "without a rule's tokens is not scanned for it, and the rule abstains "
+        "where no scanned code has its evidence (T043)",
     ),
 }
 """Fields the metric code reads when present but never needs (T037 R1): a

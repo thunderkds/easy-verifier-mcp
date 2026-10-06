@@ -504,6 +504,11 @@ _METRIC_TEXT: dict[str, str] = {
     ),
     "public_symbols_removed": "public symbols removed",
     "destructive_migration_ops": "destructive migration operations",
+    # reliability
+    "swallowed_errors_observed": "error handlers that do nothing",
+    "outbound_calls_without_timeout_observed": "outbound calls with no timeout",
+    "retries_without_backoff_observed": "retries with no backoff",
+    "queries_in_loops_observed": "database queries inside loops",
 }
 """One plain description per declared rule metric, for the summary (FR-063).
 Presentation only."""
@@ -535,6 +540,9 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "referencing files (textual reference search over repository code)": None,
     "git co-change history (local `git log --name-only`)": None,
     "repository change hotspots (local git history)": None,
+    "source files of a registry language": None,
+    "outbound HTTP client calls in source files": None,
+    "database access calls in source files": None,
 }
 """Plain name per declared sought source (every dimension's
 ``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks

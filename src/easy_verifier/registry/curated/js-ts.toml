@@ -403,3 +403,125 @@ source_tag = "curated"
 value = ["GET=app.get(", "POST=app.post(", "PUT=app.put(", "PATCH=app.patch(", "DELETE=app.delete(", "ANY=app.all(", "GET=router.get(", "POST=router.post(", "PUT=router.put(", "PATCH=router.patch(", "DELETE=router.delete(", "ANY=router.all("]
 citation_url = "https://expressjs.com/en/guide/routing.html"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["catch { }", "catch ( * ) { }", "catch ( * : * ) { }"]
+citation_url = "https://eslint.org/docs/latest/rules/no-empty"
+source_tag = "curated"
+
+[[swallowed_errors]]
+value = [".catch ( ( ) => { } )", ".catch ( * => { } )", ".catch ( ( * ) => { } )"]
+citation_url = "https://eslint.org/docs/latest/rules/no-empty-function"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["fetch ("]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["axios (", "axios.get (", "axios.post (", "axios.put (", "axios.patch (", "axios.delete (", "axios.head (", "axios.request ("]
+citation_url = "https://axios-http.com/docs/req_config"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["http.request (", "https.request (", "https.get ("]
+citation_url = "https://nodejs.org/api/http.html#httprequestoptions-callback"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["$.ajax (", "jQuery.ajax (", "$.get (", "$.post (", "$.getJSON ("]
+citation_url = "https://api.jquery.com/jQuery.ajax/"
+source_tag = "curated"
+
+[[call_timeouts]]
+value = ["timeout"]
+citation_url = "https://axios-http.com/docs/req_config"
+source_tag = "curated"
+
+[[call_timeouts]]
+value = ["signal"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/API/RequestInit#signal"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = ["axios.defaults.timeout"]
+citation_url = "https://axios-http.com/docs/config_defaults"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = [".setTimeout ("]
+citation_url = "https://nodejs.org/api/http.html#requestsettimeouttimeout-callback"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = ["$.ajaxSetup ("]
+citation_url = "https://api.jquery.com/jQuery.ajaxSetup/"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = ["AbortSignal.timeout", "AbortController"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/API/AbortController"
+source_tag = "curated"
+
+[[retry_calls]]
+value = ["axiosRetry ("]
+citation_url = "https://github.com/softonic/axios-retry#options"
+source_tag = "curated"
+
+[[retry_backoff]]
+value = ["retryDelay"]
+citation_url = "https://github.com/softonic/axios-retry#options"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".findUnique (", ".findUniqueOrThrow (", ".findFirst (", ".findFirstOrThrow (", ".findMany ("]
+citation_url = "https://www.prisma.io/docs/orm/reference/prisma-client-reference"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".findOne (", ".findOneBy ("]
+citation_url = "https://typeorm.io/find-options"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".findById ("]
+citation_url = "https://mongoosejs.com/docs/api/model.html"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".findByPk (", ".findAll ("]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-querying-finders/"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "while", "do"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Loops_and_iteration"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = [".forEach (", ".map (", ".flatMap ("]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["$transaction ("]
+citation_url = "https://www.prisma.io/docs/orm/prisma-client/queries/transactions"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".transaction (", ".startTransaction ("]
+citation_url = "https://typeorm.io/transactions"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".startSession ("]
+citation_url = "https://mongoosejs.com/docs/transactions.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"
