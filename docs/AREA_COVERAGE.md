@@ -31,6 +31,9 @@ coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, whi
 areas 8, 10, 17, 18, 20 and 31; of those, its run measured 10, 17, 18 and 20. The other areas were
 either not rated for lack of evidence or have no rule at all.
 
+Every score now says this itself: the payload's `areas_measured` and `areas_without_rule` (both in
+area order, derived from the rule tables) and the report's "Areas no rule covers yet" list (T082).
+
 Class (planned areas): **S** static rule from code/config · **G** evidence gathered, judgment at the
 agent gate · **X** process or live-system fact: only documentation presence is checked.
 

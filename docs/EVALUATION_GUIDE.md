@@ -19,6 +19,7 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 |---|---|
 | `ratings` | One entry per dimension (seven): a number with its rule inputs, or an abstention with a `reason_code` |
 | `overall` | The overall `value`, its `contributors`, `rated_by` and `abstentions`, and a one-line `disclosure` |
+| `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet; both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |
 | `samples` | Present only for large repositories: which batches of source files were read |
 | `improvement_plan` | Every unmet or unmeasured rule of every rated dimension, grouped and ranked by gain |

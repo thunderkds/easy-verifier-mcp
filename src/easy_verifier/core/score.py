@@ -34,6 +34,8 @@ from .judge import (
     OverallRating,
     Rating,
     RatingAbstention,
+    areas_measured,
+    areas_without_rule,
     rate,
     rate_overall,
 )
@@ -130,10 +132,23 @@ class ScoreResult:
             and item.reason_code in EVIDENCE_LACK_REASONS
         ]
 
+    @property
+    def areas_measured(self) -> tuple[str, ...]:
+        """FR-073: the evaluation areas this run measured; a pure function of
+        the ratings, so it is present whether or not the overall is withheld."""
+        return areas_measured(self.ratings)
+
+    @property
+    def areas_without_rule(self) -> tuple[str, ...]:
+        """FR-073: the evaluation areas no declared rule covers yet."""
+        return areas_without_rule()
+
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "ratings": [item.to_dict() for item in self.ratings],
             "overall": self.overall.to_dict(),
+            "areas_measured": list(self.areas_measured),
+            "areas_without_rule": list(self.areas_without_rule),
             "improvement_plan": self.improvement_plan.to_dict(),
             "warnings": self.warnings,
         }

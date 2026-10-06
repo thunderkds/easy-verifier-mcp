@@ -45,6 +45,8 @@ DECLARED = {
     "disclosure": "disclosure",
     "reason_code": "reason_code",
     "warnings": "warnings",
+    "areas_measured": '"areas_measured"',
+    "areas_without_rule": '"areas_without_rule"',
     "samples": "samples",
     "improvement_plan": "improvement_plan",
     "assessments": "assessments",
