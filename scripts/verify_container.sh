@@ -168,6 +168,7 @@ expected_tools = {
     "security",
     "solution-fit",
     "test-strategy",
+    "reliability",
     "list_dimensions",
     "combined",
     "score",
@@ -193,4 +194,4 @@ if grep -q '/workspace' "$report_file"; then
   fail "report leaks the container-internal repository path"
 fi
 
-printf 'PASS: uid=%s, tools=11, root=read-only, reports=writable, network=none, ports=none, caps=none\n' "$uid"
+printf 'PASS: uid=%s, tools=12, root=read-only, reports=writable, network=none, ports=none, caps=none\n' "$uid"

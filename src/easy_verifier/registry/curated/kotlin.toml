@@ -246,3 +246,35 @@ source_tag = "curated"
 value = ["GET=@GetMapping", "POST=@PostMapping", "PUT=@PutMapping", "PATCH=@PatchMapping", "DELETE=@DeleteMapping", "ANY=@RequestMapping"]
 citation_url = "https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["catch ( * : * ) { }"]
+citation_url = "https://detekt.dev/docs/rules/empty-blocks/#emptycatchblock"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".executeQuery (", ".executeUpdate ("]
+citation_url = "https://docs.oracle.com/en/java/javase/21/docs/api/java.sql/java/sql/Statement.html"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".findById ("]
+citation_url = "https://docs.spring.io/spring-data/data-commons/docs/current/api/org/springframework/data/repository/CrudRepository.html"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "while", "do", ".forEach", ".map"]
+citation_url = "https://kotlinlang.org/docs/control-flow.html#for-loops"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["@Transactional"]
+citation_url = "https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

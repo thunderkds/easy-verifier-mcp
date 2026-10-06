@@ -14,7 +14,7 @@ The rules applied in the "Compute metrics" step are listed in
 ```mermaid
 flowchart TD
     A([Agent calls score]) --> B[Parse agent_input<br/>picks, gate_evaluations,<br/>registry_entries, reviews]
-    B --> C[Gather evidence for 7 dimensions<br/>fill source roles within byte budget<br/>secret files never read]
+    B --> C[Gather evidence for every dimension<br/>fill source roles within byte budget<br/>secret files never read]
     C --> D[Detect stack<br/>languages + frameworks from manifests]
     D --> E[Compute metrics from declared rules<br/>rate each dimension 0-100 or abstain]
     E --> F[Blend gate_evaluations if sent<br/>rules x 1-w + agent x w, w = 0.5 x confidence]

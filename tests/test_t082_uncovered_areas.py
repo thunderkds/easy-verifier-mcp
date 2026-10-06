@@ -135,20 +135,26 @@ def test_areas_without_rule_are_the_not_yet_rows_of_the_area_doc():
     # tests/ is on sys.path under pytest's default prepend import mode.
     from test_t072_area_coverage_doc import _rows
 
+    # "Not yet" means no rating rule (T072); a documentation-only area such as
+    # #32 is still "Not yet" there but has a rule here, so only rows whose
+    # "Rules today" cell is empty ("—") are uncovered.
     not_yet = tuple(
-        row["area"] for _n, row in sorted(_rows().items()) if row["status"] == "Not yet"
+        row["area"]
+        for _n, row in sorted(_rows().items())
+        if row["status"] == "Not yet" and row["rules"] == "—"
     )
-    assert len(not_yet) == 21
+    assert not_yet
     assert areas_without_rule() == not_yet
 
 
 def test_adding_a_documentation_rule_removes_its_area(monkeypatch):
     financial = AREAS[2]
+    before = len(areas_without_rule())
     assert financial in areas_without_rule()
     rule = DocumentationRule(financial, ("**/ledger*.md",), (FIXTURE_CITATION,))
     monkeypatch.setitem(DOCUMENTATION_RULES, "solution-fit", (rule,))
     assert financial not in areas_without_rule()
-    assert len(areas_without_rule()) == 20
+    assert len(areas_without_rule()) == before - 1
 
 
 def test_adding_a_rating_rule_removes_its_area(monkeypatch):
@@ -290,8 +296,8 @@ def test_report_panel_shows_count_and_folded_uncovered_list(tmp_path):
     # names carrying '&' are escaped like all other report text
     assert "Data model, constraints, migrations" in document
     assert "Vendor, BAA, data classification, residency" in document
-    assert "Error handling &amp; safe degradation" in document
-    assert "Error handling & safe degradation" not in document
+    assert "Financial integrity &amp; historical reconstruction" in document
+    assert "Financial integrity & historical reconstruction" not in document
     assert '<details class="areas-without-rule">' in document
 
 

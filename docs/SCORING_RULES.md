@@ -42,6 +42,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | security | 0.25 |
 | test-strategy | 0.20 |
 | blast-radius | 0.25 |
+| reliability | 0.25 |
 
 architecture (DDR-0011, T074): documents carry 20 and code 80. A missing architecture description or
 decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
@@ -54,6 +55,17 @@ schemas, exceptions and providers are `shared` boundary contracts. Only the cura
 apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in scoring until
 conventions are embedded for replay (T075). A README heading naming "Architecture" fills the
 `architecture-doc` role (coverage) and passes the description rule, citing the same excerpt.
+
+reliability (T043, floor user-approved 2026-10-06): its roles are three code pseudo-roles (source
+files of a registry language; outbound HTTP client calls; database access calls) and the README, so
+a repository with source code reaches the 0.25 floor and one with none of them abstains with every
+role named. The four rules count findings over the whole text of the in-scope source files (priority
+batches above 200, disclosed as a sample); test files are never scanned. Each count is textual and a
+place to look, not a proven defect. The timeout, retry and loop rules abstain where no outbound call,
+retry statement or query call was found: a repository with nothing to judge earns no pass for it.
+Transaction, lock and idempotency code (#6) needs judgment, so it is quoted in the pack as evidence
+for the calling agent and feeds no rule. Business continuity (#32) is a documentation rule: a
+continuity, BCP, degraded-mode, resilience or fallback document is reported present or missing.
 
 ## Rules and the registry fields they read
 
@@ -95,10 +107,15 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `changed_files_in_churn_hotspots_share` | 35 | ≤ 0.20 | none (git history) |
 | | `public_symbols_removed` | 15 | = 0 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, `public_declarations` |
 | | `destructive_migration_ops` | 15 | = 0 | none (generic patterns) |
+| reliability | `swallowed_errors_observed` | 35 | = 0 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, delimiters, `swallowed_errors` *(opt)*; matched with comments kept, so a handler holding a comment does not count; Go's `if err != nil` handling never counts, only an empty branch |
+| | `outbound_calls_without_timeout_observed` | 35 | = 0 | same file fields, `outbound_calls` / `call_timeouts` / `client_timeouts` *(opt)*; a call statement with no deadline token inside it, unless its file sets a client-wide deadline (a wrapper); abstains with no outbound call |
+| | `retries_without_backoff_observed` | 10 | = 0 | same file fields, `retry_calls` / `retry_backoff` *(opt)*; abstains with no retry statement |
+| | `queries_in_loops_observed` | 20 | = 0 | same file fields, `function_start`, `query_calls` / `loop_keywords` *(opt)*; a query on a line enclosed by a loop line (by indentation, up to its function) or after a `.method` loop token on its own line; a loop header runs its query once and never counts; abstains with no query call |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 Every threshold carries a citation in the output: ISO/IEC 42010, 29148, 26514, 5055, 29119,
-McCabe, NIST SP 500-235, CWE Top 25, OWASP ASVS, Henry–Kafura, Nagappan–Ball, SemVer, or
+McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, Henry–Kafura,
+Nagappan–Ball, SemVer, ISO 22301 (documentation rule), or
 `project default` where no external standard fixes the number.
 
 ### Fields that feed no rule directly
@@ -107,6 +124,8 @@ McCabe, NIST SP 500-235, CWE Top 25, OWASP ASVS, Henry–Kafura, Nagappan–Ball
 - `frameworks` detects framework entries. A framework can only add `test_name_patterns`,
   `test_declarations`, `assertions`, `security_sinks`, `roles.test-config`, and
   `roles.lint-config` to its language.
+- `transaction_markers` (T043) selects the transaction, lock and idempotency lines the reliability
+  pack quotes for the calling agent; area #6 has no rule.
 
 This mapping is what `needs_input.reference` uses: when a detected language or framework lacks a
 required field, its `why` names the rules that read it.

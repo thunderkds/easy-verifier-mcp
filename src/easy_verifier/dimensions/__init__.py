@@ -5,7 +5,8 @@ registry: a registry adds a failure mode flat wiring does not have — a dimensi
 silently missing because its module was never imported.
 
 The security descriptor landed in T008, test-strategy in T009, blast-radius in
-T010 — all seven of FR-010's dimensions are wired here explicitly.
+T010 — all seven of FR-010's dimensions are wired here explicitly; reliability
+(T043) is the first of DDR-0008's new dimensions.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from . import (
     architecture,
     blast_radius,
     code_quality,
+    reliability,
     requirement_fidelity,
     security,
     solution_fit,
@@ -33,6 +35,7 @@ DIMENSIONS: dict[str, DimensionDescriptor] = {
     security.NAME: security.DESCRIPTOR,
     test_strategy.NAME: test_strategy.DESCRIPTOR,
     blast_radius.NAME: blast_radius.DESCRIPTOR,
+    reliability.NAME: reliability.DESCRIPTOR,
 }
 
 

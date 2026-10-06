@@ -228,3 +228,45 @@ source_tag = "curated"
 value = ["GET=.GET(", "POST=.POST(", "PUT=.PUT(", "PATCH=.PATCH(", "DELETE=.DELETE("]
 citation_url = "https://gin-gonic.com/docs/examples/http-method/"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["if err != nil { }"]
+citation_url = "https://staticcheck.dev/docs/checks/#SA9003"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["http.Get (", "http.Post (", "http.PostForm (", "http.Head (", "&http.Client {", "= http.Client {"]
+citation_url = "https://pkg.go.dev/net/http#Client"
+source_tag = "curated"
+
+[[call_timeouts]]
+value = ["Timeout :"]
+citation_url = "https://pkg.go.dev/net/http#Client"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = [".Timeout ="]
+citation_url = "https://pkg.go.dev/net/http#Client"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".Query (", ".QueryRow (", ".QueryContext (", ".QueryRowContext (", ".Exec (", ".ExecContext ("]
+citation_url = "https://pkg.go.dev/database/sql#DB.Query"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for"]
+citation_url = "https://go.dev/ref/spec#For_statements"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".BeginTx (", ".Begin ("]
+citation_url = "https://pkg.go.dev/database/sql#DB.BeginTx"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

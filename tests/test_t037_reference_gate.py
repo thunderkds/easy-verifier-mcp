@@ -248,6 +248,16 @@ def test_optional_fields_are_never_required():
         "type_strict",
         "type_strict_off",
         "type_config_extends",
+        # T043: only languages whose libraries have the pattern declare them.
+        "swallowed_errors",
+        "outbound_calls",
+        "call_timeouts",
+        "client_timeouts",
+        "retry_calls",
+        "retry_backoff",
+        "query_calls",
+        "loop_keywords",
+        "transaction_markers",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 

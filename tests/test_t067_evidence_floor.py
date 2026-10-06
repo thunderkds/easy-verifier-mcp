@@ -167,6 +167,8 @@ def _every_kind() -> tuple:
         "security": _failed("security"),
         "test-strategy": _all_abstained("test-strategy"),
         "blast-radius": borderline,
+        # T043: an ordinary rules rating, far from every threshold.
+        "reliability": _rated_far("reliability"),
     }
     return tuple(by_name[name] for name in DIMENSIONS)
 
@@ -488,9 +490,9 @@ def test_plan_abstained_line_lists_unmeasured_rules_with_fix() -> None:
 def test_plan_totals_with_fewer_contributors() -> None:
     ratings = _every_kind()
     overall = rate_overall(ratings)
-    assert overall.contributors == ("blast-radius",)
+    assert overall.contributors == ("blast-radius", "reliability")
     plan = improvement_plan(ratings, overall)
-    assert all(item.dimension == "blast-radius" for item in plan.items)
+    assert {item.dimension for item in plan.items} <= {"blast-radius", "reliability"}
 
 
 # ---------------------------------------------------------------------------

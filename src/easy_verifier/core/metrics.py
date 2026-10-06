@@ -309,6 +309,19 @@ class LanguageTables:
     """Language name -> its type-checker configuration tokens (T056, area
     #17); only languages with a type checker declare them."""
 
+    swallowed_errors: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    outbound_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    call_timeouts: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    client_timeouts: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    retry_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    retry_backoff: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    query_calls: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    loop_keywords: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    transaction_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T043 reliability tokens (areas #6, #12,
+    #13, #15), present only where ``syntax`` is and the language declares the
+    field; read through :func:`reliability_findings`."""
+
 
 @dataclass(frozen=True)
 class TypeConfigFile:
@@ -565,6 +578,11 @@ class _PackView:
     test_files: tuple[str, ...]
     test_excerpts: tuple[Excerpt, ...]
     tables: LanguageTables
+    reliability: dict[str, ReliabilityFindings | None] = field(
+        default_factory=dict, compare=False, repr=False
+    )
+    """Excerpt ref -> its :func:`reliability_findings`, filled on first use:
+    the four reliability metrics scan each excerpt once, not four times."""
 
 
 def _view(pack: EvidencePack, tables: LanguageTables) -> _PackView:
@@ -1829,6 +1847,310 @@ def _todo_without_ticket_share(view: _PackView) -> _Computed:
 
 
 # ---------------------------------------------------------------------------
+# Reliability (T043): #12 swallowed errors, #13 calls without a deadline and
+# retries without backoff, #15 queries in loops, #6 transaction evidence.
+# Every token is the registry's; matching is textual, so a count is a place
+# to look and a lower bound, never a proven defect.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReliabilityFindings:
+    """1-indexed lines of one text holding each reliability fact (T043)."""
+
+    swallowed: tuple[int, ...]
+    calls: tuple[int, ...]
+    unbounded_calls: tuple[int, ...]
+    retries: tuple[int, ...]
+    unbacked_retries: tuple[int, ...]
+    queries: tuple[int, ...]
+    queries_in_loops: tuple[int, ...]
+    transactions: tuple[int, ...]
+
+
+def reliability_findings(
+    path: str, text: str, tables: LanguageTables
+) -> ReliabilityFindings | None:
+    """The reliability facts of ``text`` (the contents of ``path``), or
+    ``None`` when its language has no structure syntax.
+
+    Tokens match with strings and comments blanked, except
+    ``swallowed_errors``, which keeps comments: a handler holding a comment,
+    or followed by one on its last line (``pass  # why``), is a documented
+    choice and is not counted. A call or retry statement runs like a
+    cookie statement; one whose brackets never close is counted as a call
+    but never judged. A ``client_timeouts`` token anywhere in the text
+    bounds every call in it (a wrapper's deadline). Lines longer than
+    ``MAX_LINE_CHARS`` (generated or minified code) are skipped.
+    """
+    suffix = PurePosixPath(path).suffix
+    syntax = tables.syntax.get(suffix)
+    if syntax is None:
+        return None
+    code = strip(text, syntax)
+    lines = code.split("\n")
+    # Whole files can be large: count newlines forward from the last match,
+    # never from the start (each pass visits matches in offset order).
+    position = [0, 1]
+
+    def line_of(offset: int) -> int:
+        if offset < position[0]:
+            position[:] = [0, 1]
+        position[1] += code.count("\n", position[0], offset)
+        position[0] = offset
+        return position[1]
+
+    def lines_of(pattern: re.Pattern[str] | None, source: str) -> tuple[int, ...]:
+        if pattern is None:
+            return ()
+        found = {line_of(m.start()) for m in pattern.finditer(source)}
+        return tuple(sorted(n for n in found if len(lines[n - 1]) <= MAX_LINE_CHARS))
+
+    def statements(
+        calls: re.Pattern[str] | None, flags: re.Pattern[str] | None
+    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        """(every statement line, those without a flag inside)."""
+        found: dict[int, bool] = {}
+        for match in calls.finditer(code) if calls is not None else ():
+            line = line_of(match.start())
+            if line in found or len(lines[line - 1]) > MAX_LINE_CHARS:
+                continue
+            end = _statement_end(code, match.start())
+            flagged = end is None or (
+                flags is not None and flags.search(code, match.start(), end) is not None
+            )
+            found[line] = not flagged
+        ordered = sorted(found)
+        return tuple(ordered), tuple(n for n in ordered if found[n])
+
+    calls, unbounded = statements(
+        tables.outbound_calls.get(suffix), tables.call_timeouts.get(suffix)
+    )
+    wrapper = tables.client_timeouts.get(suffix)
+    if wrapper is not None and wrapper.search(code):
+        unbounded = ()
+    retries, unbacked = statements(
+        tables.retry_calls.get(suffix), tables.retry_backoff.get(suffix)
+    )
+    queries = lines_of(tables.query_calls.get(suffix), code)
+    loops = tables.loop_keywords.get(suffix)
+    in_loops = tuple(
+        line
+        for line in queries
+        if loops is not None
+        and _in_loop(lines, line, tables.query_calls[suffix], loops, syntax)
+    )
+    return ReliabilityFindings(
+        swallowed=_undocumented(
+            tables.swallowed_errors.get(suffix),
+            _strings_blanked(text, syntax),
+            code,
+            line_of,
+        ),
+        calls=calls,
+        unbounded_calls=unbounded,
+        retries=retries,
+        unbacked_retries=unbacked,
+        queries=queries,
+        queries_in_loops=in_loops,
+        transactions=lines_of(tables.transaction_markers.get(suffix), code),
+    )
+
+
+def _undocumented(
+    pattern: re.Pattern[str] | None,
+    source: str,
+    code: str,
+    line_of: Callable[[int], int],
+) -> tuple[int, ...]:
+    """Lines of ``pattern`` matches in ``source`` (comments kept) whose span,
+    through the end of its last line, holds no comment: ``code`` (comments
+    blanked) differs from ``source`` exactly where a comment is."""
+    found: set[int] = set()
+    for match in pattern.finditer(source) if pattern is not None else ():
+        begin = source.rfind("\n", 0, match.start()) + 1
+        first_end = source.find("\n", match.start())
+        end = source.find("\n", match.end())
+        first_end, end = (len(source) if i < 0 else i for i in (first_end, end))
+        if (
+            first_end - begin <= MAX_LINE_CHARS
+            and source[match.start() : end] == code[match.start() : end]
+        ):
+            found.add(line_of(match.start()))
+    return tuple(sorted(found))
+
+
+def _in_loop(
+    lines: list[str],
+    line: int,
+    query: re.Pattern[str],
+    loops: re.Pattern[str],
+    syntax: LanguageSyntax,
+) -> bool:
+    """Whether the query on ``line`` runs once per iteration of a loop.
+
+    On its own line only a ``.``-method loop token before the query counts
+    (``ids.map((id) => find(id))``): a keyword there is the loop's header,
+    which runs the query once. Above it, each less-indented line encloses it;
+    the first holding a loop token puts it in a loop, and the first holding
+    a function start ends the search (a loop around a function definition
+    does not run its body).
+    """
+    current = lines[line - 1]
+    first = query.search(current)
+    start = first.start() if first is not None else len(current)
+    if any(
+        m.group().startswith(".") and m.end() <= start for m in loops.finditer(current)
+    ):
+        return True
+    threshold = _indent_of(current)
+    for index in range(line - 2, -1, -1):
+        if threshold == 0:
+            break
+        candidate = lines[index]
+        if not candidate.strip() or len(candidate) > MAX_LINE_CHARS:
+            continue
+        indent = _indent_of(candidate)
+        if indent >= threshold:
+            continue
+        if loops.search(candidate):
+            return True
+        if syntax.function_start.search(candidate):
+            return False
+        threshold = indent
+    return False
+
+
+MAX_RELIABILITY_LISTED = 20
+"""Sites named in one reliability derivation; the rest are counted."""
+
+
+@dataclass(frozen=True)
+class _ReliabilityRule:
+    fields: tuple[str, ...]
+    """LanguageTables fields a language must declare to be scanned."""
+    hits: str
+    total: str | None
+    """The findings attribute counting all candidates; ``None`` when a count
+    over the scanned code is meaningful without any (no handler swallowed)."""
+    what: str
+    candidates: str
+
+
+_RELIABILITY_RULES = {
+    "swallowed_errors_observed": _ReliabilityRule(
+        ("swallowed_errors",),
+        "swallowed",
+        None,
+        "error handler(s) doing nothing (the registry's swallowed_errors tokens, "
+        "matched with comments kept, so a handler holding a comment is not "
+        "counted)",
+        "",
+    ),
+    "outbound_calls_without_timeout_observed": _ReliabilityRule(
+        ("outbound_calls",),
+        "unbounded_calls",
+        "calls",
+        "outbound call(s) with no deadline (an outbound_calls statement holding "
+        "no call_timeouts token, in a file holding no client_timeouts token)",
+        "outbound call",
+    ),
+    "retries_without_backoff_observed": _ReliabilityRule(
+        ("retry_calls",),
+        "unbacked_retries",
+        "retries",
+        "retry statement(s) with no delay or backoff (a retry_calls statement "
+        "holding no retry_backoff token)",
+        "retry statement",
+    ),
+    "queries_in_loops_observed": _ReliabilityRule(
+        ("query_calls", "loop_keywords"),
+        "queries_in_loops",
+        "queries",
+        "database query call(s) inside a loop body (a query_calls token on a "
+        "line enclosed, by indentation up to its function, by a loop_keywords "
+        "line, or after a .method loop token on its own line)",
+        "database query call",
+    ),
+}
+
+_RELIABILITY_METHOD = (
+    "matched textually in source-file (not test) excerpts of registry "
+    "languages declaring these tokens, after strings and comments are "
+    "blanked; a lower bound on the repository, since only these excerpts "
+    "were read"
+)
+
+
+def _reliability_count(name: str) -> Callable[[_PackView], _Computed]:
+    rule = _RELIABILITY_RULES[name]
+
+    def compute(view: _PackView) -> _Computed:
+        scanned: list[tuple[Excerpt, ReliabilityFindings]] = []
+        for excerpt in view.pack.excerpts:
+            suffix = PurePosixPath(excerpt.path).suffix
+            if not _is_source_file(excerpt.path, view.tables) or not all(
+                suffix in getattr(view.tables, item) for item in rule.fields
+            ):
+                continue
+            if excerpt.ref not in view.reliability:
+                view.reliability[excerpt.ref] = reliability_findings(
+                    excerpt.path, excerpt.text, view.tables
+                )
+            found = view.reliability[excerpt.ref]
+            if found is not None:
+                scanned.append((excerpt, found))
+        if not scanned:
+            return MetricAbstention(
+                reason=(
+                    "no source-file excerpt of a registry language declaring "
+                    f"{' and '.join(rule.fields)} is in this pack, so no code was "
+                    "scanned; that is not the same as code without "
+                    + rule.what.split(" (", 1)[0]
+                )
+            )
+        if rule.total is not None and not any(
+            getattr(found, rule.total) for _excerpt, found in scanned
+        ):
+            return MetricAbstention(
+                reason=(
+                    f"no {rule.candidates} was found in the {len(scanned)} "
+                    "source-file excerpt(s) scanned, so there is nothing to "
+                    f"judge; that is not the same as every {rule.candidates} "
+                    "being sound. " + _RELIABILITY_METHOD
+                )
+            )
+        sites = {
+            (excerpt.path, excerpt.start_line + line - 1): excerpt.ref
+            for excerpt, found in scanned
+            for line in getattr(found, rule.hits)
+        }
+        cited = sorted(set(sites.values())) or sorted({e.ref for e, _f in scanned})
+        ordered = sorted(sites)
+        listed = ", ".join(
+            f"{path}:{line}" for path, line in ordered[:MAX_RELIABILITY_LISTED]
+        )
+        more = len(ordered) - MAX_RELIABILITY_LISTED
+        total = (
+            f" of {sum(len(getattr(f, rule.total)) for _e, f in scanned)}"
+            if rule.total is not None
+            else ""
+        )
+        return (
+            len(sites),
+            tuple(cited),
+            f"{len(sites)}{total} {rule.what} in {len(scanned)} source-file "
+            "excerpt(s): "
+            + (listed or "none")
+            + (f" and {more} more" if more > 0 else "")
+            + "; "
+            + _RELIABILITY_METHOD,
+        )
+
+    return compute
+
+
+# ---------------------------------------------------------------------------
 # Backward compatibility (T055, area #5): read by the blast-radius dimension
 # from the diff of a changes scope into ``pack.compat``; each listed item is
 # a pack excerpt, so a count is shown only with all of its listed evidence.
@@ -2609,6 +2931,13 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         EVIDENCE_LOCAL,
         _strict_type_config_missing,
     ),
+    # T043: reliability; computed over whole files by the reliability pack
+    *(
+        MetricDefinition(
+            name, FAMILY_CODE_SHAPE, EVIDENCE_LOCAL, _reliability_count(name)
+        )
+        for name in _RELIABILITY_RULES
+    ),
 )
 
 METRIC_NAMES: tuple[str, ...] = tuple(d.name for d in METRIC_DEFINITIONS)
@@ -2694,6 +3023,7 @@ SAMPLED_METRICS: dict[str, tuple[str, ...]] = {
         "todo_without_ticket_share",
     ),
     "architecture": ("top_level_import_cycles", "layer_direction_violations"),
+    "reliability": tuple(_RELIABILITY_RULES),
 }
 """Metrics a code tier computes over the whole text of its priority-batch
 sample (T068) when it has more sources than its cap: the byte budget would
@@ -2702,6 +3032,7 @@ otherwise truncate the excerpts they read and every whole-set one abstain."""
 SAMPLE_METRICS: dict[str, tuple[str, ...]] = {
     "code-quality": (*SAMPLED_METRICS["code-quality"], "source_file_share"),
     "architecture": (*SAMPLED_METRICS["architecture"], "source_file_share"),
+    "reliability": (*SAMPLED_METRICS["reliability"], "source_file_share"),
     "test-strategy": (
         "test_to_source_ratio",
         "source_files_without_covering_test",
