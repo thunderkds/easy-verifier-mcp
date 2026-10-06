@@ -34,7 +34,6 @@
 - [ ] **T044** — New dimension: api (#7) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T045** — New dimension: data (#4) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2
 - [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
 
 **Follow-up from T068 Stage 4 (2026-10-04, no guide yet — needs user go-ahead)**
@@ -72,7 +71,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [ ] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T048` (pack floor 0.25 user-approved)
 
 ### Ready for Review
 
