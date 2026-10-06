@@ -273,3 +273,40 @@ source_tag = "curated"
 value = ["GET=Route::get(", "POST=Route::post(", "PUT=Route::put(", "PATCH=Route::patch(", "DELETE=Route::delete(", "ANY=Route::any("]
 citation_url = "https://laravel.com/docs/11.x/routing"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["catch ( * ) { }", "catch ( * $* ) { }"]
+citation_url = "https://www.php.net/manual/en/language.exceptions.php"
+source_tag = "curated"
+
+[[query_calls]]
+value = ["->query (", "->execute ("]
+citation_url = "https://www.php.net/manual/en/pdo.query.php"
+source_tag = "curated"
+
+[[query_calls]]
+value = ["::find (", "::findOrFail (", "::where ("]
+citation_url = "https://laravel.com/docs/11.x/eloquent"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "foreach", "while", "do"]
+citation_url = "https://www.php.net/manual/en/control-structures.foreach.php"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["->beginTransaction ("]
+citation_url = "https://www.php.net/manual/en/pdo.begintransaction.php"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["DB::transaction (", "->lockForUpdate ("]
+citation_url = "https://laravel.com/docs/11.x/database#database-transactions"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

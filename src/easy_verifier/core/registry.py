@@ -116,6 +116,33 @@ without a type checker declares none, and its strict-config rule abstains:
   string, or a ``[...]`` list of strings, names the configuration file(s)
   this one extends, resolved relative to the file; the last listed wins.
 
+The reliability fields (T043, areas #6, #12, #13, #15) are read by the
+``reliability`` dimension through ``core/metric_tables.py``. All are optional:
+a language that declares none of a rule's fields is not scanned for that rule,
+and the rule abstains where no scanned code has its evidence. Every token is
+matched in source (not test) files after strings are blanked, and after
+comments are blanked too unless stated:
+
+* ``swallowed_errors`` — an error handler that does nothing (``"catch ( * )
+  { }"``, ``"except * : pass"``), matched with comments *kept*, so a handler
+  holding only a comment is a documented choice, not a swallowed error;
+* ``outbound_calls`` — tokens starting a statement that makes an outbound HTTP
+  or database call with no deadline by default (``"requests.get ("``); the
+  statement runs like a ``cookie_calls`` statement. ``call_timeouts`` are
+  tokens that set a deadline inside it (``"timeout ="``); ``client_timeouts``
+  are tokens that, anywhere in the same file, set a client-wide deadline a
+  wrapper's calls inherit (``"AbortController"``);
+* ``retry_calls`` — tokens starting a statement that retries with no delay by
+  default (``"@retry"``); ``retry_backoff`` — tokens that set a delay or
+  backoff inside it (``"wait ="``);
+* ``query_calls`` — tokens of a database query call (``".findUnique ("``);
+  ``loop_keywords`` — tokens on a line that opens a loop (``"for"``,
+  ``".forEach ("``). A query is in a loop when a line enclosing it (less
+  indented, up to the enclosing function) holds a loop token, or a loop token
+  starting with ``.`` comes before it on its own line;
+* ``transaction_markers`` — transaction, lock or idempotency tokens. Quoted as
+  evidence for the calling agent (#6 needs judgment); they feed no rule.
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -259,6 +286,15 @@ _TOKEN_FIELDS = frozenset(
         "requirement_item_patterns",
         "issue_reference_patterns",
         "issue_reference_exclusions",
+        "swallowed_errors",
+        "outbound_calls",
+        "call_timeouts",
+        "client_timeouts",
+        "retry_calls",
+        "retry_backoff",
+        "query_calls",
+        "loop_keywords",
+        "transaction_markers",
     }
 )
 
@@ -293,6 +329,15 @@ ENTRY_FIELDS = (
     "type_strict_off",
     "type_config_extends",
     "route_tokens",
+    "swallowed_errors",
+    "outbound_calls",
+    "call_timeouts",
+    "client_timeouts",
+    "retry_calls",
+    "retry_backoff",
+    "query_calls",
+    "loop_keywords",
+    "transaction_markers",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

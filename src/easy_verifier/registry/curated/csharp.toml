@@ -271,3 +271,40 @@ source_tag = "curated"
 value = ["GET=.MapGet(", "POST=.MapPost(", "PUT=.MapPut(", "PATCH=.MapPatch(", "DELETE=.MapDelete("]
 citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["catch { }", "catch ( * ) { }", "catch ( * * ) { }", "catch ( *.* ) { }", "catch ( *.* * ) { }"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements"
+source_tag = "curated"
+
+[[retry_calls]]
+value = [".Retry (", ".RetryAsync (", ".RetryForever (", ".RetryForeverAsync ("]
+citation_url = "https://github.com/App-vNext/Polly/wiki/Retry"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".ExecuteReader (", ".ExecuteReaderAsync (", ".ExecuteNonQuery (", ".ExecuteNonQueryAsync (", ".ExecuteScalar (", ".ExecuteScalarAsync ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/api/system.data.common.dbcommand"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".SaveChanges (", ".SaveChangesAsync ("]
+citation_url = "https://learn.microsoft.com/en-us/ef/core/saving/basic"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "foreach", "while", "do", ".ForEach ("]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/iteration-statements"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".BeginTransaction (", ".BeginTransactionAsync (", "TransactionScope"]
+citation_url = "https://learn.microsoft.com/en-us/ef/core/saving/transactions"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

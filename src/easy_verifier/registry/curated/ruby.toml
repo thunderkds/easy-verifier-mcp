@@ -259,3 +259,30 @@ source_tag = "curated"
 value = ["GET=get", "POST=post", "PUT=put", "PATCH=patch", "DELETE=delete", "ANY=match"]
 citation_url = "https://guides.rubyonrails.org/routing.html"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["rescue end", "rescue <A-Z>* end", "rescue => * end", "rescue <A-Z>* => * end", "rescue nil"]
+citation_url = "https://docs.rubocop.org/rubocop/cops_lint.html#lintsuppressedexception"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".find_by", ".where"]
+citation_url = "https://guides.rubyonrails.org/active_record_querying.html"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "while", "until", "loop", ".each", ".each_with_index", ".map", ".times"]
+citation_url = "https://docs.ruby-lang.org/en/3.3/syntax/control_expressions_rdoc.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".transaction", ".with_lock", ".lock!"]
+citation_url = "https://api.rubyonrails.org/classes/ActiveRecord/Transactions/ClassMethods.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

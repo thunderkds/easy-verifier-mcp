@@ -208,3 +208,40 @@ source_tag = "curated"
 value = ["ANY=.route("]
 citation_url = "https://docs.rs/axum/latest/axum/routing/struct.Router.html#method.route"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["Err ( * ) => { }", "Err ( * ) => ( )"]
+citation_url = "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["reqwest::get (", "reqwest::Client::new ("]
+citation_url = "https://docs.rs/reqwest/latest/reqwest/struct.ClientBuilder.html#method.timeout"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = [".timeout ("]
+citation_url = "https://docs.rs/reqwest/latest/reqwest/struct.RequestBuilder.html#method.timeout"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".fetch_one (", ".fetch_all (", ".fetch_optional ("]
+citation_url = "https://docs.rs/sqlx/latest/sqlx/query/struct.Query.html"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "while", "loop", ".for_each ("]
+citation_url = "https://doc.rust-lang.org/reference/expressions/loop-expr.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".begin ("]
+citation_url = "https://docs.rs/sqlx/latest/sqlx/struct.Pool.html#method.begin"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

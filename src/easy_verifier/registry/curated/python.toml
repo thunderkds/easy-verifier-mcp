@@ -349,3 +349,85 @@ source_tag = "curated"
 value = ["ANY=path(", "ANY=re_path("]
 citation_url = "https://docs.djangoproject.com/en/5.1/topics/http/urls/"
 source_tag = "curated"
+
+# Reliability fields (T043): areas #6, #12, #13, #15.
+
+[[swallowed_errors]]
+value = ["except : pass", "except * : pass", "except *.* : pass", "except * as * : pass", "except *.* as * : pass", "except ( * , * ) : pass", "except ( * , * ) as * : pass"]
+citation_url = "https://bandit.readthedocs.io/en/latest/plugins/b110_try_except_pass.html"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["requests.get (", "requests.post (", "requests.put (", "requests.patch (", "requests.delete (", "requests.head (", "requests.options (", "requests.request ("]
+citation_url = "https://requests.readthedocs.io/en/latest/user/advanced/#timeouts"
+source_tag = "curated"
+
+[[outbound_calls]]
+value = ["urlopen (", "urllib.request.urlopen ("]
+citation_url = "https://docs.python.org/3/library/urllib.request.html#urllib.request.urlopen"
+source_tag = "curated"
+
+[[call_timeouts]]
+value = ["timeout ="]
+citation_url = "https://requests.readthedocs.io/en/latest/user/advanced/#timeouts"
+source_tag = "curated"
+
+[[client_timeouts]]
+value = ["socket.setdefaulttimeout ("]
+citation_url = "https://docs.python.org/3/library/socket.html#socket.setdefaulttimeout"
+source_tag = "curated"
+
+[[retry_calls]]
+value = ["@retry", "@tenacity.retry"]
+citation_url = "https://tenacity.readthedocs.io/en/latest/"
+source_tag = "curated"
+
+[[retry_calls]]
+value = ["Retry (", "urllib3.Retry (", "urllib3.util.Retry ("]
+citation_url = "https://urllib3.readthedocs.io/en/stable/reference/urllib3.util.html#urllib3.util.Retry"
+source_tag = "curated"
+
+[[retry_backoff]]
+value = ["wait =", "wait_* ="]
+citation_url = "https://tenacity.readthedocs.io/en/latest/#waiting-before-retrying"
+source_tag = "curated"
+
+[[retry_backoff]]
+value = ["backoff_factor ="]
+citation_url = "https://urllib3.readthedocs.io/en/stable/reference/urllib3.util.html#urllib3.util.Retry"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".execute ("]
+citation_url = "https://peps.python.org/pep-0249/#id15"
+source_tag = "curated"
+
+[[query_calls]]
+value = [".objects.get (", ".objects.filter ("]
+citation_url = "https://docs.djangoproject.com/en/5.1/ref/models/querysets/"
+source_tag = "curated"
+
+[[query_calls]]
+value = ["session.query (", ".session.query ("]
+citation_url = "https://docs.sqlalchemy.org/en/20/orm/queryguide/query.html"
+source_tag = "curated"
+
+[[loop_keywords]]
+value = ["for", "while"]
+citation_url = "https://docs.python.org/3/reference/compound_stmts.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["transaction.atomic", "select_for_update ("]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/db/transactions/"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = [".begin (", "with_for_update ("]
+citation_url = "https://docs.sqlalchemy.org/en/20/orm/session_transaction.html"
+source_tag = "curated"
+
+[[transaction_markers]]
+value = ["*dempoten*", "*DEMPOTEN*"]
+citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"

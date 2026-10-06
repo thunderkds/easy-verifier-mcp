@@ -601,6 +601,7 @@ def test_registry_is_a_plain_dict_of_descriptors():
         "security",
         "test-strategy",
         "blast-radius",
+        "reliability",  # T043
     }
     descriptor = DIMENSIONS["architecture"]
     assert type(descriptor) is DimensionDescriptor

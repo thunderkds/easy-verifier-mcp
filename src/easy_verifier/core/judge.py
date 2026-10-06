@@ -43,6 +43,9 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     "security": CoverageFloor(0.25, "inclusive"),
     "test-strategy": CoverageFloor(0.20, "inclusive"),
     "blast-radius": CoverageFloor(0.25, "inclusive"),
+    # User-approved 2026-10-06 (T043): one of four roles, so source code alone
+    # reaches it; a repository with none of them abstains with named misses.
+    "reliability": CoverageFloor(0.25, "inclusive"),
 }
 
 
@@ -225,6 +228,32 @@ _PARALLEL_CHANGE = Citation(
 _ISO_26514 = Citation(
     "ISO/IEC/IEEE 26514:2022 (design and development of information for users)",
     "https://www.iso.org/standard/77451.html",
+)
+_CWE_390 = Citation(
+    "CWE-390 Detection of Error Condition Without Action",
+    "https://cwe.mitre.org/data/definitions/390.html",
+)
+_CWE_1069 = Citation(
+    "CWE-1069 Empty Exception Block (an ISO/IEC 5055 reliability weakness)",
+    "https://cwe.mitre.org/data/definitions/1069.html",
+)
+_CWE_400 = Citation(
+    "CWE-400 Uncontrolled Resource Consumption",
+    "https://cwe.mitre.org/data/definitions/400.html",
+)
+_SRE_CASCADING = Citation(
+    "Google SRE book, Addressing Cascading Failures (deadlines; retries with "
+    "randomized exponential backoff)",
+    "https://sre.google/sre-book/addressing-cascading-failures/",
+)
+_CWE_1050 = Citation(
+    "CWE-1050 Excessive Platform Resource Consumption within a Loop (an "
+    "ISO/IEC 5055 performance efficiency weakness)",
+    "https://cwe.mitre.org/data/definitions/1050.html",
+)
+_ISO_22301 = Citation(
+    "ISO 22301:2019 (business continuity management systems)",
+    "https://www.iso.org/standard/75106.html",
 )
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
@@ -418,6 +447,31 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "destructive_migration_ops", 15, 0, "at_most",
             (_SEMVER, _PARALLEL_CHANGE), PROJECT_DEFAULT,
             area=AREAS[4],
+        ),
+    ),
+    # T043: areas #12, #13 and #15 (query-in-loop only). #6 transactions and
+    # idempotency need judgment: quoted as evidence, never scored (user).
+    # Weights are a proposal (Supervisor sign-off pending, 2026-10-06).
+    "reliability": _rules(
+        RatingRule(
+            "swallowed_errors_observed", 35, 0, "at_most",
+            (_CWE_390, _CWE_1069, _ISO_5055), PROJECT_DEFAULT,
+            area=AREAS[11],
+        ),
+        RatingRule(
+            "outbound_calls_without_timeout_observed", 35, 0, "at_most",
+            (_CWE_400, _SRE_CASCADING), PROJECT_DEFAULT,
+            area=AREAS[12],
+        ),
+        RatingRule(
+            "retries_without_backoff_observed", 10, 0, "at_most",
+            (_SRE_CASCADING,), PROJECT_DEFAULT,
+            area=AREAS[12],
+        ),
+        RatingRule(
+            "queries_in_loops_observed", 20, 0, "at_most",
+            (_CWE_1050, _ISO_5055), PROJECT_DEFAULT,
+            area=AREAS[14],
         ),
     ),
 }
@@ -1872,4 +1926,18 @@ def _serialize(value: dict) -> str:
 # security dimension reads a matching document.
 DOCUMENTATION_RULES["security"] = (
     DocumentationRule(AREAS[7], _OFFBOARDING_PATTERNS, (_ASVS_OFFBOARDING,)),
+)
+
+
+# #32 business continuity (T043): whether the business can run degraded is a
+# process no repository can show, so only its document is checked; the
+# reliability dimension reads a matching document.
+_CONTINUITY_PATTERNS = tuple(
+    f"**/*{variant}*{suffix}"
+    for keyword in ("continuity", "bcp", "degrad", "resilien", "fallback")
+    for variant in (keyword, keyword.capitalize(), keyword.upper())
+    for suffix in (".md", ".rst", ".adoc")
+)
+DOCUMENTATION_RULES["reliability"] = (
+    DocumentationRule(AREAS[31], _CONTINUITY_PATTERNS, (_ISO_22301,)),
 )

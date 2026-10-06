@@ -27,7 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 def test_all_seven_dimensions_return_a_slot_each() -> None:
     result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
-    assert len(result.slots) == 7
+    assert len(result.slots) == 8
     assert {slot.dimension for slot in result.slots} == set(dimension_names())
     for slot in result.slots:
         assert slot.error is None
@@ -220,7 +220,7 @@ def test_all_dimensions_failing_yields_a_result_not_an_exception(monkeypatch) ->
 
     result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
-    assert len(result.slots) == 7
+    assert len(result.slots) == 8
     assert all(slot.pack is None and slot.error is not None for slot in result.slots)
 
 
