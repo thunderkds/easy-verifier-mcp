@@ -13,8 +13,6 @@
 ### Todo
 
 **Wave 16 — Business-domain area coverage (added 2026-10-06, user request: uncovered business-domain areas; run order T082 → T043 → T047 → T048, floors 0.25 user-approved)**
-- [ ] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T082** — The score names the evaluation areas it does not measure | backend-developer | C2 | Risk: Medium | P1
 
 **Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
 
@@ -33,7 +31,6 @@
 - [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
 - [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
-- [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T044** — New dimension: api (#7) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T045** — New dimension: data (#4) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
@@ -76,13 +73,16 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [ ] **T082** — The score names the evaluation areas it does not measure (`areas_measured` / `areas_without_rule`, disclosure, report list; FR-073) | backend-developer | C2 | Risk: Med | P1 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T082`
+- [ ] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | 🔄 2026-10-06 worktree `../easy-verifier-mcp-T043` (floor 0.25 user-approved)
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T082** — The score names the evaluation areas it does not measure | backend-developer | C2 | Risk: Medium | P1
+ | ✅ Done 2026-10-06 (coffee-shop-api 65 unchanged, now "measured 8 of 32 evaluation areas" + 21 uncovered listed; 2021 passed; branch `feat/T082-uncovered-areas` merges after T043 — gate blocks merges while any task is In Progress; follow-up: refresh AREA_COVERAGE coffee example)
 - [x] **T081** — Guide for checking a feature or bugfix: README § Checking a feature or bugfix + DOCKER_MCP_GUIDE § 5 (`--scope changes --ref main...HEAD < /dev/null`, bare ref = one commit, stdin wait, change score is partial: bryony no-test bugfix scored 97) | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (5 new tests, 3 fail on old docs; 2006 passed; follow-up: change-risk rules vision — test-strategy/security abstain in changes scope, symbol-level reach, stdin hang — to be planned)
 - [x] **T080** — Evaluation guide refresh after DDR-0011: requirement-fidelity code rules, missing-document = failed rule, worked examples re-run | Supervisor | C1 | Risk: Low | P1 | ✅ Done 2026-10-05 (coffee 65 over 4 dims, bryony 69; 2001 passed)
 - [x] **T077** — T075 review fixes: requirements_doc_missing, no checklist items by default, multi-line decorator handlers, --relative test, co-change path prefix | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-04 (coffee-shop-api requirement-fidelity 0→50 honest; 1990 passed)
