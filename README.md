@@ -19,7 +19,7 @@ key: nothing here calls an LLM.
 - **No outbound network requests.** Everything runs locally; secret values are redacted to a
   non-reversible fingerprint the moment they're read, never returned raw.
 
-## The seven dimensions
+## The dimensions
 
 Each dimension is a separate, independently callable unit — not one monolithic "evaluate" call.
 
@@ -32,6 +32,7 @@ Each dimension is a separate, independently callable unit — not one monolithic
 | `security` | Injection, secret handling, and other security-relevant evidence — available in every mode and scope |
 | `test-strategy` | What is and isn't covered by tests |
 | `blast-radius` | What else in the repo depends on, or is touched by, the change |
+| `reliability` | Error handling, outbound-call deadlines, retry backoff and queries in loops; transaction and idempotency code quoted for the agent; business-continuity document present or missing |
 
 ## Scopes
 
@@ -122,7 +123,7 @@ Run several dimensions in one call and receive an aggregate coverage summary:
 python -m easy_verifier.adapters.cli combined --repo . --dimensions security,architecture
 ```
 
-Rate all seven dimensions in one call. The result includes every cited metric and an overall
+Rate every dimension in one call. The result includes every cited metric and an overall
 disclosure naming which dimensions contributed or abstained:
 
 ```bash
@@ -180,6 +181,10 @@ every rule shipped in the package), and the HTML report shows them as links.
 | `blast-radius` | `changed_files_in_churn_hotspots_share` | ≤ 0.2 | 35 | [Nagappan & Ball 2005, Use of Relative Code Churn Measures to Predict System Defect Density](https://doi.org/10.1145/1062455.1062514) | project-default |
 | `blast-radius` | `public_symbols_removed` | ≤ 0 | 15 | [Semantic Versioning 2.0.0 (backward-incompatible public API changes)](https://semver.org/spec/v2.0.0.html) | project-default |
 | `blast-radius` | `destructive_migration_ops` | ≤ 0 | 15 | [Semantic Versioning 2.0.0 (backward-incompatible public API changes)](https://semver.org/spec/v2.0.0.html); [Fowler, Parallel Change (expand and contract)](https://martinfowler.com/bliki/ParallelChange.html) | project-default |
+| `reliability` | `swallowed_errors_observed` | ≤ 0 | 35 | [CWE-390 Detection of Error Condition Without Action](https://cwe.mitre.org/data/definitions/390.html); [CWE-1069 Empty Exception Block (an ISO/IEC 5055 reliability weakness)](https://cwe.mitre.org/data/definitions/1069.html); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
+| `reliability` | `outbound_calls_without_timeout_observed` | ≤ 0 | 35 | [CWE-400 Uncontrolled Resource Consumption](https://cwe.mitre.org/data/definitions/400.html); [Google SRE book, Addressing Cascading Failures (deadlines; retries with randomized exponential backoff)](https://sre.google/sre-book/addressing-cascading-failures/) | project-default |
+| `reliability` | `retries_without_backoff_observed` | ≤ 0 | 10 | [Google SRE book, Addressing Cascading Failures (deadlines; retries with randomized exponential backoff)](https://sre.google/sre-book/addressing-cascading-failures/) | project-default |
+| `reliability` | `queries_in_loops_observed` | ≤ 0 | 20 | [CWE-1050 Excessive Platform Resource Consumption within a Loop (an ISO/IEC 5055 performance efficiency weakness)](https://cwe.mitre.org/data/definitions/1050.html); [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) | project-default |
 <!-- rating-rules:end -->
 
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no
@@ -318,7 +323,7 @@ Reports are written into the **evaluated repository's** `reports/` directory, ne
 repo's — even when the two happen to be the same checkout (as they will be if you point this tool
 at itself). Nothing is overwritten; filenames are unique per scope and timestamp.
 
-Each full seven-dimension report includes a score panel with the rule-based rating, optional caller
+Each full all-dimension report includes a score panel with the rule-based rating, optional caller
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
 an abstention with its coverage boundary, never as zero or a low score.
 
@@ -327,7 +332,7 @@ an abstention with its coverage boundary, never as zero or a low score.
 A number counts declared rules met, weighted; it is not a judgment of quality. Before acting on one:
 
 - **Overall** is the mean of the dimensions that produced a number. Abstentions are left out, so
-  read it with its disclosure ("N of 7 dimensions contributed").
+  read it with its disclosure ("N of 8 dimensions contributed").
 - **Trust** a dimension number as far as its evidence: coverage floor, at least 50% of its rule
   weight measured, a `sample: … files` label on large repositories, and any blended or agent-rated
   part shown beside it.
