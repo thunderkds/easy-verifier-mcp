@@ -94,6 +94,8 @@ class _Patterns:
     money_excluded: frozenset[str]
     declarations: tuple[re.Pattern[str], ...]
     float_types: tuple[re.Pattern[str], ...]
+    persistence_float_types: tuple[re.Pattern[str], ...]
+    persistence_paths: tuple[str, ...]
     schema_paths: tuple[str, ...]
     ledger_names: frozenset[str]
     non_ledger_heads: frozenset[str]
@@ -120,6 +122,8 @@ def _patterns() -> _Patterns:
         money_excluded=frozenset(values("money_excluded_words")),
         declarations=regexes("money_declarations"),
         float_types=regexes("float_types"),
+        persistence_float_types=regexes("persistence_float_types"),
+        persistence_paths=values("persistence_paths"),
         schema_paths=values("schema_paths"),
         ledger_names=frozenset(values("ledger_names")),
         non_ledger_heads=frozenset(values("non_ledger_heads")),
@@ -254,10 +258,16 @@ def _scan(context: DimensionContext) -> _Scan:
             if is_money_name(match["name"])
         }
     )
+    # TS/JS number counts only in the persistence layer; explicit float
+    # types count everywhere (T048 review, user decision 2026-10-06).
+    is_persistence = _matcher(patterns.persistence_paths)
     floats, seen = [], set()
     for path, number, name, kind in money:
+        types = patterns.float_types + (
+            patterns.persistence_float_types if is_persistence(path) else ()
+        )
         if (path, number, name) not in seen and any(
-            pattern.search(kind) for pattern in patterns.float_types
+            pattern.search(kind) for pattern in types
         ):
             seen.add((path, number, name))
             floats.append((path, number, name, kind))
@@ -357,7 +367,9 @@ def _metrics(scan: _Scan) -> tuple[SampledMetric, ...]:
             "a money value held in binary floating point cannot represent most "
             "decimal amounts exactly; integer minor units and decimal types count "
             "as exact; matched textually against the pack's money_declarations "
-            "and float_types, so a count is a place to look",
+            "and float_types (TS/JS number only in persistence_paths files: "
+            "entities, models, schemas, migrations), so a count is a place to "
+            "look",
             [p for p, _n, _name, _kind in scan.money],
         )
     if not scan.ledgers:

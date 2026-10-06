@@ -87,11 +87,11 @@ value = ['(?<![\w.])(?P<name>[A-Za-z_]\w*)\s*:\s*\{\s*type\s*:\s*(?P<type>[A-Za-
 citation_url = "https://mongoosejs.com/docs/schematypes.html"
 source_tag = "curated"
 
-# Binary floating-point types, searched in a declaration's type. JavaScript /
-# TypeScript number (and Mongoose Number) is an IEEE 754 double.
+# Binary floating-point types, searched in a declaration's type, in any file.
+# Mongoose Number is an IEEE 754 double (Decimal128 is exact).
 [[float_types]]
-value = ['(?<![\w.])(?:number|Number)(?![\w(])']
-citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number"
+value = ['(?<![\w.])Number(?![\w(])']
+citation_url = "https://mongoosejs.com/docs/schematypes.html"
 source_tag = "curated"
 
 # Python float (Django FloatField, SQLAlchemy Float); decimal.Decimal is exact.
@@ -122,6 +122,38 @@ source_tag = "curated"
 [[float_types]]
 value = ['(?<![\w])f(?:32|64)(?![\w])']
 citation_url = "https://doc.rust-lang.org/std/primitive.f64.html"
+source_tag = "curated"
+
+# JavaScript / TypeScript number is an IEEE 754 double, but a DTO, request /
+# response type or view model often carries an amount the database holds
+# exactly. So number counts only in a persistence_paths file (user decision
+# 2026-10-06, T048 review).
+[[persistence_float_types]]
+value = ['(?<![\w.])number(?![\w(])']
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number"
+source_tag = "curated"
+
+# The persistence layer: entity, model, schema and migration files. The
+# entity / model globs are the curated data layer of conventions.toml
+# layer_paths without its repositories (data-access code, not declarations).
+[[persistence_paths]]
+value = ["**/entities/**", "**/*.entity.*", "**/entity/**"]
+citation_url = "https://typeorm.io/docs/entity/entities/"
+source_tag = "curated"
+
+[[persistence_paths]]
+value = ["**/models/**", "**/models.py", "**/*.model.*"]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-basics/"
+source_tag = "curated"
+
+[[persistence_paths]]
+value = ["**/schemas/**", "**/schema/**", "**/*.prisma"]
+citation_url = "https://mongoosejs.com/docs/guide.html"
+source_tag = "curated"
+
+[[persistence_paths]]
+value = ["**/migrations/**", "**/migration/**", "**/*.sql"]
+citation_url = "https://typeorm.io/docs/advanced-topics/migrations/"
 source_tag = "curated"
 
 # Schema files read besides source files of a registry language.
