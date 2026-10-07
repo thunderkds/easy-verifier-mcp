@@ -360,7 +360,7 @@ an abstention with its coverage boundary, never as zero or a low score.
 A number counts declared rules met, weighted; it is not a judgment of quality. Before acting on one:
 
 - **Overall** is the mean of the dimensions that produced a number. Abstentions are left out, so
-  read it with its disclosure ("N of 8 dimensions contributed").
+  read it with its disclosure ("N of 9 dimensions contributed").
 - **Trust** a dimension number as far as its evidence: coverage floor, at least 50% of its rule
   weight measured, a `sample: … files` label on large repositories, and any blended or agent-rated
   part shown beside it.

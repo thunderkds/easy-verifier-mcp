@@ -211,7 +211,7 @@ generic patterns only. The CLI never shows `reference`.
 ## 4. Check the connection
 
 - Claude Code: `claude mcp list`, or `/mcp` inside a session.
-- Other clients: the server should report as `easy-verifier` with 12 tools: the eight dimensions,
+- Other clients: the server should report as `easy-verifier` with 13 tools: the nine dimensions,
   `list_dimensions`, `combined`, `score`, and `write_report`.
 - By hand, start one stdio session with the host paths passed only through environment variables:
 

@@ -38,5 +38,5 @@ def test_standalone_score_is_a_successful_report_even_when_context_is_limited(
 ) -> None:
     target = target_repo(tmp_path / "plain")
     payload = cli_json("score", "--repo", str(target), "--scope", "project")
-    assert len(payload["ratings"]) == 8
+    assert len(payload["ratings"]) == 9
     assert "overall" in payload

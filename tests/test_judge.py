@@ -462,10 +462,10 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
     assert isinstance(all_seven, OverallRating) and all_seven.value == 44
     assert isinstance(with_abstention, OverallRating) and with_abstention.value == 50
     assert with_abstention.value > all_seven.value
-    assert with_abstention.contributor_count == 7
-    assert with_abstention.total_dimension_count == 8
+    assert with_abstention.contributor_count == 8
+    assert with_abstention.total_dimension_count == 9
     assert with_abstention.abstentions == (weak_abstention,)
-    assert "7 of 8" in with_abstention.disclosure
+    assert "8 of 9" in with_abstention.disclosure
     assert "abstention can raise the overall" in with_abstention.disclosure
     assert weak_name in with_abstention.disclosure
     assert "below_coverage_floor" in with_abstention.disclosure

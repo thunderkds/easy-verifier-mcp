@@ -19,14 +19,14 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 4 | At least one rule measures the area as planned |
-| Partial | 12 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 16 | No rule; the planned dimension or pack is not built |
+| Partial | 14 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 14 | No rule; the planned dimension or pack is not built |
 
-8 dimensions exist today: the original 7 and reliability (T043), plus the optional healthcare
+9 dimensions exist today: the original 7, reliability (T043) and supply-chain (T041), plus the optional healthcare
 (T047) and finance (T048) packs, which rate only in repositories that enable them
-(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 5 remaining
-planned dimensions (supply-chain, infrastructure, api, data, operations) and the remaining optional
-pack (frontend accessibility) are tasks T041, T042, T044–T046 and T049 on the Kanban.
+(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 4 remaining
+planned dimensions (infrastructure, api, data, operations) and the remaining optional pack
+(frontend accessibility) are tasks T042, T044–T046 and T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -64,9 +64,9 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 17 | Type safety & code quality | Covered | `code-quality` · `lint_config_missing`<br>`code-quality` · `format_config_missing`<br>`code-quality` · `type_escapes_per_kloc`<br>`code-quality` · `strict_type_config_missing` | — |  |
 | 18 | Maintainability, reuse, library judgment, patterns | Partial | `code-quality` · `functions_over_ccn_10_share`<br>`code-quality` · `max_function_ccn` | — | duplication not yet measured |
 | 19 | Accessibility, responsive UX, browser compat | Not yet | — | frontend accessibility pack (T049) | class S |
-| 20 | Dependencies, vulns, licenses, obsolescence | Partial | `security` · `lockfile_missing` | supply-chain (T041) | only `lockfile_missing` today; versions, licences and CVEs planned in supply-chain (T041) |
-| 21 | CI quality & reproducibility | Not yet | — | supply-chain (T041) | class S |
-| 22 | Artifact provenance, SBOM, signing, promotion, rollback | Not yet | — | supply-chain (T041) | class S |
+| 20 | Dependencies, vulns, licenses, obsolescence | Partial | `security` · `lockfile_missing`<br>`supply-chain` · `lockfile_missing`<br>`supply-chain` · `licence_file_missing` | — | lockfile and licence file presence; live vulnerability status (CVE feeds) is not verifiable offline (class X) and obsolescence is not measured |
+| 21 | CI quality & reproducibility | Partial | `supply-chain` · `ci_actions_unpinned_share`<br>`supply-chain` · `ci_lockfile_install_missing` | — | external CI actions pinned by SHA and a lockfile-faithful install (registry `lockfile_install`); abstain where no CI workflow is quoted; other CI quality not measured |
+| 22 | Artifact provenance, SBOM, signing, promotion, rollback | Partial | `supply-chain` · `ci_provenance_step_missing`<br>`supply-chain` documentation check | — | an SBOM, signing or provenance step in CI or release configuration; rollback is a documentation check (present or missing, never a number); promotion not measured |
 | 23 | Terraform state, environment, account, drift | Not yet | — | infrastructure (T042) | class S / X |
 | 24 | Database HA, backups, restore, DR | Not yet | — | infrastructure (T042) | class S / X |
 | 25 | Incident response, change mgmt, access review | Not yet | — | operations (T046) | class X |

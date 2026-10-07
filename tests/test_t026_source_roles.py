@@ -124,7 +124,7 @@ def _mcp(name: str, arguments: dict) -> object:
 
 
 def test_every_descriptor_declares_roles_and_sources_sought_is_their_names() -> None:
-    assert len(DIMENSIONS) == 8
+    assert len(DIMENSIONS) == 9
     for name, descriptor in DIMENSIONS.items():
         assert descriptor.roles, name
         assert all(isinstance(role, SourceRole) for role in descriptor.roles), name
@@ -436,7 +436,7 @@ def test_an_absent_config_changes_nothing(elixir_repo: Path) -> None:
     first = score_repository(elixir_repo).serialize()
     assert first == score_repository(elixir_repo).serialize()
     provenance = json.loads(first)["provenance"]
-    assert [item["sources"] for item in provenance] == ["rules"] * 8
+    assert [item["sources"] for item in provenance] == ["rules"] * 9
 
 
 @pytest.mark.parametrize(
@@ -690,9 +690,9 @@ def test_report_renders_one_provenance_line_per_dimension(tmp_path: Path) -> Non
     )
     written = write_report([], packs, repo)
     document = Path(written.absolute_path).read_text(encoding="utf-8")
-    assert document.count("Sources: ") == 8
+    assert document.count("Sources: ") == 9
     assert document.count("Sources: rules + agent picks (1 file)") == 2
-    assert document.count("Sources: rules</") == 6
+    assert document.count("Sources: rules</") == 7
 
 
 # ---------------------------------------------------------------------------

@@ -517,6 +517,11 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # retry or query in the fixture), its pack's metrics, the four
     # reliability metrics in every pack, and reliability's warning,
     # provenance and abstained plan line.
+    # Regenerated for T041 (supply-chain dimension): every existing rating,
+    # metric and the overall (61) are byte-identical; added are the
+    # supply-chain rating (below_coverage_floor), its four new metrics in
+    # every pack, its rollback documentation result (area #22 now counts as
+    # measured), and its warning, provenance and abstained plan line.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

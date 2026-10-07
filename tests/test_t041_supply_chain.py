@@ -257,7 +257,12 @@ def test_no_ci_workflow_abstains_the_ci_rules_instead_of_scoring_them(
         "ci_provenance_step_missing",
     ):
         assert result["metrics"][name]["abstained"] is True, name
-        assert name not in _inputs(result)
+    # T067 (DDR-0010): the CI rules hold 65 of 100 rule weight, so with them
+    # unmeasured the dimension gets no number rather than a 35-weight score.
+    rating = result["rating"]
+    assert rating["kind"] == "rating_abstention"
+    assert rating["reason_code"] == "insufficient_measured_weight"
+    assert rating["measured_share"] == "0.35"
 
 
 def test_provenance_step_in_release_configuration_counts(tmp_path: Path) -> None:

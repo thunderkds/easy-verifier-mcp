@@ -527,6 +527,11 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # supply-chain (T041)
+    "licence_file_missing": "no licence file",
+    "ci_actions_unpinned_share": "share of CI actions not pinned to a SHA",
+    "ci_lockfile_install_missing": "no lockfile-faithful install in CI",
+    "ci_provenance_step_missing": "no SBOM, signing or provenance step in CI",
 }
 """One plain description per declared rule metric, for the summary (FR-063).
 Presentation only."""
@@ -545,6 +550,8 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "auth-code": "auth code",
     "container-config": "container config",
     "ci-workflow": "CI workflow",
+    "licence-file": "licence file",
+    "release-config": "release config",
     "credential-file": "credential file",
     "test-config": "test config",
     "test-file": "test files",

@@ -569,6 +569,36 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[14],
         ),
     ),
+    # T041: the supply-chain dimension (areas #20-#22). Weights: user
+    # sign-off 2026-10-07 (T041). Live vulnerability status is not verifiable
+    # offline and has no rule.
+    "supply-chain": _rules(
+        RatingRule(
+            "lockfile_missing", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[19],
+        ),
+        RatingRule(
+            "licence_file_missing", 15, 0, "at_most",
+            (_SCORECARD_LICENSE,), _SCORECARD_LICENSE,
+            area=AREAS[19],
+        ),
+        RatingRule(
+            "ci_actions_unpinned_share", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[20],
+        ),
+        RatingRule(
+            "ci_lockfile_install_missing", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[20],
+        ),
+        RatingRule(
+            "ci_provenance_step_missing", 25, 0, "at_most",
+            (_SLSA, _SBOM), _SLSA,
+            area=AREAS[21],
+        ),
+    ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
     # PHI-shaped value fails safe-harbor de-identification, hence at most 0.
     # Weights 50/50 user-approved 2026-10-06 (T047 review).
@@ -604,36 +634,6 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "ledger_rows_mutated_observed", 25, 0, "at_most",
             (_SEC_17A4, _FOWLER_REVERSAL), PROJECT_DEFAULT,
             area=AREAS[2],
-        ),
-    ),
-    # T041: the supply-chain dimension (areas #20-#22). Weights: user
-    # sign-off 2026-10-07 (T041). Live vulnerability status is not verifiable
-    # offline and has no rule.
-    "supply-chain": _rules(
-        RatingRule(
-            "lockfile_missing", 20, 0, "at_most",
-            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
-            area=AREAS[19],
-        ),
-        RatingRule(
-            "licence_file_missing", 15, 0, "at_most",
-            (_SCORECARD_LICENSE,), _SCORECARD_LICENSE,
-            area=AREAS[19],
-        ),
-        RatingRule(
-            "ci_actions_unpinned_share", 20, 0, "at_most",
-            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
-            area=AREAS[20],
-        ),
-        RatingRule(
-            "ci_lockfile_install_missing", 20, 0, "at_most",
-            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
-            area=AREAS[20],
-        ),
-        RatingRule(
-            "ci_provenance_step_missing", 25, 0, "at_most",
-            (_SLSA, _SBOM), _SLSA,
-            area=AREAS[21],
         ),
     ),
 }
