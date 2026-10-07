@@ -1,4 +1,4 @@
-# TASK_REVIEW — T046: [Short Title]
+# TASK_REVIEW — T046: operations dimension (#14/#25/#26/#29/#30)
 
 > Sibling of `tasks/TASK_GUIDE_T046.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,15 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured before any T046 commit (tip 5dc54c6), command
+`date -u; PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli list-dimensions` (JSON abridged to names):
+
+```
+Wed Oct  7 10:29:35 AM UTC 2026
+11 ['api', 'architecture', 'blast-radius', 'code-quality', 'data', 'reliability', 'requirement-fidelity', 'security', 'solution-fit', 'supply-chain', 'test-strategy']
+```
+
+No `operations` entry exists.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
