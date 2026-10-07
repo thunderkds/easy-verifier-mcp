@@ -2786,7 +2786,8 @@ def _ci_actions_unpinned_share(view: _PackView) -> _Computed:
     if not external:
         return MetricAbstention(
             reason=(
-                "no external action reference (uses: owner/repo@ref) appears in "
+                "no external action reference (uses: owner/repo@ref, or a step "
+                "or service image:) appears in "
                 "the quoted CI workflows, so there is nothing to pin; that is a "
                 "zero denominator, not a share of 0"
             )
@@ -2804,9 +2805,10 @@ def _ci_actions_unpinned_share(view: _PackView) -> _Computed:
         "or image digest: "
         + (", ".join(f"{p}:{n} {r}" for p, n, r in unpinned[:5]) or "none")
         + (f", and {len(unpinned) - 5} more" if len(unpinned) > 5 else "")
-        + "; a reference is any `uses:` value outside the repository (not "
-        "starting ./), pinned when it matches the generic layer's pinned-"
-        "reference patterns",
+        + "; a reference is any `uses:` or `image:` value outside the "
+        "repository (not starting ./), pinned when it matches the generic "
+        "layer's pinned-reference patterns (a full commit SHA, or an image "
+        "@sha256 digest)",
     )
 
 

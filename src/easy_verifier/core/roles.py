@@ -297,11 +297,18 @@ class GenericTokens:
 
 
 GENERIC_CI_FACTS: dict[str, tuple[GenericTokens, ...]] = {
-    # Lines that reference an external GitHub Actions step: ``uses: x/y@ref``.
+    # Lines that reference an external GitHub Actions step: ``uses: x/y@ref``,
+    # or a container image of a step or service in any CI system
+    # (``image: node:20``; Drone, GitLab, Woodpecker, GitHub services).
+    # User decision 2026-10-07 (T041 D1).
     "action_reference": (
         GenericTokens(
             ("uses:",),
             "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsuses",
+        ),
+        GenericTokens(
+            ("image:",),
+            "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
         ),
     ),
     # A reference is pinned when it ends in a full 40-hex commit SHA (an

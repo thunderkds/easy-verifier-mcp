@@ -223,6 +223,32 @@ def test_local_and_digest_references_are_not_unpinned(tmp_path: Path) -> None:
     assert _inputs(result)["ci_actions_unpinned_share"]["metric_value"] == 0
 
 
+def test_step_images_are_external_references_in_any_ci_system(
+    tmp_path: Path,
+) -> None:
+    # bryony (2026-10-07, user decision D1): a Drone pipeline references its
+    # steps by container image, never `uses:`; the pin rule judges them.
+    drone = (
+        "kind: pipeline\nsteps:\n- name: lint\n"
+        "  image: acme/backend-base:master\n  commands:\n    - npm ci\n"
+        f"- name: test\n  image: node@sha256:{'c' * 64}\n"
+    )
+    files = _without(".github/workflows/ci.yml")
+    files[".drone.yml"] = drone
+    result = _result(_repo(tmp_path, files))
+    # the tag is unpinned; the digest and release.yml's SHA action are pinned
+    assert _inputs(result)["ci_actions_unpinned_share"]["metric_value"] == 1 / 3
+
+
+def test_github_service_image_counts_as_an_external_reference(
+    tmp_path: Path,
+) -> None:
+    ci = CI + "    services:\n      db:\n        image: postgres:16-alpine\n"
+    result = _result(_repo(tmp_path, {**GOOD, ".github/workflows/ci.yml": ci}))
+    # the service image is unpinned; both SHA-pinned actions are pinned
+    assert _inputs(result)["ci_actions_unpinned_share"]["metric_value"] == 1 / 3
+
+
 def test_workflow_without_external_references_abstains_the_pin_rule(
     tmp_path: Path,
 ) -> None:
