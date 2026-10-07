@@ -314,6 +314,28 @@ def test_metrics_only_compute_over_the_supply_chain_pack(tmp_path: Path) -> None
 # ---------------------------------------------------------------------------
 
 
+def test_licence_role_matches_licence_files_never_source_code() -> None:
+    # Stage 4 P1: a stem glob (**/License*) matched licensing source code.
+    from easy_verifier.core.roles import _matcher
+
+    matches = _matcher(GENERIC_PATTERNS["licence-file"])
+    for path in ("LICENSE", "LICENSE.md", "LICENSE-MIT", "LICENSES/MIT.txt",
+                 "design/LICENSE.md", "license.txt", "COPYING"):
+        assert matches(path), path
+    for path in ("src/licenseService.ts", "app/Models/License.php",
+                 "web/src/components/LicenseBadge.tsx"):
+        assert not matches(path), path
+
+
+def test_a_hyphenated_image_key_is_not_an_image_reference() -> None:
+    # Stage 4 P2: `base-image:` must not read as `image:`; list items still do.
+    pattern = curated_metric_tables().action_reference
+    assert pattern.search("    base-image: acme/x:1") is None
+    assert pattern.search("  - image: acme/x:1")[1] == "acme/x:1"
+    uses = pattern.search("      - uses: actions/checkout@v4")
+    assert uses[1] == "actions/checkout@v4"
+
+
 def test_ecosystem_patterns_come_from_the_registry_and_generic_layer() -> None:
     tables = curated_metric_tables()
     for command in ("npm ci", "pnpm install --frozen-lockfile", "cargo build --locked"):

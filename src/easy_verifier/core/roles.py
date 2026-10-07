@@ -231,15 +231,21 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     # changesets (https://github.com/changesets/changesets/blob/main/docs/config-file-options.md),
     # cargo-release (https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md)
     # and jreleaser (https://jreleaser.org/guide/latest/configuration/index.html).
+    # Conventional names only, never a stem glob: ``**/License*`` matched
+    # source such as ``src/licenseService.ts`` (T041 Stage 4 P1). A dash
+    # suffix keeps dual-licence files (``LICENSE-MIT``, ``LICENSE-APACHE``).
     "licence-file": (
-        "**/LICENSE*",
-        "**/LICENCE*",
-        "**/License*",
-        "**/Licence*",
-        "**/license*",
-        "**/licence*",
-        "**/COPYING*",
-        "**/UNLICENSE*",
+        *(
+            f"**/{stem}{suffix}"
+            for stem in (
+                "LICENSE", "LICENCE", "COPYING", "UNLICENSE",
+                "License", "Licence", "license", "licence",
+            )
+            for suffix in ("", ".md", ".txt", ".rst")
+        ),
+        "**/LICENSE-*",
+        "**/LICENCE-*",
+        "**/COPYING-*",
         "LICENSES/**",
     ),
     "release-config": (

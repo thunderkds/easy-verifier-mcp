@@ -201,9 +201,14 @@ def _generic_ci(registry: Registry) -> dict[str, object]:
     return {
         "ci_files": matcher("ci-workflow"),
         "release_files": matcher("release-config"),
+        # A key is whole only when no word or dash precedes it, so
+        # ``base-image:`` is not ``image:`` while ``- image:`` still is.
         "action_reference": re.compile(
             "(?:"
-            + "|".join(token_regex(token) for token in references)
+            + "|".join(
+                r"(?<![\w-])" + token_regex(token).removeprefix(r"\b")
+                for token in references
+            )
             + r")\s*['\"]?([^\s'\"#]+)"
         ),
         "pinned_reference": tuple(re.compile(p) for p in facts("pinned_reference")),
