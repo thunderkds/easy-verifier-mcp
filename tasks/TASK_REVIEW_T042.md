@@ -1,4 +1,4 @@
-# TASK_REVIEW — T042: [Short Title]
+# TASK_REVIEW — T042: infrastructure dimension (#11/#23/#24)
 
 > Sibling of `tasks/TASK_GUIDE_T042.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,15 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured before any T042 commit (tip c1b6d73), command
+`date -u; PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli list-dimensions` (JSON abridged to names):
+
+```
+Wed Oct  7 03:09:12 PM UTC 2026
+12 ['api', 'architecture', 'blast-radius', 'code-quality', 'data', 'operations', 'reliability', 'requirement-fidelity', 'security', 'solution-fit', 'supply-chain', 'test-strategy']
+```
+
+No `infrastructure` entry exists.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
