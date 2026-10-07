@@ -29,7 +29,6 @@
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
 - [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
-- [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T044** — New dimension: api (#7) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T045** — New dimension: data (#4) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
@@ -78,6 +77,7 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T041** — New dimension: supply-chain (#20, #21, #22) (floor 0.40 + weights 20/15/20/20/25 user-approved 2026-10-07) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (floor 0.40, weights 20/15/20/20/25 user-approved; CI `image:` counts for the pin rule (user, D1); kitchd 55 (58→57), bryony 35 (67→62), ai-training/coffee abstain — no CI file (DDR-0010 measured weight); 2235 passed; Stage 4 P1 licence globs matched source code → fixed; known limits: templated `${{ }}` image counts unpinned, shared container image must be rebuilt)
 - [x] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (float money 50 + ledger audit 25 + ledger mutation 25, user-approved; TS `number` persistence-only; coffee 72→77 finance 100, kitchd 58→48 (4 real float money columns), bryony 67→56 (12 Mongoose Number); inactive byte-identical; 2207 passed)
 - [x] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (packs via `.easy-verifier.toml` / `agent_input.packs`; healthcare #9 PHI 50/50 + #9/#28 doc rules, floor 0.25; inactive = byte-identical; coffee 72→77 & bryony 67→73 with pack, healthcare 100; 2136 passed)
 - [x] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-06 (weights 35/35/10/20 + floor 0.25 user-approved; #6 evidence-only; coffee 100 (65→72), bryony 61 (69→67), kitchd 0 (72→58, real N+1); 2087 passed; container image rebuild after merge)
