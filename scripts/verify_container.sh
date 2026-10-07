@@ -171,6 +171,7 @@ expected_tools = {
     "test-strategy",
     "api",
     "data",
+    "operations",
     "reliability",
     "list_dimensions",
     "combined",

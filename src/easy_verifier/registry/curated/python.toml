@@ -512,3 +512,30 @@ source_tag = "curated"
 value = ["migrations.Migration"]
 citation_url = "https://docs.djangoproject.com/en/5.0/topics/migrations/#reversing-migrations"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.python-version"]
+citation_url = "https://github.com/pyenv/pyenv#choosing-the-python-version"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["import logging", "from logging import"]
+citation_url = "https://docs.python.org/3/library/logging.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["import structlog", "from structlog"]
+citation_url = "https://www.structlog.org/en/stable/getting-started.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["from loguru import"]
+citation_url = "https://loguru.readthedocs.io/en/stable/overview.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["from opentelemetry", "import opentelemetry"]
+citation_url = "https://opentelemetry.io/docs/languages/python/instrumentation/"
+source_tag = "curated"

@@ -197,6 +197,41 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # operations (T046)
+    "logging_library_missing": (
+        "Log through a logging or tracing library (OpenTelemetry, a structured "
+        "logger) instead of print statements, so the service can be observed."
+    ),
+    "audit_log_writes_missing": (
+        "Record security-relevant actions (sign-in, permission and data "
+        "changes) to an audit log with who, what and when."
+    ),
+    "codeowners_missing": (
+        "Add a CODEOWNERS file naming an owning team for each part of the "
+        "repository."
+    ),
+    "agent_instructions_missing": (
+        "Commit an agent instruction file (CLAUDE.md or AGENTS.md) stating the "
+        "project's rules, commands and boundaries for coding agents."
+    ),
+    "agent_guardrails_missing": (
+        "Constrain the coding agent in its committed settings: hooks or a "
+        "permission deny list (Claude Code), approval policy or sandbox mode "
+        "(Codex)."
+    ),
+    "agent_config_secrets_observed": (
+        "Remove credentials from agent instruction, settings and MCP files; "
+        "read them from the environment or a secret manager, and rotate any "
+        "that were committed."
+    ),
+    "tool_version_pin_missing": (
+        "Pin the toolchain version (.tool-versions, mise.toml, .nvmrc, "
+        ".python-version, rust-toolchain.toml, ...)."
+    ),
+    "dev_environment_missing": (
+        "Provide a one-command setup: a devcontainer, a Nix/Devbox environment "
+        "or a Makefile/justfile/bin/setup target."
+    ),
     # data (T045)
     "migrations_missing": (
         "Version every schema change as a migration file (Flyway, Liquibase, "

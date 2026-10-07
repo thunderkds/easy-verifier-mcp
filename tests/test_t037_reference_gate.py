@@ -268,6 +268,8 @@ def test_optional_fields_are_never_required():
         "orm_model_markers",
         "schema_constraint_markers",
         "migration_rollback_markers",
+        # T046: only languages with a logging or tracing library.
+        "logging_markers",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 
@@ -489,7 +491,8 @@ def test_mcp_payload_carries_reference_and_cli_never_does(express_repo):
     cli_payload = json.loads(completed.stdout)
     assert "needs_input" not in cli_payload
     assert '"reference"' not in completed.stdout
-    assert "instructions" not in completed.stdout
+    # The MCP-only key; T046 role patterns name copilot-instructions.md.
+    assert '"instructions"' not in completed.stdout
     assert cli_payload["detected_stack"] == payload["detected_stack"]
 
 

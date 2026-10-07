@@ -611,3 +611,40 @@ source_tag = "curated"
 value = ["required: true", "ref:"]
 citation_url = "https://mongoosejs.com/docs/schematypes.html#schematype-options"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.nvmrc"]
+citation_url = "https://github.com/nvm-sh/nvm#nvmrc"
+source_tag = "curated"
+
+[[roles.tool-version-pin]]
+value = ["**/.node-version"]
+citation_url = "https://github.com/nodenv/nodenv#choosing-the-node-version"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["winston"]
+citation_url = "https://github.com/winstonjs/winston#usage"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["pino"]
+citation_url = "https://getpino.io/#/docs/api"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["@opentelemetry/"]
+citation_url = "https://opentelemetry.io/docs/languages/js/instrumentation/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["new Logger ("]
+citation_url = "https://docs.nestjs.com/techniques/logger"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["bunyan", "log4js"]
+citation_url = "https://github.com/trentm/node-bunyan#introduction"
+source_tag = "curated"

@@ -348,3 +348,35 @@ source_tag = "curated"
 value = ["nullable = false", "unique = true", "@JoinColumn", "@ManyToOne", "@UniqueConstraint"]
 citation_url = "https://jakarta.ee/specifications/persistence/3.1/apidocs/jakarta.persistence/jakarta/persistence/column"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.sdkmanrc"]
+citation_url = "https://sdkman.io/usage#env-command"
+source_tag = "curated"
+
+[[roles.tool-version-pin]]
+value = ["**/.java-version"]
+citation_url = "https://github.com/jenv/jenv#2-configure"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["org.slf4j"]
+citation_url = "https://www.slf4j.org/manual.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["org.apache.logging.log4j"]
+citation_url = "https://logging.apache.org/log4j/2.x/manual/api.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["java.util.logging"]
+citation_url = "https://docs.oracle.com/en/java/javase/21/core/java-logging-overview.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["io.opentelemetry"]
+citation_url = "https://opentelemetry.io/docs/languages/java/instrumentation/"
+source_tag = "curated"

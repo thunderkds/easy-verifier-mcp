@@ -266,3 +266,25 @@ source_tag = "curated"
 value = ["DeriveEntityModel"]
 citation_url = "https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/rust-toolchain", "**/rust-toolchain.toml"]
+citation_url = "https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["tracing::"]
+citation_url = "https://docs.rs/tracing/latest/tracing/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["log::"]
+citation_url = "https://docs.rs/log/latest/log/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["opentelemetry::"]
+citation_url = "https://opentelemetry.io/docs/languages/rust/"
+source_tag = "curated"

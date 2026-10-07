@@ -18,15 +18,15 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 
 | Status | Areas | Meaning |
 |---|---|---|
-| Covered | 4 | At least one rule measures the area as planned |
-| Partial | 16 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 12 | No rule; the planned dimension or pack is not built |
+| Covered | 6 | At least one rule measures the area as planned |
+| Partial | 18 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 8 | No rule; the planned dimension or pack is not built |
 
-11 dimensions exist today: the original 7, reliability (T043), supply-chain (T041), api (T044) and data (T045), plus the optional healthcare
+12 dimensions exist today: the original 7, reliability (T043), supply-chain (T041), api (T044), data (T045) and operations (T046), plus the optional healthcare
 (T047) and finance (T048) packs, which rate only in repositories that enable them
-(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 2 remaining
-planned dimensions (infrastructure, operations) and the remaining optional pack
-(frontend accessibility) are tasks T042, T046 and T049 on the Kanban.
+(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The remaining
+planned dimension (infrastructure) and the remaining optional pack
+(frontend accessibility) are tasks T042 and T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -58,7 +58,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 11 | Infra security: IAM, networking, KMS, secrets | Not yet | — | infrastructure (T042) | class S |
 | 12 | Error handling & safe degradation | Partial | `reliability` · `swallowed_errors_observed` | — | empty handlers only (registry `swallowed_errors`; a handler holding a comment, and Go's `if err != nil` handling, never count); safe degradation not measured |
 | 13 | Retries, deadlines, unknown outcomes, vendor outages | Partial | `reliability` · `outbound_calls_without_timeout_observed`<br>`reliability` · `retries_without_backoff_observed` | — | calls and retry libraries with no default deadline or delay (curated per language); unknown outcomes and vendor outages not measured |
-| 14 | Observability, auditing, SLOs, error budgets | Not yet | — | operations (T046) | class S / X |
+| 14 | Observability, auditing, SLOs, error budgets | Partial | `operations` · `logging_library_missing`<br>`operations` · `audit_log_writes_missing`<br>`operations` documentation check | — | a logging or tracing library (registry `logging_markers`) or an observability config file; audit writes are textual (a call naming audit); SLOs and error budgets: only an SLO document's presence is checked (never a number) |
 | 15 | Performance, scalability, capacity, cost | Partial | `reliability` · `queries_in_loops_observed` | — | query-in-loop only (textual, by indentation); capacity and cost not verifiable from a repository |
 | 16 | Test strategy, coverage, false confidence, isolation | Covered | `test-strategy` · `source_files_without_covering_test_share`<br>`test-strategy` · `assertion_density_per_test`<br>`test-strategy` · `test_config_and_ci_missing`<br>`test-strategy` · `tests_without_assertions_share`<br>`test-strategy` · `skipped_test_share`<br>`test-strategy` · `network_calls_in_unit_tests_observed` | — |  |
 | 17 | Type safety & code quality | Covered | `code-quality` · `lint_config_missing`<br>`code-quality` · `format_config_missing`<br>`code-quality` · `type_escapes_per_kloc`<br>`code-quality` · `strict_type_config_missing` | — |  |
@@ -69,12 +69,12 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 22 | Artifact provenance, SBOM, signing, promotion, rollback | Partial | `supply-chain` · `ci_provenance_step_missing`<br>`supply-chain` documentation check | — | an SBOM, signing or provenance step in CI or release configuration; rollback is a documentation check (present or missing, never a number); promotion not measured |
 | 23 | Terraform state, environment, account, drift | Not yet | — | infrastructure (T042) | class S / X |
 | 24 | Database HA, backups, restore, DR | Not yet | — | infrastructure (T042) | class S / X |
-| 25 | Incident response, change mgmt, access review | Not yet | — | operations (T046) | class X |
-| 26 | Configuration ownership & operational readiness | Not yet | — | operations (T046) | class S |
+| 25 | Incident response, change mgmt, access review | Not yet | `operations` documentation check | operations (T046), documentation only | class X: only an incident, postmortem, on-call or change-management document's presence is checked (never a number); access review is not verifiable offline |
+| 26 | Configuration ownership & operational readiness | Partial | `operations` · `codeowners_missing`<br>`operations` documentation check | — | CODEOWNERS present; runbooks: only a runbook or playbook document's presence is checked; documented environment configuration is not measured |
 | 27 | Documentation source-of-truth governance | Covered | `requirement-fidelity` · `requirements_doc_missing`<br>`requirement-fidelity` · `code_commits_with_docs_share` | — |  |
 | 28 | Vendor, BAA, data classification, residency | Not yet | `healthcare` documentation check | healthcare pack (T047), documentation only | class X: optional pack; only BAA, data-classification and residency documents' presence is checked (never a number) |
-| 29 | AI-assisted-development safety | Not yet | — | operations (T046) | class S |
-| 30 | Developer experience & deterministic local setup | Not yet | — | operations (T046) | class S |
+| 29 | AI-assisted-development safety | Covered | `operations` · `agent_instructions_missing`<br>`operations` · `agent_guardrails_missing`<br>`operations` · `agent_config_secrets_observed` | — | committed agent files only (git-ignored ones are never read); secrets are counted by the shared redaction scanner, never quoted |
+| 30 | Developer experience & deterministic local setup | Covered | `operations` · `tool_version_pin_missing`<br>`operations` · `dev_environment_missing` | — | the lockfile part is supply-chain's `lockfile_missing` (#20), not a second rule |
 | 31 | Technical-debt lifecycle & closure evidence | Partial | `code-quality` · `todo_without_ticket_share` | — | debt age via git blame not yet measured |
 | 32 | Business continuity & degraded modes | Not yet | `reliability` documentation check | reliability (T043), documentation only | class X: only a continuity, BCP, degraded-mode, resilience or fallback document's presence is checked (never a number) |
 

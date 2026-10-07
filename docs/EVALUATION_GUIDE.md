@@ -17,7 +17,7 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 
 | Key in the `score` payload | What it holds |
 |---|---|
-| `ratings` | One entry per dimension (eleven since T043 added reliability, T041 supply-chain, T044 api and T045 data), then one per optional pack the repository enabled (T047/T048, e.g. `healthcare` or `finance`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
+| `ratings` | One entry per dimension (twelve since T043 added reliability, T041 supply-chain, T044 api, T045 data and T046 operations), then one per optional pack the repository enabled (T047/T048, e.g. `healthcare` or `finance`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
 | `overall` | The overall `value`, its `contributors`, `rated_by` and `abstentions`, and a one-line `disclosure` |
 | `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet (an optional pack's areas count only in a run where it is enabled); both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |

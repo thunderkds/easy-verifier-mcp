@@ -46,6 +46,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | supply-chain | 0.40 |
 | api | 0.25 |
 | data | 0.25 |
+| operations | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
 
@@ -64,6 +65,15 @@ conventions are embedded for replay (T075). A README heading naming "Architectur
 supply-chain (T041, floor 0.40 and weights user-approved 2026-10-07): five roles (package manifest,
 lockfile, CI workflow, licence file, release configuration), so two of them reach the floor and a
 repository with none of them abstains with every role named.
+
+operations (T046, floor 0.25 user decision 2026-10-07; weights proposed by T046 and accepted under
+user policy 2026-10-07): seven roles (CODEOWNERS; runbook, incident or SLO documents; observability
+config; logging or tracing in source files; coding-agent config; tool-version pin; dev environment),
+so two of them reach the floor and a repository with none abstains with every role named. Documents
+alone never rate: they fill one role and carry no weight. Agent guardrails and agent-config secrets
+abstain when no agent file is committed; git-ignored agent files are never read. Secrets are counted
+by the shared redaction scanner (`core/redact.py`), never quoted. The lockfile part of #30 is
+supply-chain's `lockfile_missing`.
 
 data (T045, floor 0.25 user decision 2026-10-07; weights proposed by T045 and accepted under user
 policy 2026-10-07): three roles (migration files in a directory the blast-radius migration rule
@@ -190,6 +200,14 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `migrations_without_rollback_share` | 30 | = 0 | `migration_rollback_markers` *(opt)*, blast-radius down/downgrade pattern, generic Liquibase rollback and `*.down.*`/Flyway undo file pairs; abstains with no migration |
 | | `schema_constraints_missing` | 20 | = 0 | `schema_constraint_markers` *(opt)*, generic SQL/Prisma/Liquibase constraint syntax; abstains with no schema, migration or model file |
 | | `destructive_migration_ops_observed` | 20 | = 0 | blast-radius destructive-operation pattern, outside down sections and comment lines; abstains with no migration |
+| operations | `logging_library_missing` | 15 | = 0 | `logging_markers` *(opt)*, generic `observability-config` patterns; abstains with no source file and no observability config |
+| | `audit_log_writes_missing` | 10 | = 0 | generic audit-call pattern (`GENERIC_OPERATIONS_FACTS`), comments and strings blanked; abstains with no source file |
+| | `codeowners_missing` | 15 | = 0 | generic `codeowners` patterns |
+| | `agent_instructions_missing` | 10 | = 0 | generic `agent-config` instruction files (`AGENT_INSTRUCTION_PATTERNS`) |
+| | `agent_guardrails_missing` | 10 | = 0 | generic hook path and hooks/deny/approval_policy/sandbox_mode keys; abstains with no agent file |
+| | `agent_config_secrets_observed` | 20 | = 0 | `core/redact.py` scanner over the agent files read; abstains with no agent file |
+| | `tool_version_pin_missing` | 10 | = 0 | registry `roles.tool-version-pin` (`.nvmrc`, `.python-version`, ...), generic `.tool-versions`/`mise.toml` |
+| | `dev_environment_missing` | 10 | = 0 | generic `dev-environment` patterns (devcontainer, Nix, Devbox, Makefile/justfile/Taskfile, bin/setup) |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 supply-chain also carries one documentation rule (area #22, rollback): a document named for

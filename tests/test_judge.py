@@ -172,6 +172,7 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "supply-chain",
         "api",
         "data",
+        "operations",
     )
     assert set(COVERAGE_FLOORS) == set(dimension_names())
     assert {name: floor.value for name, floor in COVERAGE_FLOORS.items()} == {
@@ -186,6 +187,7 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "supply-chain": 0.40,  # T041 floor: user sign-off 2026-10-07
         "api": 0.25,  # T044 floor: user decision 2026-10-07
         "data": 0.25,  # T045 floor: user decision 2026-10-07
+        "operations": 0.25,  # T046 floor: user decision 2026-10-07
     }
     assert all(floor.boundary == "inclusive" for floor in COVERAGE_FLOORS.values())
 
@@ -462,14 +464,15 @@ def test_abstaining_weak_dimension_raises_overall_and_disclosure_says_so():
     all_seven = rate_overall(strong + (weak_rating,))
     with_abstention = rate_overall(strong + (weak_abstention,))
 
-    # 10 x 50 + 0 over 11 = 45.5, rounded once to 45 (T043, T041, T044, T045).
-    assert isinstance(all_seven, OverallRating) and all_seven.value == 45
+    # 11 x 50 + 0 over 12 = 45.8, rounded once to 46 (T043, T041, T044, T045,
+    # T046).
+    assert isinstance(all_seven, OverallRating) and all_seven.value == 46
     assert isinstance(with_abstention, OverallRating) and with_abstention.value == 50
     assert with_abstention.value > all_seven.value
-    assert with_abstention.contributor_count == 10
-    assert with_abstention.total_dimension_count == 11
+    assert with_abstention.contributor_count == 11
+    assert with_abstention.total_dimension_count == 12
     assert with_abstention.abstentions == (weak_abstention,)
-    assert "10 of 11" in with_abstention.disclosure
+    assert "11 of 12" in with_abstention.disclosure
     assert "abstention can raise the overall" in with_abstention.disclosure
     assert weak_name in with_abstention.disclosure
     assert "below_coverage_floor" in with_abstention.disclosure

@@ -292,6 +292,101 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "**/jreleaser.yml",
         "**/jreleaser.yaml",
     ),
+    # T046 operations roles. Exact, documented names only, never a stem glob
+    # (``**/codeowners*`` would match ``src/codeowners.service.ts``, T041
+    # lesson). CODEOWNERS: the three locations GitHub and GitLab read
+    # (https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners,
+    # https://docs.gitlab.com/user/project/codeowners/).
+    "codeowners": (
+        "CODEOWNERS",
+        ".github/CODEOWNERS",
+        ".gitlab/CODEOWNERS",
+        "docs/CODEOWNERS",
+    ),
+    # Observability configuration files: OpenTelemetry Collector
+    # (https://opentelemetry.io/docs/collector/configuration/), Prometheus and
+    # Alertmanager (https://prometheus.io/docs/prometheus/latest/configuration/configuration/),
+    # Sentry CLI (https://docs.sentry.io/cli/configuration/) and the Datadog
+    # Agent (https://docs.datadoghq.com/agent/configuration/agent-configuration-files/).
+    # Data suffixes only, so ``src/otel-config.ts`` is source, not config.
+    "observability-config": (
+        *(
+            f"**/{stem}{suffix}"
+            for stem in ("otel-collector*", "otelcol*", "otel-config*")
+            for suffix in (".yaml", ".yml")
+        ),
+        "**/prometheus.yml",
+        "**/prometheus.yaml",
+        "**/alertmanager.yml",
+        "**/alertmanager.yaml",
+        "**/.sentryclirc",
+        "**/sentry.properties",
+        "**/datadog.yaml",
+    ),
+    # AI coding-agent configuration of the scored repository: instruction
+    # files (AGENT_INSTRUCTION_PATTERNS) and agent settings, hooks and MCP
+    # server configuration (Claude Code https://docs.anthropic.com/en/docs/claude-code/settings,
+    # Codex https://github.com/openai/codex/blob/main/docs/config.md, Gemini
+    # CLI https://github.com/google-gemini/gemini-cli/blob/main/docs/get-started/configuration.md,
+    # Cursor https://docs.cursor.com/context/rules). Exact names: ``claude.ts``
+    # is source, never an agent file.
+    "agent-config": (
+        "**/CLAUDE.md",
+        "**/AGENTS.md",
+        "**/GEMINI.md",
+        ".github/copilot-instructions.md",
+        ".cursorrules",
+        ".windsurfrules",
+        ".cursor/rules/*",
+        ".claude/agents/*.md",
+        ".claude/commands/*.md",
+        ".claude/settings.json",
+        ".claude/settings.local.json",
+        ".claude/hooks/*",
+        ".codex/config.toml",
+        ".gemini/settings.json",
+        ".mcp.json",
+        ".cursor/mcp.json",
+    ),
+    # Tool-version pins read by any language's version manager: asdf
+    # (https://asdf-vm.com/manage/configuration.html#tool-versions), mise
+    # (https://mise.jdx.dev/configuration.html) and proto
+    # (https://moonrepo.dev/docs/proto/config). A language's own pin file
+    # (``.nvmrc``, ``.python-version``, ...) is the registry's
+    # ``roles.tool-version-pin``.
+    "tool-version-pin": (
+        "**/.tool-versions",
+        "**/mise.toml",
+        "**/.mise.toml",
+        "**/.prototools",
+    ),
+    # A reproducible development environment or a one-command setup, at any
+    # depth so a monorepo service's own Makefile counts: Development Containers
+    # (https://containers.dev/implementors/spec/), Nix
+    # (https://nix.dev/manual/nix/latest/command-ref/nix-shell), Devbox
+    # (https://www.jetify.com/docs/devbox/configuration/), Vagrant
+    # (https://developer.hashicorp.com/vagrant/docs/vagrantfile), a task runner
+    # (Make, just https://just.systems/man/en/, Task https://taskfile.dev/)
+    # and GitHub's "scripts to rule them all"
+    # (https://github.com/github/scripts-to-rule-them-all).
+    "dev-environment": (
+        ".devcontainer.json",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/*/devcontainer.json",
+        "**/flake.nix",
+        "**/shell.nix",
+        "**/devbox.json",
+        "**/Vagrantfile",
+        "**/Makefile",
+        "**/justfile",
+        "**/Justfile",
+        "**/Taskfile.yml",
+        "**/Taskfile.yaml",
+        "script/setup",
+        "script/bootstrap",
+        "bin/setup",
+        "scripts/setup.sh",
+    ),
     "test-config": (
         "**/test_helper.*",
         "**/spec_helper.*",
@@ -495,6 +590,58 @@ GENERIC_DATA_FACTS: dict[str, tuple[GenericTokens, ...]] = {
     ),
 }
 """Cited language-neutral data facts for the data dimension (T045)."""
+
+
+AGENT_INSTRUCTION_PATTERNS: tuple[str, ...] = (
+    "**/CLAUDE.md",
+    "**/AGENTS.md",
+    "**/GEMINI.md",
+    ".github/copilot-instructions.md",
+    ".cursorrules",
+    ".windsurfrules",
+    ".cursor/rules/*",
+    ".claude/agents/*.md",
+    ".claude/commands/*.md",
+)
+"""The ``agent-config`` files that instruct an agent (T046), as opposed to
+its settings, hooks and MCP configuration (same sources as the role)."""
+
+
+GENERIC_OPERATIONS_FACTS: dict[str, tuple[GenericTokens, ...]] = {
+    # A write to an audit trail in source code: a call through an identifier
+    # naming "audit" (``auditLog.create(``, ``self.audit_logger.info(``,
+    # ``writeAuditEvent(``), matched on code with comments and strings
+    # blanked. A lower bound and a textual one: the calling agent judges what
+    # the trail records. Anchored at "audit" itself, with no leading ``\w*``,
+    # so a long identifier cannot make the search quadratic.
+    "audit_write": (
+        GenericTokens(
+            (r"(?i)audit\w*(?:\s*\.\s*\w+)?\s*\(",),
+            "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+        ),
+    ),
+    # Guardrails in an agent's settings: Claude Code hooks and permission
+    # deny lists (JSON keys), Codex approval policy and sandbox mode (TOML).
+    "agent_guardrails": (
+        GenericTokens(
+            (r'(?<![\w-])"(?:hooks|deny)"\s*:',),
+            "https://docs.anthropic.com/en/docs/claude-code/hooks",
+        ),
+        GenericTokens(
+            (r"(?<![\w-])(?:approval_policy|sandbox_mode)\s*=",),
+            "https://github.com/openai/codex/blob/main/docs/config.md",
+        ),
+    ),
+    # A committed hook script is a guardrail by location.
+    "agent_guardrail_paths": (
+        GenericTokens(
+            (".claude/hooks/*",),
+            "https://docs.anthropic.com/en/docs/claude-code/hooks",
+        ),
+    ),
+}
+"""Cited language-neutral operations facts for the operations dimension
+(T046)."""
 
 
 @lru_cache(maxsize=1)

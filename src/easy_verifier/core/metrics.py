@@ -327,6 +327,9 @@ class LanguageTables:
     """Source suffix -> the language's T044 api tokens (area #7); read by the
     ``api`` dimension over whole files."""
     orm_model_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    logging_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T046 logging/tracing tokens (area #14);
+    read by the ``operations`` dimension over whole files."""
     schema_constraint_markers: Mapping[str, re.Pattern[str]] = field(
         default_factory=dict
     )
@@ -2977,6 +2980,42 @@ def _data_fact(view: _PackView) -> MetricAbstention:
     )
 
 
+OPERATIONS = "operations"
+
+OPERATIONS_METRICS = (
+    "logging_library_missing",
+    "audit_log_writes_missing",
+    "codeowners_missing",
+    "agent_instructions_missing",
+    "agent_guardrails_missing",
+    "agent_config_secrets_observed",
+    "tool_version_pin_missing",
+    "dev_environment_missing",
+)
+"""The T046 operations rule metrics (areas #14, #26, #29, #30), computed by
+the ``operations`` dimension over whole files and stored on
+``pack.whole_file``."""
+
+
+def _operations_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the operations dimension did not store
+    the metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != OPERATIONS:
+        return MetricAbstention(
+            reason=(
+                "only the operations pack records ownership, observability, "
+                f"agent and setup facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no operations "
+            "facts were gathered"
+        )
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -3299,6 +3338,13 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     *(
         MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _data_fact)
         for name in DATA_METRICS
+    ),
+    # T046: operations; computed over whole files by the operations pack itself
+    *(
+        MetricDefinition(
+            name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _operations_fact
+        )
+        for name in OPERATIONS_METRICS
     ),
 )
 
