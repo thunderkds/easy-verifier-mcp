@@ -1004,3 +1004,15 @@ structure vs LLM meaning split — meaning stays agent-side).
 ## 2026-10-06 — T048 finance pack: weights 50/25/25; TS `number` counts only in the persistence layer (user)
 
 `float_money_observed` 50, `ledger_tables_without_audit_columns_observed` 25, `ledger_rows_mutated_observed` 25 (area #3, at_most 0; ledger rules abstain without a declared ledger). JS/TS has no decimal type, so `number` counts as float money only in entity/schema/model/migration files; DTOs and view types are skipped (before this: coffee 72→60 from one response-DTO `price`). Explicit float types in other languages are unchanged. Bare `total` is not a money name (pagination counts).
+
+## 2026-10-07 — T041 supply-chain floor 0.40 inclusive; weights 20/15/20/20/25 (user sign-off)
+
+**Decision (user, AskUserQuestion 2026-10-07):** `supply-chain` coverage floor 0.40 inclusive (2 of 5 roles: package-manifest, lockfile, ci-workflow, licence-file, release-config — a repo with only manifest + lockfile still rates). Weights: `lockfile_missing` 20, `licence_file_missing` 15, `ci_actions_unpinned_share` 20, `ci_lockfile_install_missing` 20, `ci_provenance_step_missing` 25, all `at_most 0`.
+**Why:** the T041 worktree held an uncommitted diff claiming "user sign-off 2026-10-01" with no record here; the Supervisor re-asked rather than trust it. User confirmed the draft values unchanged. Code comments must cite 2026-10-07.
+**State at sign-off:** branch `feat/t041-supply-chain` (db36b89) is 145 commits behind `feat/wave16-business-domain-coverage` — needs rebase before Stage 4.
+
+## 2026-10-07 — T041 D1: CI `image:` references count for `ci_actions_unpinned_share` (user)
+
+**Decision (user, AskUserQuestion 2026-10-07):** add `image:` as a second action-reference token in `GENERIC_CI_FACTS["action_reference"]` (roles.py); pinned only with `@sha256:` digest (OpenSSF Scorecard Pinned-Dependencies). Metric name and weights unchanged.
+**Why:** bryony's `.drone.yml` pulls `bryony/li-tool-backend-base:master` but the rule abstained (only `uses:` was read) — an abstention on a repo that clearly has the evidence is a defect.
+**Expected:** bryony supply-chain 44 → 35; kitchd share stays 1.0 over 13 refs (postgres service image); templated `${{ matrix.x }}` image may count as unpinned (accepted, note as known limitation).

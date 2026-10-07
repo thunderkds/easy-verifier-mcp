@@ -705,3 +705,12 @@ With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as
 - **Merge gate checks the board BEFORE the command runs**: a single Bash call that edits KANBAN to Done and then merges is still blocked. Commit the Done row first, merge in a separate call.
 - **Pack review probes that found real defects** (T047): import the pack module alone (`python -c "import easy_verifier.packs"`, which caught a circular import) and run `mask()` on mixed-label lines (`MRN … DOB 1984-03-12`, where the label had no `:` and the value leaked through a context line).
 - **Clear `.claude/hooks/.state/active_task` after the last task merges**: while it names a task, the step-limit hook keeps counting the Supervisor's own calls against that task and kills them.
+
+## 2026-10-07 — T041: stale HITL claims, `**/License*` globs, rebase under the merge gate
+
+- **An uncommitted "user sign-off" comment is not a sign-off.** T041's worktree held a diff saying "user sign-off 2026-10-01" for floor/weights with no entry in decisions.md. Re-ask via AskUserQuestion; record in decisions.md before committing. Same values were confirmed, but the date in code had to change.
+- **Prefix globs on licence names match source code.** `**/License*` / `**/license*` matched `src/licenseService.ts`, `License.php`, `LicenseBadge.tsx` → `licence_file_missing` falsely 0. Role globs for conventional files must be exact names (+ `.md/.txt/.rst`, dash-suffix), never `<stem>*`. Probe every new role with `_matcher(GENERIC_PATTERNS[role])` against realistic source paths at review.
+- **`\bkey:` matches hyphenated keys** (`base-image:`). Use `(?<![\w-])key:` for YAML keys.
+- **`git rebase` is blocked by the merge gate while the task is In Progress.** The agent recreated the branch from the base (`checkout -B`) and cherry-picked the task commits — same effect, task branch only. Watch for dropped blocks when replaying conflicted judge.py (agent lost reliability/pack rule blocks once and caught it).
+- **A new dimension breaks the container-parity tests until the image is rebuilt** (`missing=['supply-chain']`). Build a task-tagged image through a compose override (`COMPOSE_FILE=compose.yaml:<scratch>/override.yaml` setting only `image:`) instead of retagging the shared `0.1.0`.
+- **A dimension can abstain on `insufficient_measured_weight` even above its coverage floor** (T067, DDR-0010): supply-chain without CI measures 35/100 weight, so repos without a CI file get no number.

@@ -278,6 +278,8 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 
 - ⚠️ **[Zero-width band ≠ borderline; cap caller-sized lists; compose build retags 0.1.0](learnings.md)** (T028 Stage 4, 2026-09-26).
 
+- ⚠️ **[T041: re-ask unrecorded HITL sign-offs; `**/License*` globs match source code; rebase via cherry-pick under merge gate; task-tagged container image](learnings.md)** (2026-10-07). Decisions: supply-chain floor 0.40, weights 20/15/20/20/25, CI `image:` counts for pin rule ([decisions.md](decisions.md)).
+
 ### Learning Records
 
 _None yet._
