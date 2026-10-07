@@ -527,6 +527,14 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # infrastructure (T042)
+    "iac_wildcard_iam_observed": "wildcard IAM or RBAC permissions",
+    "iac_open_ingress_observed": "ingress open to the whole internet",
+    "iac_unencrypted_storage_observed": "storage without encryption at rest",
+    "terraform_locked_remote_state_missing": "no locked remote Terraform state",
+    "terraform_environment_separation_missing": "no per-environment separation",
+    "database_backup_unconfigured": "databases with no backup setting",
+    "database_ha_unconfigured": "databases with no high-availability setting",
     # operations (T046)
     "logging_library_missing": "no logging or tracing library",
     "audit_log_writes_missing": "no audit log writes",
@@ -566,7 +574,6 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "package-manifest": "package manifest",
     "lockfile": "lockfile",
     "auth-code": "auth code",
-    "container-config": "container config",
     "ci-workflow": "CI workflow",
     "licence-file": "licence file",
     "release-config": "release config",
@@ -575,6 +582,10 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "migration files": "migration files",
     "schema-file": "schema file",
     "data models in source files": None,
+    "terraform-file": "Terraform files",
+    "k8s-manifest": "Kubernetes manifests",
+    "cloud-template": "CloudFormation or Pulumi templates",
+    "container-config": "container config",
     "codeowners": "CODEOWNERS",
     "observability-config": "observability config",
     "agent-config": "coding-agent config",

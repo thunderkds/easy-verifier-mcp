@@ -47,6 +47,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | api | 0.25 |
 | data | 0.25 |
 | operations | 0.25 |
+| infrastructure | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
 
@@ -76,6 +77,16 @@ alone never rate: they fill one role and carry no weight. Coding-agent instructi
 abstain when no agent file is committed; git-ignored agent files are never read. Secrets are counted
 by the shared redaction scanner's exact-pattern detectors (`core/redact.py`), never quoted. The lockfile part of #30 is
 supply-chain's `lockfile_missing`.
+
+infrastructure (T042, floor 0.25 user decision 2026-10-07; weights proposed by T042 and accepted
+under user policy 2026-10-07): four roles (Terraform files, Kubernetes manifests, CloudFormation or
+Pulumi templates, container config), so one of them reaches the floor and a repository with none
+abstains with every role named. Container config alone reaches the floor but leaves every rule
+without IaC to measure, so the dimension abstains rather than rating. Only literal values count; a
+setting from a variable or expression is named as not verifiable offline. The disaster-recovery
+document (#24) is a documentation rule; live drift (#23) and restore drills (#24) are not
+verifiable offline and have no rule. IaC tokens are generic-layer data
+(`GENERIC_INFRASTRUCTURE_FACTS` in `core/roles.py`): IaC files belong to no registry language.
 
 data (T045, floor 0.25 user decision 2026-10-07; weights proposed by T045 and accepted under user
 policy 2026-10-07): three roles (migration files in a directory the blast-radius migration rule
@@ -209,6 +220,13 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `agent_config_secrets_observed` | 20 | = 0 | `core/redact.py` exact-pattern detectors only (PEM key, AWS keys, JWT, credential assignment; not the entropy or key-material heuristics) over the agent files read; abstains with no agent file |
 | | `tool_version_pin_missing` | 10 | = 0 | registry `roles.tool-version-pin` (`.nvmrc`, `.python-version`, ...), generic `.tool-versions`/`mise.toml` |
 | | `dev_environment_missing` | 10 | = 0 | generic `dev-environment` patterns (devcontainer, Nix, Devbox, Makefile/justfile/Taskfile, bin/setup) |
+| infrastructure | `iac_wildcard_iam_observed` | 20 | = 0 | generic `wildcard_iam` (HCL/JSON/CloudFormation `"*"` action or resource, Kubernetes RBAC `"*"` verb/resource/apiGroup, inline or as a lone block-list item); abstains with no IaC file |
+| | `iac_open_ingress_observed` | 20 | = 0 | generic `open_cidr` (security-group, firewall and NetworkPolicy sources; a route's `cidr_block` is not one); the nearest ingress/egress word above decides the direction, egress is not counted; abstains with no IaC file |
+| | `iac_unencrypted_storage_observed` | 15 | = 0 | generic `unencrypted_storage` (`encrypted = false`, `StorageEncrypted: false`) plus RDS/EBS Terraform resources that never set encryption; abstains with no IaC file |
+| | `terraform_locked_remote_state_missing` | 15 | = 0 | generic `remote_backend` (any backend but `local`, or `cloud`), an s3 backend counts only with `use_lockfile`/`dynamodb_table`; repository level; abstains with no Terraform file |
+| | `terraform_environment_separation_missing` | 5 | = 0 | generic `environment_paths` (environment folders, per-environment tfvars) and `terraform.workspace`; abstains with no Terraform file |
+| | `database_backup_unconfigured` | 15 | = 0 | generic `database_resource` blocks without a literal `database_backup` setting; abstains with no database resource |
+| | `database_ha_unconfigured` | 10 | = 0 | generic `database_resource` blocks without a literal `database_ha` setting; abstains with no database resource |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 supply-chain also carries one documentation rule (area #22, rollback): a document named for

@@ -156,7 +156,7 @@ def test_no_findings_is_a_distinct_absence_not_zero_or_perfect():
 def test_all_known_dimensions_are_returned_in_declared_order():
     result = assess({"security": (finding(),)})
     assert tuple(item.dimension for item in result.outcomes) == DIMENSIONS
-    assert len(result.outcomes) == 12
+    assert len(result.outcomes) == 13
 
 
 def test_findings_are_canonicalized_for_byte_identical_output():

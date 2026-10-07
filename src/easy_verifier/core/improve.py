@@ -197,6 +197,35 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # infrastructure (T042)
+    "iac_wildcard_iam_observed": (
+        "Replace \"*\" IAM actions and resources (and RBAC verbs) with the "
+        "specific actions and resources each role needs."
+    ),
+    "iac_open_ingress_observed": (
+        "Restrict ingress sources to known address ranges or a load balancer "
+        "instead of 0.0.0.0/0."
+    ),
+    "iac_unencrypted_storage_observed": (
+        "Enable encryption at rest (storage_encrypted / encrypted = true, "
+        "ideally with a customer-managed KMS key)."
+    ),
+    "terraform_locked_remote_state_missing": (
+        "Store Terraform state in a remote backend with locking (gcs, "
+        "azurerm, HCP Terraform, or s3 with use_lockfile)."
+    ),
+    "terraform_environment_separation_missing": (
+        "Separate environments: one state per environment through "
+        "environment folders, per-environment tfvars or workspaces."
+    ),
+    "database_backup_unconfigured": (
+        "State automated backups in code: backup_retention_period, "
+        "point-in-time recovery or snapshot persistence on every database."
+    ),
+    "database_ha_unconfigured": (
+        "Run production databases across zones (multi_az = true, "
+        "availability_type = \"REGIONAL\", a high-availability tier)."
+    ),
     # operations (T046)
     "logging_library_missing": (
         "Log through a logging or tracing library (OpenTelemetry, a structured "

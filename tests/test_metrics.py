@@ -322,6 +322,14 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "agent_config_secrets_observed",
         "tool_version_pin_missing",
         "dev_environment_missing",
+        # T042: computed only by the infrastructure dimension.
+        "iac_wildcard_iam_observed",
+        "iac_open_ingress_observed",
+        "iac_unencrypted_storage_observed",
+        "terraform_locked_remote_state_missing",
+        "terraform_environment_separation_missing",
+        "database_backup_unconfigured",
+        "database_ha_unconfigured",
         # T045: computed only by the data dimension.
         "migrations_missing",
         "migrations_without_rollback_share",
@@ -384,6 +392,14 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "agent_config_secrets_observed",
         "tool_version_pin_missing",
         "dev_environment_missing",
+        # T042: computed only by the infrastructure dimension.
+        "iac_wildcard_iam_observed",
+        "iac_open_ingress_observed",
+        "iac_unencrypted_storage_observed",
+        "terraform_locked_remote_state_missing",
+        "terraform_environment_separation_missing",
+        "database_backup_unconfigured",
+        "database_ha_unconfigured",
         # T045: computed only by the data dimension.
         "migrations_missing",
         "migrations_without_rollback_share",

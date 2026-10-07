@@ -20,14 +20,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------
-# AC #1, #8 — runs each named dimension, all twelve work and stays bounded
+# AC #1, #8 — runs each named dimension, all thirteen work and stays bounded
 # ---------------------------------------------------------------------------
 
 
-def test_all_twelve_dimensions_return_a_slot_each() -> None:
+def test_all_thirteen_dimensions_return_a_slot_each() -> None:
     result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
-    assert len(result.slots) == 12
+    assert len(result.slots) == 13
     assert {slot.dimension for slot in result.slots} == set(dimension_names())
     for slot in result.slots:
         assert slot.error is None
@@ -220,7 +220,7 @@ def test_all_dimensions_failing_yields_a_result_not_an_exception(monkeypatch) ->
 
     result = combined_pack(dimension_names(), REPO_ROOT, scope="project")
 
-    assert len(result.slots) == 12
+    assert len(result.slots) == 13
     assert all(slot.pack is None and slot.error is not None for slot in result.slots)
 
 
