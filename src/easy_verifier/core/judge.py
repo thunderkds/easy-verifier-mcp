@@ -48,6 +48,9 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     "reliability": CoverageFloor(0.25, "inclusive"),
     # User-approved 2026-10-07 (T041): two of five roles.
     "supply-chain": CoverageFloor(0.40, "inclusive"),
+    # User-approved 2026-10-07 (T044): one of three roles (specification
+    # file, route definitions, request validation).
+    "api": CoverageFloor(0.25, "inclusive"),
 }
 
 # Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
@@ -350,6 +353,26 @@ _SRE_RELEASE = Citation(
     "Google SRE Workbook, Canarying Releases",
     "https://sre.google/workbook/canarying-releases/",
 )
+_OPENAPI = Citation(
+    "OpenAPI Specification 3.1.0; GraphQL specification; Protocol Buffers "
+    "language guide (proto3)",
+    "https://spec.openapis.org/oas/v3.1.0",
+)
+_AIP_185 = Citation(
+    "Google AIP-185 (API versioning)", "https://google.aip.dev/185"
+)
+_ASVS_V5 = Citation(
+    "OWASP ASVS 4.0.3, V5 Validation, Sanitization and Encoding (V5.1 input "
+    "validation)",
+    "https://github.com/OWASP/ASVS/blob/v4.0.3/4.0/en/0x13-V5-Validation-Sanitization-Encoding.md",
+)
+_OWASP_INPUT_VALIDATION = Citation(
+    "OWASP Input Validation Cheat Sheet",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html",
+)
+_AIP_180 = Citation(
+    "Google AIP-180 (backwards compatibility)", "https://google.aip.dev/180"
+)
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
     "https://www.iso.org/standard/78176.html",
@@ -597,6 +620,39 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "ci_provenance_step_missing", 25, 0, "at_most",
             (_SLSA, _SBOM), _SLSA,
             area=AREAS[21],
+        ),
+    ),
+    # T044: the api dimension (area #7). Weights: proposed by T044, accepted
+    # under user policy 2026-10-07 (Supervisor reviews at Stage 4).
+    #   api_spec_missing 30 -- a machine-readable contract is the core of #7,
+    #     measurable in every scope.
+    #   request_validation_missing 30 -- the other half of "contract and
+    #     validation": unvalidated input at an entry point (ASVS V5).
+    #   api_version_missing 20 -- an evolution control; an internal API may
+    #     legitimately ship one version, so it weighs less.
+    #   breaking_api_changes_observed 20 -- an evolution control measurable
+    #     only on a changes-scope diff; it abstains elsewhere, leaving 80%
+    #     measured (DDR-0010 floor 50%).
+    "api": _rules(
+        RatingRule(
+            "api_spec_missing", 30, 0, "at_most",
+            (_OPENAPI,), _OPENAPI,
+            area=AREAS[6],
+        ),
+        RatingRule(
+            "api_version_missing", 20, 0, "at_most",
+            (_AIP_185,), _AIP_185,
+            area=AREAS[6],
+        ),
+        RatingRule(
+            "request_validation_missing", 30, 0, "at_most",
+            (_ASVS_V5,), _OWASP_INPUT_VALIDATION,
+            area=AREAS[6],
+        ),
+        RatingRule(
+            "breaking_api_changes_observed", 20, 0, "at_most",
+            (_AIP_180,), _AIP_180,
+            area=AREAS[6],
         ),
     ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any

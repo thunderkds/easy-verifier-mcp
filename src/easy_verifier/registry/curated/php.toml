@@ -317,3 +317,10 @@ source_tag = "curated"
 value = ["composer install"]
 citation_url = "https://getcomposer.org/doc/03-cli.md#install-i"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["->validate (", "Validator::make (", "extends FormRequest"]
+citation_url = "https://laravel.com/docs/validation"
+source_tag = "curated"

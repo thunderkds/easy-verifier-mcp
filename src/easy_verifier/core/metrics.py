@@ -321,6 +321,11 @@ class LanguageTables:
     """Source suffix -> the language's T043 reliability tokens (areas #6, #12,
     #13, #15), present only where ``syntax`` is and the language declares the
     field; read through :func:`reliability_findings`."""
+    request_validation: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    api_spec_generators: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    api_version_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T044 api tokens (area #7); read by the
+    ``api`` dimension over whole files."""
     ci_files: Callable[[str], bool] | None = None
     release_files: Callable[[str], bool] | None = None
     """Path matchers for the ``ci-workflow`` and ``release-config`` roles
@@ -2901,6 +2906,37 @@ def _ci_provenance_step_missing(view: _PackView) -> _Computed:
     )
 
 
+API = "api"
+
+API_METRICS = (
+    "api_spec_missing",
+    "api_version_missing",
+    "request_validation_missing",
+    "breaking_api_changes_observed",
+)
+"""The T044 api rule metrics (area #7), computed by the ``api`` dimension over
+whole files and the changes-scope diff and stored on ``pack.whole_file``."""
+
+
+def _api_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the api dimension did not store the
+    metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != API:
+        return MetricAbstention(
+            reason=(
+                "only the api pack records API specification, route, validation "
+                f"and versioning facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no API facts "
+            "were gathered"
+        )
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -3213,6 +3249,11 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         FAMILY_EVIDENCE_COVERAGE,
         WHOLE_SET,
         _ci_provenance_step_missing,
+    ),
+    # T044: api; computed over whole files by the api pack itself
+    *(
+        MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _api_fact)
+        for name in API_METRICS
     ),
 )
 

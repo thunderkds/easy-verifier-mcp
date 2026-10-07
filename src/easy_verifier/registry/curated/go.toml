@@ -277,3 +277,10 @@ source_tag = "curated"
 value = ["go mod verify", "-mod=readonly"]
 citation_url = "https://go.dev/ref/mod#go-mod-verify"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["validator.New (", "*.ShouldBindJSON (", "*.ShouldBind ("]
+citation_url = "https://gin-gonic.com/en/docs/examples/binding-and-validation/"
+source_tag = "curated"

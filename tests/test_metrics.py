@@ -309,6 +309,11 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "ci_actions_unpinned_share",
         "ci_lockfile_install_missing",
         "ci_provenance_step_missing",
+        # T044: the api facts are stored only by the api pack.
+        "api_spec_missing",
+        "api_version_missing",
+        "request_validation_missing",
+        "breaking_api_changes_observed",
     }
     for metric in whole_set:
         if not truncated and metric.name in needs_imports:
@@ -353,6 +358,11 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "queries_in_loops_observed",
         # T041: the fixture does not declare the licence-file role.
         "licence_file_missing",
+        # T044: computed only by the api dimension.
+        "api_spec_missing",
+        "api_version_missing",
+        "request_validation_missing",
+        "breaking_api_changes_observed",
     }
 
     # AC #5: unaffected by truncation, both ways.

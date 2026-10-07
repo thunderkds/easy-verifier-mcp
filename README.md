@@ -34,6 +34,7 @@ Each dimension is a separate, independently callable unit — not one monolithic
 | `blast-radius` | What else in the repo depends on, or is touched by, the change |
 | `reliability` | Error handling, outbound-call deadlines, retry backoff and queries in loops; transaction and idempotency code quoted for the agent; business-continuity document present or missing |
 | `supply-chain` | Dependency pinning and licences, CI reproducibility, and provenance, SBOM and signing steps; live vulnerability status is not verifiable offline |
+| `api` | API specification (OpenAPI, GraphQL, protobuf, or generated from code), request validation at entry points, API versioning, and endpoints or spec fields a change removes; whether a running service honours its contract is not verifiable offline |
 
 ## Scopes
 
@@ -196,6 +197,10 @@ every rule shipped in the package), and the HTML report shows them as links.
 | `supply-chain` | `ci_actions_unpinned_share` | ≤ 0 | 20 | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) |
 | `supply-chain` | `ci_lockfile_install_missing` | ≤ 0 | 20 | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) | [OpenSSF Scorecard, Pinned-Dependencies check](https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies) |
 | `supply-chain` | `ci_provenance_step_missing` | ≤ 0 | 25 | [SLSA v1.0 (build track: provenance)](https://slsa.dev/spec/v1.0/levels); [CycloneDX specification overview; SPDX specification](https://cyclonedx.org/specification/overview/) | [SLSA v1.0 (build track: provenance)](https://slsa.dev/spec/v1.0/levels) |
+| `api` | `api_spec_missing` | ≤ 0 | 30 | [OpenAPI Specification 3.1.0; GraphQL specification; Protocol Buffers language guide (proto3)](https://spec.openapis.org/oas/v3.1.0) | [OpenAPI Specification 3.1.0; GraphQL specification; Protocol Buffers language guide (proto3)](https://spec.openapis.org/oas/v3.1.0) |
+| `api` | `api_version_missing` | ≤ 0 | 20 | [Google AIP-185 (API versioning)](https://google.aip.dev/185) | [Google AIP-185 (API versioning)](https://google.aip.dev/185) |
+| `api` | `request_validation_missing` | ≤ 0 | 30 | [OWASP ASVS 4.0.3, V5 Validation, Sanitization and Encoding (V5.1 input validation)](https://github.com/OWASP/ASVS/blob/v4.0.3/4.0/en/0x13-V5-Validation-Sanitization-Encoding.md) | [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html) |
+| `api` | `breaking_api_changes_observed` | ≤ 0 | 20 | [Google AIP-180 (backwards compatibility)](https://google.aip.dev/180) | [Google AIP-180 (backwards compatibility)](https://google.aip.dev/180) |
 <!-- rating-rules:end -->
 
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no

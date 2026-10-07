@@ -293,3 +293,10 @@ source_tag = "curated"
 value = ["--frozen", "--deployment", "BUNDLE_FROZEN"]
 citation_url = "https://bundler.io/man/bundle-config.1.html"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["params.require (", "params.permit ("]
+citation_url = "https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters"
+source_tag = "curated"

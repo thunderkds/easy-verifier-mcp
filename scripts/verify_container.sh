@@ -169,6 +169,7 @@ expected_tools = {
     "solution-fit",
     "supply-chain",
     "test-strategy",
+    "api",
     "reliability",
     "list_dimensions",
     "combined",

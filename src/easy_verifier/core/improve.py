@@ -197,6 +197,23 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # api (T044)
+    "api_spec_missing": (
+        "Commit an OpenAPI 3.x, GraphQL SDL or protobuf specification of the "
+        "API, or generate one from the code in the build."
+    ),
+    "api_version_missing": (
+        "Version the public API: put the major version in the route path "
+        "(/v1/...) or the schema package, or enable the framework's versioning."
+    ),
+    "request_validation_missing": (
+        "Validate every request body, query and path parameter at the entry "
+        "point against a schema (allow-list types, lengths and formats)."
+    ),
+    "breaking_api_changes_observed": (
+        "Restore the removed endpoint or field, or ship the removal as a new "
+        "major API version after a deprecation period."
+    ),
     # supply-chain (T041)
     "licence_file_missing": (
         "Add a LICENSE file at the repository root naming the licence by its "

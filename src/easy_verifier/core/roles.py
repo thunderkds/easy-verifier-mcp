@@ -221,6 +221,26 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "bitbucket-pipelines.yml",
     ),
     "credential-file": ("**/.env*",),
+    # T044 api role: committed machine-readable API specifications. OpenAPI
+    # 3.x recommends ``openapi.json``/``openapi.yaml``
+    # (https://spec.openapis.org/oas/v3.1.0#document-structure); Swagger 2.0
+    # used ``swagger.json``; GraphQL SDL files use ``.graphql``/``.graphqls``/
+    # ``.gql`` (https://graphql.org/learn/schema/); Protocol Buffers use
+    # ``.proto`` (https://protobuf.dev/programming-guides/proto3/). Data
+    # suffixes only: a stem glob such as ``**/swagger*`` matched source like
+    # ``src/configs/swagger.config.ts`` (T041 lesson).
+    "api-spec": (
+        *(
+            f"**/{stem}{suffix}"
+            for stem in ("openapi", "swagger", "*.openapi", "*.swagger",
+                         "openapi.*", "swagger.*")
+            for suffix in (".json", ".yaml", ".yml")
+        ),
+        "**/*.graphql",
+        "**/*.graphqls",
+        "**/*.gql",
+        "**/*.proto",
+    ),
     # T041 supply-chain roles. Licence files: SPDX "Other licensing
     # information" and the REUSE spec's LICENSES/ directory
     # (https://spdx.dev/learn/handling-license-info/,
@@ -354,6 +374,45 @@ GENERIC_CI_FACTS: dict[str, tuple[GenericTokens, ...]] = {
     ),
 }
 """Cited language-neutral CI tokens for the supply-chain dimension (T041)."""
+
+
+GENERIC_API_FACTS: dict[str, tuple[GenericTokens, ...]] = {
+    # A path segment naming a major API version (``/v1/``, ``api/v2``,
+    # ``package shop.v1;``), matched whole: Google AIP-185 and the Microsoft
+    # REST API Guidelines both put the major version in the path or package.
+    "version_segment": (
+        GenericTokens(("^v[0-9]+$",), "https://google.aip.dev/185"),
+        GenericTokens(
+            ("^v[0-9]+$",),
+            "https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md#api-versioning",
+        ),
+    ),
+    # Specification files whose package name carries the version, dotted
+    # (``package shop.v1;``): there ``.`` separates segments too.
+    "dotted_package_suffixes": (
+        GenericTokens(
+            (".proto",), "https://protobuf.dev/programming-guides/style/#packages"
+        ),
+    ),
+    # A definition line of a specification file, group ``key`` naming what it
+    # defines: a YAML/JSON key (OpenAPI paths, properties) or GraphQL field,
+    # and a Protocol Buffers field or rpc. Removing one is a breaking change
+    # (AIP-180); its indentation is part of the key for YAML/JSON/GraphQL.
+    "spec_definition": (
+        GenericTokens(
+            (r"^(?P<indent>\s*)(?:-\s+)?[\"']?(?P<key>[^\s\"':#{}\[\],]+)[\"']?\s*:",),
+            "https://spec.openapis.org/oas/v3.1.0#paths-object",
+        ),
+        GenericTokens(
+            (
+                r"^\s*(?:rpc\s+(?P<rpc>\w+)|(?:(?:repeated|optional|required)\s+)?"
+                r"[\w.]+\s+(?P<field>\w+)\s*=\s*\d+)",
+            ),
+            "https://protobuf.dev/programming-guides/proto3/#updating",
+        ),
+    ),
+}
+"""Cited language-neutral API facts for the api dimension (T044)."""
 
 
 @lru_cache(maxsize=1)

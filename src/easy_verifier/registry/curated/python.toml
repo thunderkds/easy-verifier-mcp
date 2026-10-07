@@ -453,3 +453,35 @@ source_tag = "curated"
 value = ["--deploy"]
 citation_url = "https://pipenv.pypa.io/en/latest/commands.html#pipenv-install"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["BaseModel"]
+citation_url = "https://fastapi.tiangolo.com/tutorial/body/"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["serializers.Serializer", "serializers.ModelSerializer", "forms.Form", "forms.ModelForm"]
+citation_url = "https://www.django-rest-framework.org/api-guide/serializers/#validation"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["marshmallow.Schema", "jsonschema.validate ("]
+citation_url = "https://marshmallow.readthedocs.io/en/stable/quickstart.html#validation"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["FastAPI ("]
+citation_url = "https://fastapi.tiangolo.com/tutorial/first-steps/#openapi"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["SpectacularAPIView", "get_schema_view ("]
+citation_url = "https://drf-spectacular.readthedocs.io/en/latest/readme.html"
+source_tag = "curated"
+
+[[api_version_markers]]
+value = ["URLPathVersioning", "NamespaceVersioning", "AcceptHeaderVersioning"]
+citation_url = "https://www.django-rest-framework.org/api-guide/versioning/"
+source_tag = "curated"

@@ -278,3 +278,15 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["@Valid", "@Validated"]
+citation_url = "https://docs.spring.io/spring-framework/reference/core/validation/beanvalidation.html"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["@OpenAPIDefinition", "GroupedOpenApi"]
+citation_url = "https://springdoc.org/"
+source_tag = "curated"
