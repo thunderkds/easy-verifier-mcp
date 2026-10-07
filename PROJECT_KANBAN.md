@@ -30,7 +30,6 @@
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
 - [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
 - [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
-- [ ] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
 
 **Follow-up from T068 Stage 4 (2026-10-04, no guide yet — needs user go-ahead)**
@@ -75,6 +74,7 @@ _(empty)_
 _(empty)_
 
 ### Done
+- [x] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights logging 20 / audit 10 / codeowners 20 / agent guardrails 10 / agent-config secrets 20 / tool pin 10 / dev env 10 (cited, accepted under user policy); agent instructions = #29 doc rule (user); secrets = exact-pattern detectors only; kitchd 50, this repo 40, coffee/ai-training/bryony abstain (1 of 7 roles); 2309 passed)
 - [x] **T045** — New dimension: data (#4) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights migrations 30 / rollback 30 / constraints 20 / destructive ops 20 (cited, accepted under user policy); coffee 100 (77→80), kitchd 70 (55→56, Prisma has no down migrations), ai-training 40 (66→62), bryony 40 (62→59); 2281 passed)
 - [x] **T044** — New dimension: api (#7) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights spec 30 / validation 30 / version 20 / breaking-changes 20 (cited, accepted under user policy); coffee 100 (72→77), ai-training 75 (64→66), kitchd 38 (57→55), bryony abstains — no webapp.get route tokens (T079) + batch-1 sampling; 2258 passed)
 - [x] **T041** — New dimension: supply-chain (#20, #21, #22) (floor 0.40 + weights 20/15/20/20/25 user-approved 2026-10-07) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (floor 0.40, weights 20/15/20/20/25 user-approved; CI `image:` counts for the pin rule (user, D1); kitchd 55 (58→57), bryony 35 (67→62), ai-training/coffee abstain — no CI file (DDR-0010 measured weight); 2235 passed; Stage 4 P1 licence globs matched source code → fixed; known limits: templated `${{ }}` image counts unpinned, shared container image must be rebuilt)

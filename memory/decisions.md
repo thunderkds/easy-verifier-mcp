@@ -1016,3 +1016,13 @@ structure vs LLM meaning split — meaning stays agent-side).
 **Decision (user, AskUserQuestion 2026-10-07):** add `image:` as a second action-reference token in `GENERIC_CI_FACTS["action_reference"]` (roles.py); pinned only with `@sha256:` digest (OpenSSF Scorecard Pinned-Dependencies). Metric name and weights unchanged.
 **Why:** bryony's `.drone.yml` pulls `bryony/li-tool-backend-base:master` but the rule abstained (only `uses:` was read) — an abstention on a repo that clearly has the evidence is a defect.
 **Expected:** bryony supply-chain 44 → 35; kitchd share stays 1.0 over 13 refs (postgres service image); templated `${{ matrix.x }}` image may count as unpinned (accepted, note as known limitation).
+
+## 2026-10-07 — Remaining dimensions run in order; floors 0.25; cited weight proposals accepted (user)
+
+**Decision (user, AskUserQuestion 2026-10-07, "just do by order"):** run T044 api → T045 data → T046 operations → T042 infrastructure → T049 accessibility pack sequentially, autonomously (Stage 3→5 + local merge each). Coverage floor 0.25 inclusive for every new dimension and for the T049 pack. Rule weights: the implementing agent proposes cited weights summing to 100; the Supervisor checks them at Stage 4 and lists every task's weights in the final report for after-the-fact change — no per-task HITL stop.
+**Why:** same reasoning as Wave 16 — ask HITL values upfront so the run does not stall; DDR-0010 measured-weight floor still prevents numbers on thin evidence.
+
+## 2026-10-07 — T046 operations: agent instructions = documentation result; secrets rule counts exact-credential detectors only
+
+**Decision (user, AskUserQuestion 2026-10-07):** `agent_instructions_missing` becomes a #29 documentation rule (present/missing, no weight) — repos that do not use coding agents are not penalised; its 10 points are redistributed over the remaining weighted rules (must still sum to 100 and admit an exact 50).
+**Decision (Supervisor, correcting its own spawn instruction):** `agent_config_secrets_observed` counts only the exact-pattern redaction detectors (`private_key_pem`, `aws_access_key_id`, `aws_secret_access_key`, `jwt`, `credential_assignment`), not the heuristic `high_entropy_string` / `key_material_segment`. **Why:** on real repos all 5 hits were CLAUDE.md template prose (100% false positives); `core/redact.py` exemptions stay untouched (T029/T051 sign-off, hub file).

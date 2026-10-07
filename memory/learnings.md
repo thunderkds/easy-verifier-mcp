@@ -714,3 +714,16 @@ With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as
 - **`git rebase` is blocked by the merge gate while the task is In Progress.** The agent recreated the branch from the base (`checkout -B`) and cherry-picked the task commits — same effect, task branch only. Watch for dropped blocks when replaying conflicted judge.py (agent lost reliability/pack rule blocks once and caught it).
 - **A new dimension breaks the container-parity tests until the image is rebuilt** (`missing=['supply-chain']`). Build a task-tagged image through a compose override (`COMPOSE_FILE=compose.yaml:<scratch>/override.yaml` setting only `image:`) instead of retagging the shared `0.1.0`.
 - **A dimension can abstain on `insufficient_measured_weight` even above its coverage floor** (T067, DDR-0010): supply-chain without CI measures 35/100 weight, so repos without a CI file get no number.
+
+## 2026-10-07 — T044 api: weight sets must admit an exact 50; route evidence on big repos
+
+- `tests/test_judge.py::_rating_with_value` needs some pass/fail/abstain combination of each dimension's weights to rate exactly 50 — 35/25/20/20 failed, 30/30/20/20 works. Tell implementers when they propose weights.
+- api (and requirement-fidelity) abstain on bryony for two reasons: no route token for `webapp.get('/…')` (T079) and default batch 1 (200 of 1178 files) holds no router file. With T079-style tokens + `--batches all`, 15 routes found. T079 unblocks both dimensions on bryony.
+- A spec generated from code (`SwaggerModule.createDocument`, `FastAPI(`) counts as spec present; version-path literals only count in files that declare routes.
+- Supervisor Stage 5 calls count against the task's 90-call step budget too (shared with the agent's calls) — switch active_task to the next task right after merging.
+
+## 2026-10-07 — T045 data: pseudo-roles and non-language suffixes
+
+- `core/roles.py` cannot import from `dimensions/` (circular), so knowledge living in a dimension module (T055 migration constants in blast_radius.py) forces a glob-less pseudo-role ("migration files") — not visible in list-dimensions, not extendable via .easy-verifier.toml. T057 (move to registry) fixes this.
+- `.prisma`/`.sql` belong to no registry language, so their tokens go in the generic layer (GENERIC_DATA_FACTS), not a curated TOML.
+- `core/redact.py` entropy detector masks long digit runs in migration filenames (`Migr…****:6a429a46c56b.ts`) — T029 territory.
