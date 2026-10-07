@@ -34,6 +34,7 @@ Each dimension is a separate, independently callable unit — not one monolithic
 | `blast-radius` | What else in the repo depends on, or is touched by, the change |
 | `reliability` | Error handling, outbound-call deadlines, retry backoff and queries in loops; transaction and idempotency code quoted for the agent; business-continuity document present or missing |
 | `supply-chain` | Dependency pinning and licences, CI reproducibility, and provenance, SBOM and signing steps; live vulnerability status is not verifiable offline |
+| `data` | Migrations beside a schema, a rollback per migration, NOT NULL/unique/foreign-key constraints, and DROP/RENAME operations in migrations; whether a live database matches the schema is not verifiable offline |
 | `api` | API specification (OpenAPI, GraphQL, protobuf, or generated from code), request validation at entry points, API versioning, and endpoints or spec fields a change removes; whether a running service honours its contract is not verifiable offline |
 
 ## Scopes
@@ -201,6 +202,10 @@ every rule shipped in the package), and the HTML report shows them as links.
 | `api` | `api_version_missing` | ≤ 0 | 20 | [Google AIP-185 (API versioning)](https://google.aip.dev/185) | [Google AIP-185 (API versioning)](https://google.aip.dev/185) |
 | `api` | `request_validation_missing` | ≤ 0 | 30 | [OWASP ASVS 4.0.3, V5 Validation, Sanitization and Encoding (V5.1 input validation)](https://github.com/OWASP/ASVS/blob/v4.0.3/4.0/en/0x13-V5-Validation-Sanitization-Encoding.md) | [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html) |
 | `api` | `breaking_api_changes_observed` | ≤ 0 | 20 | [Google AIP-180 (backwards compatibility)](https://google.aip.dev/180) | [Google AIP-180 (backwards compatibility)](https://google.aip.dev/180) |
+| `data` | `migrations_missing` | ≤ 0 | 30 | [Fowler & Sadalage, Evolutionary Database Design (every database change is a migration)](https://martinfowler.com/articles/evodb.html) | [Fowler & Sadalage, Evolutionary Database Design (every database change is a migration)](https://martinfowler.com/articles/evodb.html) |
+| `data` | `migrations_without_rollback_share` | ≤ 0 | 30 | [Rails Guides, Active Record Migrations (reversible change; up/down methods)](https://guides.rubyonrails.org/active_record_migrations.html); [Liquibase, Rollback (a rollback for every changeset)](https://docs.liquibase.com/workflows/liquibase-community/using-rollback.html) | [Liquibase, Rollback (a rollback for every changeset)](https://docs.liquibase.com/workflows/liquibase-community/using-rollback.html) |
+| `data` | `schema_constraints_missing` | ≤ 0 | 20 | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html); [PostgreSQL documentation, 5.5 Constraints (NOT NULL, unique, foreign key)](https://www.postgresql.org/docs/current/ddl-constraints.html) | [ISO/IEC 5055:2021 (automated source code quality measures)](https://www.iso.org/standard/80623.html) |
+| `data` | `destructive_migration_ops_observed` | ≤ 0 | 20 | [Fowler, Parallel Change (expand and contract)](https://martinfowler.com/bliki/ParallelChange.html); [Fowler & Sadalage, Evolutionary Database Design (every database change is a migration)](https://martinfowler.com/articles/evodb.html) | [Fowler, Parallel Change (expand and contract)](https://martinfowler.com/bliki/ParallelChange.html) |
 <!-- rating-rules:end -->
 
 The `*_missing` metrics are 1 when the dimension's source role (for example `lint-config`) has no

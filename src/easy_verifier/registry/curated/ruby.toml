@@ -300,3 +300,25 @@ source_tag = "curated"
 value = ["params.require (", "params.permit ("]
 citation_url = "https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[roles.schema-file]]
+value = ["**/db/schema.rb", "**/db/structure.sql"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#schema-dumping-and-you"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["ApplicationRecord", "ActiveRecord::Base"]
+citation_url = "https://guides.rubyonrails.org/active_record_basics.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["null: false", "foreign_key: true", "add_foreign_key", "unique: true"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#foreign-keys"
+source_tag = "curated"
+
+[[migration_rollback_markers]]
+value = ["def change"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#using-the-change-method"
+source_tag = "curated"

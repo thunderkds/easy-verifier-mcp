@@ -264,6 +264,10 @@ def test_optional_fields_are_never_required():
         "request_validation",
         "api_spec_generators",
         "api_version_markers",
+        # T045: only languages with an ORM or migration library.
+        "orm_model_markers",
+        "schema_constraint_markers",
+        "migration_rollback_markers",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 

@@ -197,6 +197,24 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # data (T045)
+    "migrations_missing": (
+        "Version every schema change as a migration file (Flyway, Liquibase, "
+        "Alembic, Rails, Prisma Migrate, ...) instead of syncing the schema "
+        "from the models at run time."
+    ),
+    "migrations_without_rollback_share": (
+        "Give every migration a down/rollback (or a reversible form), or mark "
+        "an irreversible one explicitly so the rollback plan says so."
+    ),
+    "schema_constraints_missing": (
+        "Declare NOT NULL, unique and foreign-key constraints in the schema so "
+        "the database enforces integrity, not only the application."
+    ),
+    "destructive_migration_ops_observed": (
+        "Split each DROP or RENAME into expand and contract steps (add, migrate "
+        "data, switch readers, then drop in a later release)."
+    ),
     # api (T044)
     "api_spec_missing": (
         "Commit an OpenAPI 3.x, GraphQL SDL or protobuf specification of the "

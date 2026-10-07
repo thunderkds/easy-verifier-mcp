@@ -324,3 +324,15 @@ source_tag = "curated"
 value = ["->validate (", "Validator::make (", "extends FormRequest"]
 citation_url = "https://laravel.com/docs/validation"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["extends Model"]
+citation_url = "https://laravel.com/docs/11.x/eloquent"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["->foreign (", "->unique (", "->constrained (", "->foreignId ("]
+citation_url = "https://laravel.com/docs/11.x/migrations#foreign-key-constraints"
+source_tag = "curated"

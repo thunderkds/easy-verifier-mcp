@@ -259,3 +259,10 @@ source_tag = "curated"
 value = ["#[validate (", "validator::Validate"]
 citation_url = "https://docs.rs/validator/latest/validator/"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["DeriveEntityModel"]
+citation_url = "https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/"
+source_tag = "curated"

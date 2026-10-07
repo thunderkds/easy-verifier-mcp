@@ -77,7 +77,7 @@ def metric_tables(
     type_configs: list[TypeConfigFile] = []
     type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
     reliability: dict[str, dict[str, re.Pattern[str]]] = {
-        f: {} for f in RELIABILITY_FIELDS + API_FIELDS
+        f: {} for f in RELIABILITY_FIELDS + API_FIELDS + DATA_FIELDS
     }
     for entry in entries:
         extensions = _values(entry, "source_extensions")
@@ -102,7 +102,7 @@ def metric_tables(
                 )
             if _values(entry, "auth_markers"):
                 auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
-            for name in RELIABILITY_FIELDS + API_FIELDS:
+            for name in RELIABILITY_FIELDS + API_FIELDS + DATA_FIELDS:
                 if _values(entry, name):
                     reliability[name].setdefault(
                         extension, _guarded(_values(entry, name))
@@ -237,6 +237,13 @@ RELIABILITY_FIELDS = (
 
 API_FIELDS = ("request_validation", "api_spec_generators", "api_version_markers")
 """The T044 api token fields (area #7); each compiles like a sink token."""
+
+DATA_FIELDS = (
+    "orm_model_markers",
+    "schema_constraint_markers",
+    "migration_rollback_markers",
+)
+"""The T045 data token fields (area #4); each compiles like a sink token."""
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -404,6 +411,9 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "request_validation": ("request_validation_missing",),
     "api_spec_generators": ("api_spec_missing",),
     "api_version_markers": ("api_version_missing",),
+    "orm_model_markers": ("migrations_missing", "schema_constraints_missing"),
+    "schema_constraint_markers": ("schema_constraints_missing",),
+    "migration_rollback_markers": ("migrations_without_rollback_share",),
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -427,6 +437,12 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "refines the cookie metric: a flag a language does not declare is not "
         "judged, while cookie_calls and auth_markers still compute it (user "
         "2026-09-29)",
+    ),
+    **dict.fromkeys(
+        DATA_FIELDS,
+        "only languages with an ORM or a migration library declare it; a "
+        "language without the field is not credited with that evidence, and the "
+        "data rule abstains where nothing else shows it (T045)",
     ),
     **dict.fromkeys(
         API_FIELDS,
@@ -459,6 +475,7 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "lockfile": ("lockfile_missing",),
     "licence-file": ("licence_file_missing",),
     "api-spec": ("api_spec_missing",),
+    "schema-file": ("migrations_missing", "schema_constraints_missing"),
     "test-config": ("test_config_and_ci_missing",),
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),

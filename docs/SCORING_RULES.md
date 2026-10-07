@@ -45,6 +45,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | reliability | 0.25 |
 | supply-chain | 0.40 |
 | api | 0.25 |
+| data | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
 
@@ -63,6 +64,13 @@ conventions are embedded for replay (T075). A README heading naming "Architectur
 supply-chain (T041, floor 0.40 and weights user-approved 2026-10-07): five roles (package manifest,
 lockfile, CI workflow, licence file, release configuration), so two of them reach the floor and a
 repository with none of them abstains with every role named.
+
+data (T045, floor 0.25 user decision 2026-10-07; weights proposed by T045 and accepted under user
+policy 2026-10-07): three roles (migration files in a directory the blast-radius migration rule
+names; committed schema files: SQL, Prisma, Rails `db/schema.rb`; data models in source files), so
+one of them reaches the floor and a repository with none abstains with every role named. A
+repository with no migration, schema or data model (a library) abstains, never 0. The four metrics
+are computed over the whole text of the in-scope migration (newest 200), schema and model files.
 
 api (T044, floor 0.25 user decision 2026-10-07; weights proposed by T044 and accepted under user
 policy 2026-10-07): three roles (committed API specification file; route definitions in source files;
@@ -178,6 +186,10 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `api_version_missing` | 20 | = 0 | `route_tokens`, `api_version_markers` *(opt)*, generic version segment `^v[0-9]+$` (AIP-185) over route paths, non-import path literals and specification paths/packages; abstains with no route and no specification |
 | | `request_validation_missing` | 30 | = 0 | `route_tokens`, `request_validation` *(opt)*; repository level (any validation beside routes), not per route; abstains with no route |
 | | `breaking_api_changes_observed` | 20 | = 0 | `route_tokens`, generic specification definition lines; changes scope only (routes or spec keys removed and not re-added), abstains elsewhere |
+| data | `migrations_missing` | 30 | = 0 | `orm_model_markers` *(opt)*, generic `schema-file` patterns, blast-radius `MIGRATION_DIRS`; abstains with no migration, schema file or data model |
+| | `migrations_without_rollback_share` | 30 | = 0 | `migration_rollback_markers` *(opt)*, blast-radius down/downgrade pattern, generic Liquibase rollback and `*.down.*`/Flyway undo file pairs; abstains with no migration |
+| | `schema_constraints_missing` | 20 | = 0 | `schema_constraint_markers` *(opt)*, generic SQL/Prisma/Liquibase constraint syntax; abstains with no schema, migration or model file |
+| | `destructive_migration_ops_observed` | 20 | = 0 | blast-radius destructive-operation pattern, outside down sections and comment lines; abstains with no migration |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 supply-chain also carries one documentation rule (area #22, rollback): a document named for

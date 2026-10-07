@@ -24,14 +24,15 @@ EXPECTED_NAMES = {
     "reliability",  # T043
     "supply-chain",
     "api",
+    "data",
 }
 
 
-def test_discovery_returns_all_ten_descriptor_records() -> None:
+def test_discovery_returns_all_eleven_descriptor_records() -> None:
     discovered = list_dimensions()
 
     assert {item.name for item in discovered} == EXPECTED_NAMES
-    assert len(discovered) == 10
+    assert len(discovered) == 11
     for item in discovered:
         descriptor = DIMENSIONS[item.name]
         assert item.purpose == descriptor.purpose

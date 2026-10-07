@@ -485,3 +485,30 @@ source_tag = "curated"
 value = ["URLPathVersioning", "NamespaceVersioning", "AcceptHeaderVersioning"]
 citation_url = "https://www.django-rest-framework.org/api-guide/versioning/"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["models.Model"]
+citation_url = "https://docs.djangoproject.com/en/5.0/topics/db/models/"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["DeclarativeBase", "declarative_base (", "__tablename__"]
+citation_url = "https://docs.sqlalchemy.org/en/20/orm/quickstart.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable=False", "unique=True", "ForeignKey (", "UniqueConstraint (", "ForeignKeyConstraint ("]
+citation_url = "https://docs.sqlalchemy.org/en/20/core/constraints.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["models.ForeignKey (", "models.OneToOneField (", "on_delete="]
+citation_url = "https://docs.djangoproject.com/en/5.0/ref/models/fields/#foreignkey"
+source_tag = "curated"
+
+[[migration_rollback_markers]]
+value = ["migrations.Migration"]
+citation_url = "https://docs.djangoproject.com/en/5.0/topics/migrations/#reversing-migrations"
+source_tag = "curated"

@@ -19,14 +19,14 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 4 | At least one rule measures the area as planned |
-| Partial | 15 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 13 | No rule; the planned dimension or pack is not built |
+| Partial | 16 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 12 | No rule; the planned dimension or pack is not built |
 
-10 dimensions exist today: the original 7, reliability (T043), supply-chain (T041) and api (T044), plus the optional healthcare
+11 dimensions exist today: the original 7, reliability (T043), supply-chain (T041), api (T044) and data (T045), plus the optional healthcare
 (T047) and finance (T048) packs, which rate only in repositories that enable them
-(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 3 remaining
-planned dimensions (infrastructure, data, operations) and the remaining optional pack
-(frontend accessibility) are tasks T042, T045, T046 and T049 on the Kanban.
+(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 2 remaining
+planned dimensions (infrastructure, operations) and the remaining optional pack
+(frontend accessibility) are tasks T042, T046 and T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -48,7 +48,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 1 | Architecture & dependency direction | Partial | `architecture` · `architecture_description_missing`<br>`architecture` · `decision_records_missing`<br>`architecture` · `top_level_import_cycles`<br>`architecture` · `layer_direction_violations` | — | layers from curated `layer_paths` conventions (local/config paths from T075); abstains below 50% classified |
 | 2 | Business-rule correctness | Partial | `requirement-fidelity` · `routes_without_test_share`<br>`requirement-fidelity` · `commits_with_issue_reference_share`<br>`requirement-fidelity` · `requirement_items_traced_share` | — | textual: routes ↔ tests by path segments or handler name, commit issue references, requirement items in any declared form (T075, DDR-0011) |
 | 3 | Financial integrity & historical reconstruction | Partial | `finance` · `float_money_observed`<br>`finance` · `ledger_tables_without_audit_columns_observed`<br>`finance` · `ledger_rows_mutated_observed` | — | optional pack, rated only when enabled; money-named fields declared as binary floating point (integer minor units and decimal types are exact); ledger audit columns and update/delete of ledger rows only where a ledger, transaction or payment table is declared (else both abstain); ledger correctness is judgment, quoted for the agent (class G) |
-| 4 | Data model, constraints, migrations | Not yet | — | data (T045) | class S |
+| 4 | Data model, constraints, migrations | Partial | `data` · `migrations_missing`<br>`data` · `migrations_without_rollback_share`<br>`data` · `schema_constraints_missing`<br>`data` · `destructive_migration_ops_observed` | — | migrations present beside a schema (schema files or data models in code), a rollback per migration, any NOT NULL/unique/foreign-key constraint declared (not per table), DROP/RENAME in up migrations quoted for the agent; whether the live database matches the schema is not verifiable offline |
 | 5 | Backward compatibility & upgrade safety | Partial | `blast-radius` · `max_fan_in_changed`<br>`blast-radius` · `changed_files_in_churn_hotspots_share`<br>`blast-radius` · `public_symbols_removed`<br>`blast-radius` · `destructive_migration_ops` | — | measured only at `--scope changes` |
 | 6 | Transactions, concurrency, idempotency | Not yet | — | reliability (T043), evidence only | class G: no rule by design (needs judgment); the reliability pack quotes transaction, lock and idempotency code (registry `transaction_markers`) for the calling agent |
 | 7 | API contracts, validation, versioning | Partial | `api` · `api_spec_missing`<br>`api` · `api_version_missing`<br>`api` · `request_validation_missing`<br>`api` · `breaking_api_changes_observed` | — | specification presence (committed or generated), versioning, request validation at repository level (not per route), removed routes/spec keys in changes scope only; contract conformance of a running service is not verifiable offline |

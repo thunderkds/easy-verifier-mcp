@@ -314,6 +314,11 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "api_version_missing",
         "request_validation_missing",
         "breaking_api_changes_observed",
+        # T045: computed only by the data dimension.
+        "migrations_missing",
+        "migrations_without_rollback_share",
+        "schema_constraints_missing",
+        "destructive_migration_ops_observed",
     }
     for metric in whole_set:
         if not truncated and metric.name in needs_imports:
@@ -363,6 +368,11 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "api_version_missing",
         "request_validation_missing",
         "breaking_api_changes_observed",
+        # T045: computed only by the data dimension.
+        "migrations_missing",
+        "migrations_without_rollback_share",
+        "schema_constraints_missing",
+        "destructive_migration_ops_observed",
     }
 
     # AC #5: unaffected by truncation, both ways.

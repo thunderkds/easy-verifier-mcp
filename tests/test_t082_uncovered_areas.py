@@ -308,7 +308,7 @@ def test_report_panel_shows_count_and_folded_uncovered_list(tmp_path):
     for area in missing:
         assert html.escape(area, quote=True) in document
     # names carrying '&' are escaped like all other report text
-    assert "Data model, constraints, migrations" in document
+    assert "Transactions, concurrency, idempotency" in document
     assert "Vendor, BAA, data classification, residency" in document
     assert "Financial integrity &amp; historical reconstruction" in document
     assert "Financial integrity & historical reconstruction" not in document

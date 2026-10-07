@@ -336,3 +336,15 @@ source_tag = "curated"
 value = ["@OpenAPIDefinition", "GroupedOpenApi"]
 citation_url = "https://springdoc.org/"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["@Entity"]
+citation_url = "https://jakarta.ee/specifications/persistence/3.1/jakarta-persistence-spec-3.1.html#a18"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable = false", "unique = true", "@JoinColumn", "@ManyToOne", "@UniqueConstraint"]
+citation_url = "https://jakarta.ee/specifications/persistence/3.1/apidocs/jakarta.persistence/jakarta/persistence/column"
+source_tag = "curated"
