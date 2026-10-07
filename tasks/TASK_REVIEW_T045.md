@@ -1,4 +1,4 @@
-# TASK_REVIEW — T045: [Short Title]
+# TASK_REVIEW — T045: New dimension: data (#4 data model, constraints, migrations)
 
 > Sibling of `tasks/TASK_GUIDE_T045.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,24 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer at tip `e54712c`, before any T045 implementation commit; output abridged to dimension names):
+
+```
+$ date -u; PYTHONPATH=src .venv/bin/python -m easy_verifier.adapters.cli list-dimensions   # names only
+Wed Oct  7 09:30:53 AM UTC 2026
+api
+architecture
+blast-radius
+code-quality
+reliability
+requirement-fidelity
+security
+solution-fit
+supply-chain
+test-strategy
+```
+
+Ten dimensions, no `data` entry.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
