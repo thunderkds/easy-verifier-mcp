@@ -431,3 +431,25 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["--require-hashes"]
+citation_url = "https://pip.pypa.io/en/stable/topics/secure-installs/#hash-checking-mode"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["--locked", "--frozen"]
+citation_url = "https://docs.astral.sh/uv/concepts/projects/sync/#checking-if-the-lockfile-is-up-to-date"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["poetry install"]
+citation_url = "https://python-poetry.org/docs/cli/#install"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["--deploy"]
+citation_url = "https://pipenv.pypa.io/en/latest/commands.html#pipenv-install"
+source_tag = "curated"

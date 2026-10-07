@@ -197,6 +197,23 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # supply-chain (T041)
+    "licence_file_missing": (
+        "Add a LICENSE file at the repository root naming the licence by its "
+        "SPDX identifier."
+    ),
+    "ci_actions_unpinned_share": (
+        "Pin every external CI action or image to a full commit SHA or digest, "
+        "keeping the version as a comment."
+    ),
+    "ci_lockfile_install_missing": (
+        "Install dependencies in CI with the lockfile-faithful command (npm ci, "
+        "--frozen-lockfile, --locked) so a stale lockfile fails the build."
+    ),
+    "ci_provenance_step_missing": (
+        "Add a CI or release step that generates an SBOM, signs the artifact or "
+        "emits build provenance (SLSA)."
+    ),
 }
 """One static engine fix line per declared rule metric (FR-057). Each line
 names the real remedy, never a move that only satisfies the metric."""

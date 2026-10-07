@@ -258,6 +258,8 @@ def test_optional_fields_are_never_required():
         "query_calls",
         "loop_keywords",
         "transaction_markers",
+        # T041: only languages whose package tool has a frozen-lockfile install.
+        "lockfile_install",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 

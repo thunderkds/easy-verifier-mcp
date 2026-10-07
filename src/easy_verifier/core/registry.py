@@ -142,6 +142,14 @@ comments are blanked too unless stated:
   starting with ``.`` comes before it on its own line;
 * ``transaction_markers`` — transaction, lock or idempotency tokens. Quoted as
   evidence for the calling agent (#6 needs judgment); they feed no rule.
+The CI field (T041, area #21) is read by the ``supply-chain`` dimension through
+``core/metric_tables.py``. It is optional: a language whose package tool has no
+frozen-lockfile install mode declares none:
+
+* ``lockfile_install`` — tokens of a command or flag that installs exactly what
+  the lockfile records and fails when it is out of date (``"npm ci"``,
+  ``"--frozen-lockfile"``, ``"--locked"``), matched in CI workflow lines that
+  are not comments.
 
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
@@ -295,6 +303,7 @@ _TOKEN_FIELDS = frozenset(
         "query_calls",
         "loop_keywords",
         "transaction_markers",
+        "lockfile_install",
     }
 )
 
@@ -338,6 +347,7 @@ ENTRY_FIELDS = (
     "query_calls",
     "loop_keywords",
     "transaction_markers",
+    "lockfile_install",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

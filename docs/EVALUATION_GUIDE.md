@@ -17,7 +17,7 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 
 | Key in the `score` payload | What it holds |
 |---|---|
-| `ratings` | One entry per dimension (eight since T043 added reliability), then one per optional pack the repository enabled (T047/T048, e.g. `healthcare` or `finance`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
+| `ratings` | One entry per dimension (nine since T043 added reliability and T041 supply-chain), then one per optional pack the repository enabled (T047/T048, e.g. `healthcare` or `finance`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
 | `overall` | The overall `value`, its `contributors`, `rated_by` and `abstentions`, and a one-line `disclosure` |
 | `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet (an optional pack's areas count only in a run where it is enabled); both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |
@@ -32,8 +32,8 @@ Over MCP, a `needs_input` block may ride along (`picks`, `gate_evaluations`, `re
 
 - The overall is the mean of the dimensions that produced a number, rounded once (ties to even).
   Abstaining dimensions are left out, not counted as zero.
-- So abstention can raise the overall: a repository rated on 2 of 8 dimensions can score higher than
-  one rated on all 8. Always read the overall together with its `disclosure`, which names how many
+- So abstention can raise the overall: a repository rated on 2 of 9 dimensions can score higher than
+  one rated on all 9. Always read the overall together with its `disclosure`, which names how many
   dimensions contributed, how each was rated (`rules`, `blended (w …)`, `agent-rated`) and which
   abstained and why.
 - Two overalls are comparable only when the same dimensions contributed.
@@ -154,7 +154,7 @@ Full grouping and ordering rules: [`SCORING_FLOW.md`](SCORING_FLOW.md#improvemen
 
 ## Act on it
 
-1. Read the overall's disclosure: how many of the 8 dimensions contributed, and how each was rated.
+1. Read the overall's disclosure: how many of the 9 dimensions contributed, and how each was rated.
 2. Read the warnings. For each, add what `unmeasured_rules` and `sources_missing` name, or accept
    that dimension is not rated.
 3. On a sampled result, decide whether to read more batches before acting on code-quality,
@@ -166,8 +166,8 @@ Full grouping and ordering rules: [`SCORING_FLOW.md`](SCORING_FLOW.md#improvemen
 ## Worked examples
 
 From Supervisor runs on 2026-10-05 with the develop code (`7d64f08`), CLI `score` at `project` scope.
-These runs predate the reliability dimension (T043), so they rate out of 7; a run today rates out of
-8 and its overall can differ.
+These runs predate the reliability (T043) and supply-chain (T041) dimensions, so they rate out of 7;
+a run today rates out of 9 and its overall can differ.
 
 **coffee-shop-api**: overall 65; 4 of 7 dimensions rated: architecture 80, code-quality 71,
 requirement-fidelity 50, security 59. Architecture loses 20 because there is no architecture

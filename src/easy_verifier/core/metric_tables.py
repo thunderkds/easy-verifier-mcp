@@ -41,7 +41,13 @@ from .registry import (
     RegistryEntry,
     _manifest_matches,
 )
-from .roles import GENERIC_PATTERNS, _config_matcher, _registry
+from .roles import (
+    GENERIC_CI_FACTS,
+    GENERIC_PATTERNS,
+    _config_matcher,
+    _matcher,
+    _registry,
+)
 from .tokens import INTERPOLATION_MARK, LanguageSyntax, language_syntax
 
 _NEVER = re.compile(r"(?!)")
@@ -119,6 +125,8 @@ def metric_tables(
             )
 
     assertions = _union(entries, "assertions")
+    install = _union(entries, "lockfile_install")
+    ci = _generic_ci(registry)
     tables = LanguageTables(
         source_suffixes=frozenset(suffixes),
         test_name_patterns=tuple(
@@ -163,6 +171,8 @@ def metric_tables(
         type_strict_off=type_tokens["type_strict_off"],
         type_config_extends=type_tokens["type_config_extends"],
         **reliability,
+        lockfile_install=_alternation(install) if install else None,
+        **ci,
     )
     # The curated layer_paths (T074); structure imports this module, hence
     # the late import. Local / .easy-verifier.toml layer paths are not bound
@@ -172,6 +182,42 @@ def metric_tables(
     return dataclasses.replace(
         tables, layer_of=lambda path: layer_of(path, tables=tables)
     )
+
+
+def _generic_ci(registry: Registry) -> dict[str, object]:
+    """The supply-chain tables (T041): the generic layer's language-neutral
+    CI facts compiled, and the path matchers of the CI and release roles."""
+
+    def facts(name: str) -> list[str]:
+        return [v for item in GENERIC_CI_FACTS[name] for v in item.value]
+
+    def matcher(role: str):
+        languages = tuple(registry.languages)
+        return _matcher(
+            GENERIC_PATTERNS[role] + registry.patterns_for(role, languages)
+        )
+
+    references = facts("action_reference")
+    return {
+        "ci_files": matcher("ci-workflow"),
+        "release_files": matcher("release-config"),
+        # A key is whole only when no word or dash precedes it, so
+        # ``base-image:`` is not ``image:`` while ``- image:`` still is.
+        "action_reference": re.compile(
+            "(?:"
+            + "|".join(
+                r"(?<![\w-])" + token_regex(token).removeprefix(r"\b")
+                for token in references
+            )
+            + r")\s*['\"]?([^\s'\"#]+)"
+        ),
+        "pinned_reference": tuple(re.compile(p) for p in facts("pinned_reference")),
+        "local_reference": tuple(facts("local_reference")),
+        "provenance_steps": re.compile(
+            "|".join(token_regex(token) for token in facts("provenance_steps")),
+            re.IGNORECASE,
+        ),
+    }
 
 
 _AREA_FIELDS = ("skip_markers", "network_calls", "type_escapes")
@@ -306,6 +352,7 @@ _TIMEOUTS = ("outbound_calls_without_timeout_observed",)
 _RETRIES = ("retries_without_backoff_observed",)
 _LOOPS = ("queries_in_loops_observed",)
 _RELIABILITY = _SWALLOWED + _TIMEOUTS + _RETRIES + _LOOPS
+_CI_INSTALL = ("ci_lockfile_install_missing",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
@@ -350,6 +397,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "query_calls": _LOOPS,
     "loop_keywords": _LOOPS,
     "transaction_markers": (),  # T043: quoted evidence for #6, no rule
+    "lockfile_install": _CI_INSTALL,
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -374,6 +422,9 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "judged, while cookie_calls and auth_markers still compute it (user "
         "2026-09-29)",
     ),
+    "lockfile_install": "only languages whose package tool has a frozen-"
+    "lockfile install mode declare it; the CI-install rule abstains where no "
+    "language does (T041)",
     **dict.fromkeys(
         ("type_config_files", "type_strict", "type_strict_off", "type_config_extends"),
         "only languages with a type checker have a type-checker configuration; "
@@ -394,6 +445,7 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "lint-config": ("lint_config_missing",),
     "format-config": ("format_config_missing",),
     "lockfile": ("lockfile_missing",),
+    "licence-file": ("licence_file_missing",),
     "test-config": ("test_config_and_ci_missing",),
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),

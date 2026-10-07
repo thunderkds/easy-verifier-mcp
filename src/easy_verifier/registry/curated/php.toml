@@ -310,3 +310,10 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["composer install"]
+citation_url = "https://getcomposer.org/doc/03-cli.md#install-i"
+source_tag = "curated"

@@ -221,6 +221,48 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "bitbucket-pipelines.yml",
     ),
     "credential-file": ("**/.env*",),
+    # T041 supply-chain roles. Licence files: SPDX "Other licensing
+    # information" and the REUSE spec's LICENSES/ directory
+    # (https://spdx.dev/learn/handling-license-info/,
+    # https://reuse.software/spec/). Release configuration: the declared
+    # config files of goreleaser (https://goreleaser.com/customization/),
+    # semantic-release (https://semantic-release.gitbook.io/semantic-release/usage/configuration),
+    # release-please (https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md),
+    # changesets (https://github.com/changesets/changesets/blob/main/docs/config-file-options.md),
+    # cargo-release (https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md)
+    # and jreleaser (https://jreleaser.org/guide/latest/configuration/index.html).
+    # Conventional names only, never a stem glob: ``**/License*`` matched
+    # source such as ``src/licenseService.ts`` (T041 Stage 4 P1). A dash
+    # suffix keeps dual-licence files (``LICENSE-MIT``, ``LICENSE-APACHE``).
+    "licence-file": (
+        *(
+            f"**/{stem}{suffix}"
+            for stem in (
+                "LICENSE", "LICENCE", "COPYING", "UNLICENSE",
+                "License", "Licence", "license", "licence",
+            )
+            for suffix in ("", ".md", ".txt", ".rst")
+        ),
+        "**/LICENSE-*",
+        "**/LICENCE-*",
+        "**/COPYING-*",
+        "LICENSES/**",
+    ),
+    "release-config": (
+        "**/.goreleaser.yml",
+        "**/.goreleaser.yaml",
+        "**/goreleaser.yml",
+        "**/goreleaser.yaml",
+        "**/.releaserc",
+        "**/.releaserc.*",
+        "**/release.config.*",
+        "**/release-please-config.json",
+        "**/.release-please-manifest.json",
+        "**/.changeset/config.json",
+        "**/release.toml",
+        "**/jreleaser.yml",
+        "**/jreleaser.yaml",
+    ),
     "test-config": (
         "**/test_helper.*",
         "**/spec_helper.*",
@@ -246,6 +288,72 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
 
 Directory and naming conventions shared across ecosystems. A repository in a
 language with no ecosystem table is evaluated by these alone."""
+
+
+@dataclass(frozen=True)
+class GenericTokens:
+    """Language-neutral CI facts, each with the link that backs it (T041).
+
+    The registry holds per-language data; these are true of any ecosystem, so
+    they sit in the generic layer beside :data:`GENERIC_PATTERNS`, never in a
+    dimension module."""
+
+    value: tuple[str, ...]
+    citation_url: str
+
+
+GENERIC_CI_FACTS: dict[str, tuple[GenericTokens, ...]] = {
+    # Lines that reference an external GitHub Actions step: ``uses: x/y@ref``,
+    # or a container image of a step or service in any CI system
+    # (``image: node:20``; Drone, GitLab, Woodpecker, GitHub services).
+    # User decision 2026-10-07 (T041 D1).
+    "action_reference": (
+        GenericTokens(
+            ("uses:",),
+            "https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsuses",
+        ),
+        GenericTokens(
+            ("image:",),
+            "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+        ),
+    ),
+    # A reference is pinned when it ends in a full 40-hex commit SHA (an
+    # action) or an ``@sha256:`` digest (a container image); regexes over the
+    # reference text, never over code.
+    "pinned_reference": (
+        GenericTokens(
+            ("@[0-9a-f]{40}$", "@sha256:[0-9a-f]{64}$"),
+            "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+        ),
+    ),
+    # A reference that never leaves the repository or the runner is not a
+    # supply-chain dependency (Scorecard skips local actions).
+    "local_reference": (
+        GenericTokens(
+            ("./",),
+            "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+        ),
+    ),
+    # Tokens showing an SBOM, signing or provenance step in CI or release
+    # configuration (code tokens, registry token syntax).
+    "provenance_steps": (
+        GenericTokens(
+            ("slsa", "provenance", "attest"),
+            "https://slsa.dev/spec/v1.0/provenance",
+        ),
+        GenericTokens(
+            ("sbom", "cyclonedx"),
+            "https://cyclonedx.org/specification/overview/",
+        ),
+        GenericTokens(("spdx",), "https://spdx.dev/use/specifications/"),
+        GenericTokens(
+            ("cosign", "sigstore"),
+            "https://docs.sigstore.dev/cosign/signing/overview/",
+        ),
+        GenericTokens(("syft",), "https://github.com/anchore/syft"),
+    ),
+}
+"""Cited language-neutral CI tokens for the supply-chain dimension (T041)."""
 
 
 @lru_cache(maxsize=1)
