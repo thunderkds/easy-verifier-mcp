@@ -15,8 +15,8 @@ Which files fill a role, which tokens show a logging library, an audit write or
 an agent guardrail are the registry's (``logging_markers``,
 ``roles.tool-version-pin``) and the generic layer's (``core/roles.py``), never
 this module's. A secret in agent configuration is found by the evidence layer's
-own redaction scanner (``core/redact.py``) and only counted: the value is never
-quoted. The lockfile part of #30 is the supply-chain dimension's
+exact-pattern redaction detectors (``core/redact.py``) and only counted:
+the value is never quoted. The lockfile part of #30 is the supply-chain dimension's
 ``lockfile_missing``. Whether incidents are handled, SLOs met or access reviewed
 cannot be verified offline: only the documents are checked.
 """
@@ -37,9 +37,8 @@ from ..core.models import (
     SourceMiss,
     SourceRole,
 )
-from ..core.redact import redact, scan
+from ..core.redact import _DETECTORS, redact, scan
 from ..core.roles import (
-    AGENT_INSTRUCTION_PATTERNS,
     GENERIC_OPERATIONS_FACTS,
     GENERIC_PATTERNS,
     _matcher,
@@ -124,11 +123,14 @@ def _facts_of(key: str) -> tuple[str, ...]:
 _AUDIT = re.compile("|".join(_facts_of("audit_write")))
 _GUARDRAIL = re.compile("|".join(_facts_of("agent_guardrails")))
 _GUARDRAIL_PATH = _matcher(_facts_of("agent_guardrail_paths"))
-_INSTRUCTION = _matcher(AGENT_INSTRUCTION_PATTERNS)
+_EXACT_DETECTORS = frozenset(name for name, _pattern in _DETECTORS)
+"""The redaction scanner's exact-pattern detectors (PEM keys, AWS keys, JWTs,
+credential assignments). Its heuristic detectors (high entropy, key-material
+segments) fire on ordinary agent-instruction prose such as a hyphenated
+document path, so they are not counted here (Supervisor, 2026-10-07)."""
 _PRESENCE = frozenset(
     {
         "codeowners_missing",
-        "agent_instructions_missing",
         "agent_guardrails_missing",
         "tool_version_pin_missing",
         "dev_environment_missing",
@@ -205,6 +207,8 @@ def _facts(context: DimensionContext) -> dict:
     for rule in DOCUMENTATION_RULES.get(NAME, ()):
         match = _matcher(rule.patterns)
         for path in sorted(p for p in scope_files if match(p)):
+            if path in context.files_read:
+                break  # already quoted (an agent instruction file)
             text = context.read_source(path)
             if text is not None:
                 docs.append((path, text))
@@ -218,10 +222,12 @@ def _facts(context: DimensionContext) -> dict:
     # A logging library declared as a dependency is in use even when the
     # sampled source files never import it (bryony, T046): the same registry
     # tokens are matched in the in-scope package manifests.
+    # Registry manifest names are bare (``package.json``); a monorepo
+    # service's own manifest (``backend/package.json``) counts too.
     manifest = _matcher(
         GENERIC_PATTERNS["package-manifest"]
         + tuple(
-            v
+            v if "/" in v else f"**/{v}"
             for entry in _registry().languages.values()
             for item in entry.manifests
             for v in item.value
@@ -267,7 +273,6 @@ def _facts(context: DimensionContext) -> dict:
         _logging_metric(logging, declared, files[OBSERVABILITY], scanned),
         _audit_metric(audit, scanned),
         _role_metric("codeowners_missing", files[CODEOWNERS], "a CODEOWNERS file"),
-        _instructions_metric(files[AGENT]),
         _guardrails_metric(files[AGENT]),
         _secrets_metric(files[AGENT]),
         _role_metric(
@@ -378,26 +383,12 @@ def _audit_metric(audit, scanned: int) -> SampledMetric:
     )
 
 
-def _instructions_metric(agent) -> SampledMetric:
-    paths = [p for p, _t in agent if _INSTRUCTION(p)]
-    return _metric(
-        "agent_instructions_missing",
-        0 if paths else 1,
-        paths,
-        (
-            f"agent instruction file(s) read: {_paths(paths)}"
-            if paths
-            else "no agent instruction file (CLAUDE.md, AGENTS.md, GEMINI.md, "
-            "Copilot, Cursor or Windsurf rules) was found"
-        ),
-    )
-
-
 def _no_agent(name: str) -> SampledMetric:
     return _metric(
         name,
         abstention="no agent configuration file was found, so there is no "
-        "agent setup to examine (agent_instructions_missing reports the gap)",
+        "agent setup to examine (the #29 documentation rule reports whether "
+        "instruction files exist)",
     )
 
 
@@ -422,15 +413,19 @@ def _guardrails_metric(agent) -> SampledMetric:
 def _secrets_metric(agent) -> SampledMetric:
     if not agent:
         return _no_agent("agent_config_secrets_observed")
-    hits = [(p, len(scan(t).hits)) for p, t in agent]
+    hits = [
+        (p, sum(h.detector in _EXACT_DETECTORS for h in scan(t).hits))
+        for p, t in agent
+    ]
     flagged = [p for p, count in hits if count]
     total = sum(count for _p, count in hits)
     return _metric(
         "agent_config_secrets_observed",
         total,
         [p for p, _t in agent],
-        f"{total} secret-shaped value(s) found by the evidence layer's redaction "
-        f"scanner in {len(agent)} agent configuration file(s)"
+        f"{total} secret value(s) found by the evidence layer's exact-pattern "
+        f"redaction detectors ({', '.join(sorted(_EXACT_DETECTORS))}) in "
+        f"{len(agent)} agent configuration file(s)"
         + (f", in {_paths(flagged)}" if flagged else "")
         + "; values are never quoted",
     )

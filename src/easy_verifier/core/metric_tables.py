@@ -488,7 +488,6 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "codeowners": ("codeowners_missing",),
     "observability-config": ("logging_library_missing",),
     "agent-config": (
-        "agent_instructions_missing",
         "agent_guardrails_missing",
         "agent_config_secrets_observed",
     ),

@@ -210,10 +210,6 @@ FIX_HINTS: dict[str, str] = {
         "Add a CODEOWNERS file naming an owning team for each part of the "
         "repository."
     ),
-    "agent_instructions_missing": (
-        "Commit an agent instruction file (CLAUDE.md or AGENTS.md) stating the "
-        "project's rules, commands and boundaries for coding agents."
-    ),
     "agent_guardrails_missing": (
         "Constrain the coding agent in its committed settings: hooks or a "
         "permission deny list (Claude Code), approval policy or sandbox mode "

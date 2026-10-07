@@ -2986,7 +2986,6 @@ OPERATIONS_METRICS = (
     "logging_library_missing",
     "audit_log_writes_missing",
     "codeowners_missing",
-    "agent_instructions_missing",
     "agent_guardrails_missing",
     "agent_config_secrets_observed",
     "tool_version_pin_missing",

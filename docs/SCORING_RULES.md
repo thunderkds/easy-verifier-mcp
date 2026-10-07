@@ -70,9 +70,11 @@ operations (T046, floor 0.25 user decision 2026-10-07; weights proposed by T046 
 user policy 2026-10-07): seven roles (CODEOWNERS; runbook, incident or SLO documents; observability
 config; logging or tracing in source files; coding-agent config; tool-version pin; dev environment),
 so two of them reach the floor and a repository with none abstains with every role named. Documents
-alone never rate: they fill one role and carry no weight. Agent guardrails and agent-config secrets
+alone never rate: they fill one role and carry no weight. Coding-agent instruction files
+(CLAUDE.md, AGENTS.md, ...) are a #29 documentation rule, not a weighted rule (user decision
+2026-10-07), so a repository that uses no coding agent is not penalised. Agent guardrails and agent-config secrets
 abstain when no agent file is committed; git-ignored agent files are never read. Secrets are counted
-by the shared redaction scanner (`core/redact.py`), never quoted. The lockfile part of #30 is
+by the shared redaction scanner's exact-pattern detectors (`core/redact.py`), never quoted. The lockfile part of #30 is
 supply-chain's `lockfile_missing`.
 
 data (T045, floor 0.25 user decision 2026-10-07; weights proposed by T045 and accepted under user
@@ -200,12 +202,11 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `migrations_without_rollback_share` | 30 | = 0 | `migration_rollback_markers` *(opt)*, blast-radius down/downgrade pattern, generic Liquibase rollback and `*.down.*`/Flyway undo file pairs; abstains with no migration |
 | | `schema_constraints_missing` | 20 | = 0 | `schema_constraint_markers` *(opt)*, generic SQL/Prisma/Liquibase constraint syntax; abstains with no schema, migration or model file |
 | | `destructive_migration_ops_observed` | 20 | = 0 | blast-radius destructive-operation pattern, outside down sections and comment lines; abstains with no migration |
-| operations | `logging_library_missing` | 15 | = 0 | `logging_markers` *(opt)*, generic `observability-config` patterns; abstains with no source file and no observability config |
+| operations | `logging_library_missing` | 20 | = 0 | `logging_markers` *(opt)*, generic `observability-config` patterns; abstains with no source file and no observability config |
 | | `audit_log_writes_missing` | 10 | = 0 | generic audit-call pattern (`GENERIC_OPERATIONS_FACTS`), comments and strings blanked; abstains with no source file |
-| | `codeowners_missing` | 15 | = 0 | generic `codeowners` patterns |
-| | `agent_instructions_missing` | 10 | = 0 | generic `agent-config` instruction files (`AGENT_INSTRUCTION_PATTERNS`) |
+| | `codeowners_missing` | 20 | = 0 | generic `codeowners` patterns |
 | | `agent_guardrails_missing` | 10 | = 0 | generic hook path and hooks/deny/approval_policy/sandbox_mode keys; abstains with no agent file |
-| | `agent_config_secrets_observed` | 20 | = 0 | `core/redact.py` scanner over the agent files read; abstains with no agent file |
+| | `agent_config_secrets_observed` | 20 | = 0 | `core/redact.py` exact-pattern detectors only (PEM key, AWS keys, JWT, credential assignment; not the entropy or key-material heuristics) over the agent files read; abstains with no agent file |
 | | `tool_version_pin_missing` | 10 | = 0 | registry `roles.tool-version-pin` (`.nvmrc`, `.python-version`, ...), generic `.tool-versions`/`mise.toml` |
 | | `dev_environment_missing` | 10 | = 0 | generic `dev-environment` patterns (devcontainer, Nix, Devbox, Makefile/justfile/Taskfile, bin/setup) |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |

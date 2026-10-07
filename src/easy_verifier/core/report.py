@@ -531,7 +531,6 @@ _METRIC_TEXT: dict[str, str] = {
     "logging_library_missing": "no logging or tracing library",
     "audit_log_writes_missing": "no audit log writes",
     "codeowners_missing": "no CODEOWNERS file",
-    "agent_instructions_missing": "no coding-agent instruction file",
     "agent_guardrails_missing": "no coding-agent guardrails",
     "agent_config_secrets_observed": "secret-shaped values in agent configuration",
     "tool_version_pin_missing": "no tool-version pin",

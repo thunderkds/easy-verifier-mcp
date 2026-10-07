@@ -771,24 +771,26 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
     # SLO and runbook parts are documentation rules. Weights: proposed by T046,
     # accepted under user policy 2026-10-07 (Supervisor reviews at Stage 4).
     # The lockfile part of #30 is supply-chain's lockfile_missing (one rule).
-    #   logging_library_missing 15 -- without logs or traces nothing else in
-    #     #14 (alerts, SLOs, audits) can be observed; the core of the area.
+    #   logging_library_missing 20 -- without logs or traces nothing else in
+    #     #14 (alerts, SLOs, audits) can be observed; the core of the area, and
+    #     it applies to every repository with code.
     #   audit_log_writes_missing 10 -- measured textually (a call naming
     #     "audit"), and not every repository needs an audit trail, so less.
-    #   codeowners_missing 15 -- a named owner is the first production-
-    #     readiness item (#26) and is exact to measure.
-    #   agent_instructions_missing 10 -- #29; a repository may not use coding
-    #     agents at all, so it weighs less than a leak.
+    #   codeowners_missing 20 -- a named owner is the first production-
+    #     readiness item (#26), exact to measure and applies to every repository.
+    #   (Agent instruction files are a #29 documentation rule, user decision
+    #   2026-10-07: a repository that uses no coding agent is not penalised.
+    #   Its 10 points went to the two rules that apply to every repository.)
     #   agent_guardrails_missing 10 -- #29; abstains with no agent files.
     #   agent_config_secrets_observed 20 -- a credential in agent config is
     #     exposed to every model and tool the agent calls; the most severe
     #     failure here. Abstains with no agent files.
     #   tool_version_pin_missing 10 / dev_environment_missing 10 -- #30;
     #     convenience for reproducibility, weighed equally.
-    # 20 + 15 + 15 rates exactly 50.
+    # 20 + 20 + 10 rates exactly 50.
     "operations": _rules(
         RatingRule(
-            "logging_library_missing", 15, 0, "at_most",
+            "logging_library_missing", 20, 0, "at_most",
             (_OTEL, _SRE_MONITORING), _SRE_MONITORING,
             area=AREAS[13],
         ),
@@ -798,14 +800,9 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[13],
         ),
         RatingRule(
-            "codeowners_missing", 15, 0, "at_most",
+            "codeowners_missing", 20, 0, "at_most",
             (_CODEOWNERS, _SRE_PRR), _SRE_PRR,
             area=AREAS[25],
-        ),
-        RatingRule(
-            "agent_instructions_missing", 10, 0, "at_most",
-            (_OWASP_LLM_AGENCY,), _OWASP_LLM_AGENCY,
-            area=AREAS[28],
         ),
         RatingRule(
             "agent_guardrails_missing", 10, 0, "at_most",
@@ -2403,6 +2400,22 @@ DOCUMENTATION_RULES["supply-chain"] = (
 )
 
 
+# Operations (T046): agent instruction files (#29) are a documentation rule,
+# user decision 2026-10-07: a repository that uses no coding agent is not
+# penalised. The files are the instruction subset of the ``agent-config`` role
+# (``core/roles.py`` re-exports this tuple; same sources as the role).
+AGENT_INSTRUCTION_PATTERNS: tuple[str, ...] = (
+    "**/CLAUDE.md",
+    "**/AGENTS.md",
+    "**/GEMINI.md",
+    ".github/copilot-instructions.md",
+    ".cursorrules",
+    ".windsurfrules",
+    ".cursor/rules/*",
+    ".claude/agents/*.md",
+    ".claude/commands/*.md",
+)
+
 # Operations (T046): incident response and change management (#25), the SLO
 # (#14) and the runbook (#26) are processes no repository can show, so only
 # their documents are checked; the operations dimension reads a matching
@@ -2443,4 +2456,5 @@ DOCUMENTATION_RULES["operations"] = (
         ),
         (_SRE_PRR,),
     ),
+    DocumentationRule(AREAS[28], AGENT_INSTRUCTION_PATTERNS, (_OWASP_LLM_AGENCY,)),
 )

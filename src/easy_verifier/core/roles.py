@@ -35,7 +35,12 @@ from pathlib import Path, PurePosixPath
 from .batches import BatchInputError, parse_batches
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
-from .judge import PACK_FLOORS, DocumentationResult, DocumentationRule
+from .judge import (  # noqa: F401  (AGENT_INSTRUCTION_PATTERNS re-exported)
+    AGENT_INSTRUCTION_PATTERNS,
+    PACK_FLOORS,
+    DocumentationResult,
+    DocumentationRule,
+)
 from .models import SourceRole
 from .redact import redact
 from .registry import (
@@ -592,19 +597,6 @@ GENERIC_DATA_FACTS: dict[str, tuple[GenericTokens, ...]] = {
 """Cited language-neutral data facts for the data dimension (T045)."""
 
 
-AGENT_INSTRUCTION_PATTERNS: tuple[str, ...] = (
-    "**/CLAUDE.md",
-    "**/AGENTS.md",
-    "**/GEMINI.md",
-    ".github/copilot-instructions.md",
-    ".cursorrules",
-    ".windsurfrules",
-    ".cursor/rules/*",
-    ".claude/agents/*.md",
-    ".claude/commands/*.md",
-)
-"""The ``agent-config`` files that instruct an agent (T046), as opposed to
-its settings, hooks and MCP configuration (same sources as the role)."""
 
 
 GENERIC_OPERATIONS_FACTS: dict[str, tuple[GenericTokens, ...]] = {

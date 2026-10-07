@@ -39,7 +39,6 @@ METRICS = (
     "logging_library_missing",
     "audit_log_writes_missing",
     "codeowners_missing",
-    "agent_instructions_missing",
     "agent_guardrails_missing",
     "agent_config_secrets_observed",
     "tool_version_pin_missing",
@@ -170,8 +169,8 @@ def test_rules_are_cited_per_area_and_weigh_100() -> None:
     assert sum(rule.weight for rule in rules.values()) == 100
     assert {rules[m].area for m in METRICS[:2]} == {AREAS[13]}
     assert rules["codeowners_missing"].area == AREAS[25]
-    assert {rules[m].area for m in METRICS[3:6]} == {AREAS[28]}
-    assert {rules[m].area for m in METRICS[6:]} == {AREAS[29]}
+    assert {rules[m].area for m in METRICS[3:5]} == {AREAS[28]}
+    assert {rules[m].area for m in METRICS[5:]} == {AREAS[29]}
     for rule in rules.values():
         assert rule.threshold == 0 and rule.comparison == "at_most"
         assert isinstance(rule.threshold_citation, Citation)
@@ -183,7 +182,9 @@ def test_rules_are_cited_per_area_and_weigh_100() -> None:
     assert not any("lockfile" in name for name in rules)  # supply-chain's rule
     assert COVERAGE_FLOORS["operations"] == CoverageFloor(0.25, "inclusive")
     docs = DOCUMENTATION_RULES["operations"]
-    assert [d.area for d in docs] == [AREAS[24], AREAS[13], AREAS[25]]
+    assert [d.area for d in docs] == [AREAS[24], AREAS[13], AREAS[25], AREAS[28]]
+    # User decision 2026-10-07: instruction files are a documentation rule.
+    assert "agent_instructions_missing" not in rules
     assert "800-61" in docs[0].citation[0].label
 
 
@@ -242,7 +243,6 @@ def _without(*paths: str) -> dict:
         ({**GOOD, "src/rename.service.ts": SERVICE.replace("auditLog", "repo")},
          "audit_log_writes_missing", 1),
         (_without("CODEOWNERS"), "codeowners_missing", 1),
-        (_without("CLAUDE.md"), "agent_instructions_missing", 1),
         ({**GOOD, ".claude/settings.json": '{"model": "x"}\n'},
          "agent_guardrails_missing", 1),
         ({**GOOD, "CLAUDE.md": GOOD["CLAUDE.md"] + f'\napi_key = "{_secret()}"\n'},
@@ -270,7 +270,8 @@ def test_a_logging_dependency_in_a_manifest_counts_without_an_import(
     files = {**GOOD, "src/rename.service.ts": service}
     values = _values(_result(_repo(tmp_path / "a", files)))
     assert values["logging_library_missing"] == 1
-    files["package.json"] = '{"name": "shop", "dependencies": {"winston": "^3"}}\n'
+    # Declared in a monorepo service's own manifest, as in bryony.
+    files["backend/package.json"] = '{"dependencies": {"winston": "^3"}}\n'
     values = _values(_result(_repo(tmp_path / "b", files)))
     assert values["logging_library_missing"] == 0
 
@@ -278,6 +279,38 @@ def test_a_logging_dependency_in_a_manifest_counts_without_an_import(
 def test_a_service_makefile_in_a_monorepo_is_a_setup(tmp_path: Path) -> None:
     files = {**_without("Makefile"), "backend/Makefile": "setup:\n\tnpm ci\n"}
     assert _values(_result(_repo(tmp_path, files)))["dev_environment_missing"] == 0
+
+
+def test_only_exact_pattern_detectors_count_in_agent_config(tmp_path: Path) -> None:
+    from easy_verifier.core.redact import _DETECTORS
+
+    assert {name for name, _p in _DETECTORS} == {
+        "private_key_pem", "aws_access_key_id", "aws_secret_access_key", "jwt",
+        "credential_assignment",
+    }
+    # Template prose the heuristic detectors fire on (a hyphenated document
+    # path with a digit, as in this repository's CLAUDE.md).
+    prose = (
+        "See [`docs/claude-md/phase0-project-initiation.md`]"
+        "(docs/claude-md/phase0-project-initiation.md) for full detail.\n"
+    )
+    assert {h.detector for h in scan(prose).hits} - {
+        "high_entropy_string", "key_material_segment"
+    } == set()
+    assert scan(prose).hits
+    clean = _repo(tmp_path / "prose", {**GOOD, "CLAUDE.md": prose})
+    assert _values(_result(clean))["agent_config_secrets_observed"] == 0
+    # A planted AWS access key id, assembled at run time, never quoted.
+    key = "AKIA" + "".join("QX7Z" for _ in range(4))
+    planted = _repo(tmp_path / "key", {**GOOD, "AGENTS.md": f"key: {key}\n"})
+    payload = _payload(planted)
+    assert key not in json.dumps(payload)
+    metric = next(
+        m for m in payload["metrics"]["metrics"]
+        if m["dimension"] == "operations"
+        and m["name"] == "agent_config_secrets_observed"
+    )
+    assert metric["outcome"]["value"] == 1
 
 
 def test_secret_in_agent_config_is_counted_and_never_quoted(tmp_path: Path) -> None:
@@ -297,9 +330,10 @@ def test_secret_in_agent_config_is_counted_and_never_quoted(tmp_path: Path) -> N
 
 
 def test_no_agent_files_abstains_guardrails_and_secrets(tmp_path: Path) -> None:
+    # A repository without coding agents is not penalised (user 2026-10-07):
+    # the instruction files are a documentation rule, reported missing only.
     files = _without("CLAUDE.md", ".claude/settings.json")
     values = _values(_result(_repo(tmp_path, files)))
-    assert values["agent_instructions_missing"] == 1
     for name in ("agent_guardrails_missing", "agent_config_secrets_observed"):
         assert values[name].get("abstained"), name
 
