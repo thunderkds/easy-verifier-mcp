@@ -542,3 +542,30 @@ source_tag = "curated"
 value = ["--immutable"]
 citation_url = "https://yarnpkg.com/cli/install#options"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["z.object (", "z.strictObject (", "z.array (", "Joi.object (", "celebrate (", "checkSchema (", "validationResult ("]
+citation_url = "https://zod.dev/api"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["@IsString (", "@IsNotEmpty (", "@IsInt (", "@IsNumber (", "@IsEmail (", "@IsUUID (", "@IsEnum (", "@IsBoolean (", "@ValidateNested (", "ValidationPipe", "ZodValidationPipe"]
+citation_url = "https://docs.nestjs.com/techniques/validation"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["yup.object (", "ajv.compile (", "new Ajv ("]
+citation_url = "https://ajv.js.org/guide/getting-started.html"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["SwaggerModule.createDocument (", "swaggerJsdoc (", "swaggerJSDoc (", "autoSchemaFile"]
+citation_url = "https://docs.nestjs.com/openapi/introduction"
+source_tag = "curated"
+
+[[api_version_markers]]
+value = ["*.enableVersioning (", "@Version ("]
+citation_url = "https://docs.nestjs.com/techniques/versioning"
+source_tag = "curated"

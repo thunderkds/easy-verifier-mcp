@@ -151,6 +151,21 @@ frozen-lockfile install mode declares none:
   ``"--frozen-lockfile"``, ``"--locked"``), matched in CI workflow lines that
   are not comments.
 
+The API fields (T044, area #7) are read by the ``api`` dimension through
+``core/metric_tables.py``. All are optional: a language that declares none is
+not credited with that evidence, and the rule abstains where no route-bearing
+language declares the field. Every token is matched in source (not test) files
+after comments and strings are blanked:
+
+* ``request_validation`` — a schema or validation call, decorator or base
+  class that checks request input at an entry point (``"z.object ("``,
+  ``"@IsString ("``, ``"BaseModel"``, ``"@Valid"``);
+* ``api_spec_generators`` — code that generates a machine-readable API
+  specification at build or run time (``"SwaggerModule.createDocument ("``,
+  ``"FastAPI ("``), credited when no specification file is committed;
+* ``api_version_markers`` — framework-level API versioning switched on in code
+  (``"enableVersioning ("``, ``"AddApiVersioning ("``).
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -304,6 +319,9 @@ _TOKEN_FIELDS = frozenset(
         "loop_keywords",
         "transaction_markers",
         "lockfile_install",
+        "request_validation",
+        "api_spec_generators",
+        "api_version_markers",
     }
 )
 
@@ -348,6 +366,9 @@ ENTRY_FIELDS = (
     "loop_keywords",
     "transaction_markers",
     "lockfile_install",
+    "request_validation",
+    "api_spec_generators",
+    "api_version_markers",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

@@ -19,14 +19,14 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 4 | At least one rule measures the area as planned |
-| Partial | 14 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 14 | No rule; the planned dimension or pack is not built |
+| Partial | 15 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 13 | No rule; the planned dimension or pack is not built |
 
-9 dimensions exist today: the original 7, reliability (T043) and supply-chain (T041), plus the optional healthcare
+10 dimensions exist today: the original 7, reliability (T043), supply-chain (T041) and api (T044), plus the optional healthcare
 (T047) and finance (T048) packs, which rate only in repositories that enable them
-(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 4 remaining
-planned dimensions (infrastructure, api, data, operations) and the remaining optional pack
-(frontend accessibility) are tasks T042, T044–T046 and T049 on the Kanban.
+(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The 3 remaining
+planned dimensions (infrastructure, data, operations) and the remaining optional pack
+(frontend accessibility) are tasks T042, T045, T046 and T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -51,7 +51,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 4 | Data model, constraints, migrations | Not yet | — | data (T045) | class S |
 | 5 | Backward compatibility & upgrade safety | Partial | `blast-radius` · `max_fan_in_changed`<br>`blast-radius` · `changed_files_in_churn_hotspots_share`<br>`blast-radius` · `public_symbols_removed`<br>`blast-radius` · `destructive_migration_ops` | — | measured only at `--scope changes` |
 | 6 | Transactions, concurrency, idempotency | Not yet | — | reliability (T043), evidence only | class G: no rule by design (needs judgment); the reliability pack quotes transaction, lock and idempotency code (registry `transaction_markers`) for the calling agent |
-| 7 | API contracts, validation, versioning | Not yet | — | api (T044) | class S |
+| 7 | API contracts, validation, versioning | Partial | `api` · `api_spec_missing`<br>`api` · `api_version_missing`<br>`api` · `request_validation_missing`<br>`api` · `breaking_api_changes_observed` | — | specification presence (committed or generated), versioning, request validation at repository level (not per route), removed routes/spec keys in changes scope only; contract conformance of a running service is not verifiable offline |
 | 8 | AuthN/Z, sessions, offboarding | Partial | `security` · `cookie_flags_missing_observed`<br>`security` documentation check | — | offboarding is process (documentation check only) |
 | 9 | PHI minimization, retention, test-data safety | Partial | `healthcare` · `phi_values_in_test_data_observed`<br>`healthcare` · `phi_values_in_log_statements_observed`<br>`healthcare` documentation check | — | optional pack, rated only when enabled; PHI-shaped values (SSN, labelled MRN / birth date; placeholders excluded) in test data and log statements; retention is a documentation check; minimization in production data is not verifiable |
 | 10 | Threat modeling, abuse cases, appsec | Covered | `security` · `redaction_hits_observed`<br>`security` · `sink_hits_observed` | — |  |

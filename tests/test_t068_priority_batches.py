@@ -522,6 +522,11 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # supply-chain rating (below_coverage_floor), its four new metrics in
     # every pack, its rollback documentation result (area #22 now counts as
     # measured), and its warning, provenance and abstained plan line.
+    # Regenerated for T044 (api dimension): every existing rating and the
+    # overall (61) are unchanged; added are the api rating
+    # (below_coverage_floor: no route, validation or spec in the fixture), its
+    # four metrics in every pack, its warning, provenance and plan line, and
+    # area #7 leaves areas_without_rule; the disclosure counts 10 dimensions.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

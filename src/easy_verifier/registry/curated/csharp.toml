@@ -315,3 +315,20 @@ source_tag = "curated"
 value = ["--locked-mode"]
 citation_url = "https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["[Required", "AbstractValidator <", "ModelState.IsValid", "[ApiController"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/validation"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["*.AddSwaggerGen (", "*.AddOpenApi ("]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview"
+source_tag = "curated"
+
+[[api_version_markers]]
+value = ["*.AddApiVersioning (", "[ApiVersion ("]
+citation_url = "https://github.com/dotnet/aspnet-api-versioning/wiki"
+source_tag = "curated"

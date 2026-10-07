@@ -252,3 +252,10 @@ source_tag = "curated"
 value = ["--locked", "--frozen"]
 citation_url = "https://doc.rust-lang.org/cargo/commands/cargo-build.html#manifest-options"
 source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["#[validate (", "validator::Validate"]
+citation_url = "https://docs.rs/validator/latest/validator/"
+source_tag = "curated"

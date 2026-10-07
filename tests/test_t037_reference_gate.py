@@ -260,6 +260,10 @@ def test_optional_fields_are_never_required():
         "transaction_markers",
         # T041: only languages whose package tool has a frozen-lockfile install.
         "lockfile_install",
+        # T044: only languages with a validation, spec or versioning library.
+        "request_validation",
+        "api_spec_generators",
+        "api_version_markers",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 

@@ -77,7 +77,7 @@ def metric_tables(
     type_configs: list[TypeConfigFile] = []
     type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
     reliability: dict[str, dict[str, re.Pattern[str]]] = {
-        f: {} for f in RELIABILITY_FIELDS
+        f: {} for f in RELIABILITY_FIELDS + API_FIELDS
     }
     for entry in entries:
         extensions = _values(entry, "source_extensions")
@@ -102,7 +102,7 @@ def metric_tables(
                 )
             if _values(entry, "auth_markers"):
                 auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
-            for name in RELIABILITY_FIELDS:
+            for name in RELIABILITY_FIELDS + API_FIELDS:
                 if _values(entry, name):
                     reliability[name].setdefault(
                         extension, _guarded(_values(entry, name))
@@ -234,6 +234,9 @@ RELIABILITY_FIELDS = (
     "transaction_markers",
 )
 """The T043 reliability token fields; each compiles like a sink token."""
+
+API_FIELDS = ("request_validation", "api_spec_generators", "api_version_markers")
+"""The T044 api token fields (area #7); each compiles like a sink token."""
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -398,6 +401,9 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "loop_keywords": _LOOPS,
     "transaction_markers": (),  # T043: quoted evidence for #6, no rule
     "lockfile_install": _CI_INSTALL,
+    "request_validation": ("request_validation_missing",),
+    "api_spec_generators": ("api_spec_missing",),
+    "api_version_markers": ("api_version_missing",),
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -421,6 +427,12 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "refines the cookie metric: a flag a language does not declare is not "
         "judged, while cookie_calls and auth_markers still compute it (user "
         "2026-09-29)",
+    ),
+    **dict.fromkeys(
+        API_FIELDS,
+        "only languages with a validation, specification or versioning library "
+        "declare it; the api rule abstains or is not credited where none does "
+        "(T044)",
     ),
     "lockfile_install": "only languages whose package tool has a frozen-"
     "lockfile install mode declare it; the CI-install rule abstains where no "
@@ -446,6 +458,7 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "format-config": ("format_config_missing",),
     "lockfile": ("lockfile_missing",),
     "licence-file": ("licence_file_missing",),
+    "api-spec": ("api_spec_missing",),
     "test-config": ("test_config_and_ci_missing",),
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),

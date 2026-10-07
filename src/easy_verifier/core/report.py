@@ -527,6 +527,11 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # api (T044)
+    "api_spec_missing": "no API specification",
+    "api_version_missing": "no API versioning",
+    "request_validation_missing": "no request validation at entry points",
+    "breaking_api_changes_observed": "endpoints or fields removed in the change",
     # supply-chain (T041)
     "licence_file_missing": "no licence file",
     "ci_actions_unpinned_share": "share of CI actions not pinned to a SHA",
@@ -552,6 +557,9 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "ci-workflow": "CI workflow",
     "licence-file": "licence file",
     "release-config": "release config",
+    "api-spec": "API specification",
+    "route definitions in source files": None,
+    "request validation in source files": None,
     "credential-file": "credential file",
     "test-config": "test config",
     "test-file": "test files",

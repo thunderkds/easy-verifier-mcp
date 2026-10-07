@@ -44,6 +44,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | blast-radius | 0.25 |
 | reliability | 0.25 |
 | supply-chain | 0.40 |
+| api | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
 
@@ -62,6 +63,13 @@ conventions are embedded for replay (T075). A README heading naming "Architectur
 supply-chain (T041, floor 0.40 and weights user-approved 2026-10-07): five roles (package manifest,
 lockfile, CI workflow, licence file, release configuration), so two of them reach the floor and a
 repository with none of them abstains with every role named.
+
+api (T044, floor 0.25 user decision 2026-10-07; weights proposed by T044 and accepted under user
+policy 2026-10-07): three roles (committed API specification file; route definitions in source files;
+request validation in source files), so one of them reaches the floor and a repository with none
+abstains with every role named. A library with no route and no specification abstains
+`insufficient_measured_weight`, never 0. The four metrics are computed over the whole text of the
+in-scope source files (priority batches above 200, disclosed as a sample) and the changes-scope diff.
 
 reliability (T043, floor user-approved 2026-10-06): its roles are three code pseudo-roles (source
 files of a registry language; outbound HTTP client calls; database access calls) and the README, so
@@ -166,6 +174,10 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `ci_actions_unpinned_share` | 20 | = 0 | none (generic CI facts in `core/roles.py`); abstains where no external `uses:` reference is quoted |
 | | `ci_lockfile_install_missing` | 20 | = 0 | `lockfile_install` *(opt)*; abstains where no CI workflow is quoted |
 | | `ci_provenance_step_missing` | 25 | = 0 | none (generic CI facts in `core/roles.py`); looks in CI workflows and release configuration |
+| api | `api_spec_missing` | 30 | = 0 | none (generic `api-spec` role patterns); `api_spec_generators` *(opt)* credits a specification generated from code; abstains with no route and no specification |
+| | `api_version_missing` | 20 | = 0 | `route_tokens`, `api_version_markers` *(opt)*, generic version segment `^v[0-9]+$` (AIP-185) over route paths, non-import path literals and specification paths/packages; abstains with no route and no specification |
+| | `request_validation_missing` | 30 | = 0 | `route_tokens`, `request_validation` *(opt)*; repository level (any validation beside routes), not per route; abstains with no route |
+| | `breaking_api_changes_observed` | 20 | = 0 | `route_tokens`, generic specification definition lines; changes scope only (routes or spec keys removed and not re-added), abstains elsewhere |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
 supply-chain also carries one documentation rule (area #22, rollback): a document named for

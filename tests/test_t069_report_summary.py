@@ -127,7 +127,7 @@ def test_two_rated_three_focus_items_four_warnings() -> None:
     assert f"Overall <strong>{score.overall.value}/100</strong>" in overall
     # T043/T041: reliability and supply-chain are rated and passing by
     # default (_by_name).
-    assert "4 of 9 dimensions rated" in overall
+    assert "5 of 10 dimensions rated" in overall
     assert "reliability 100" in overall
     assert "supply-chain 100" in overall
     assert "security 15" in overall
@@ -235,7 +235,7 @@ def test_no_gaps_and_no_warnings_says_so_plainly() -> None:
     assert score.improvement_plan.items == () and score.warnings == []
     assert '<p class="no-gaps">No gaps: every measured rule is met.</p>' in html
     assert "summary-focus" not in html and "summary-missing" not in html
-    assert "8 of 9 dimensions rated" in html
+    assert "9 of 10 dimensions rated" in html
 
 
 def test_overall_abstained_says_no_dimension_could_be_rated() -> None:
@@ -249,11 +249,12 @@ def test_overall_abstained_says_no_dimension_could_be_rated() -> None:
         _below_floor("blast-radius"),
         _below_floor("reliability"),
         _below_floor("supply-chain"),
+        _below_floor("api"),
     )
     html = _summary(_score(ratings))
-    assert "Overall: no number — none of the 9 dimensions could be rated." in html
+    assert "Overall: no number — none of the 10 dimensions could be rated." in html
     assert "/100" not in html
-    assert len(_items(html, "summary-missing")) == 8
+    assert len(_items(html, "summary-missing")) == 9
 
 
 def test_unmeasured_only_gaps_point_to_the_plan() -> None:
@@ -337,7 +338,7 @@ def test_failed_dimension_line_uses_its_reason() -> None:
 def test_agent_rated_solution_fit_counts_as_rated_and_is_labelled() -> None:
     gated = GatedRating(_solution_fit(), 80, 1, (REF,))
     html = _summary(_score(_by_name(**{"solution-fit": gated})))
-    assert "9 of 9 dimensions rated" in html
+    assert "10 of 10 dimensions rated" in html
     assert "solution-fit 80 (agent-rated)" in html
     assert "Not rated" not in html
 
