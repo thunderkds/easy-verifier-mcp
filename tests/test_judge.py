@@ -169,6 +169,7 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "test-strategy",
         "blast-radius",
         "reliability",
+        "supply-chain",
     )
     assert set(COVERAGE_FLOORS) == set(dimension_names())
     assert {name: floor.value for name, floor in COVERAGE_FLOORS.items()} == {
@@ -180,6 +181,7 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "test-strategy": 0.20,
         "blast-radius": 0.25,
         "reliability": 0.25,
+        "supply-chain": 0.40,  # T041 floor: user sign-off 2026-10-07
     }
     assert all(floor.boundary == "inclusive" for floor in COVERAGE_FLOORS.values())
 

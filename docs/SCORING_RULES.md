@@ -43,6 +43,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | test-strategy | 0.20 |
 | blast-radius | 0.25 |
 | reliability | 0.25 |
+| supply-chain | 0.40 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
 
@@ -57,6 +58,10 @@ schemas, exceptions and providers are `shared` boundary contracts. Only the cura
 apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in scoring until
 conventions are embedded for replay (T075). A README heading naming "Architecture" fills the
 `architecture-doc` role (coverage) and passes the description rule, citing the same excerpt.
+
+supply-chain (T041, floor 0.40 and weights user-approved 2026-10-07): five roles (package manifest,
+lockfile, CI workflow, licence file, release configuration), so two of them reach the floor and a
+repository with none of them abstains with every role named.
 
 reliability (T043, floor user-approved 2026-10-06): its roles are three code pseudo-roles (source
 files of a registry language; outbound HTTP client calls; database access calls) and the README, so

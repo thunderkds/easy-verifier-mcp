@@ -46,6 +46,8 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     # User-approved 2026-10-06 (T043): one of four roles, so source code alone
     # reaches it; a repository with none of them abstains with named misses.
     "reliability": CoverageFloor(0.25, "inclusive"),
+    # User-approved 2026-10-07 (T041): two of five roles.
+    "supply-chain": CoverageFloor(0.40, "inclusive"),
 }
 
 # Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
@@ -345,9 +347,8 @@ _SBOM = Citation(
     "https://cyclonedx.org/specification/overview/",
 )
 _SRE_RELEASE = Citation(
-    "Google SRE book, Release Engineering (a release process includes the "
-    "ability to roll back)",
-    "https://sre.google/sre-book/release-engineering/",
+    "Google SRE Workbook, Canarying Releases",
+    "https://sre.google/workbook/canarying-releases/",
 )
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
@@ -605,8 +606,8 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[2],
         ),
     ),
-    # T041: the supply-chain dimension (areas #20-#22). Weights are a proposal
-    # awaiting user sign-off. Live vulnerability status is not verifiable
+    # T041: the supply-chain dimension (areas #20-#22). Weights: user
+    # sign-off 2026-10-07 (T041). Live vulnerability status is not verifiable
     # offline and has no rule.
     "supply-chain": _rules(
         RatingRule(
