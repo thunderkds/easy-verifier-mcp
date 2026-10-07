@@ -221,6 +221,15 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "bitbucket-pipelines.yml",
     ),
     "credential-file": ("**/.env*",),
+    # T045 data role: committed schema files in plain SQL
+    # (https://www.postgresql.org/docs/current/app-pgdump.html dumps a schema to
+    # one .sql file; ``schema.sql`` is the common name) and Prisma schema files,
+    # whose ``.prisma`` suffix belongs to no programming language
+    # (https://www.prisma.io/docs/orm/prisma-schema/overview/location). A
+    # host-language schema dump (Rails ``db/schema.rb``) is a registry role.
+    # Data suffixes only, never a stem glob such as ``**/schema*`` (it matched
+    # ``src/models/schema.ts``, T041 lesson).
+    "schema-file": ("**/schema.sql", "**/*.schema.sql", "**/*.prisma"),
     # T044 api role: committed machine-readable API specifications. OpenAPI
     # 3.x recommends ``openapi.json``/``openapi.yaml``
     # (https://spec.openapis.org/oas/v3.1.0#document-structure); Swagger 2.0
@@ -413,6 +422,79 @@ GENERIC_API_FACTS: dict[str, tuple[GenericTokens, ...]] = {
     ),
 }
 """Cited language-neutral API facts for the api dimension (T044)."""
+
+
+GENERIC_DATA_FACTS: dict[str, tuple[GenericTokens, ...]] = {
+    # Constraint declarations of the schema languages themselves, as regexes
+    # matched in the raw text of schema and migration files (SQL often lives in
+    # string literals of a code migration). SQL is case-insensitive; a keyword
+    # alone is not enough, so ``unique`` must be followed by what follows it in
+    # a column or table constraint. Host-language ORM/migration APIs are the
+    # registry's ``schema_constraint_markers``.
+    "schema_constraints": (
+        GenericTokens(
+            (
+                r"(?i)(?<![\w-])not\s+null(?![\w-])",
+                r"(?i)(?<![\w-])foreign\s+key(?![\w-])",
+                r"(?i)(?<![\w-])references\s+[\w.\"`\[\]]+\s*\(",
+                r"(?i)(?<![\w-])unique(?:\s+(?:index|key|constraint)(?![\w-])"
+                r"|\s*[(,);]|\s*$)",
+            ),
+            "https://www.postgresql.org/docs/current/ddl-constraints.html",
+        ),
+        GenericTokens(
+            (r"@@?unique(?![\w-])", r"@relation\s*\("),
+            "https://www.prisma.io/docs/orm/reference/prisma-schema-reference",
+        ),
+        GenericTokens(
+            (
+                r"(?<![\w-])(?:addForeignKeyConstraint|addUniqueConstraint"
+                r"|addNotNullConstraint|foreignKeyName)(?![\w-])",
+            ),
+            "https://docs.liquibase.com/change-types/add-foreign-key-constraint.html",
+        ),
+    ),
+    # A table created by SQL DDL inside source code (a schema applied at run
+    # time rather than by a migration): the data models pseudo-role counts it.
+    "schema_ddl": (
+        GenericTokens(
+            (r"(?i)(?<![\w-])create\s+table(?![\w-])",),
+            "https://www.postgresql.org/docs/current/sql-createtable.html",
+        ),
+    ),
+    # Rollback sections of declarative changelogs (Liquibase ``<rollback>`` in
+    # XML, ``rollback:`` in YAML/JSON). A ``down``/``downgrade`` section is
+    # recognised by the blast-radius dimension's shared pattern (one source).
+    "rollback_markers": (
+        GenericTokens(
+            (r"<rollback(?![\w-])", r"(?<![\w-])[\"']?rollback[\"']?\s*:"),
+            "https://docs.liquibase.com/workflows/liquibase-community/using-rollback.html",
+        ),
+    ),
+    # A rollback kept in a sibling file: (pattern in the down file's name,
+    # replacement naming its up file). golang-migrate pairs
+    # ``1_x.up.sql``/``1_x.down.sql``; Flyway pairs ``V1__x.sql``/``U1__x.sql``.
+    "rollback_file_pairs": (
+        GenericTokens(
+            (r"\.down\.", ".up."),
+            "https://github.com/golang-migrate/migrate/blob/master/MIGRATIONS.md",
+        ),
+        GenericTokens(
+            (r"^U(?=\d)", "V"),
+            "https://documentation.red-gate.com/fd/migrations-184127470.html",
+        ),
+    ),
+    # Suffixes a migration file has besides a registry language's source
+    # suffixes: SQL scripts (Flyway, Prisma Migrate, golang-migrate) and
+    # Liquibase changelogs (XML, YAML, JSON, SQL).
+    "migration_data_suffixes": (
+        GenericTokens(
+            (".sql", ".xml", ".yaml", ".yml", ".json"),
+            "https://docs.liquibase.com/concepts/changelogs/home.html",
+        ),
+    ),
+}
+"""Cited language-neutral data facts for the data dimension (T045)."""
 
 
 @lru_cache(maxsize=1)

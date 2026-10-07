@@ -326,6 +326,15 @@ class LanguageTables:
     api_version_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
     """Source suffix -> the language's T044 api tokens (area #7); read by the
     ``api`` dimension over whole files."""
+    orm_model_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    schema_constraint_markers: Mapping[str, re.Pattern[str]] = field(
+        default_factory=dict
+    )
+    migration_rollback_markers: Mapping[str, re.Pattern[str]] = field(
+        default_factory=dict
+    )
+    """Source suffix -> the language's T045 data tokens (area #4); read by the
+    ``data`` dimension over whole files."""
     ci_files: Callable[[str], bool] | None = None
     release_files: Callable[[str], bool] | None = None
     """Path matchers for the ``ci-workflow`` and ``release-config`` roles
@@ -2937,6 +2946,37 @@ def _api_fact(view: _PackView) -> MetricAbstention:
     )
 
 
+DATA = "data"
+
+DATA_METRICS = (
+    "migrations_missing",
+    "migrations_without_rollback_share",
+    "schema_constraints_missing",
+    "destructive_migration_ops_observed",
+)
+"""The T045 data rule metrics (area #4), computed by the ``data`` dimension
+over whole files and stored on ``pack.whole_file``."""
+
+
+def _data_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the data dimension did not store the
+    metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != DATA:
+        return MetricAbstention(
+            reason=(
+                "only the data pack records migration, schema and constraint "
+                f"facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no data facts "
+            "were gathered"
+        )
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -3254,6 +3294,11 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     *(
         MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _api_fact)
         for name in API_METRICS
+    ),
+    # T045: data; computed over whole files by the data pack itself
+    *(
+        MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _data_fact)
+        for name in DATA_METRICS
     ),
 )
 

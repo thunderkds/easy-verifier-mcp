@@ -605,6 +605,7 @@ def test_registry_is_a_plain_dict_of_descriptors():
         "reliability",  # T043
         "supply-chain",
         "api",
+        "data",
     }
     descriptor = DIMENSIONS["architecture"]
     assert type(descriptor) is DimensionDescriptor

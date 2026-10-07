@@ -569,3 +569,45 @@ source_tag = "curated"
 value = ["*.enableVersioning (", "@Version ("]
 citation_url = "https://docs.nestjs.com/techniques/versioning"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["@Entity ("]
+citation_url = "https://typeorm.io/entities"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["@Entity ("]
+citation_url = "https://mikro-orm.io/docs/defining-entities"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["new Schema (", "new mongoose.Schema ("]
+citation_url = "https://mongoosejs.com/docs/guide.html"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["sequelize.define ("]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-basics/"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable: false", "unique: true", "@ManyToOne (", "@OneToOne (", "@JoinColumn (", "@Unique ("]
+citation_url = "https://typeorm.io/entities#column-options"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = [".notNullable (", ".unique (", ".references (", ".foreign ("]
+citation_url = "https://knexjs.org/guide/schema-builder.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["allowNull: false", "references:"]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-basics/#column-options"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["required: true", "ref:"]
+citation_url = "https://mongoosejs.com/docs/schematypes.html#schematype-options"
+source_tag = "curated"

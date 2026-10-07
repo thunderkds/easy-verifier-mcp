@@ -51,6 +51,9 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     # User-approved 2026-10-07 (T044): one of three roles (specification
     # file, route definitions, request validation).
     "api": CoverageFloor(0.25, "inclusive"),
+    # User decision 2026-10-07 (T045): one of three roles (migration files,
+    # schema files, data models in source files).
+    "data": CoverageFloor(0.25, "inclusive"),
 }
 
 # Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
@@ -373,6 +376,24 @@ _OWASP_INPUT_VALIDATION = Citation(
 _AIP_180 = Citation(
     "Google AIP-180 (backwards compatibility)", "https://google.aip.dev/180"
 )
+_EVODB = Citation(
+    "Fowler & Sadalage, Evolutionary Database Design (every database change "
+    "is a migration)",
+    "https://martinfowler.com/articles/evodb.html",
+)
+_RAILS_MIGRATIONS = Citation(
+    "Rails Guides, Active Record Migrations (reversible change; up/down "
+    "methods)",
+    "https://guides.rubyonrails.org/active_record_migrations.html",
+)
+_LIQUIBASE_ROLLBACK = Citation(
+    "Liquibase, Rollback (a rollback for every changeset)",
+    "https://docs.liquibase.com/workflows/liquibase-community/using-rollback.html",
+)
+_PG_CONSTRAINTS = Citation(
+    "PostgreSQL documentation, 5.5 Constraints (NOT NULL, unique, foreign key)",
+    "https://www.postgresql.org/docs/current/ddl-constraints.html",
+)
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
     "https://www.iso.org/standard/78176.html",
@@ -653,6 +674,39 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "breaking_api_changes_observed", 20, 0, "at_most",
             (_AIP_180,), _AIP_180,
             area=AREAS[6],
+        ),
+    ),
+    # T045: the data dimension (area #4). Weights: proposed by T045, accepted
+    # under user policy 2026-10-07 (Supervisor reviews at Stage 4).
+    #   migrations_missing 30 -- a schema changed without versioned migrations
+    #     cannot be reproduced or reviewed; the core of #4's "migrations".
+    #   migrations_without_rollback_share 30 -- the migration-safety
+    #     checklist's down/rollback item; without it a bad deploy has no exit.
+    #   schema_constraints_missing 20 -- integrity declared in the schema (ISO
+    #     5055), but measured coarsely (any constraint at all), so it weighs less.
+    #   destructive_migration_ops_observed 20 -- DROP/RENAME in an up migration;
+    #     some are deliberate (expand/contract), so the lines are quoted for the
+    #     calling agent and the rule weighs less. 30 + 20 rates exactly 50.
+    "data": _rules(
+        RatingRule(
+            "migrations_missing", 30, 0, "at_most",
+            (_EVODB,), _EVODB,
+            area=AREAS[3],
+        ),
+        RatingRule(
+            "migrations_without_rollback_share", 30, 0, "at_most",
+            (_RAILS_MIGRATIONS, _LIQUIBASE_ROLLBACK), _LIQUIBASE_ROLLBACK,
+            area=AREAS[3],
+        ),
+        RatingRule(
+            "schema_constraints_missing", 20, 0, "at_most",
+            (_ISO_5055, _PG_CONSTRAINTS), _ISO_5055,
+            area=AREAS[3],
+        ),
+        RatingRule(
+            "destructive_migration_ops_observed", 20, 0, "at_most",
+            (_PARALLEL_CHANGE, _EVODB), _PARALLEL_CHANGE,
+            area=AREAS[3],
         ),
     ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any

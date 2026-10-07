@@ -527,6 +527,11 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # data (T045)
+    "migrations_missing": "no migrations beside a schema",
+    "migrations_without_rollback_share": "share of migrations with no rollback",
+    "schema_constraints_missing": "no NOT NULL, unique or foreign-key constraint",
+    "destructive_migration_ops_observed": "DROP or RENAME operations in migrations",
     # api (T044)
     "api_spec_missing": "no API specification",
     "api_version_missing": "no API versioning",
@@ -559,6 +564,9 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "release-config": "release config",
     "api-spec": "API specification",
     "route definitions in source files": None,
+    "migration files": "migration files",
+    "schema-file": "schema file",
+    "data models in source files": None,
     "request validation in source files": None,
     "credential-file": "credential file",
     "test-config": "test config",

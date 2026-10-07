@@ -166,6 +166,21 @@ after comments and strings are blanked:
 * ``api_version_markers`` — framework-level API versioning switched on in code
   (``"enableVersioning ("``, ``"AddApiVersioning ("``).
 
+The data fields (T045, area #4) are read by the ``data`` dimension through
+``core/metric_tables.py``. All are optional: a language that declares none is
+not credited with that evidence. Tokens are matched in the raw lines of the
+files the dimension reads:
+
+* ``orm_model_markers`` — code that declares a persistent data model in source
+  (``"@Entity ("``, ``"models.Model"``, ``"ActiveRecord::Base"``); such a file
+  is schema evidence even where no schema file is committed;
+* ``schema_constraint_markers`` — a NOT NULL, unique or foreign-key constraint
+  declared through the language's ORM or migration API (``"nullable: false"``,
+  ``".notNullable ("``, ``"ForeignKey ("``);
+* ``migration_rollback_markers`` — a migration form its framework reverses
+  automatically (``"def change"`` in Rails, ``"migrations.Migration"`` in
+  Django), credited as a rollback path.
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -322,6 +337,9 @@ _TOKEN_FIELDS = frozenset(
         "request_validation",
         "api_spec_generators",
         "api_version_markers",
+        "orm_model_markers",
+        "schema_constraint_markers",
+        "migration_rollback_markers",
     }
 )
 
@@ -369,6 +387,9 @@ ENTRY_FIELDS = (
     "request_validation",
     "api_spec_generators",
     "api_version_markers",
+    "orm_model_markers",
+    "schema_constraint_markers",
+    "migration_rollback_markers",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

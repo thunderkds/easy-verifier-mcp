@@ -527,6 +527,11 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # (below_coverage_floor: no route, validation or spec in the fixture), its
     # four metrics in every pack, its warning, provenance and plan line, and
     # area #7 leaves areas_without_rule; the disclosure counts 10 dimensions.
+    # Regenerated for T045 (data dimension): every existing rating and the
+    # overall (61) are unchanged; added are the data rating
+    # (below_coverage_floor: no migration, schema or data model in the
+    # fixture), its four metrics in every pack, its warning, provenance and
+    # plan line, and area #4 leaves areas_without_rule; 11 dimensions.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

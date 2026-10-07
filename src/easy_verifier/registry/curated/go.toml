@@ -284,3 +284,10 @@ source_tag = "curated"
 value = ["validator.New (", "*.ShouldBindJSON (", "*.ShouldBind ("]
 citation_url = "https://gin-gonic.com/en/docs/examples/binding-and-validation/"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["gorm.Model"]
+citation_url = "https://gorm.io/docs/models.html"
+source_tag = "curated"

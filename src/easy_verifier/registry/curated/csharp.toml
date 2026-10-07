@@ -332,3 +332,15 @@ source_tag = "curated"
 value = ["*.AddApiVersioning (", "[ApiVersion ("]
 citation_url = "https://github.com/dotnet/aspnet-api-versioning/wiki"
 source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["DbContext", "DbSet"]
+citation_url = "https://learn.microsoft.com/en-us/ef/core/modeling/"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable: false", "unique: true", "table.ForeignKey (", ".IsRequired (", ".IsUnique (", ".HasForeignKey ("]
+citation_url = "https://learn.microsoft.com/en-us/ef/core/modeling/keys"
+source_tag = "curated"
