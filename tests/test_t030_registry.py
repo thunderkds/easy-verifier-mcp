@@ -361,7 +361,8 @@ def test_registry_holds_exactly_the_former_patterns(language: str) -> None:
     entry = load_registry(known_roles=GENERIC_PATTERNS).languages[language]
     manifests = {p for field in entry.manifests for p in field.value}
     assert manifests == set(former["manifests"])
-    assert set(entry.roles) == set(former["roles"])
+    # T046 added the tool-version-pin role (language pin files) after T030.
+    assert set(entry.roles) - {"tool-version-pin"} == set(former["roles"])
     for name, patterns in former["roles"].items():
         registry_patterns = [p for field in entry.roles[name] for p in field.value]
         assert set(registry_patterns) == set(patterns), (language, name)

@@ -181,6 +181,15 @@ files the dimension reads:
   automatically (``"def change"`` in Rails, ``"migrations.Migration"`` in
   Django), credited as a rollback path.
 
+The operations field (T046, area #14) is read by the ``operations`` dimension
+through ``core/metric_tables.py``. It is optional: a language that declares
+none is not credited with that evidence. Tokens are matched in the raw lines of
+the source files the dimension reads, so an import path in a string literal
+counts:
+
+* ``logging_markers`` — a logging or tracing library in use (``"import
+  logging"``, ``"winston"``, ``"org.slf4j"``, ``"go.opentelemetry.io/otel"``).
+
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
 * ``frameworks`` — language entries only: ``"<framework>=<dependency>"``, e.g.
@@ -340,6 +349,7 @@ _TOKEN_FIELDS = frozenset(
         "orm_model_markers",
         "schema_constraint_markers",
         "migration_rollback_markers",
+        "logging_markers",
     }
 )
 
@@ -390,6 +400,7 @@ ENTRY_FIELDS = (
     "orm_model_markers",
     "schema_constraint_markers",
     "migration_rollback_markers",
+    "logging_markers",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 

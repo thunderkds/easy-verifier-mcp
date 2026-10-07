@@ -527,6 +527,14 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # operations (T046)
+    "logging_library_missing": "no logging or tracing library",
+    "audit_log_writes_missing": "no audit log writes",
+    "codeowners_missing": "no CODEOWNERS file",
+    "agent_guardrails_missing": "no coding-agent guardrails",
+    "agent_config_secrets_observed": "secret-shaped values in agent configuration",
+    "tool_version_pin_missing": "no tool-version pin",
+    "dev_environment_missing": "no devcontainer or one-command setup",
     # data (T045)
     "migrations_missing": "no migrations beside a schema",
     "migrations_without_rollback_share": "share of migrations with no rollback",
@@ -567,6 +575,13 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "migration files": "migration files",
     "schema-file": "schema file",
     "data models in source files": None,
+    "codeowners": "CODEOWNERS",
+    "observability-config": "observability config",
+    "agent-config": "coding-agent config",
+    "tool-version-pin": "tool-version pin",
+    "dev-environment": "dev environment",
+    "runbook, incident or SLO documents": "runbook, incident or SLO docs",
+    "logging or tracing in source files": None,
     "request validation in source files": None,
     "credential-file": "credential file",
     "test-config": "test config",

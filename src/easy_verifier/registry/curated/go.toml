@@ -291,3 +291,30 @@ source_tag = "curated"
 value = ["gorm.Model"]
 citation_url = "https://gorm.io/docs/models.html"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[logging_markers]]
+value = ["log/slog"]
+citation_url = "https://pkg.go.dev/log/slog"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["go.uber.org/zap"]
+citation_url = "https://pkg.go.dev/go.uber.org/zap"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["github.com/sirupsen/logrus"]
+citation_url = "https://github.com/sirupsen/logrus#example"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["github.com/rs/zerolog"]
+citation_url = "https://github.com/rs/zerolog#getting-started"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["go.opentelemetry.io/otel"]
+citation_url = "https://opentelemetry.io/docs/languages/go/instrumentation/"
+source_tag = "curated"

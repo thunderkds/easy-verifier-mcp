@@ -336,3 +336,20 @@ source_tag = "curated"
 value = ["->foreign (", "->unique (", "->constrained (", "->foreignId ("]
 citation_url = "https://laravel.com/docs/11.x/migrations#foreign-key-constraints"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[logging_markers]]
+value = ["LoggerInterface"]
+citation_url = "https://www.php-fig.org/psr/psr-3/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["Monolog"]
+citation_url = "https://github.com/Seldaek/monolog/blob/main/doc/01-usage.md"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["OpenTelemetry"]
+citation_url = "https://opentelemetry.io/docs/languages/php/instrumentation/"
+source_tag = "curated"

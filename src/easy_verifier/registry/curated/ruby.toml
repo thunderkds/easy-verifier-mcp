@@ -322,3 +322,25 @@ source_tag = "curated"
 value = ["def change"]
 citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#using-the-change-method"
 source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.ruby-version"]
+citation_url = "https://github.com/rbenv/rbenv#choosing-the-ruby-version"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["Rails.logger"]
+citation_url = "https://guides.rubyonrails.org/debugging_rails_applications.html#the-logger"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["Logger.new"]
+citation_url = "https://docs.ruby-lang.org/en/master/Logger.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["OpenTelemetry::"]
+citation_url = "https://opentelemetry.io/docs/languages/ruby/instrumentation/"
+source_tag = "curated"

@@ -54,6 +54,10 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     # User decision 2026-10-07 (T045): one of three roles (migration files,
     # schema files, data models in source files).
     "data": CoverageFloor(0.25, "inclusive"),
+    # User decision 2026-10-07 (T046): two of seven roles (CODEOWNERS,
+    # operations documents, observability config, logging in source, agent
+    # configuration, tool-version pin, development environment).
+    "operations": CoverageFloor(0.25, "inclusive"),
 }
 
 # Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
@@ -394,6 +398,60 @@ _PG_CONSTRAINTS = Citation(
     "PostgreSQL documentation, 5.5 Constraints (NOT NULL, unique, foreign key)",
     "https://www.postgresql.org/docs/current/ddl-constraints.html",
 )
+_OTEL = Citation(
+    "OpenTelemetry, Observability primer (logs, metrics and traces emitted by "
+    "instrumented code)",
+    "https://opentelemetry.io/docs/concepts/observability-primer/",
+)
+_SRE_MONITORING = Citation(
+    "Google SRE book, Monitoring Distributed Systems",
+    "https://sre.google/sre-book/monitoring-distributed-systems/",
+)
+_NIST_800_53_AU2 = Citation(
+    "NIST SP 800-53 Rev. 5 AU-2 Event Logging (identify the events the system "
+    "logs for audit)",
+    "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+)
+_OWASP_LOGGING = Citation(
+    "OWASP Logging Cheat Sheet (which events to record; audit trails)",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+)
+_CODEOWNERS = Citation(
+    "GitHub Docs, About code owners",
+    "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+)
+_SRE_PRR = Citation(
+    "Google SRE book, The Evolving SRE Engagement Model (production readiness "
+    "review: a named owner for each service)",
+    "https://sre.google/sre-book/evolving-sre-engagement-model/",
+)
+_OWASP_LLM_AGENCY = Citation(
+    "OWASP Top 10 for LLM Applications 2025, LLM06 Excessive Agency "
+    "(constrain what an agent may do; human approval for high-impact actions)",
+    "https://genai.owasp.org/llmrisk/llm062025-excessive-agency/",
+)
+_OWASP_LLM_DISCLOSURE = Citation(
+    "OWASP Top 10 for LLM Applications 2025, LLM02 Sensitive Information "
+    "Disclosure",
+    "https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/",
+)
+_TWELVE_FACTOR_PARITY = Citation(
+    "The Twelve-Factor App, X. Dev/prod parity",
+    "https://12factor.net/dev-prod-parity",
+)
+_DEVCONTAINER = Citation(
+    "Development Containers specification (devcontainer.json)",
+    "https://containers.dev/implementors/spec/",
+)
+_NIST_800_61 = Citation(
+    "NIST SP 800-61 Rev. 3, Incident Response Recommendations and "
+    "Considerations for Cybersecurity Risk Management",
+    "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
+)
+_SRE_SLO = Citation(
+    "Google SRE book, Service Level Objectives",
+    "https://sre.google/sre-book/service-level-objectives/",
+)
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
     "https://www.iso.org/standard/78176.html",
@@ -707,6 +765,64 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "destructive_migration_ops_observed", 20, 0, "at_most",
             (_PARALLEL_CHANGE, _EVODB), _PARALLEL_CHANGE,
             area=AREAS[3],
+        ),
+    ),
+    # T046: the operations dimension (areas #14, #26, #29, #30); #25 and the
+    # SLO and runbook parts are documentation rules. Weights: proposed by T046,
+    # accepted under user policy 2026-10-07 (Supervisor reviews at Stage 4).
+    # The lockfile part of #30 is supply-chain's lockfile_missing (one rule).
+    #   logging_library_missing 20 -- without logs or traces nothing else in
+    #     #14 (alerts, SLOs, audits) can be observed; the core of the area, and
+    #     it applies to every repository with code.
+    #   audit_log_writes_missing 10 -- measured textually (a call naming
+    #     "audit"), and not every repository needs an audit trail, so less.
+    #   codeowners_missing 20 -- a named owner is the first production-
+    #     readiness item (#26), exact to measure and applies to every repository.
+    #   (Agent instruction files are a #29 documentation rule, user decision
+    #   2026-10-07: a repository that uses no coding agent is not penalised.
+    #   Its 10 points went to the two rules that apply to every repository.)
+    #   agent_guardrails_missing 10 -- #29; abstains with no agent files.
+    #   agent_config_secrets_observed 20 -- a credential in agent config is
+    #     exposed to every model and tool the agent calls; the most severe
+    #     failure here. Abstains with no agent files.
+    #   tool_version_pin_missing 10 / dev_environment_missing 10 -- #30;
+    #     convenience for reproducibility, weighed equally.
+    # 20 + 20 + 10 rates exactly 50.
+    "operations": _rules(
+        RatingRule(
+            "logging_library_missing", 20, 0, "at_most",
+            (_OTEL, _SRE_MONITORING), _SRE_MONITORING,
+            area=AREAS[13],
+        ),
+        RatingRule(
+            "audit_log_writes_missing", 10, 0, "at_most",
+            (_NIST_800_53_AU2, _OWASP_LOGGING), _NIST_800_53_AU2,
+            area=AREAS[13],
+        ),
+        RatingRule(
+            "codeowners_missing", 20, 0, "at_most",
+            (_CODEOWNERS, _SRE_PRR), _SRE_PRR,
+            area=AREAS[25],
+        ),
+        RatingRule(
+            "agent_guardrails_missing", 10, 0, "at_most",
+            (_OWASP_LLM_AGENCY,), _OWASP_LLM_AGENCY,
+            area=AREAS[28],
+        ),
+        RatingRule(
+            "agent_config_secrets_observed", 20, 0, "at_most",
+            (_OWASP_LLM_DISCLOSURE, _ASVS_SECRETS), _ASVS_SECRETS,
+            area=AREAS[28],
+        ),
+        RatingRule(
+            "tool_version_pin_missing", 10, 0, "at_most",
+            (_TWELVE_FACTOR_PARITY,), _TWELVE_FACTOR_PARITY,
+            area=AREAS[29],
+        ),
+        RatingRule(
+            "dev_environment_missing", 10, 0, "at_most",
+            (_TWELVE_FACTOR_PARITY, _DEVCONTAINER), _TWELVE_FACTOR_PARITY,
+            area=AREAS[29],
         ),
     ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
@@ -2281,4 +2397,64 @@ _ROLLBACK_PATTERNS = tuple(
 )
 DOCUMENTATION_RULES["supply-chain"] = (
     DocumentationRule(AREAS[21], _ROLLBACK_PATTERNS, (_SRE_RELEASE,)),
+)
+
+
+# Operations (T046): agent instruction files (#29) are a documentation rule,
+# user decision 2026-10-07: a repository that uses no coding agent is not
+# penalised. The files are the instruction subset of the ``agent-config`` role
+# (``core/roles.py`` re-exports this tuple; same sources as the role).
+AGENT_INSTRUCTION_PATTERNS: tuple[str, ...] = (
+    "**/CLAUDE.md",
+    "**/AGENTS.md",
+    "**/GEMINI.md",
+    ".github/copilot-instructions.md",
+    ".cursorrules",
+    ".windsurfrules",
+    ".cursor/rules/*",
+    ".claude/agents/*.md",
+    ".claude/commands/*.md",
+)
+
+# Operations (T046): incident response and change management (#25), the SLO
+# (#14) and the runbook (#26) are processes no repository can show, so only
+# their documents are checked; the operations dimension reads a matching
+# document for each. Document suffixes only: ``src/runbook/Runbook.java`` is
+# source, never a runbook.
+_DOC_SUFFIXES = (".md", ".rst", ".adoc")
+DOCUMENTATION_RULES["operations"] = (
+    DocumentationRule(
+        AREAS[24],
+        _keyword_docs(
+            "incident", "postmortem", "post-mortem", "on-call", "oncall",
+            "change-management", "change_management",
+        ),
+        (_NIST_800_61,),
+    ),
+    DocumentationRule(
+        AREAS[13],
+        _keyword_docs(
+            "service-level", "service_level", "error-budget", "error_budget"
+        )
+        + tuple(
+            f"**/{stem}{suffix}"
+            for stem in (
+                "SLO", "SLOs", "slo", "slos", "*-slo", "*_slo", "*-SLO",
+                "*_SLO", "slo-*", "slo_*", "SLO-*", "SLO_*",
+            )
+            for suffix in _DOC_SUFFIXES
+        ),
+        (_SRE_SLO,),
+    ),
+    DocumentationRule(
+        AREAS[25],
+        _keyword_docs("runbook", "playbook")
+        + tuple(
+            f"**/{folder}/**/*{suffix}"
+            for folder in ("runbooks", "runbook", "playbooks")
+            for suffix in _DOC_SUFFIXES
+        ),
+        (_SRE_PRR,),
+    ),
+    DocumentationRule(AREAS[28], AGENT_INSTRUCTION_PATTERNS, (_OWASP_LLM_AGENCY,)),
 )

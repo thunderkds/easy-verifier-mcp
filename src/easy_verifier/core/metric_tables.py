@@ -77,7 +77,7 @@ def metric_tables(
     type_configs: list[TypeConfigFile] = []
     type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
     reliability: dict[str, dict[str, re.Pattern[str]]] = {
-        f: {} for f in RELIABILITY_FIELDS + API_FIELDS + DATA_FIELDS
+        f: {} for f in _TOKEN_TABLE_FIELDS
     }
     for entry in entries:
         extensions = _values(entry, "source_extensions")
@@ -102,7 +102,7 @@ def metric_tables(
                 )
             if _values(entry, "auth_markers"):
                 auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
-            for name in RELIABILITY_FIELDS + API_FIELDS + DATA_FIELDS:
+            for name in _TOKEN_TABLE_FIELDS:
                 if _values(entry, name):
                     reliability[name].setdefault(
                         extension, _guarded(_values(entry, name))
@@ -244,6 +244,11 @@ DATA_FIELDS = (
     "migration_rollback_markers",
 )
 """The T045 data token fields (area #4); each compiles like a sink token."""
+
+OPERATIONS_FIELDS = ("logging_markers",)
+"""The T046 operations token field (area #14); compiles like a sink token."""
+
+_TOKEN_TABLE_FIELDS = RELIABILITY_FIELDS + API_FIELDS + DATA_FIELDS + OPERATIONS_FIELDS
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -414,6 +419,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "orm_model_markers": ("migrations_missing", "schema_constraints_missing"),
     "schema_constraint_markers": ("schema_constraints_missing",),
     "migration_rollback_markers": ("migrations_without_rollback_share",),
+    "logging_markers": ("logging_library_missing",),
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -444,6 +450,9 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "language without the field is not credited with that evidence, and the "
         "data rule abstains where nothing else shows it (T045)",
     ),
+    "logging_markers": "only languages with a logging or tracing library "
+    "declare it; a language without the field is not credited with that "
+    "evidence (T046)",
     **dict.fromkeys(
         API_FIELDS,
         "only languages with a validation, specification or versioning library "
@@ -476,6 +485,14 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "licence-file": ("licence_file_missing",),
     "api-spec": ("api_spec_missing",),
     "schema-file": ("migrations_missing", "schema_constraints_missing"),
+    "codeowners": ("codeowners_missing",),
+    "observability-config": ("logging_library_missing",),
+    "agent-config": (
+        "agent_guardrails_missing",
+        "agent_config_secrets_observed",
+    ),
+    "tool-version-pin": ("tool_version_pin_missing",),
+    "dev-environment": ("dev_environment_missing",),
     "test-config": ("test_config_and_ci_missing",),
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),

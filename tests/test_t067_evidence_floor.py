@@ -175,6 +175,8 @@ def _every_kind() -> tuple:
         "api": _rated_far("api"),
         # T045: likewise.
         "data": _rated_far("data"),
+        # T046: likewise.
+        "operations": _rated_far("operations"),
     }
     return tuple(by_name[name] for name in DIMENSIONS)
 
@@ -496,7 +498,9 @@ def test_plan_abstained_line_lists_unmeasured_rules_with_fix() -> None:
 def test_plan_totals_with_fewer_contributors() -> None:
     ratings = _every_kind()
     overall = rate_overall(ratings)
-    contributors = ("blast-radius", "reliability", "supply-chain", "api", "data")
+    contributors = (
+        "blast-radius", "reliability", "supply-chain", "api", "data", "operations"
+    )
     assert overall.contributors == contributors
     plan = improvement_plan(ratings, overall)
     assert {item.dimension for item in plan.items} <= set(contributors)
