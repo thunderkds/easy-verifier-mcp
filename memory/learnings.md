@@ -727,3 +727,15 @@ With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as
 - `core/roles.py` cannot import from `dimensions/` (circular), so knowledge living in a dimension module (T055 migration constants in blast_radius.py) forces a glob-less pseudo-role ("migration files") — not visible in list-dimensions, not extendable via .easy-verifier.toml. T057 (move to registry) fixes this.
 - `.prisma`/`.sql` belong to no registry language, so their tokens go in the generic layer (GENERIC_DATA_FACTS), not a curated TOML.
 - `core/redact.py` entropy detector masks long digit runs in migration filenames (`Migr…****:6a429a46c56b.ts`) — T029 territory.
+
+## 2026-10-07 — T046 operations: heuristic redaction hits ≠ secrets; sampled batches miss library imports
+
+- Counting every `core/redact.py` hit as a "secret" gave 100% false positives on real CLAUDE.md files (high_entropy_string / key_material_segment on template prose). Use only exact-pattern detectors for any secrets metric.
+- On big repos the default 200-file batch can miss every import of a library the manifest declares (bryony winston): a manifest dependency counts as library presence.
+- The scored repo's `.claude/` may be git-ignored (this repo) → evidence walk never sees it, guardrails rule fails by design.
+
+## 2026-10-07 — T042 infrastructure: no local IaC repo; public clone as positive real repo
+
+- None of bryony/kitchd/ai-training/coffee (nor anything under ~/workspace) has .tf/Helm/k8s files. Positive real-repo check used a shallow clone of GoogleCloudPlatform/microservices-demo into the scratchpad (read-only, `--repo` only) → infrastructure 70.
+- Pre-existing: shared `container-config` glob `**/k8s/**` matches source (`src/k8s/client.go`) — affects security; needs its own task.
+- `score --scope changes` crashed on a non-code diff (api `breaking_api_changes_observed` value with no citation) → bugfix T083.

@@ -66,7 +66,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
+- [ ] **T083** — Bugfix: `score --scope changes` crashes (MetricCitationError, api `breaking_api_changes_observed`) on a diff with no API spec/route source file (from T044) | backend-developer | C1 | Risk: Med | P1 | 🔄 In Progress 2026-10-07
 
 ### Ready for Review
 
