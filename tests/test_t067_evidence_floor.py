@@ -177,6 +177,8 @@ def _every_kind() -> tuple:
         "data": _rated_far("data"),
         # T046: likewise.
         "operations": _rated_far("operations"),
+        # T042: likewise.
+        "infrastructure": _rated_far("infrastructure"),
     }
     return tuple(by_name[name] for name in DIMENSIONS)
 
@@ -499,7 +501,8 @@ def test_plan_totals_with_fewer_contributors() -> None:
     ratings = _every_kind()
     overall = rate_overall(ratings)
     contributors = (
-        "blast-radius", "reliability", "supply-chain", "api", "data", "operations"
+        "blast-radius", "reliability", "supply-chain", "api", "data", "operations",
+        "infrastructure",
     )
     assert overall.contributors == contributors
     plan = improvement_plan(ratings, overall)

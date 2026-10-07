@@ -58,6 +58,9 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     # operations documents, observability config, logging in source, agent
     # configuration, tool-version pin, development environment).
     "operations": CoverageFloor(0.25, "inclusive"),
+    # User decision 2026-10-07 (T042): one of four roles (Terraform files,
+    # Kubernetes manifests, CloudFormation/Pulumi templates, container config).
+    "infrastructure": CoverageFloor(0.25, "inclusive"),
 }
 
 # Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
@@ -452,6 +455,63 @@ _SRE_SLO = Citation(
     "Google SRE book, Service Level Objectives",
     "https://sre.google/sre-book/service-level-objectives/",
 )
+_CIS_AWS = Citation(
+    "CIS Amazon Web Services Foundations Benchmark (IAM: no full '*' "
+    "administrative policies; networking: no 0.0.0.0/0 ingress; storage: "
+    "encryption at rest)",
+    "https://www.cisecurity.org/benchmark/amazon_web_services",
+)
+_CIS_K8S = Citation(
+    "CIS Kubernetes Benchmark 5.1.3 (minimize wildcard use in Roles and "
+    "ClusterRoles)",
+    "https://www.cisecurity.org/benchmark/kubernetes",
+)
+_AWS_IAM_LEAST = Citation(
+    "AWS IAM User Guide, Security best practices (apply least-privilege "
+    "permissions)",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+)
+_K8S_RBAC = Citation(
+    "Kubernetes documentation, Role Based Access Control practices (avoid "
+    "wildcards)",
+    "https://kubernetes.io/docs/concepts/security/rbac-good-practices/",
+)
+_AWS_SG = Citation(
+    "Amazon VPC User Guide, Security group rules",
+    "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-group-rules.html",
+)
+_AWS_RDS_ENCRYPTION = Citation(
+    "Amazon RDS User Guide, Encrypting Amazon RDS resources",
+    "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html",
+)
+_TF_BACKEND = Citation(
+    "HashiCorp Terraform documentation, Backend block configuration",
+    "https://developer.hashicorp.com/terraform/language/backend",
+)
+_TF_LOCKING = Citation(
+    "HashiCorp Terraform documentation, State locking",
+    "https://developer.hashicorp.com/terraform/language/state/locking",
+)
+_TF_WORKSPACES = Citation(
+    "HashiCorp Terraform documentation, Workspaces (separate state per "
+    "environment)",
+    "https://developer.hashicorp.com/terraform/language/state/workspaces",
+)
+_WA_REL09 = Citation(
+    "AWS Well-Architected Reliability Pillar REL09-BP01/BP03 (identify and "
+    "back up all data; perform data backup automatically)",
+    "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_backing_up_data_identified_backups_data.html",
+)
+_WA_REL10 = Citation(
+    "AWS Well-Architected Reliability Pillar REL10-BP01 (deploy the workload "
+    "to multiple locations)",
+    "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+)
+_WA_REL13 = Citation(
+    "AWS Well-Architected Reliability Pillar REL13 (plan for disaster "
+    "recovery)",
+    "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/plan-for-disaster-recovery-dr.html",
+)
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
     "https://www.iso.org/standard/78176.html",
@@ -823,6 +883,63 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "dev_environment_missing", 10, 0, "at_most",
             (_TWELVE_FACTOR_PARITY, _DEVCONTAINER), _TWELVE_FACTOR_PARITY,
             area=AREAS[29],
+        ),
+    ),
+    # T042: the infrastructure dimension (areas #11, #23, #24), over
+    # Terraform, Kubernetes and CloudFormation files; live drift and restore
+    # drills are not verifiable offline and have no rule; the DR runbook is a
+    # documentation rule. Weights: proposed by T042, accepted under user
+    # policy 2026-10-07 (Supervisor reviews at Stage 4).
+    #   iac_wildcard_iam_observed 20 -- a "*" action or resource grants
+    #     everything; the most direct breach path in #11, exact to count.
+    #   iac_open_ingress_observed 20 -- a whole-internet ingress source
+    #     exposes the service to every attacker; equally direct.
+    #   iac_unencrypted_storage_observed 15 -- encryption at rest limits a
+    #     leak's impact rather than preventing access, so less.
+    #   terraform_locked_remote_state_missing 15 -- local or unlocked state is
+    #     lost or corrupted by concurrent applies; the core of #23.
+    #   terraform_environment_separation_missing 5 -- a layout convention,
+    #     read from paths and one token, so the weakest evidence.
+    #   database_backup_unconfigured 15 -- data with no stated backup cannot
+    #     be restored; the core of #24.
+    #   database_ha_unconfigured 10 -- availability, not data loss, so less
+    #     than backups.
+    # 20 + 15 + 15 rates exactly 50.
+    "infrastructure": _rules(
+        RatingRule(
+            "iac_wildcard_iam_observed", 20, 0, "at_most",
+            (_AWS_IAM_LEAST, _K8S_RBAC, _CIS_K8S), _CIS_AWS,
+            area=AREAS[10],
+        ),
+        RatingRule(
+            "iac_open_ingress_observed", 20, 0, "at_most",
+            (_AWS_SG,), _CIS_AWS,
+            area=AREAS[10],
+        ),
+        RatingRule(
+            "iac_unencrypted_storage_observed", 15, 0, "at_most",
+            (_AWS_RDS_ENCRYPTION,), _CIS_AWS,
+            area=AREAS[10],
+        ),
+        RatingRule(
+            "terraform_locked_remote_state_missing", 15, 0, "at_most",
+            (_TF_BACKEND, _TF_LOCKING), _TF_LOCKING,
+            area=AREAS[22],
+        ),
+        RatingRule(
+            "terraform_environment_separation_missing", 5, 0, "at_most",
+            (_TF_WORKSPACES,), _TF_WORKSPACES,
+            area=AREAS[22],
+        ),
+        RatingRule(
+            "database_backup_unconfigured", 15, 0, "at_most",
+            (_WA_REL09,), _WA_REL09,
+            area=AREAS[23],
+        ),
+        RatingRule(
+            "database_ha_unconfigured", 10, 0, "at_most",
+            (_WA_REL10,), _WA_REL10,
+            area=AREAS[23],
         ),
     ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
@@ -2457,4 +2574,20 @@ DOCUMENTATION_RULES["operations"] = (
         (_SRE_PRR,),
     ),
     DocumentationRule(AREAS[28], AGENT_INSTRUCTION_PATTERNS, (_OWASP_LLM_AGENCY,)),
+)
+
+
+# Infrastructure (T042): whether backups restore and DR works is a drill no
+# repository can show, so only the disaster-recovery document is checked; the
+# infrastructure dimension reads the first match. Document suffixes only.
+DOCUMENTATION_RULES["infrastructure"] = (
+    DocumentationRule(
+        AREAS[23],
+        _keyword_docs(
+            "disaster-recovery", "disaster_recovery", "dr-plan", "dr_plan",
+            "dr-runbook", "restore",
+        )
+        + tuple(f"**/DR{suffix}" for suffix in _DOC_SUFFIXES),
+        (_WA_REL13,),
+    ),
 )

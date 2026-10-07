@@ -19,14 +19,13 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 6 | At least one rule measures the area as planned |
-| Partial | 18 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 8 | No rule; the planned dimension or pack is not built |
+| Partial | 21 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 5 | No rule; the planned dimension or pack is not built |
 
-12 dimensions exist today: the original 7, reliability (T043), supply-chain (T041), api (T044), data (T045) and operations (T046), plus the optional healthcare
+13 dimensions exist today: the original 7, reliability (T043), supply-chain (T041), api (T044), data (T045), operations (T046) and infrastructure (T042), plus the optional healthcare
 (T047) and finance (T048) packs, which rate only in repositories that enable them
-(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). The remaining
-planned dimension (infrastructure) and the remaining optional pack
-(frontend accessibility) are tasks T042 and T049 on the Kanban.
+(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). All planned
+dimensions exist; the remaining optional pack (frontend accessibility) is task T049 on the Kanban.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -55,7 +54,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 8 | AuthN/Z, sessions, offboarding | Partial | `security` · `cookie_flags_missing_observed`<br>`security` documentation check | — | offboarding is process (documentation check only) |
 | 9 | PHI minimization, retention, test-data safety | Partial | `healthcare` · `phi_values_in_test_data_observed`<br>`healthcare` · `phi_values_in_log_statements_observed`<br>`healthcare` documentation check | — | optional pack, rated only when enabled; PHI-shaped values (SSN, labelled MRN / birth date; placeholders excluded) in test data and log statements; retention is a documentation check; minimization in production data is not verifiable |
 | 10 | Threat modeling, abuse cases, appsec | Covered | `security` · `redaction_hits_observed`<br>`security` · `sink_hits_observed` | — |  |
-| 11 | Infra security: IAM, networking, KMS, secrets | Not yet | — | infrastructure (T042) | class S |
+| 11 | Infra security: IAM, networking, KMS, secrets | Partial | `infrastructure` · `iac_wildcard_iam_observed`<br>`infrastructure` · `iac_open_ingress_observed`<br>`infrastructure` · `iac_unencrypted_storage_observed` | — | literal values in Terraform, Kubernetes and CloudFormation files only; KMS key policies and plaintext secrets in IaC are not measured here (committed secrets are the security dimension's) |
 | 12 | Error handling & safe degradation | Partial | `reliability` · `swallowed_errors_observed` | — | empty handlers only (registry `swallowed_errors`; a handler holding a comment, and Go's `if err != nil` handling, never count); safe degradation not measured |
 | 13 | Retries, deadlines, unknown outcomes, vendor outages | Partial | `reliability` · `outbound_calls_without_timeout_observed`<br>`reliability` · `retries_without_backoff_observed` | — | calls and retry libraries with no default deadline or delay (curated per language); unknown outcomes and vendor outages not measured |
 | 14 | Observability, auditing, SLOs, error budgets | Partial | `operations` · `logging_library_missing`<br>`operations` · `audit_log_writes_missing`<br>`operations` documentation check | — | a logging or tracing library (registry `logging_markers`) or an observability config file; audit writes are textual (a call naming audit); SLOs and error budgets: only an SLO document's presence is checked (never a number) |
@@ -67,8 +66,8 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 20 | Dependencies, vulns, licenses, obsolescence | Partial | `security` · `lockfile_missing`<br>`supply-chain` · `lockfile_missing`<br>`supply-chain` · `licence_file_missing` | — | lockfile and licence file presence; live vulnerability status (CVE feeds) is not verifiable offline (class X) and obsolescence is not measured |
 | 21 | CI quality & reproducibility | Partial | `supply-chain` · `ci_actions_unpinned_share`<br>`supply-chain` · `ci_lockfile_install_missing` | — | external CI actions pinned by SHA and a lockfile-faithful install (registry `lockfile_install`); abstain where no CI workflow is quoted; other CI quality not measured |
 | 22 | Artifact provenance, SBOM, signing, promotion, rollback | Partial | `supply-chain` · `ci_provenance_step_missing`<br>`supply-chain` documentation check | — | an SBOM, signing or provenance step in CI or release configuration; rollback is a documentation check (present or missing, never a number); promotion not measured |
-| 23 | Terraform state, environment, account, drift | Not yet | — | infrastructure (T042) | class S / X |
-| 24 | Database HA, backups, restore, DR | Not yet | — | infrastructure (T042) | class S / X |
+| 23 | Terraform state, environment, account, drift | Partial | `infrastructure` · `terraform_locked_remote_state_missing`<br>`infrastructure` · `terraform_environment_separation_missing` | — | class X: live drift is not verifiable offline; account separation is not measured; the backend check is repository level (one locked backend passes) |
+| 24 | Database HA, backups, restore, DR | Partial | `infrastructure` · `database_backup_unconfigured`<br>`infrastructure` · `database_ha_unconfigured`<br>`infrastructure` documentation check | — | class X: restore drills are not verifiable offline, only a disaster-recovery document's presence; Terraform database resources only (CloudFormation databases are not parsed) |
 | 25 | Incident response, change mgmt, access review | Not yet | `operations` documentation check | operations (T046), documentation only | class X: only an incident, postmortem, on-call or change-management document's presence is checked (never a number); access review is not verifiable offline |
 | 26 | Configuration ownership & operational readiness | Partial | `operations` · `codeowners_missing`<br>`operations` documentation check | — | CODEOWNERS present; runbooks: only a runbook or playbook document's presence is checked; documented environment configuration is not measured |
 | 27 | Documentation source-of-truth governance | Covered | `requirement-fidelity` · `requirements_doc_missing`<br>`requirement-fidelity` · `code_commits_with_docs_share` | — |  |

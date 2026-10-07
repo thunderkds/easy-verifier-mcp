@@ -392,6 +392,52 @@ GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
         "bin/setup",
         "scripts/setup.sh",
     ),
+    # T042 infrastructure roles. Data suffixes only, never a stem glob, so
+    # ``src/terraform.service.ts``, ``src/k8s/client.go`` and
+    # ``src/main.tf.ts`` are source, not infrastructure (T041 lesson).
+    # Terraform: ``.tf``/``.tf.json`` configuration and ``.tfvars`` variable
+    # files (https://developer.hashicorp.com/terraform/language/files), and
+    # Terragrunt's ``terragrunt.hcl``
+    # (https://terragrunt.gruntwork.io/docs/getting-started/configuration/).
+    "terraform-file": (
+        "**/*.tf",
+        "**/*.tf.json",
+        "**/*.tfvars",
+        "**/*.tfvars.json",
+        "**/terragrunt.hcl",
+    ),
+    # Kubernetes manifests in the conventional folders, Kustomize
+    # (https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/)
+    # and Helm charts (https://helm.sh/docs/topics/charts/). YAML only.
+    "k8s-manifest": (
+        *(
+            f"**/{folder}/**/*{suffix}"
+            for folder in (
+                "k8s", "kubernetes", "kubernetes-manifests", "manifests",
+                "kustomize", "helm", "charts", "helm-chart", "deploy/k8s",
+            )
+            for suffix in (".yaml", ".yml")
+        ),
+        "**/kustomization.yaml",
+        "**/kustomization.yml",
+        "**/Chart.yaml",
+    ),
+    # CloudFormation templates (https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-formats.html),
+    # SAM's ``template.yaml`` (https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification.html)
+    # and Pulumi project/stack files (https://www.pulumi.com/docs/iac/concepts/projects/project-file/).
+    "cloud-template": (
+        *(
+            f"**/{stem}{suffix}"
+            for stem in ("*.template", "cloudformation/**/*", "cfn/**/*")
+            for suffix in (".json", ".yaml", ".yml")
+        ),
+        "**/template.yaml",
+        "**/template.yml",
+        "**/Pulumi.yaml",
+        "**/Pulumi.yml",
+        "**/Pulumi.*.yaml",
+        "**/Pulumi.*.yml",
+    ),
     "test-config": (
         "**/test_helper.*",
         "**/spec_helper.*",
@@ -634,6 +680,185 @@ GENERIC_OPERATIONS_FACTS: dict[str, tuple[GenericTokens, ...]] = {
 }
 """Cited language-neutral operations facts for the operations dimension
 (T046)."""
+
+
+GENERIC_INFRASTRUCTURE_FACTS: dict[str, tuple[GenericTokens, ...]] = {
+    # A wildcard ("*") as the whole IAM action or resource, or as an RBAC
+    # verb, resource or API group, on one line: Terraform (HCL and
+    # ``jsonencode``), JSON policy documents and CloudFormation YAML, and
+    # Kubernetes Roles. Literal values only.
+    "wildcard_iam": (
+        GenericTokens(
+            (
+                r'(?<![\w-])(?:actions|not_actions|resources|not_resources)\s*=\s*\[\s*"\*"',
+                r'(?<![\w-])"?(?:Action|NotAction|Resource|NotResource)"?\s*[:=]\s*\[?\s*[\'"]\*[\'"]',
+            ),
+            "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege",
+        ),
+        GenericTokens(
+            (r"(?<![\w-])(?:verbs|resources|apiGroups)\s*:\s*\[\s*[\'\"]?\*[\'\"]?\s*\]",),
+            "https://kubernetes.io/docs/concepts/security/rbac-good-practices/",
+        ),
+    ),
+    # The key of a YAML block list whose item is a lone "*" (``verbs:`` then
+    # ``- "*"``); any other key (``hosts:``) is not IAM.
+    "wildcard_list_key": (
+        GenericTokens(
+            (r"^\s*(?:verbs|resources|apiGroups|Action|NotAction|Resource|NotResource)\s*:\s*$",),
+            "https://kubernetes.io/docs/reference/access-authn-authz/rbac/",
+        ),
+    ),
+    # A whole-internet CIDR as the source of a firewall or security-group
+    # rule: AWS security groups (``cidr_blocks``, ``cidr_ipv4``,
+    # CloudFormation ``CidrIp``), GCP firewalls (``source_ranges``), Azure
+    # (``source_address_prefix``) and Kubernetes NetworkPolicy ``ipBlock``
+    # (``cidr``). A route's ``cidr_block`` is not a rule source.
+    "open_cidr": (
+        GenericTokens(
+            (
+                r'(?<![\w-])"?(?:cidr_blocks|ipv6_cidr_blocks|cidr_ipv4|cidr_ipv6|'
+                r'source_ranges|source_address_prefix|source_address_prefixes|'
+                r'CidrIp|CidrIpv6|cidr)"?\s*[:=]\s*\[?\s*[\'"]?(?:0\.0\.0\.0/0|::/0)(?![\d/])',
+            ),
+            "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-group-rules.html",
+        ),
+    ),
+    # Direction words: the nearest one at or above an open CIDR decides
+    # whether it is ingress (counted) or egress (outbound, not counted).
+    "egress_marker": (
+        GenericTokens(
+            (r"(?i)egress",),
+            "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-group-rules.html",
+        ),
+    ),
+    "ingress_marker": (
+        GenericTokens(
+            (r"(?i)ingress",),
+            "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-group-rules.html",
+        ),
+    ),
+    # Storage encryption explicitly switched off (Terraform, CloudFormation).
+    "unencrypted_storage": (
+        GenericTokens(
+            (
+                r"(?<![\w-])(?:encrypted|storage_encrypted)\s*=\s*false(?![\w-])",
+                r"(?<![\w-])(?:Encrypted|StorageEncrypted)\s*:\s*[\'\"]?false(?![\w-])",
+            ),
+            "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html",
+        ),
+    ),
+    # Terraform resources whose encryption defaults to off and must be set:
+    # RDS (``storage_encrypted``) and EBS (``encrypted``).
+    "encryption_required_resource": (
+        GenericTokens(
+            (r'^\s*resource\s+"(?:aws_db_instance|aws_rds_cluster|aws_ebs_volume)"',),
+            "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance",
+        ),
+    ),
+    "encryption_key": (
+        GenericTokens(
+            (r"(?<![\w-])(?:encrypted|storage_encrypted)\s*=",),
+            "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance",
+        ),
+    ),
+    # A remote state backend (any but ``local``) or HCP Terraform ``cloud``.
+    "remote_backend": (
+        GenericTokens(
+            (r'^\s*backend\s+"(?!local")[\w-]+"', r"^\s*cloud\s*\{"),
+            "https://developer.hashicorp.com/terraform/language/backend",
+        ),
+    ),
+    # The S3 backend locks state only with ``use_lockfile`` or a DynamoDB
+    # table; the other remote backends lock natively.
+    "s3_backend": (
+        GenericTokens(
+            (r'^\s*backend\s+"s3"',),
+            "https://developer.hashicorp.com/terraform/language/backend/s3",
+        ),
+    ),
+    "s3_lock": (
+        GenericTokens(
+            (r"(?<![\w-])(?:dynamodb_table\s*=|use_lockfile\s*=\s*true)",),
+            "https://developer.hashicorp.com/terraform/language/backend/s3#state-locking",
+        ),
+    ),
+    # Per-environment separation: a Terraform file under an environment
+    # folder, a per-environment variables file, or workspace-aware code.
+    "environment_paths": (
+        GenericTokens(
+            tuple(
+                f"**/{folder}/**"
+                for folder in (
+                    "environments", "envs", "env", "stages", "live",
+                    "dev", "development", "staging", "stage", "prod",
+                    "production", "qa", "uat",
+                )
+            )
+            + tuple(
+                f"**/*{name}*.tfvars"
+                for name in ("dev", "staging", "stage", "prod", "qa", "uat")
+            ),
+            "https://developer.hashicorp.com/terraform/language/state/workspaces",
+        ),
+    ),
+    "environment_token": (
+        GenericTokens(
+            (r"(?<![\w-])terraform\.workspace(?![\w-])",),
+            "https://developer.hashicorp.com/terraform/language/state/workspaces",
+        ),
+    ),
+    # Managed database resources (relational and Memorystore Redis).
+    "database_resource": (
+        GenericTokens(
+            (
+                r'^\s*resource\s+"(?:aws_db_instance|aws_rds_cluster|'
+                r'google_sql_database_instance|google_redis_instance)"',
+            ),
+            "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_backing_up_data_identified_backups_data.html",
+        ),
+    ),
+    # A backup or point-in-time-recovery setting stated with a literal.
+    "database_backup": (
+        GenericTokens(
+            (
+                r"(?<![\w-])backup_retention_period\s*=\s*[1-9]",
+                r"(?<![\w-])point_in_time_recovery_enabled\s*=\s*true",
+                r"(?<![\w-])enabled\s*=\s*true",
+                r'(?<![\w-])persistence_mode\s*=\s*"RDB"',
+            ),
+            "https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/sql_database_instance",
+        ),
+    ),
+    "database_backup_key": (
+        GenericTokens(
+            (r"(?<![\w-])(?:backup_retention_period|point_in_time_recovery_enabled|persistence_mode)\s*=",),
+            "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance",
+        ),
+    ),
+    # A high-availability setting stated with a literal: RDS Multi-AZ, a
+    # regional Cloud SQL instance, a Standard-HA Memorystore tier, or an
+    # Aurora cluster listing two or more availability zones.
+    "database_ha": (
+        GenericTokens(
+            (
+                r"(?<![\w-])multi_az\s*=\s*true",
+                r'(?<![\w-])availability_type\s*=\s*"REGIONAL"',
+                r'(?<![\w-])tier\s*=\s*"STANDARD_HA"',
+                r"(?<![\w-])availability_zones\s*=\s*\[[^\],]*,",
+            ),
+            "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html",
+        ),
+    ),
+    "database_ha_key": (
+        GenericTokens(
+            (r"(?<![\w-])(?:multi_az|availability_type|tier|availability_zones)\s*=",),
+            "https://cloud.google.com/sql/docs/mysql/high-availability",
+        ),
+    ),
+}
+"""Cited language-neutral IaC facts for the infrastructure dimension (T042).
+Terraform, CloudFormation and Kubernetes files belong to no registry language
+(the registry is keyed by source suffix), so they sit here (T045 precedent)."""
 
 
 @lru_cache(maxsize=1)

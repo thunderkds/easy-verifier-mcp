@@ -3015,6 +3015,41 @@ def _operations_fact(view: _PackView) -> MetricAbstention:
     )
 
 
+INFRASTRUCTURE = "infrastructure"
+
+INFRASTRUCTURE_METRICS = (
+    "iac_wildcard_iam_observed",
+    "iac_open_ingress_observed",
+    "iac_unencrypted_storage_observed",
+    "terraform_locked_remote_state_missing",
+    "terraform_environment_separation_missing",
+    "database_backup_unconfigured",
+    "database_ha_unconfigured",
+)
+"""The T042 infrastructure rule metrics (areas #11, #23, #24), computed by
+the ``infrastructure`` dimension over whole files and stored on
+``pack.whole_file``."""
+
+
+def _infrastructure_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the infrastructure dimension did not store
+    the metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != INFRASTRUCTURE:
+        return MetricAbstention(
+            reason=(
+                "only the infrastructure pack records IaC facts, and this is "
+                f"the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no "
+            "infrastructure facts were gathered"
+        )
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -3344,6 +3379,13 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
             name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _operations_fact
         )
         for name in OPERATIONS_METRICS
+    ),
+    # T042: infrastructure; computed over whole files by its own pack
+    *(
+        MetricDefinition(
+            name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _infrastructure_fact
+        )
+        for name in INFRASTRUCTURE_METRICS
     ),
 )
 

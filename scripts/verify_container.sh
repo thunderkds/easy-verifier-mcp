@@ -172,6 +172,7 @@ expected_tools = {
     "api",
     "data",
     "operations",
+    "infrastructure",
     "reliability",
     "list_dimensions",
     "combined",
