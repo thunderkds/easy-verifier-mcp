@@ -81,9 +81,40 @@ Alembic), ``RemoveField``/``DeleteModel``/``RenameField`` (Django),
 
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (same runner, worktree HEAD `4f0fa82`, captured 2026-10-08T04:56:17Z–04:56:34Z):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+HEAD 4f0fa82
+[2026-10-08T04:56:17Z] start coffee-project: score --repo /home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api --scope project
+[2026-10-08T04:56:20Z] exit=0 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  coffee-project
+[2026-10-08T04:56:20Z] start kitchd-project: score --repo /home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd --scope project
+[2026-10-08T04:56:31Z] exit=0 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9  kitchd-project
+[2026-10-08T04:56:31Z] start kitchd-changes: score --repo /home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd --scope changes --ref 6198efe~1..6198efe
+[2026-10-08T04:56:34Z] exit=0 156331796876d0967581a6e84ba6415c51de4271931e7f02d2cb85e3e39f97a2  kitchd-changes
+DONE
+```
+
+`cmp` of each BEFORE payload against its AFTER payload: `coffee-project identical`, `kitchd-project identical`, `kitchd-changes identical`. The changes range `6198efe~1..6198efe` adds `apps/api/prisma/migrations/20260714120000_add_user_is_active_and_invite_revoked/migration.sql`, which is non-destructive, so on real repos the destructive count is 0 both times. A destructive hit is covered only by the synthetic parity table in `tests/test_t057_migration_registry.py`.
+
+The engine constants were replaced by registry data in `src/easy_verifier/registry/curated/conventions.toml` (`migration_dirs` 9 cited rows, `destructive_migration_ddl` 5 cited rows, `destructive_migration_apis` 8 cited rows holding the former ORM alternation verbatim), read by `blast_radius.migration_patterns()`:
+
+```python
+def migration_patterns() -> tuple[frozenset[str], re.Pattern[str]]:
+    entry, _warnings = layered_conventions()
+    missing = [f for f in MIGRATION_FIELDS if not convention_values(entry, f)]
+    if missing:
+        raise ValueError(f"conventions.toml: missing {', '.join(missing)}")
+    dirs = frozenset(v.lower() for v in convention_values(entry, "migration_dirs"))
+    ddl = [
+        token_regex(t) for t in convention_values(entry, "destructive_migration_ddl")
+    ]
+    apis = list(convention_values(entry, "destructive_migration_apis"))
+    return dirs, re.compile("|".join(ddl + apis), re.IGNORECASE)
+```
+
+Sabotage check (implementer): in a copy of the HEAD sources, the `"rename to"` token and the `\bdrop_?if_?exists\b` value were removed and `_is_migration` was hard-wired to the old names. The new suite then failed exactly on `RENAME TO t2`, `Schema::dropIfExists`, `drop_if_exists` and `test_local_layer_adds_a_migration_directory` (4 failed, 59 passed). Unmodified HEAD: 63 passed.
+
+**DELTA**: a user can add a migration directory name such as `dbchanges` through the local layer's `conventions.toml`, and every migration pattern a rule uses now carries a cited registry source. Scores and payloads on coffee-shop-api and kitchd are byte-identical.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
