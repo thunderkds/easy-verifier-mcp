@@ -119,6 +119,7 @@ class _Patterns:
     hidden: frozenset[str]
     entries: tuple[str, ...]
     default_entries: tuple[str, ...]
+    browser_defaults: tuple[tuple[str, str], ...]
     viewport: tuple[re.Pattern[str], ...]
     zoom: tuple[re.Pattern[str], ...]
     browsers: tuple[tuple[str, re.Pattern[str]], ...]
@@ -138,6 +139,12 @@ def _patterns() -> _Patterns:
         return tuple(re.compile(item) for item in values(name))
 
     pairs = (item.split("=", 1) for item in values("browser_support"))
+    defaults = tuple(
+        (framework, glob)
+        for framework, glob in (
+            item.split("=", 1) for item in values("browser_support_default_entries")
+        )
+    )
     return _Patterns(
         markup=values("markup_files"),
         excluded=values("markup_excluded"),
@@ -156,6 +163,7 @@ def _patterns() -> _Patterns:
         hidden=words("aria_hidden_attributes"),
         entries=values("viewport_entries"),
         default_entries=values("viewport_default_entries"),
+        browser_defaults=defaults,
         viewport=regexes("viewport_declarations"),
         zoom=regexes("zoom_disabled"),
         browsers=tuple((glob, re.compile(body)) for glob, body in pairs),
@@ -442,6 +450,8 @@ class _Scan:
     defaulted: int
     browser_files: list[str]
     declared_in: list[tuple[str, int]]
+    browser_default: tuple[str, str] | None
+    """``(path, framework)`` of the first framework config in scope."""
     texts: dict[str, list[str]]
     """Lines of every markup and entry file read, for the excerpts."""
 
@@ -528,6 +538,16 @@ def _scan(context: DimensionContext) -> _Scan:
             if match:
                 declared_in.append((path, text.count("\n", 0, match.start()) + 1))
                 break
+    default_rules = [(_matcher((g,)), f) for f, g in patterns.browser_defaults]
+    browser_default = next(
+        (
+            (path, framework)
+            for path in sorted(shipped)
+            for applies, framework in default_rules
+            if applies(path) and context.read_source(path) is not None
+        ),
+        None,
+    )
     return _Scan(
         markup,
         len(candidates),
@@ -539,6 +559,7 @@ def _scan(context: DimensionContext) -> _Scan:
         defaulted,
         browser_files,
         declared_in,
+        browser_default,
         {path: _lines(text) for path, text in texts.items()},
     )
 
@@ -647,6 +668,21 @@ def _metrics(scan: _Scan) -> tuple[SampledMetric, ...]:
                 derivation=(
                     f"browser support declared at {redact(path)}:{line} (the "
                     "pack's browser_support)"
+                ),
+            )
+        )
+    elif scan.browser_default:
+        path, framework = scan.browser_default
+        metrics.append(
+            SampledMetric(
+                name=BROWSER_METRIC,
+                value=0,
+                abstention=None,
+                computed_from=(redact(path),),
+                derivation=(
+                    f"no explicit browser-support declaration; {redact(path)} is "
+                    f"a {framework} config, so the targets are the {framework} "
+                    "framework default (the pack's browser_support_default_entries)"
                 ),
             )
         )
