@@ -318,11 +318,11 @@ def test_patterns_come_from_the_registry_and_generic_layer() -> None:
                     "migrations.Migration", "schema.prisma", "rollback:",
                     "U(?=", "DROP\\s", "notNullable"):
         assert literal not in source, literal
-    # One source of truth: the migration knowledge is blast-radius's (T057).
+    # One source of truth: the migration knowledge is the registry's, read
+    # through blast-radius's one helper (T057 moved it out of the engine).
     from easy_verifier.dimensions import blast_radius
 
-    assert data._DESTRUCTIVE is blast_radius._DESTRUCTIVE
-    assert data.MIGRATION_DIRS is blast_radius.MIGRATION_DIRS
+    assert data.migration_patterns is blast_radius.migration_patterns
 
 
 # ---------------------------------------------------------------------------

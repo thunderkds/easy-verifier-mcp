@@ -213,7 +213,13 @@ The convention fields (T073, DDR-0011, FR-068) are read by
   ``requirement_item_patterns`` (``"id=<token>"`` anywhere or ``"line=<token>"``
   at a line start) and ``issue_reference_patterns`` (tokens), plus optional
   repository-wide ``route_tokens``. A repository's ``.easy-verifier.toml``
-  ``[conventions]`` adds to them (:func:`with_config_conventions`).
+  ``[conventions]`` adds to them (:func:`with_config_conventions`);
+* the schema-migration fields there (T057), read by the blast-radius and data
+  dimensions: ``migration_dirs`` (lowercase directory names, matched in any
+  case), ``destructive_migration_ddl`` (SQL DDL tokens) and
+  ``destructive_migration_apis`` (cited regular expressions of ORM migration
+  APIs), both matched case-insensitively. The regular-expression field is
+  curated-only (:data:`_CURATED_ONLY_FIELDS`).
 
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
@@ -354,6 +360,7 @@ _TOKEN_FIELDS = frozenset(
         "schema_constraint_markers",
         "migration_rollback_markers",
         "logging_markers",
+        "destructive_migration_ddl",
     }
 )
 
@@ -420,6 +427,9 @@ CONVENTION_FIELDS = (
     "route_tokens",
     "issue_reference_exclusions",
     "route_files",
+    "migration_dirs",
+    "destructive_migration_ddl",
+    "destructive_migration_apis",
 )
 """Fields of the ``conventions`` entry. ``route_tokens`` there applies to every
 language (a repository's own framework); per language it is an
@@ -504,6 +514,10 @@ _VALUE_SHAPES = {
     "requirement_item_patterns": (
         re.compile(r"^(id|line)=\S.*$"),
         "id=<token> (an identifier anywhere) or line=<token> (at a line start)",
+    ),
+    "migration_dirs": (
+        re.compile(r"^[a-z0-9][a-z0-9._-]*$"),
+        "a lowercase directory name such as migrations (T057)",
     ),
     "phi_values": (
         re.compile(r"^[a-z]+=\S.*$"),
@@ -978,6 +992,8 @@ def _cited_value_problem(
 
 def _value_problem(field: str, value: object, *, local: bool) -> str | None:
     """Why one value of ``field`` is malformed, or ``None``."""
+    if local and field in _CURATED_ONLY_FIELDS:
+        return "curated-only field: the local layer may not add to it"
     problem = _pattern_problem(value, path=False)
     if problem:
         return problem
@@ -1453,10 +1469,17 @@ _REGEX_FIELDS = frozenset(
         "viewport_declarations",
         "zoom_disabled",
         "browser_support",
+        "destructive_migration_apis",
     }
 )
-"""Pack fields whose values are Python regular expressions (compiled on load),
+"""Pack fields, and the curated-only ``destructive_migration_apis`` convention
+field (T057), whose values are Python regular expressions (compiled on load),
 not globs or tokens."""
+
+_CURATED_ONLY_FIELDS = frozenset({"destructive_migration_apis"})
+"""Regular-expression fields a core dimension reads: the local layer and a
+repository's ``.easy-verifier.toml`` may not add to them (T057), so no
+unbounded regex from outside the package reaches a core dimension."""
 
 
 def packs_root() -> Traversable:

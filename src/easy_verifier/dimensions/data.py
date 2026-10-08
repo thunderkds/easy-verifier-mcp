@@ -39,11 +39,10 @@ from ..core.tokens import strip
 from . import _code_extract
 from .blast_radius import (
     _COMMENT_LINE,
-    _DESTRUCTIVE,
     _DOWN_START,
     _UP_START,
-    MIGRATION_DIRS,
     _is_migration,
+    migration_patterns,
 )
 
 NAME = "data"
@@ -66,9 +65,9 @@ ROLES: tuple[SourceRole, ...] = (
     SourceRole(name=MODELS, patterns=()),
 )
 """Two pseudo-roles: migration files are the in-scope files in a directory
-the blast-radius dimension's ``MIGRATION_DIRS`` names (any case; one source of
-truth until T057), and data models are filled when the scan finds a registry
-``orm_model_markers`` token (DDR-0011)."""
+the registry's ``migration_dirs`` convention names (any case;
+``blast_radius.migration_patterns``, T057), and data models are filled when
+the scan finds a registry ``orm_model_markers`` token (DDR-0011)."""
 
 SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
@@ -166,6 +165,7 @@ def _facts(context: DimensionContext) -> dict:
     whole_repo = scope is None or getattr(scope, "kind", None) == "project"
     scope_set = frozenset(scope_files)
     tables = curated_metric_tables()
+    dirs, destructive_pattern = migration_patterns()
 
     schemas = []
     for path in sorted(
@@ -179,7 +179,7 @@ def _facts(context: DimensionContext) -> dict:
     candidates = [
         p
         for p in scope_files
-        if any(part.lower() in MIGRATION_DIRS for part in PurePosixPath(p).parts[:-1])
+        if any(part.lower() in dirs for part in PurePosixPath(p).parts[:-1])
         and not PurePosixPath(p).name.startswith(".")
         and (
             PurePosixPath(p).suffix in _DATA_SUFFIXES
@@ -203,7 +203,7 @@ def _facts(context: DimensionContext) -> dict:
         text = context.read_source(path)
         if not text or not text.strip():
             continue
-        if not _is_migration(path):
+        if not _is_migration(path, dirs):
             downs.add(path)  # a *.down.* or Flyway undo file: a rollback
             continue
         suffix = PurePosixPath(path).suffix
@@ -220,7 +220,7 @@ def _facts(context: DimensionContext) -> dict:
         context, MIGRATIONS, bool(units or downs),
         f"not found: no migration file (SQL, changelog, or code with an up "
         f"section) in an in-scope directory named "
-        f"{', '.join(sorted(MIGRATION_DIRS))}" + _not_counted(others),
+        f"{', '.join(sorted(dirs))}" + _not_counted(others),
     )
     sources = _code_extract.source_candidates(context, "data-model evidence")
     models: list[tuple[str, list[str], int]] = []
@@ -246,10 +246,10 @@ def _facts(context: DimensionContext) -> dict:
         f"no CREATE TABLE in the {len(sources)} in-scope source file(s) scanned",
     )
 
-    destructive = _destructive(units)
+    destructive = _destructive(units, destructive_pattern)
     context.whole_file = (
         _presence_metric(
-            units, downs, schemas, models, cap_note + _not_counted(others)
+            units, downs, schemas, models, cap_note + _not_counted(others), dirs
         ),
         _rollback_metric(units, downs, tables, cap_note),
         _constraint_metric(schemas + units + model_texts, tables),
@@ -315,7 +315,7 @@ def _has_rollback(path: str, text: str, downs: set[str], tables) -> bool:
     return False
 
 
-def _destructive(units) -> list[tuple[str, list[str], int]]:
+def _destructive(units, pattern) -> list[tuple[str, list[str], int]]:
     """Destructive operations outside down sections and comment lines, with
     the blast-radius dimension's patterns."""
     found = []
@@ -329,7 +329,7 @@ def _destructive(units) -> list[tuple[str, list[str], int]]:
                 down = False
             if down or _COMMENT_LINE.match(line):
                 continue
-            if _DESTRUCTIVE.search(line):
+            if pattern.search(line):
                 found.append((path, lines, number))
     return found
 
@@ -346,13 +346,13 @@ def _paths(items) -> str:
     return shown + (f", and {more} more" if more > 0 else "")
 
 
-def _presence_metric(units, downs, schemas, models, cap_note) -> SampledMetric:
+def _presence_metric(units, downs, schemas, models, cap_note, dirs) -> SampledMetric:
     name = "migrations_missing"
     if units or downs:
         return _metric(
             name, 0, [p for p, _t in units] or downs,
             f"{len(units)} migration file(s) ({_paths(units)}) in a directory "
-            f"named {', '.join(sorted(MIGRATION_DIRS))}; 0 when any exists, "
+            f"named {', '.join(sorted(dirs))}; 0 when any exists, "
             "else 1" + cap_note,
         )
     if not schemas and not models:

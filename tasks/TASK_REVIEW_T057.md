@@ -33,8 +33,53 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-08T04:44:59Z–04:45:46Z, worktree HEAD `85d018a`, no implementation change; runner `scratchpad/run.sh` = `PYTHONPATH=<worktree>/src <main>/.venv/bin/python -m easy_verifier.adapters.cli score --repo <repo> <args> </dev/null`, payload piped to `sha256sum`):
+
+```
+HEAD 85d018a
+[2026-10-08T04:44:59Z] start coffee-project: score --repo /home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api --scope project
+[2026-10-08T04:45:01Z] exit=0 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  coffee-project
+[2026-10-08T04:45:02Z] start kitchd-project: score --repo /home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd --scope project
+[2026-10-08T04:45:10Z] exit=0 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9  kitchd-project
+[2026-10-08T04:45:10Z] start kitchd-changes: score --repo /home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd --scope changes --ref 6198efe~1..6198efe
+[2026-10-08T04:45:12Z] exit=0 156331796876d0967581a6e84ba6415c51de4271931e7f02d2cb85e3e39f97a2  kitchd-changes
+DONE
+```
+
+Determinism re-run (same commit, second pass):
+
+```
+[2026-10-08T04:45:35Z] exit=0 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  coffee-project
+[2026-10-08T04:45:43Z] exit=0 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9  kitchd-project
+[2026-10-08T04:45:46Z] exit=0 156331796876d0967581a6e84ba6415c51de4271931e7f02d2cb85e3e39f97a2  kitchd-changes
+```
+
+Verbatim constants as they exist before the change (`src/easy_verifier/dimensions/blast_radius.py:705-726`):
+
+```python
+MIGRATION_DIRS = frozenset(
+    {"migrations", "migration", "migrate", "alembic", "changelog"}
+)
+"""Directory names (any case) that make a file a schema migration: Django,
+Laravel, Prisma, Knex and golang-migrate ``migrations/``, Flyway
+``db/migration/``, Rails ``db/migrate/``, Alembic ``alembic/``, Liquibase
+``db/changelog/``."""
+
+_DESTRUCTIVE = re.compile(
+    r"\bdrop\s+(?:table|column|schema|database)\b"
+    r"|\brename\s+(?:column|to)\b"
+    r"|\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?"
+    r"(?:_?if_?exists)?\b"
+    r"|\bdrop_?if_?exists\b",
+    re.IGNORECASE,
+)
+"""SQL DDL (``DROP TABLE``/``COLUMN``, ``RENAME COLUMN``/``TO``) and the
+migration APIs named after it: ``drop_table``/``remove_column`` (Rails,
+Alembic), ``RemoveField``/``DeleteModel``/``RenameField`` (Django),
+``dropColumn``/``renameColumn``/``dropIfExists`` (Knex, Laravel, Sequelize),
+``DropColumn``/``RenameTable`` (EF Core)."""
+
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
