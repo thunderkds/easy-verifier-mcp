@@ -269,3 +269,16 @@ value = [
 ]
 citation_url = "https://vite.dev/config/build-options.html#build-target"
 source_tag = "curated"
+
+# "<framework>=<file glob>": a config file of a framework that documents its own
+# default browser targets. Counted as declared support, reported as the
+# framework default, when no explicit declaration above is found (T085).
+[[browser_support_default_entries]]
+value = ["Next.js=**/next.config.js", "Next.js=**/next.config.mjs", "Next.js=**/next.config.cjs", "Next.js=**/next.config.ts"]
+citation_url = "https://nextjs.org/docs/architecture/supported-browsers"
+source_tag = "curated"
+
+[[browser_support_default_entries]]
+value = ["Nuxt=**/nuxt.config.js", "Nuxt=**/nuxt.config.ts", "Nuxt=**/nuxt.config.mjs"]
+citation_url = "https://nuxt.com/docs/api/nuxt-config#esbuild"
+source_tag = "curated"

@@ -519,6 +519,10 @@ _VALUE_SHAPES = {
         re.compile(r"^[a-z0-9][a-z0-9._-]*$"),
         "a lowercase directory name such as migrations (T057)",
     ),
+    "browser_support_default_entries": (
+        re.compile(r"^[A-Za-z][A-Za-z0-9.]*=\S+$"),
+        "<framework>=<glob>, e.g. Next.js=**/next.config.js (T085)",
+    ),
     "phi_values": (
         re.compile(r"^[a-z]+=\S.*$"),
         "<kind>=<regular expression>, e.g. ssn=... (T047)",
@@ -534,6 +538,7 @@ _PREFIXED_FIELDS = frozenset(
         "route_files",
         "phi_values",
         "browser_support",
+        "browser_support_default_entries",
     }
 )
 """Fields whose values are ``<kind>=<pattern>``: path and local-shape checks
@@ -1438,6 +1443,7 @@ PACK_FIELDS: dict[str, tuple[str, ...]] = {
         "viewport_declarations",
         "zoom_disabled",
         "browser_support",
+        "browser_support_default_entries",
     ),
 }
 """Optional packs (T047, DDR-0008 §4): ``registry/packs/<pack>.toml`` holds a
@@ -1465,7 +1471,9 @@ The frontend-a11y fields (area #19) are described in
 element and attribute names, regular expressions (``comments``,
 ``attribute_bindings``, ``dynamic_attributes``, ``viewport_declarations``,
 ``zoom_disabled``) and ``browser_support`` ``<file glob>=<regular
-expression>`` pairs.
+expression>`` pairs; ``browser_support_default_entries`` holds
+``<framework>=<glob>`` pairs for configs whose framework documents a default
+browser target (T085).
 """
 
 _REGEX_FIELDS = frozenset(
