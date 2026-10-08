@@ -16,13 +16,13 @@
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t085_a11y_default_browsers.py` (7 tests: Next, Nuxt not credited, explicit wins, neither, test-path not credited, two Next configs deterministic, cited field + local-layer shape) |
 | Verification command run | pass | `ruff check src tests` -> All checks passed!; full suite: `2 failed, 2536 passed, 2 skipped in 399.92s` (the 2 known container failures in tests/integration) |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| Negative cases hold | pass | explicit .browserslistrc + next.config → explicit wins; neither → value 1 unchanged; nuxt.config.ts alone → value 1 (Nuxt dropped); config under test paths not credited; local layer rejects bare glob — pass |
+| verify | pass | Supervisor 2026-10-08 independent tapchat-web `score --scope project --agent-input {packs:[frontend-a11y]}` on T085 src (Next-only): overall 64, frontend-a11y 60 (was 45), browser metric 0 'Next.js framework default'; pack off sha256 767479ce… identical to BEFORE — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Stage 4 code-review (Supervisor): frontend_a11y _patterns/_scan/_metrics, registry PACK_FIELDS/_VALUE_SHAPES/_PREFIXED_FIELDS, pack toml, SCORING_RULES. Finding P1 (citation does not support claim): Nuxt cited to esbuild transform target `esnext`, not a browser target → Nuxt dropped (99e3fa3). Low risk; paths redacted — pass |
+| Full smoke suite still green (no regression) | pass | Supervisor rerun after Nuxt drop: 2 failed (known stale-image container tests), 2536 passed, 2 skipped; T049 tests unedited — pass |
+| **UI: Visual regression (diff or verdict pasted)** | N/A | pure backend task |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | pure backend task |
+| **UI: Responsiveness at target viewports** | N/A | pure backend task |
 
 ---
 
@@ -57,5 +57,4 @@ pack off: exit=0  sha256 767479ce04a0915be59eee6915ee1636d48d1a72a8936e8aaf7303a
 
 **DELTA**: [one sentence — what a user can now do that they could not before]
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor reran tapchat-web pack on/off independently 2026-10-08 on the final (Next-only) branch.
