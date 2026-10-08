@@ -14,16 +14,18 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
-
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t079_express_receivers.py` (red-first; same-file binding, chained binding, `express.Router()`/`Router()`/`new Router()`, router-module params, property-from-param, zero cases `$.get`/`axios.get`/`http.get`/`window.jQuery`/`Vue.http`/non-exported helper/one-argument). Supervisor re-run 2026-10-08 with T073: `80 passed, 2306 deselected in 2.30s` |
+| Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!`; full suite (implementer, after P1 fix): `2382 passed, 2 skipped, 2 failed` — the 2 known stale-Docker container tests |
+| Negative cases hold | ☑ pass | Supervisor probe on d37a6f7: `var $ = window.jQuery; $.get('/api/x', function…)` → [], `const http = Vue.http; http.get('/api/users', (res)=>…)` → [], jQuery inside a router module → []; `module.exports = function (app) { var webapp = app.app; webapp.get('/api/c', function…) }` → [GET /api/c] |
+| verify | ☑ pass | Supervisor 2026-10-08: `find_routes` over every tracked bryony `.js` file → 18 routes, only in `dashboard/router.js` 5, `scraper/routers/master.js` 7, `web/router.js` 3, `special-character/app/main.js` 3 — no hit in jQuery client files; implementer `score --scope project --all </dev/null`: api 3→18 route handlers, requirement-fidelity routes_without_test_share 1.0 (0/3 tested) → 0.722 (5/18 tested), overall 42 unchanged (other rules still fail) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | reviewed `core/structure.py` (`find_routes`, `_bound_tokens`, `_weak_names`, `_router_call`), `core/registry.py` route_tokens validator, `registry/curated/js-ts.toml` 2 rows, test file. Findings: **P1** (fixed in 9edd3c6) RECEIVER_ASSIGN bound any `x = a.b`, so browser `$ = window.jQuery; $.get('/x', cb)` counted as a route; **P3** (fixed) stray blank-line deletion in `class Registry`, docstring missing RECEIVER_PARAM/ASSIGN. P2 noted: per-file token tuples vary, so `_route_patterns` lru_cache (64) recompiles per file — bryony project run time unchanged (~50–58 s), not acted on. Security: no new input surface; tokens are curated registry data; route regexes built with `token_regex` (escaped) — clean |
+| Full smoke suite still green (no regression) | ☑ pass | `2382 passed, 2 skipped, 2 failed` (container tests `test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`; stale image, pre-existing) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend-only |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend-only |
+| **UI: Responsiveness at target viewports** | ☐ N/A | backend-only |
+| Repro loop | ☐ N/A | feature task, not a bugfix |
+| Regression test | ☑ pass | existing `app.get`/`router.get`/NestJS tests in T073 suite unchanged and green |
+| Smoke suite | ☑ pass | bryony real-repo run (verify row) |
 ---
 
 ## Demonstration
@@ -52,5 +54,4 @@
 
 **Looseness decision**: rule (2) alone would admit `const http = this.http; http.get('/x', cfg)`. Names bound by (1)/(2) ("weak") therefore count only for a call with a `/` path literal and either a function/arrow handler as last argument or 3+ arguments (middleware chain). An identifier handler with two arguments is not a route. Cost: `webapp.get('/x', handler)` in a router module with a bare identifier handler and no middleware is missed. Constructor-bound names keep the original rule.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-08 — independently probed the false-route cases on d37a6f7 and scanned every bryony `.js` file (18 routes); trace attributed via active_task (`memory/event-trace/T079.jsonl`).
