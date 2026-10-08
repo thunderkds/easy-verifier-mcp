@@ -21,6 +21,7 @@ from easy_verifier.core.judge import (
 )
 from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.roles import GENERIC_API_FACTS, _matcher, role
+from easy_verifier.core.scope import resolve_scope
 from easy_verifier.core.score import score_repository
 from easy_verifier.dimensions import DIMENSIONS, api, list_dimensions
 
@@ -244,6 +245,43 @@ def test_removed_route_and_spec_path_are_breaking_changes(tmp_path: Path) -> Non
     assert metric["outcome"]["value"] == 2, metric
     assert "POST /v1/users" in metric["derivation"]
     assert "/v1/users" in metric["derivation"]
+
+
+def test_non_code_diff_abstains_breaking_metric_and_score_completes(
+    tmp_path: Path,
+) -> None:
+    """T083: a diff touching only a non-spec, non-source file used to raise
+    MetricCitationError (value 0, no citation); it must abstain instead."""
+    repo = _repo(tmp_path, {"prod.tfvars": "x = 1\n", "README.md": "# r\n"})
+    _git(repo, "init", "-q")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "base")
+    (repo / "prod.tfvars").write_text("x = 2\n", encoding="utf-8")
+    _git(repo, "commit", "-qam", "tfvars")
+    metric = _result(repo, scope="changes", ref="HEAD~1..HEAD")["metrics"][
+        "breaking_api_changes_observed"
+    ]
+    assert metric["outcome"]["abstained"] is True, metric
+    assert "no API specification or route source file" in metric["outcome"]["reason"]
+
+
+def test_removed_route_in_unread_file_abstains_rather_than_citing_nothing(
+    tmp_path: Path,
+) -> None:
+    """T083: removals found in a changed file the pack did not read cannot be
+    cited, so the metric abstains instead of reporting an uncited count."""
+    repo = _repo(tmp_path, GOOD)
+    _git(repo, "init", "-q")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "base")
+    (repo / "src/routes.ts").write_text(
+        ROUTES.replace("router.post('/v1/users', createUser);\n", ""), encoding="utf-8"
+    )
+    _git(repo, "commit", "-qam", "drop create")
+    scope = resolve_scope("changes", repo, None, ref="HEAD~1..HEAD")
+    metric = api._breaking_metric(scope, set())
+    assert metric.abstention is not None, metric
+    assert "was read" in metric.abstention
 
 
 def test_a_spec_generated_from_code_counts_as_a_spec(tmp_path: Path) -> None:
