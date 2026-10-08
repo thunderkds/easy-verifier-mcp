@@ -66,14 +66,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T078** — Embed repo-local / .easy-verifier.toml conventions for byte-equal replay, then use them in scoring (T075 AC 10, split out) | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-08 (parallel lane)
-- [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2 | 🔄 In Progress 2026-10-08 (parallel lane)
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T078** — Repo-local / `.easy-verifier.toml` conventions used in scoring and embedded for byte-equal replay (toml items per-call only, user 2026-10-08) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-08 (layer_paths/route_tokens/requirement/issue patterns honour extras add-only; replay byte-equal with toml deleted, nothing written to disk; secret-shaped values dropped with a warning; no-toml payloads change only by the corrected disclosure text; 2465 passed, 2 known container failures)
+- [x] **T057** — Migration knowledge into cited registry fields (`migration_dirs`, `destructive_migration_ddl` IGNORECASE tokens, `destructive_migration_apis` curated-only regex; user option D 2026-10-08) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (pure relocation: coffee/kitchd/changes-scope/destructive-hit payloads byte-identical; local layer can add dir names; 2512 passed, 2 known container failures; follow-up T086)
 - [x] **T079** — Route tokens: Express routes on any app/router name — receivers bound to `express()`/`Router()` in the file, exported-function params, and properties read from them (router-module rule, user 2026-10-08) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-08 (bryony 3→18 routes, routes↔tests 0/3→5/18 tested, overall 42 unchanged; Stage 4 P1 fixed: `$ = window.jQuery` callbacks no longer routes; cited registry rows `RECEIVER*`; 2382 passed, 2 known container failures)
 - [x] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (opt-in `packs=["frontend-a11y"]`, floor 0.25; weights img alt 25 / form labels 25 / aria-hidden focusable 20 / viewport-zoom 15 / browser support 15 (cited WCAG 2.2, accepted under 2026-10-07 policy); tapchat-web 45, overall 65→60, pack off byte-identical; 2407 passed, 2 known container failures; open P2: Next default browser targets not credited)
 - [x] **T083** — Bugfix: `score --scope changes` crashes (MetricCitationError, api `breaking_api_changes_observed`) on a diff with no API spec/route source file (from T044) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-08 (`_breaking_metric` abstains "no API specification or route source file in this diff was read" when nothing cited; repro needs `--ref`; CLI exit 2→0, MCP agrees; 2 regression tests; 2340 passed, 2 known container failures; follow-up T084)
