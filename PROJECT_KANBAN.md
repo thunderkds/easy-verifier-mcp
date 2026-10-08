@@ -18,7 +18,6 @@
 
 **Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
 
-- [ ] **T079** — Route tokens: generic Express-style `<any>.get('/…')` / `.post("/…")` forms (bryony's `webapp.get('/api/...')` unmatched → requirement-fidelity below floor) | backend-developer | C1 | Risk: Low | P1
 - [ ] **T078** — Embed repo-local / .easy-verifier.toml conventions for byte-equal replay, then use them in scoring (T075 AC 10, split out) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 14 — Evaluation experience: readable report + evaluation guide (added 2026-10-04, user brief; PRD FR-065/066)**
@@ -31,7 +30,6 @@
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
 - [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
-- [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
 
 **Follow-up from T068 Stage 4 (2026-10-04, no guide yet — needs user go-ahead)**
 - 💡 Cap per-file citation lists in score payload + report (bryony payload 476 KB → 1.08 MB → 1.64 MB per batch; architecture card lists hundreds of paths) — works against the token-saving goal of DDR-0010
@@ -68,6 +66,8 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T079** — Route tokens: generic Express-style `<any>.get('/…')` / `.post("/…")` forms (bryony's `webapp.get('/api/...')` unmatched → requirement-fidelity below floor) | backend-developer | C1 | Risk: Low | P1 | 🔄 In Progress 2026-10-08 (parallel lane)
+- [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2 | 🔄 In Progress 2026-10-08 (parallel lane)
 
 ### Ready for Review
 

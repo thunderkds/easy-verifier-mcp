@@ -24,7 +24,9 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-Decided E1/G8: frontend a11y is an optional pack, active when a frontend framework is detected (on demand) or configured; area #19.
+Decided E1/G8: frontend a11y is an optional pack for area #19. **Activation follows the pack mechanism shipped in T047 (updated by Supervisor 2026-10-08):** the pack is active only when the user names it — `.easy-verifier.toml` `packs = ["frontend-a11y"]` or MCP `agent_input.packs` — never guessed from detected frameworks. Inactive pack = byte-identical payload; area #19 then counts as uncovered.
+
+**Values already decided (user, decisions.md 2026-10-07 "just do by order"):** pack coverage floor **0.25 inclusive** (`PACK_FLOORS`). Rule weights: the agent proposes cited weights summing to 100 that admit an exact 50 (learnings 2026-10-07 T044); the Supervisor checks them at Stage 4 and reports them for after-the-fact change — no HITL stop.
 
 **Restated intent**:
 > When active, the pack statically checks markup for WCAG 2.2 basics, viewport configuration and declared browser support.
@@ -40,10 +42,10 @@ Decided E1/G8: frontend a11y is an optional pack, active when a frontend framewo
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy)
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (Supervisor 2026-10-08: E1 decision 2026-09-28 + run-order decision 2026-10-07; user approved start 2026-10-08)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
 
 > An agent must NOT start implementing until this gate is checked. If anything here is unclear,
 > STOP and ask the Supervisor (Karpathy: Think Before Coding).
@@ -65,7 +67,9 @@ Decided E1/G8: frontend a11y is an optional pack, active when a frontend framewo
 | 1 | `<img>` without `alt` = 0; form inputs without label/aria-label = 0; `aria-hidden` on focusable elements = 0 (WCAG 2.2 SC 1.1.1, 1.3.1, 4.1.2 cited) | a11y basics |
 | 2 | Viewport meta present in HTML entry; `browserslist` (or equivalent) declared | responsive + browser compat |
 | 3 | JSX/TSX/Vue/Svelte syntax patterns come from registry framework entries | on-demand frameworks |
-| 4 | Pack inactive for backend-only repos | optional |
+| 4 | Pack inactive unless configured (`packs=["frontend-a11y"]` / `agent_input.packs`); inactive → payload byte-identical to today (same check as T047) | optional, never guessed |
+| 5 | `PACK_FLOORS["frontend-a11y"]` = 0.25 inclusive; weights cited, sum 100, admit an exact 50; area #19 leaves `areas_without_rule` when the pack is active | decided values |
+| 6 | Real repo: one frontend repo (kitchd or another local repo with JSX/Vue/HTML) scored with the pack on and off — before/after pasted; off = unchanged overall | real-repo verified |
 
 ---
 
@@ -105,7 +109,7 @@ python -m ruff check src tests
 
 ## Approach
 
-**Pattern reference**: T047 healthcare pack
+**Pattern reference**: T047 healthcare / T048 finance packs — `src/easy_verifier/packs/finance.py`, `registry/packs/finance.toml`, `core/judge.py` `PACK_FLOORS` + rating rules, `core/registry.py`, `core/report.py`, `core/improve.py`, `adapters/mcp_server.py` (see `git diff --stat 380d951 d1d16ba` for the full touch list of a pack task). Tests: `tests/test_t047_packs.py`, `tests/test_t048_finance_pack.py`, and the area/doc pins in `tests/test_t071_evaluation_docs.py` / `tests/test_t082_uncovered_areas.py`.
 
 Token patterns over markup after stripping comments; conservative; every hit cited with WCAG SC link.
 
@@ -122,15 +126,19 @@ Token patterns over markup after stripping comments; conservative; every hit cit
 
 | File | Change |
 |------|--------|
-| `src/easy_verifier/registry/packs/frontend-a11y.toml` | new |
-| `src/easy_verifier/core/metrics.py` | pack metrics |
-| `tests/` |  |
+| `src/easy_verifier/registry/packs/frontend-a11y.toml` | new (cited WCAG 2.2 SC rows, framework syntax patterns) |
+| `src/easy_verifier/packs/frontend_a11y.py` (+ `packs/__init__.py`) | new pack module |
+| `src/easy_verifier/core/judge.py` | `PACK_FLOORS` + rating rules |
+| `src/easy_verifier/core/metrics.py`, `registry.py`, `report.py`, `improve.py`, `adapters/mcp_server.py` | wiring, as T048 did |
+| `tests/test_t049_a11y_pack.py` | new |
 
 ## Files Must NOT Touch
 
 | File | Reason |
 |------|--------|
 | healthcare/finance packs | separate |
+| `core/structure.py`, `registry/curated/js-ts.toml` `route_tokens` | T079 runs in parallel |
+| `dimensions/api.py` | T084 follow-up |
 
 ---
 

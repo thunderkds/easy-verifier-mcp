@@ -1,4 +1,4 @@
-# TASK_REVIEW — T049: [Short Title]
+# TASK_REVIEW — T049: Frontend accessibility pack
 
 > Sibling of `tasks/TASK_GUIDE_T049.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
