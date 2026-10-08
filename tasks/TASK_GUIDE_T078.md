@@ -29,6 +29,8 @@ DDR-0011 made every convention a declared, extendable pattern list: `layer_paths
 **Restated intent**:
 > When a repository declares extra conventions (local layer or `.easy-verifier.toml` `[conventions]`), every rule that reads conventions (layer paths, route tokens, requirement-item and issue-reference patterns) uses curated + those extras, add-only (curated always wins). Every non-curated convention value that was used is embedded in the score payload / report (as replayable agent-input `registry_entries` items with source tag `user-supplied` / local tags and source `.easy-verifier.toml` or the local layer), so `--agent-input` replay on another machine — without the local layer or the toml — reproduces the score byte-for-byte (FR-048, DDR-0005). The "only the curated … apply" disclosure is removed / updated.
 
+**Amendment (user, AskUserQuestion 2026-10-08 — option B "per-call only"):** toml conventions are embedded as `registry_entries` items `{"language":"conventions","field":<convention field>,"value":[...],"citation_url":".easy-verifier.toml","source_tag":"user-supplied"}`. Validation accepts `citation_url == ".easy-verifier.toml"` **only** for `language == "conventions"` + `user-supplied`. On replay such items are added in memory to that call's resolved conventions and **never written to disk**. Local-layer convention values (https links, local tags) are embedded as `{"language":"conventions", ...}` items too and replay-saved like other entries. Convention fields become valid `field` values for the `conventions` name.
+
 **Out of scope**:
 - New convention fields or new pattern kinds.
 - Changing how `.easy-verifier.toml` is validated (limits stay `roles.MAX_CONFIG_*`).
