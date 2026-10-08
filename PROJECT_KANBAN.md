@@ -12,6 +12,8 @@
 
 ### Todo
 
+- [ ] **T084** — Follow-up (T083 review P2): `breaking_api_changes_observed` still counts removals from diff files the api pack did not read when at least one other spec/route file was read (value partly uncited); count only read files or abstain — needs user choice | backend-developer | C1 | Risk: Med | P2 | ⬜ Todo (no guide yet)
+
 **Wave 16 — Business-domain area coverage (added 2026-10-06, user request: uncovered business-domain areas; run order T082 → T043 → T047 → T048, floors 0.25 user-approved)**
 
 **Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
@@ -66,13 +68,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T083** — Bugfix: `score --scope changes` crashes (MetricCitationError, api `breaking_api_changes_observed`) on a diff with no API spec/route source file (from T044) | backend-developer | C1 | Risk: Med | P1 | 🔄 In Progress 2026-10-07
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T083** — Bugfix: `score --scope changes` crashes (MetricCitationError, api `breaking_api_changes_observed`) on a diff with no API spec/route source file (from T044) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-08 (`_breaking_metric` abstains "no API specification or route source file in this diff was read" when nothing cited; repro needs `--ref`; CLI exit 2→0, MCP agrees; 2 regression tests; 2340 passed, 2 known container failures; follow-up T084)
 - [x] **T042** — New dimension: infrastructure (#11, #23, #24) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights wildcard IAM 20 / open ingress 20 / unencrypted storage 15 / locked remote state 15 / env separation 5 / DB backup 15 / DB HA 10 (cited, accepted under user policy); microservices-demo 70 (59→60); the 4 usual repos have no IaC and abstain, overall unchanged; cut: CloudFormation/Pulumi DB resources for #24; 2340 passed)
 - [x] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights logging 20 / audit 10 / codeowners 20 / agent guardrails 10 / agent-config secrets 20 / tool pin 10 / dev env 10 (cited, accepted under user policy); agent instructions = #29 doc rule (user); secrets = exact-pattern detectors only; kitchd 50, this repo 40, coffee/ai-training/bryony abstain (1 of 7 roles); 2309 passed)
 - [x] **T045** — New dimension: data (#4) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights migrations 30 / rollback 30 / constraints 20 / destructive ops 20 (cited, accepted under user policy); coffee 100 (77→80), kitchd 70 (55→56, Prisma has no down migrations), ai-training 40 (66→62), bryony 40 (62→59); 2281 passed)
