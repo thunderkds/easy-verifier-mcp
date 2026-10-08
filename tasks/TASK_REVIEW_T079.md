@@ -33,12 +33,17 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (2026-10-08T03:42:23Z to 03:43:14Z, pristine `git archive HEAD` of c50955f as `PYTHONPATH`, no implementation commit existed):
+`easy_verifier.adapters.cli score --repo /home/hungnguyenhuu/workspace/project/bryony/bryony --scope project --all </dev/null` (the guide's `--batches all` is not a valid flag; `--all` is the form)
+- overall 42 (10 of 13 dimensions); `api` 0, `requirement-fidelity` 0
+- requirement-fidelity `routes_without_test_share` = 1.0: "3 of 3 route(s) have no test ... backend/scripts/companies/special-character/app/main.js:15 GET /, :21 GET /fetch, :37 GET /submit" (all literal `app.get(`; none of bryony's `webapp.*` routes)
+- api `api_spec_missing`: "3 route handler(s) (backend/scripts/companies/special-character/app/main.js:15, :21, :37)"
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (2026-10-08T03:43:14Z to 03:44:11Z, worktree src with the change): identical to BEFORE. overall 42, api 0, requirement-fidelity 0, still "3 of 3 route(s)". Unit-level: `webapp = express(); webapp.get('/api/x', handler)` -> `Route(GET, /api/x, handler)`; `$.get`/`axios.get`/`map.get` -> no route (tests/test_t079_express_receivers.py, 17 passed).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**DELTA**: a JS/TS file that binds a variable to `express()` / `express.Router()` / `Router()` (including `var a = self.a = express()`) now has `<var>.get('/…', …)` counted as a route; bryony's score is unchanged because its `webapp` is bound in another file (see KNOWN LIMIT).
+
+**KNOWN LIMIT (AC 6 not met)**: bryony's 12+ `webapp.*` routes are not in `backend/server/dashboard/index.js` (which only does `var webapp = self.webapp = express(); webapp.use(...)`) but in `backend/server/dashboard/router.js`, `web/router.js` and `scraper/routers/master.js`. There `webapp` is `let webapp = app.webapp`, `var webapp = app.app`, or a parameter `function (app, webapp)`: cross-file bindings, which the guide puts out of scope. The same-file rule therefore finds 0 of them.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]

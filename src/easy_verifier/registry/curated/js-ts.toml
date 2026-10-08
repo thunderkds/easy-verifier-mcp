@@ -404,6 +404,14 @@ value = ["GET=app.get(", "POST=app.post(", "PUT=app.put(", "PATCH=app.patch(", "
 citation_url = "https://expressjs.com/en/guide/routing.html"
 source_tag = "curated"
 
+# T079: Express names its application anything (`var webapp = express()`), so
+# a call on a name bound to one of these constructors in the same file is a
+# route; an unbound receiver ($.get, axios.get, map.get) is not.
+[[route_tokens]]
+value = ["RECEIVER=express(", "RECEIVER=express.Router(", "RECEIVER=Router(", "GET=<receiver>.get(", "POST=<receiver>.post(", "PUT=<receiver>.put(", "PATCH=<receiver>.patch(", "DELETE=<receiver>.delete(", "ANY=<receiver>.all("]
+citation_url = "https://expressjs.com/en/guide/routing.html"
+source_tag = "curated"
+
 # Reliability fields (T043): areas #6, #12, #13, #15.
 
 [[swallowed_errors]]

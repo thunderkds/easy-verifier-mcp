@@ -202,7 +202,9 @@ The convention fields (T073, DDR-0011, FR-068) are read by
 
 * ``route_tokens`` — per language: ``"<METHOD>=<token>"``, a code token that
   declares a route handler (``"GET=@Get("``), ``ANY`` when the token does not
-  fix the method;
+  fix the method. A token starting ``<receiver>`` (``"GET=<receiver>.get("``)
+  matches on each name bound, in the same file, to the result of a
+  ``"RECEIVER=<constructor>"`` call (``"RECEIVER=express("``): T079;
 * the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
   and local layer, never a language) holds the language-agnostic
   :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data|shared>=<glob>"``),
@@ -424,6 +426,11 @@ language (a repository's own framework); per language it is an
 LAYERS = ("api", "service", "data", "shared")
 """``shared`` is cross-cutting (T074): never part of a layer-direction
 violation and left out of the classified share."""
+RECEIVER_KIND = "RECEIVER"
+"""``route_tokens`` kind (T079): ``RECEIVER=<constructor>`` names a call whose
+result is an application or router; a ``<METHOD>=<receiver>.get(`` token then
+matches on every name bound to one in the same file."""
+
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
 REQUIREMENT_ITEM_KINDS = ("id", "line")
 
@@ -473,9 +480,9 @@ _VALUE_SHAPES = {
         "<layer>=<glob> with layer api, service or data, e.g. api=**/controllers/**",
     ),
     "route_tokens": (
-        re.compile(rf"^({'|'.join(HTTP_METHODS)})=\S.*$"),
+        re.compile(rf"^({'|'.join(HTTP_METHODS)}|{RECEIVER_KIND})=\S.*$"),
         "<METHOD>=<token> with METHOD one of " + ", ".join(HTTP_METHODS)
-        + ", e.g. GET=@Get(",
+        + ", e.g. GET=@Get(; or RECEIVER=<constructor>, e.g. RECEIVER=express(",
     ),
     "route_files": (
         re.compile(r"^[a-z0-9][a-z0-9-]*=\S+$"),

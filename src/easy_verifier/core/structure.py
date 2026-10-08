@@ -23,7 +23,7 @@ from pathlib import PurePosixPath
 
 from .metric_tables import curated_metric_tables, token_regex
 from .metrics import LanguageTables, _is_test_file
-from .registry import Registry, RegistryEntry, load_conventions
+from .registry import RECEIVER_KIND, Registry, RegistryEntry, load_conventions
 from .roles import _config_matcher
 from .tokens import LanguageSyntax, strip
 
@@ -163,7 +163,7 @@ def find_routes(
     code = strip(text, syntax)
     found = [
         (match.start(), match.end(), method, token)
-        for method, token, regex in _route_patterns(tuple(route_tokens))
+        for method, token, regex in _route_patterns(_bound_tokens(code, route_tokens))
         for match in regex.finditer(code)
     ]
     routes: list[Route] = []
@@ -187,6 +187,46 @@ def find_routes(
             )
         )
     return tuple(routes)
+
+
+_NAME = r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*"
+_RECEIVER_MARK = "<receiver>"
+
+
+def _bound_tokens(code: str, route_tokens: Sequence[str]) -> tuple[str, ...]:
+    """``route_tokens`` with each ``<receiver>`` token expanded to the names
+    ``code`` binds to a ``RECEIVER=<constructor>`` call (T079); ordinary
+    tokens pass through. ``x = y = ctor(`` binds both ``x`` and ``y``."""
+    constructors = [
+        value.partition("=")[2]
+        for value in route_tokens
+        if value.startswith(f"{RECEIVER_KIND}=")
+    ]
+    templates = [
+        v for v in route_tokens if v.partition("=")[2].startswith(_RECEIVER_MARK)
+    ]
+    plain = [
+        v
+        for v in route_tokens
+        if v not in templates and not v.startswith(f"{RECEIVER_KIND}=")
+    ]
+    names: dict[str, None] = {}
+    if constructors and templates:
+        ctor = "|".join(token_regex(c) for c in constructors)
+        binding = re.compile(
+            rf"((?:{_NAME}(?:\s*:\s*[\w.<>]+)?\s*=\s*)+)(?:new\s+)?(?:{ctor})"
+        )
+        for match in binding.finditer(code):
+            for target in match[1].split("="):
+                name = target.split(":")[0].strip()
+                if name:
+                    names[name] = None
+    return tuple(plain) + tuple(
+        f"{method}={name}{token[len(_RECEIVER_MARK) :]}"
+        for template in templates
+        for method, _, token in [template.partition("=")]
+        for name in names
+    )
 
 
 @lru_cache(maxsize=64)
