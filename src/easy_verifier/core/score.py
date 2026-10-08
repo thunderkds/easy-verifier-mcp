@@ -45,11 +45,12 @@ from .metric_tables import (
     metric_tables,
     registry_sources,
     rejected_abstentions,
+    with_conventions,
 )
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
-from .registry import sot_root
+from .registry import RegistryEntry, convention_entries, sot_root
 from .roles import (
     GENERIC_PATTERNS,
     _registry,
@@ -60,6 +61,7 @@ from .roles import (
     registry_notes,
     review_notes,
 )
+from .structure import repo_conventions
 from .synthesis import combined_pack
 
 
@@ -243,7 +245,13 @@ def score_repository(
         by_dimension = validate_findings(findings, _pack_map(packs)).by_dimension
     stack = detect_stack(repo_path, _registry())
     frameworks = tuple((item["name"], item["language"]) for item in stack["frameworks"])
-    result = score_packs(packs, by_dimension, evaluations, frameworks=frameworks)
+    result = score_packs(
+        packs,
+        by_dimension,
+        evaluations,
+        frameworks=frameworks,
+        conventions=repo_conventions(repo_path, document),
+    )
     result = dataclasses.replace(
         result,
         stack=stack,
@@ -294,6 +302,7 @@ def score_packs(
     gate_evaluations: object | None = None,
     *,
     frameworks: Sequence[tuple[str, str]] = (),
+    conventions: RegistryEntry | None = None,
 ) -> ScoreResult:
     """Score one complete combined pack without gathering more evidence.
 
@@ -306,6 +315,10 @@ def score_packs(
     ``frameworks`` are the detected ``(framework, language)`` pairs (T037):
     each one's registry entry is merged into its language before the metric
     tables are compiled, so framework fields reach the rules.
+
+    ``conventions`` is the call's resolved entry (T078,
+    ``structure.repo_conventions``): its layer_paths classify layers, and its
+    non-curated values are embedded in ``registry_entries`` for replay.
     """
     actual = tuple(slot.dimension for slot in packs.slots)
     # Every dimension in canonical order, then any active optional packs
@@ -323,6 +336,8 @@ def score_packs(
     registry = _registry()
     applied = registry.applied(frameworks)
     tables = curated_metric_tables() if applied is registry else metric_tables(applied)
+    if conventions is not None:
+        tables = with_conventions(tables, conventions)
     metrics = rejected_abstentions(compute_metrics(packs, tables), packs, applied)
     sources = registry_sources(packs, applied)
     pack_map = _pack_map(packs)
@@ -390,7 +405,15 @@ def score_packs(
         assessments,
         comparisons,
         provenance,
-        registry_entries=registry.local_entries(name for name, _ in frameworks),
+        registry_entries=tuple(
+            sorted(
+                (
+                    *registry.local_entries(name for name, _ in frameworks),
+                    *(convention_entries(conventions) if conventions else ()),
+                ),
+                key=lambda item: json.dumps(item, sort_keys=True),
+            )
+        ),
         samples=samples,
     )
 

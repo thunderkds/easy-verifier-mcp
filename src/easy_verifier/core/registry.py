@@ -936,7 +936,7 @@ def _review_status(item: Mapping) -> str:
 
 
 def _cited_value_problem(
-    item: object, field: str, *, local: bool = False
+    item: object, field: str, *, local: bool = False, config_source: bool = False
 ) -> str | None:
     if not isinstance(item, dict):
         return "must be a table of value, citation_url, source_tag"
@@ -967,7 +967,9 @@ def _cited_value_problem(
             return f"value: {problem}"
 
     url = item["citation_url"]
-    if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not _is_https(url):
+    if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not (
+        _is_https(url) or (config_source and url == CONFIG_SOURCE)
+    ):
         return "citation_url: must be an https:// link to the source"
     if local and item["source_tag"] not in LOCAL_TAGS:
         return f"source_tag: must be one of {', '.join(LOCAL_TAGS)}"
@@ -1156,7 +1158,16 @@ def _local_entry(
         return None, "extends: only a framework entry extends a language"
     field = item.get("field")
     role = field.removeprefix("roles.") if isinstance(field, str) else None
-    if not (field in ENTRY_FIELDS or (field != role and role in known)):
+    conventions = kind == "language" and name == CONVENTIONS_ENTRY
+    if kind == "framework" and name == CONVENTIONS_ENTRY:
+        return None, f"framework: {CONVENTIONS_ENTRY!r} is a reserved entry name"
+    if conventions and field not in CONVENTION_FIELDS:
+        return None, (
+            f"field {redact(str(field))!r}: unknown field; known for "
+            f"{CONVENTIONS_ENTRY}: {', '.join(CONVENTION_FIELDS)}"
+        )
+    known_field = field in ENTRY_FIELDS or (field != role and role in known)
+    if not conventions and not known_field:
         return None, (
             f"field {redact(str(field))!r}: unknown field; known: "
             f"{', '.join(ENTRY_FIELDS)}, roles.<role>"
@@ -1180,7 +1191,14 @@ def _local_entry(
         return None, f"review_status: an item tagged {USER_APPROVED!r} is approved"
     cited = {key: item[key] for key in ("value", "citation_url", "cwe") if key in item}
     cited["source_tag"] = _INPUT_TAGS[tag]
-    problem = _cited_value_problem(cited, field, local=True)
+    # T078 (user, option B): a repository's .easy-verifier.toml convention
+    # replays with that file as its source; nothing else may name it.
+    problem = _cited_value_problem(
+        cited,
+        field,
+        local=True,
+        config_source=conventions and cited["source_tag"] == USER_SUPPLIED,
+    )
     if problem:
         return None, problem
     texts = [*cited["value"], cited["citation_url"]]
@@ -1523,6 +1541,33 @@ def with_config_conventions(
     return _add_entry(entry, extra, [])
 
 
+def convention_entries(entry: RegistryEntry) -> tuple[dict[str, object], ...]:
+    """The non-curated values of a resolved ``conventions`` entry (local
+    layer, ``.easy-verifier.toml``) as agent-input ``registry_entries`` items,
+    sorted like :meth:`Registry.local_entries`: embedded in the score so
+    replay reproduces it without that layer or file (T078, FR-048)."""
+    found = [
+        {
+            "language": CONVENTIONS_ENTRY,
+            "field": field,
+            "value": list(cited.value),
+            "citation_url": cited.citation_url,
+            "source_tag": cited.source_tag,
+        }
+        for field, cited_values in entry.fields.items()
+        for cited in cited_values
+        if cited.source_tag != CURATED
+    ]
+    return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
+
+
+def is_config_convention(entry: LocalEntry) -> bool:
+    """Whether an agent-input entry replays a repository's
+    ``.easy-verifier.toml`` convention: applied to that call only, never
+    saved to the local layer (T078, user option B)."""
+    return entry.name == CONVENTIONS_ENTRY and entry.cited.citation_url == CONFIG_SOURCE
+
+
 def save_local_entries(
     entries: Sequence[LocalEntry], root: Path, *, known_roles: Collection[str]
 ) -> None:
@@ -1578,7 +1623,8 @@ def save_local_entries(
 
 
 def _read_local(path: Path, known: frozenset[str]) -> RegistryEntry:
-    current, errors = _load_entry(path, known, local=True)
+    allowed = CONVENTION_FIELDS if path.stem == CONVENTIONS_ENTRY else ENTRY_FIELDS
+    current, errors = _load_entry(path, known, local=True, allowed=allowed)
     if errors:
         raise OSError(f"{path.name} exists but is invalid; not modified")
     return current
@@ -1884,6 +1930,8 @@ __all__ = [
     "merge",
     "overlay",
     "parse_local_entries",
+    "convention_entries",
+    "is_config_convention",
     "save_local_entries",
     "sot_root",
 ]

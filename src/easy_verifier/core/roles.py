@@ -45,10 +45,13 @@ from .models import SourceRole
 from .redact import redact
 from .registry import (
     CONVENTION_FIELDS,
+    CONVENTIONS_ENTRY,
     REJECTED,
     Registry,
     apply_reviews,
     convention_value_problem,
+    is_config_convention,
+    layered_conventions,
     layered_registry,
     local_write_problem,
     parse_local_entries,
@@ -1164,6 +1167,9 @@ def apply_registry_entries(document: Mapping, repo: str | Path) -> None:
     on this machine and :func:`registry_notes` says what was not saved.
     """
     entries, _ = parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)
+    # A replayed .easy-verifier.toml convention applies to its own call only
+    # (structure.repo_conventions); it is never saved (T078, user option B).
+    entries = tuple(entry for entry in entries if not is_config_convention(entry))
     answers, _ = parse_reviews(document.get("reviews"))
     if (entries or answers) and local_write_problem(sot_root(), Path(repo)) is None:
         try:
@@ -1207,7 +1213,9 @@ def registry_notes(document: Mapping | None, repo: str | Path) -> tuple[str, ...
     unsaved = [
         entry
         for entry in entries
-        if entry not in refused and not _in_registry(registry, entry)
+        if entry not in refused
+        and not is_config_convention(entry)
+        and not _in_registry(registry, entry)
     ]
     answers = parse_reviews(document.get("reviews") if document else None)[0]
     write_problem = local_write_problem(sot_root(), Path(repo))
@@ -1231,6 +1239,8 @@ def _in_registry(registry: Registry, entry, *, rejected: bool = False) -> bool:
     or with ``rejected`` among the rejection records (T038). A replayed
     rejection record is looked up among the records."""
     found = registry.languages.get(entry.name) or registry.frameworks.get(entry.name)
+    if entry.name == CONVENTIONS_ENTRY:
+        found = layered_conventions()[0]
     if found is None:
         return False
     if rejected or entry.cited.review_status == REJECTED:

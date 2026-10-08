@@ -25,6 +25,7 @@ from pathlib import PurePosixPath
 from .judge import Citation
 from .metrics import (
     COOKIE_FLAGS,
+    LAYER_PATHS_CURATED_NOTE,
     LanguageTables,
     Metric,
     MetricAbstention,
@@ -35,6 +36,7 @@ from .metrics import (
 from .models import CombinedPack
 from .registry import (
     AGENT_RESEARCHED,
+    CONFIG_SOURCE,
     CURATED,
     LOCAL_TAGS,
     Registry,
@@ -175,12 +177,47 @@ def metric_tables(
         **ci,
     )
     # The curated layer_paths (T074); structure imports this module, hence
-    # the late import. Local / .easy-verifier.toml layer paths are not bound
-    # here until conventions are embedded for replay (FR-048).
+    # the late import. A scoring call binds its resolved conventions (local
+    # layer, .easy-verifier.toml) through with_conventions (T078).
     from .structure import layer_of
 
     return dataclasses.replace(
         tables, layer_of=lambda path: layer_of(path, tables=tables)
+    )
+
+
+def with_conventions(
+    tables: LanguageTables, conventions: RegistryEntry
+) -> LanguageTables:
+    """``tables`` classifying layers by ``conventions``' ``layer_paths``
+    (T078), with a note naming the sources that applied."""
+    from .structure import convention_values, layer_of
+
+    paths = convention_values(conventions, "layer_paths")
+    extra = [
+        cited
+        for cited in conventions.fields.get("layer_paths", ())
+        if cited.source_tag != CURATED
+    ]
+    sources = sorted(
+        {
+            "the repository's .easy-verifier.toml"
+            if cited.citation_url == CONFIG_SOURCE
+            else "the local registry layer"
+            for cited in extra
+        }
+    )
+    count = sum(len(cited.value) for cited in extra)
+    note = (
+        f"curated layer_paths plus {count} from {' and '.join(sources)}, "
+        "listed in registry_entries"
+        if extra
+        else LAYER_PATHS_CURATED_NOTE
+    )
+    return dataclasses.replace(
+        tables,
+        layer_of=lambda path: layer_of(path, paths, tables=tables),
+        layer_paths_note=note,
     )
 
 
@@ -712,6 +749,7 @@ __all__ = [
     "ROLE_METRICS",
     "curated_metric_tables",
     "metric_tables",
+    "with_conventions",
     "registry_sources",
     "token_regex",
 ]

@@ -511,6 +511,8 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # gained areas_measured and areas_without_rule, and the overall disclosure
     # gained "measured 3 of 32 evaluation areas". Nothing else differs.
     # Merged T082 + T043 (2026-10-06): both additions above, regenerated together.
+    # Regenerated for T078: only the layer_paths disclosure text changed
+    # ("curated layer_paths only: ..."); every other byte is identical.
     # Regenerated for T043 (reliability dimension): every existing rating,
     # metric and the overall (61) are byte-identical; added are the
     # reliability rating (insufficient_measured_weight: no outbound call,
