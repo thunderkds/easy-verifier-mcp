@@ -66,14 +66,14 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T079** — Route tokens: generic Express-style `<any>.get('/…')` / `.post("/…")` forms (bryony's `webapp.get('/api/...')` unmatched → requirement-fidelity below floor) | backend-developer | C1 | Risk: Low | P1 | 🔄 In Progress 2026-10-08 (parallel lane)
-- [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2 | 🔄 In Progress 2026-10-08 (parallel lane)
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T079** — Route tokens: Express routes on any app/router name — receivers bound to `express()`/`Router()` in the file, exported-function params, and properties read from them (router-module rule, user 2026-10-08) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-08 (bryony 3→18 routes, routes↔tests 0/3→5/18 tested, overall 42 unchanged; Stage 4 P1 fixed: `$ = window.jQuery` callbacks no longer routes; cited registry rows `RECEIVER*`; 2382 passed, 2 known container failures)
+- [x] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (opt-in `packs=["frontend-a11y"]`, floor 0.25; weights img alt 25 / form labels 25 / aria-hidden focusable 20 / viewport-zoom 15 / browser support 15 (cited WCAG 2.2, accepted under 2026-10-07 policy); tapchat-web 45, overall 65→60, pack off byte-identical; 2407 passed, 2 known container failures; open P2: Next default browser targets not credited)
 - [x] **T083** — Bugfix: `score --scope changes` crashes (MetricCitationError, api `breaking_api_changes_observed`) on a diff with no API spec/route source file (from T044) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-08 (`_breaking_metric` abstains "no API specification or route source file in this diff was read" when nothing cited; repro needs `--ref`; CLI exit 2→0, MCP agrees; 2 regression tests; 2340 passed, 2 known container failures; follow-up T084)
 - [x] **T042** — New dimension: infrastructure (#11, #23, #24) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights wildcard IAM 20 / open ingress 20 / unencrypted storage 15 / locked remote state 15 / env separation 5 / DB backup 15 / DB HA 10 (cited, accepted under user policy); microservices-demo 70 (59→60); the 4 usual repos have no IaC and abstain, overall unchanged; cut: CloudFormation/Pulumi DB resources for #24; 2340 passed)
 - [x] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights logging 20 / audit 10 / codeowners 20 / agent guardrails 10 / agent-config secrets 20 / tool pin 10 / dev env 10 (cited, accepted under user policy); agent instructions = #29 doc rule (user); secrets = exact-pattern detectors only; kitchd 50, this repo 40, coffee/ai-training/bryony abstain (1 of 7 roles); 2309 passed)
