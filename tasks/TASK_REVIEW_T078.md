@@ -14,16 +14,18 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
-
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t078_repo_conventions.py` (17: merge add-only/curated wins; AC 1 toml layer_paths changes architecture + embedded; AC 2 route_tokens/requirement_item_patterns/issue_reference_patterns change requirement-fidelity and api; AC 3 local layer; AC 5 replay byte-equal + local tree unchanged; AC 6 CLI/MCP parity; MCP back-to-back no-leak; AC 8 invalid items refused; Stage 4 secret-shaped toml value ignored with warning). Implementer after fix: T078+T068+T074+T036 `127 passed` |
+| Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!` |
+| Negative cases hold | ☑ pass | toml-source items refused unless `conventions` + `user-supplied`; non-convention field, malformed value, http link refused; `conventions` as framework refused; secret-shaped toml value dropped (never used, embedded or quoted) |
+| verify | ☑ pass | Supervisor 2026-10-08 CLI: temp repo with git-ignored toml `layer_paths=["api=**/endpoints/**"]` → payload `c75f20d7…`, embedded `{"language":"conventions","field":"layer_paths",…,"citation_url":".easy-verifier.toml","source_tag":"user-supplied"}`; toml deleted, no replay → `260ecf75…` (differs); toml deleted + `--agent-input` replay → `c75f20d7…` (byte-equal); empty SOT dir still 0 files after replay. Coffee no-toml base 71fd4a1 vs branch: only 2 derivation lines differ (the AC 7 disclosure). Implementer: MCP/CLI parity test + manual comparison — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | reviewed `structure.repo_conventions/context_conventions/repo_convention_notes`, `registry._local_entry` + `convention_entries`, `score.py` threading, requirement_fidelity/api/architecture consumers, `report.py` `_render_registry_entries` (redact→escape), tests + 2 pinned-text updates. Findings: **AC 4 vs AC 7 conflict** (Supervisor's guide) resolved for AC 7 — no-toml hashes change only by the corrected disclosure text (coffee `07a08586…`→`2a12a8c9…`, kitchd `4559d8b5…`→`d1384151…`), verified by diff; **P1-security (fixed 7dba53c)** non-curated convention values left the engine unredacted in JSON `registry_entries` (new egress path) → now dropped with a warning when `redact()` would alter them; P3 known limits documented (committed toml is evidence so delete-and-replay differs; write_report shows no warning; `_breaking_metric` still curated tokens — T084) |
+| Full smoke suite still green (no regression) | ☑ pass | implementer on e03aa2f: `2 failed, 2465 passed, 2 skipped` (known stale-image container tests); post-merge full run recorded in the merge step — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend-only |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend-only |
+| **UI: Responsiveness at target viewports** | ☐ N/A | backend-only |
+| Repro loop | ☐ N/A | feature task |
+| Regression test | ☑ pass | T068 snapshot + T074 assertion updated for the disclosure string only; all else unchanged |
+| Smoke suite | ☑ pass | real-repo coffee/kitchd runs (verify row) |
 ---
 
 ## Demonstration
@@ -109,5 +111,4 @@ kitchd before 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9 a
 
 **DELTA**: A repository's `.easy-verifier.toml` `[conventions]` and the local layer's `conventions.toml` now change the score: layer paths, route tokens, requirement-item and issue-reference patterns. Every extra value used is embedded in `registry_entries`, so replaying those entries with `--agent-input` on a machine without the toml or the local layer reproduces the payload byte-for-byte. A replayed toml value applies to that call only and is never written to disk.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-08 — independent replay byte-equality run and coffee base-vs-branch payload diff; trace attributed via active_task (`memory/event-trace/T078.jsonl`).
