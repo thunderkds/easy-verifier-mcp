@@ -428,3 +428,33 @@ def test_valid_toml_item_is_accepted(tmp_path, sot):
     validate_agent_input({"registry_entries": [TOML_ITEM]}, repo)
     entries, errors = reg.parse_local_entries([TOML_ITEM], GENERIC_PATTERNS)
     assert errors == [] and reg.is_config_convention(entries[0])
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 finding: a secret-shaped convention value is never used or embedded
+# ---------------------------------------------------------------------------
+
+SECRET_TOKEN = "GET=password=FAKEfakeFAKEfake9x8y7z"
+
+
+def test_secret_shaped_toml_value_is_ignored_with_a_warning(tmp_path, sot):
+    repo = rf_repo(
+        tmp_path / "r",
+        toml=f'[conventions]\nroute_tokens = ["{SECRET_TOKEN}", "GET=@*.endpoint("]\n',
+    )
+    entry = repo_conventions(repo)
+    assert SECRET_TOKEN not in convention_values(entry, "route_tokens")  # not used
+    assert "GET=@*.endpoint(" in convention_values(entry, "route_tokens")
+
+    result = score_repository(repo, batches="all")
+    payload = json.dumps(result.to_dict())
+    assert "FAKEfake" not in payload  # not embedded, not quoted anywhere
+    assert [item["value"] for item in result.to_dict()["registry_entries"]] == [
+        ["GET=@*.endpoint("]
+    ]
+    notes = [n for n in result.registry_notes if "looks like a secret" in n]
+    assert notes == [
+        "conventions.route_tokens: 1 value(s) from .easy-verifier.toml "
+        "ignored: looks like a secret"
+    ]
+    assert "FAKEfake" not in notes[0]

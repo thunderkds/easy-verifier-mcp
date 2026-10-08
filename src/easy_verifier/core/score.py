@@ -61,7 +61,7 @@ from .roles import (
     registry_notes,
     review_notes,
 )
-from .structure import repo_conventions
+from .structure import repo_convention_notes, repo_conventions
 from .synthesis import combined_pack
 
 
@@ -257,7 +257,8 @@ def score_repository(
         stack=stack,
         registry_notes=registry_notes(document, repo_path)
         + ignored_reviews
-        + pack_notes,
+        + pack_notes
+        + repo_convention_notes(repo_path, document),
     )
 
     # One round each: a caller that already supplied agent input gets no
