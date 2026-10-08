@@ -48,6 +48,8 @@
 
 **DELTA**: routes registered on a receiver bound by a same-file `express()`/`Router()`, by a parameter of the exported function, or by a property assignment are now counted (bryony 3 -> 18 routes; routes<->tests 3 of 3 untested -> 13 of 18 untested). jQuery `$.get`, `axios.get`, `http.get` on unbound names stay 0.
 
+**Stage 4 P1 fix**: a property assignment binds a receiver only when it reads from a parameter of the exported function or from a constructor-bound name (`var $ = window.jQuery; $.get('/x', function(){})` and `const http = Vue.http` are 0). Re-run at 2026-10-08T04:01:29Z to 04:02:19Z: still 18 routes, routes<->tests 13 of 18 untested (0.722), api_spec_missing counts 18.
+
 **Looseness decision**: rule (2) alone would admit `const http = this.http; http.get('/x', cfg)`. Names bound by (1)/(2) ("weak") therefore count only for a call with a `/` path literal and either a function/arrow handler as last argument or 3+ arguments (middleware chain). An identifier handler with two arguments is not a route. Cost: `webapp.get('/x', handler)` in a router module with a bare identifier handler and no middleware is missed. Constructor-bound names keep the original rule.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the

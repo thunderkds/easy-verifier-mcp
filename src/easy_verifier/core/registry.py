@@ -204,7 +204,8 @@ The convention fields (T073, DDR-0011, FR-068) are read by
   declares a route handler (``"GET=@Get("``), ``ANY`` when the token does not
   fix the method. A token starting ``<receiver>`` (``"GET=<receiver>.get("``)
   matches on each name bound, in the same file, to the result of a
-  ``"RECEIVER=<constructor>"`` call (``"RECEIVER=express("``): T079;
+  ``"RECEIVER=<constructor>"`` call (``"RECEIVER=express("``);
+  ``RECEIVER_PARAM=<export prefix>`` and ``RECEIVER_ASSIGN=property`` bind weaker router-module names: T079;
 * the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
   and local layer, never a language) holds the language-agnostic
   :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data|shared>=<glob>"``),
@@ -434,9 +435,10 @@ result is an application or router; a ``<METHOD>=<receiver>.get(`` token then
 matches on every name bound to one in the same file. Router modules (T079
 amendment) bind weaker: ``RECEIVER_PARAM=<export prefix>`` names the parameters
 of the function a file exports (``module.exports =``), and
-``RECEIVER_ASSIGN=property`` the names assigned from a property access
-(``let webapp = app.webapp``); such a name counts only for a call with a
-``/`` path literal and a function handler or a middleware chain."""
+``RECEIVER_ASSIGN=property`` the names assigned from a property of such a
+parameter or of a constructor-bound name (``let webapp = app.webapp``);
+such a name counts only for a call with a ``/`` path literal and a
+function handler or a middleware chain."""
 
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
 REQUIREMENT_ITEM_KINDS = ("id", "line")
@@ -637,6 +639,7 @@ class Registry:
                             item["review_status"] = REJECTED
                         found.append(item)
         return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
+
 
     def detection_keys(self, language: str) -> tuple[tuple[str, str], ...]:
         """``(framework, dependency)`` pairs from ``language``'s ``frameworks``

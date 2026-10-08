@@ -235,7 +235,7 @@ def _bound_tokens(
                 if name:
                     strong[name] = None
     weak = (
-        {n: None for n in _weak_names(code, values) if n not in strong}
+        {n: None for n in _weak_names(code, values, strong) if n not in strong}
         if templates
         else {}
     )
@@ -257,14 +257,18 @@ def _bound_tokens(
 _RECEIVER_KINDS = (RECEIVER_KIND, RECEIVER_PARAM_KIND, RECEIVER_ASSIGN_KIND)
 _IDENT = r"[A-Za-z_$][\w$]*"
 _PROPERTY_ASSIGN = re.compile(
-    rf"(?<![\w$.=!<>])({_IDENT})\s*=\s*{_IDENT}(?:\.{_IDENT})+\s*(?=[;,\n)]|$)"
+    rf"(?<![\w$.=!<>])({_IDENT})\s*=\s*({_IDENT})(?:\.{_IDENT})+\s*(?=[;,\n)]|$)"
 )
 
 
-def _weak_names(code: str, values: dict[str, list[str]]) -> list[str]:
+def _weak_names(
+    code: str, values: dict[str, list[str]], strong: dict[str, None]
+) -> list[str]:
     """Names a router module binds without constructing an app: the
     parameters of the function a file exports (``RECEIVER_PARAM`` prefixes)
-    and names assigned from a property access (``RECEIVER_ASSIGN=property``)."""
+    and names assigned from a property of one of those parameters or of a
+    constructor-bound name (``RECEIVER_ASSIGN=property``): ``var $ =
+    window.jQuery`` reads from nothing the file exports, so it binds nothing."""
     names: list[str] = []
     for prefix in values.get(RECEIVER_PARAM_KIND, ()):
         head = token_regex(prefix).removeprefix(r"\b")
@@ -279,7 +283,8 @@ def _weak_names(code: str, values: dict[str, list[str]]) -> list[str]:
                 if found:
                     names.append(found[1])
     if "property" in values.get(RECEIVER_ASSIGN_KIND, ()):
-        names += [m[1] for m in _PROPERTY_ASSIGN.finditer(code)]
+        sources = {*names, *strong}
+        names += [m[1] for m in _PROPERTY_ASSIGN.finditer(code) if m[2] in sources]
     return names
 
 

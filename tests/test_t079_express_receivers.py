@@ -141,16 +141,21 @@ def test_exported_function_parameter_binds_receiver(head):
     [
         "let webapp = app.webapp,",
         "var webapp = app.app;",
-        "const webapp = this.router;",
     ],
 )
 def test_property_assignment_binds_receiver(assign):
-    text = f"{assign}\nwebapp.post('/api/a', function (req, res) {{}});\n"
+    text = (
+        "module.exports = function (app) {\n"
+        f"{assign}\nwebapp.post('/api/a', function (req, res) {{}});\n}};\n"
+    )
     assert [r.path for r in _routes(text)] == ["/api/a"]
 
 
 def test_middleware_chain_with_identifier_handler_counts():
-    text = "let webapp = app.webapp;\nwebapp.get('/a', auth, handler);\n"
+    text = (
+        "module.exports = function (app) {\n"
+        "let webapp = app.webapp;\nwebapp.get('/a', auth, handler);\n};\n"
+    )
     assert [r.path for r in _routes(text)] == ["/a"]
 
 
@@ -183,3 +188,30 @@ def test_weak_receiver_kinds_are_cited_registry_data():
         reg.convention_value_problem("route_tokens", "RECEIVER_PARAM=export default")
         is None
     )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "var $ = window.jQuery;\n$.get('/api/x', function (d) { render(d); });\n",
+        "const http = Vue.http;\n"
+        "http.get('/api/users', (res) => { this.users = res; });\n",
+        "const webapp = this.router;\nwebapp.get('/a', function () {});\n",
+        "function helper(app) { var w = app.x; w.get('/a', function(){}) }\n",
+    ],
+)
+def test_property_of_a_non_parameter_binds_nothing(text):
+    assert _routes(text) == ()
+
+
+def test_property_of_an_exported_parameter_or_strong_receiver_binds():
+    exported = (
+        "module.exports = function (app) { var webapp = app.app;"
+        " webapp.get('/api/c', function (req, res) {}); }\n"
+    )
+    assert [r.path for r in _routes(exported)] == ["/api/c"]
+    strong = (
+        "const app = express();\nconst r = app.router;\n"
+        "r.get('/api/d', function (req, res) {});\n"
+    )
+    assert [r.path for r in _routes(strong)] == ["/api/d"]
