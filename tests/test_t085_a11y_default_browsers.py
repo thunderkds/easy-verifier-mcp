@@ -1,4 +1,4 @@
-"""T085 - a Next.js / Nuxt config counts as the framework's default browser
+"""T085 - a Next.js config counts as the framework's default browser
 targets when no explicit browser-support declaration exists (area #19)."""
 
 from __future__ import annotations
@@ -23,11 +23,12 @@ def test_next_config_is_the_framework_default(tmp_path):
     assert _metric(result, BROWSERS)["computed_from"] == ["next.config.js"]
 
 
-def test_nuxt_config_is_the_framework_default(tmp_path):
+def test_nuxt_config_is_not_credited_no_documented_default(tmp_path):
     result = _run(tmp_path, {"nuxt.config.ts": "export default {};\n"})
-    assert _value(result, BROWSERS) == 0
+    assert _value(result, BROWSERS) == 1
     text = _derivation(result, BROWSERS)
-    assert "framework default" in text and "Nuxt" in text
+    assert "no browser-support declaration" in text
+    assert "framework default" not in text
 
 
 def test_explicit_declaration_wins(tmp_path):
@@ -56,23 +57,23 @@ def test_config_in_a_test_path_is_not_credited(tmp_path):
     assert _value(result, BROWSERS) == 1
 
 
-def test_both_configs_pick_the_first_by_path(tmp_path):
+def test_two_next_configs_pick_the_first_by_path(tmp_path):
     result = _run(
         tmp_path,
         {
-            "next.config.js": "module.exports = {};\n",
-            "nuxt.config.ts": "export default {};\n",
+            "web/next.config.js": "module.exports = {};\n",
+            "admin/next.config.js": "module.exports = {};\n",
         },
     )
-    assert "Next.js" in _derivation(result, BROWSERS)
+    metric = _metric(result, BROWSERS)
+    assert metric["computed_from"] == ["admin/next.config.js"]
 
 
 def test_field_is_a_cited_registry_field_with_a_shape_check():
     assert FIELD in PACK_FIELDS["frontend-a11y"]
     items = load_pack("frontend-a11y").fields[FIELD]
-    assert {c.citation_url for c in items} >= {
-        "https://nextjs.org/docs/architecture/supported-browsers",
-        "https://nuxt.com/docs/api/nuxt-config#esbuild",
+    assert {c.citation_url for c in items} == {
+        "https://nextjs.org/docs/architecture/supported-browsers"
     }
     assert _value_problem(FIELD, "Remix=**/remix.config.js", local=True) is None
     assert _value_problem(FIELD, "**/remix.config.js", local=True) is not None

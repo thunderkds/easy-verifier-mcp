@@ -236,7 +236,7 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `form_controls_without_label_observed` | 25 | = 0 | same markup fields, `form_controls`, `unnamed_input_types`, `name_attributes`, `label_tags`, `label_for_attributes`; abstains with no verifiable form control |
 | | `aria_hidden_focusable_observed` | 20 | = 0 | same markup fields, `aria_hidden_attributes`, `focusable_tags`, `focusable_with_href`; abstains with no `aria-hidden` element |
 | | `viewport_missing_or_zoom_disabled_observed` | 15 | = 0 | pack fields `viewport_entries`, `viewport_default_entries`, `viewport_declarations`, `zoom_disabled`; abstains with no entry document |
-| | `browser_support_declaration_missing` | 15 | = 0 | pack fields `browser_support`, `browser_support_default_entries` (a Next.js or Nuxt config counts as the framework default when nothing explicit is declared); abstains with no markup |
+| | `browser_support_declaration_missing` | 15 | = 0 | pack fields `browser_support`, `browser_support_default_entries` (a Next.js config counts as the framework default when nothing explicit is declared); abstains with no markup |
 | supply-chain | `lockfile_missing` | 20 | = 0 | `roles.lockfile` |
 | | `licence_file_missing` | 15 | = 0 | none (generic `licence-file` role patterns) |
 | | `ci_actions_unpinned_share` | 20 | = 0 | none (generic CI facts in `core/roles.py`); abstains where no external `uses:` reference is quoted |

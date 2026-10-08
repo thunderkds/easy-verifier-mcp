@@ -14,7 +14,7 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t085_a11y_default_browsers.py` (7 tests: Next, Nuxt, explicit wins, neither, test-path not credited, both configs deterministic, cited field + local-layer shape) |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t085_a11y_default_browsers.py` (7 tests: Next, Nuxt not credited, explicit wins, neither, test-path not credited, two Next configs deterministic, cited field + local-layer shape) |
 | Verification command run | pass | `ruff check src tests` -> All checks passed!; full suite: `2 failed, 2536 passed, 2 skipped in 399.92s` (the 2 known container failures in tests/integration) |
 | Negative cases hold | ☐ pass / ☐ fail | |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
@@ -52,6 +52,8 @@ pack on : exit=0  overall 64, frontend-a11y 45 -> 60 (other contributors unchang
     computed_from: ['apps/admin-dashboard/next.config.ts']
 pack off: exit=0  sha256 767479ce04a0915be59eee6915ee1636d48d1a72a8936e8aaf7303a520d316a9  (identical to BEFORE)
 ```
+
+**Nuxt dropped (Supervisor review, 2026-10-08)**: the only official Nuxt statement found was `esbuild.options.target = "esnext"` (https://nuxt.com/docs/api/nuxt-config#esbuild), a transform target, not a documented default browser target; per the guide's STOP condition the Nuxt entry was removed. A `nuxt.config.ts` with no explicit declaration still rates 1 (test `test_nuxt_config_is_not_credited_no_documented_default`). The tapchat-web AFTER above is Next.js-only and unaffected. Tests after the change: `97 passed` (t049 + t085 + t047), `ruff check src tests` clean.
 
 **DELTA**: [one sentence — what a user can now do that they could not before]
 
