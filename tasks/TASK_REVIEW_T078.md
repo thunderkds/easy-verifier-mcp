@@ -33,8 +33,32 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-10-08T04:27Z by backend-developer on worktree HEAD `71fd4a1` (no T078 code yet).
+Command: `EASY_VERIFIER_SOT=<empty dir> PYTHONPATH=<worktree>/src .venv/bin/python -m easy_verifier.adapters.cli score --repo <r> --scope project --all </dev/null`
+
+1. Temp git repo (`requirements.txt`; `app/endpoints/users.py` -> imports `app.services.user_service`; `app/services/user_service.py` -> imports `app.repositories.user_repo`; `app/repositories/user_repo.py` -> imports `app.endpoints.users`, a data -> api import). Curated `layer_of`: endpoints `None`, services `service`, repositories `data`.
+
+```
+== BEFORE (worktree HEAD 71fd4a1) 2026-10-08T04:27:17Z
+-- without .easy-verifier.toml
+sha256 dd5ac6a50d5cd0225635eb28723a9fe66dfb6c9fb410262f1419cbfe7a4b2df1 | registry_entries in payload: False
+ architecture.layer_direction_violations value: {'abstained': False, 'value': 0}
+ derivation: 0 import statement(s) from a lower to a higher layer (data -> service, service -> api, data -> api). 2 of 3 non-shared source file(s) quoted here classify into a layer (api, service, data) by the declared layer_paths conventions (only the curated layer_paths apply: local-layer and .easy-verifier.toml layer paths are not used in scoring until conventions are embedded for replay (T075)); shared and unclassified files n
+-- with .easy-verifier.toml [conventions] layer_paths = ["api=**/endpoints/**"]
+sha256 9eebe62f310971f1ee8819ec97a6ddd4c9f622f4599ccd1cb3161a8cc37f5e04 | registry_entries in payload: False
+ architecture.layer_direction_violations value: {'abstained': False, 'value': 0}
+ derivation: 0 import statement(s) from a lower to a higher layer (data -> service, service -> api, data -> api). 2 of 3 non-shared source file(s) quoted here classify into a layer (api, service, data) by the declared layer_paths conventions (only the curated layer_paths apply: local-layer and .easy-verifier.toml layer paths are not used in scoring until conventions are embedded for replay (T075)); shared and unclassified files n
+```
+
+The toml extra is ignored: still "2 of 3" classified, 0 violations (the data -> api import is invisible), no `registry_entries`, "only the curated layer_paths apply" disclosure present. (The two payload hashes differ only because the toml file itself is a repository file in scope.)
+
+2. Real repos, no `.easy-verifier.toml`, empty local layer (no-regression baseline):
+
+```
+coffee exit=0 2026-10-08T04:27:31Z 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  -
+coffee2 exit=0 2026-10-08T04:27:34Z 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  -
+kitchd exit=0 2026-10-08T04:27:43Z 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9  -
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
