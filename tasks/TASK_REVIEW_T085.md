@@ -33,8 +33,15 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-08T07:29:05Z-07:29:45Z by backend-developer at worktree HEAD 4d2223f, no code changed; real repo `/home/hungnguyenhuu/workspace/project/beautifly/github/tapchat-web`, `score --repo R --scope project`, pack on via `--agent-input {"packs": ["frontend-a11y"]}` file):
+
+```text
+pack on : exit=0  overall 60, contributors architecture 67, code-quality 70, security 59, frontend-a11y 45
+  browser_support_declaration_missing value=1
+    derivation: "no browser-support declaration (a browserslist query, a package.json browserslist key, a Babel targets option or a Vite build.target) in 14 candidate file(s)"
+    computed_from: 14 package.json files
+pack off: exit=0  sha256 767479ce04a0915be59eee6915ee1636d48d1a72a8936e8aaf7303a520d316a9
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
