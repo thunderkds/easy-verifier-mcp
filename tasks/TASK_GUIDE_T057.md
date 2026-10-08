@@ -34,6 +34,8 @@ DDR-0007 requires every pattern a rule judges with to be cited registry data wit
 **Restated intent**:
 > The migration directory names and destructive-operation patterns live in cited registry fields — language-agnostic ones (directory names, SQL DDL) in the curated `conventions` entry, ORM API names in each language's curated toml with a citation per framework — and `blast_radius.py` / `data.py` read them from the registry. Scores and payloads on real repos stay **byte-identical** (pure relocation), except that derivations may name the registry as the pattern source.
 
+**Amendment (user, AskUserQuestion 2026-10-08 — AC 3 gate resolved, option D):** the ORM destructive-operation pattern moves as **cited regex values** (existing `_REGEX_FIELDS` field kind in `core/registry.py`), exact same alternation as today; SQL DDL rows as plain tokens compiled with `re.IGNORECASE` (precedent: `provenance_steps`, `metric_tables.py:216`); migration directory names as a plain lowercase list in `conventions`. The regex field is **curated-only**: the local layer may not add values to it (no ReDoS path into a core dimension); the local layer may add directory names (AC 6). `.down.`/Flyway `U<n>`, comment/down/up regexes stay in the engine.
+
 **Out of scope**:
 - Adding new migration frameworks or new destructive operations (relocation only; anything new is a separate task).
 - Changing #5 / #4 weights, thresholds or metric names.
