@@ -16,13 +16,13 @@
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | tests/test_t084_breaking_read_only.py (7 tests, AC1-6); with test_t044_api.py: 27 passed |
 | Verification command run | pass | full suite: 2 failed (pre-existing container tests test_adapter_parity/test_redaction_proof), 2536 passed, 2 skipped; ruff clean |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| Negative cases hold | pass | all-read diff: derivation unchanged, no 'not counted'; no read file: T083 abstention (test_t044_api unedited, green); zero-removal unread files not listed; unread list capped 'and N more' — pass |
+| verify | pass | Supervisor 2026-10-08: CLI on independent 22-spec temp repo `--scope changes --ref HEAD~1..HEAD` → value 60, computed_from svc01..svc20, derivation 'not counted ... svc21/openapi.yaml (3), svc22/openapi.yaml (3)'; CLI↔MCP parity test green; reran 27 passed, ruff clean — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Stage 4 code-review (Supervisor): api.py `_facts` caller + `_breaking_metric` + `_not_counted_note`, new tests. No P0/P1. Security (Medium risk, manual — built-in skill needs origin/HEAD): new derivation text names unread paths via `redact()`, secret files still skipped before parsing; no new egress of content — pass |
+| Full smoke suite still green (no regression) | pass | 2 failed (known stale-image container tests), 2536 passed, 2 skipped; coffee-shop-api project sha256 identical BEFORE/AFTER (2a12a8c9…) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | N/A | pure backend task |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | pure backend task |
+| **UI: Responsiveness at target viewports** | N/A | pure backend task |
 
 ---
 
@@ -43,5 +43,4 @@ coffee-shop-api `--scope project` sha256 baseline: sha256 2a12a8c9830ad14a0aa42d
 
 **DELTA**: the breaking-change count now equals exactly what it cites; removals in unread changed files are named as "not counted", and repo `route_tokens` conventions find removed custom routes.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor reran the AFTER independently 2026-10-08 (temp repo, value 60 / 20 cited / 2 not counted).
