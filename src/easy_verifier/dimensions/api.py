@@ -171,7 +171,9 @@ def _facts(context: DimensionContext):
             _version_metric(specs, scan),
             _validation_metric(scan),
         )
-    ) + (_breaking_metric(scope, {p for p, _t in specs} | scan["paths"]),)
+    ) + (_breaking_metric(
+        scope, {p for p, _t in specs} | scan["paths"], context_conventions(context)
+    ),)
     if not whole_repo:
         # Presence is a repository property: a narrow scope can show it, but
         # its absence among the scope's files is not the repository's.
@@ -380,9 +382,10 @@ def _validation_metric(scan) -> SampledMetric:
     )
 
 
-def _breaking_metric(scope, read: set[str]) -> SampledMetric:
+def _breaking_metric(scope, read: set[str], conventions=None) -> SampledMetric:
     """Removed endpoints and specification fields in the diff; cites only
-    the changed files this pack read (FR-027)."""
+    the changed files this pack read (FR-027); removals in changed files it
+    did not read are listed as not counted, never added to the value."""
     name = "breaking_api_changes_observed"
     kind = getattr(scope, "kind", None)
     if kind != KIND_CHANGES:
@@ -397,9 +400,12 @@ def _breaking_metric(scope, read: set[str]) -> SampledMetric:
             name, abstention="the changes scope carries no diff (git diff failed)"
         )
     tables = curated_metric_tables()
-    by_suffix = _suffix_tokens(_curated_conventions())
+    by_suffix = _suffix_tokens(
+        _curated_conventions() if conventions is None else conventions
+    )
     is_spec = _matcher(role(SPEC).patterns)
     gone: list[tuple[str, int, str]] = []
+    not_counted: list[tuple[str, int]] = []
     cited: set[str] = set()
     for item in (f for f in _diff_files(diff) if not f["secret"]):
         path, old = item["path"], item["old_path"]
@@ -436,14 +442,16 @@ def _breaking_metric(scope, read: set[str]) -> SampledMetric:
             continue
         if path in read:
             cited.add(path)
-        gone.extend(removed)
+            gone.extend(removed)
+        elif removed:
+            not_counted.append((path, len(removed)))
     if not cited:
         return _metric(
             name,
             abstention="no API specification or route source file in this diff "
             "was read" + (
-                f", so the {len(gone)} removed endpoint(s) or field(s) found in "
-                "it cannot be cited" if gone else ""
+                f", so the {sum(n for _p, n in not_counted)} removed endpoint(s) or "
+                "field(s) found in it cannot be cited" if not_counted else ""
             ),
         )
     return _metric(
@@ -452,10 +460,22 @@ def _breaking_metric(scope, read: set[str]) -> SampledMetric:
         "re-added in the diff"
         + (": " + ", ".join(f"{redact(p)}:{n} {redact(k)}" for p, n, k in
                             gone[:MAX_EXAMPLES]) if gone else "")
+        + _not_counted_note(not_counted)
         + "; a removed route is a route handler (registry route_tokens) whose "
         "method and path no added line declares, a removed field a "
         "specification definition line (generic layer: YAML/JSON/GraphQL key "
         "at its indentation, protobuf field or rpc) no added line restores",
+    )
+
+
+def _not_counted_note(items: list[tuple[str, int]]) -> str:
+    if not items:
+        return ""
+    shown = ", ".join(f"{redact(p)} ({n})" for p, n in items[:MAX_EXAMPLES])
+    more = len(items) - MAX_EXAMPLES
+    return (
+        f"; not counted (changed file(s) with removals this pack did not "
+        f"read): {shown}" + (f" and {more} more" if more > 0 else "")
     )
 
 
