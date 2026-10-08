@@ -39,11 +39,16 @@
 - requirement-fidelity `routes_without_test_share` = 1.0: "3 of 3 route(s) have no test ... backend/scripts/companies/special-character/app/main.js:15 GET /, :21 GET /fetch, :37 GET /submit" (all literal `app.get(`; none of bryony's `webapp.*` routes)
 - api `api_spec_missing`: "3 route handler(s) (backend/scripts/companies/special-character/app/main.js:15, :21, :37)"
 
-**AFTER** (2026-10-08T03:43:14Z to 03:44:11Z, worktree src with the change): identical to BEFORE. overall 42, api 0, requirement-fidelity 0, still "3 of 3 route(s)". Unit-level: `webapp = express(); webapp.get('/api/x', handler)` -> `Route(GET, /api/x, handler)`; `$.get`/`axios.get`/`map.get` -> no route (tests/test_t079_express_receivers.py, 17 passed).
+**AFTER** (router-module rule, 2026-10-08T03:52:03Z to 03:53:01Z, same command, worktree src): overall stays 42, but the route evidence rose:
+- api `api_spec_missing`: "18 route handler(s) (backend/server/dashboard/router.js:83, :88, :107, :108, :112, and 13 more)" (BEFORE: 3)
+- requirement-fidelity `routes_without_test_share` = 0.722: "13 of 18 route(s) have no test: 5 tested (matched by path literal 5, by handler name 0)" (BEFORE: 1.0, "3 of 3", 0 tested)
+- find_routes per file: dashboard/router.js 5, web/router.js 3, scraper/routers/master.js 7 = 15 webapp routes + the 3 literal `app.get` ones.
+- api and requirement-fidelity ratings remain 0 (other rules still fail); only the route facts changed.
+- The first, same-file-only AFTER (03:43:14Z) was identical to BEFORE: bryony's `webapp` is bound cross-file, which the amendment's router-module rule now covers.
 
-**DELTA**: a JS/TS file that binds a variable to `express()` / `express.Router()` / `Router()` (including `var a = self.a = express()`) now has `<var>.get('/…', …)` counted as a route; bryony's score is unchanged because its `webapp` is bound in another file (see KNOWN LIMIT).
+**DELTA**: routes registered on a receiver bound by a same-file `express()`/`Router()`, by a parameter of the exported function, or by a property assignment are now counted (bryony 3 -> 18 routes; routes<->tests 3 of 3 untested -> 13 of 18 untested). jQuery `$.get`, `axios.get`, `http.get` on unbound names stay 0.
 
-**KNOWN LIMIT (AC 6 not met)**: bryony's 12+ `webapp.*` routes are not in `backend/server/dashboard/index.js` (which only does `var webapp = self.webapp = express(); webapp.use(...)`) but in `backend/server/dashboard/router.js`, `web/router.js` and `scraper/routers/master.js`. There `webapp` is `let webapp = app.webapp`, `var webapp = app.app`, or a parameter `function (app, webapp)`: cross-file bindings, which the guide puts out of scope. The same-file rule therefore finds 0 of them.
+**Looseness decision**: rule (2) alone would admit `const http = this.http; http.get('/x', cfg)`. Names bound by (1)/(2) ("weak") therefore count only for a call with a `/` path literal and either a function/arrow handler as last argument or 3+ arguments (middleware chain). An identifier handler with two arguments is not a route. Cost: `webapp.get('/x', handler)` in a router module with a bare identifier handler and no middleware is missed. Constructor-bound names keep the original rule.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
