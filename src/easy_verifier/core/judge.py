@@ -72,6 +72,9 @@ PACK_FLOORS: dict[str, CoverageFloor] = {
     "healthcare": CoverageFloor(0.25, "inclusive"),
     # T048: one of two pseudo-roles (a money field, a ledger) reaches it.
     "finance": CoverageFloor(0.25, "inclusive"),
+    # T049: one of three pseudo-roles (markup, an HTML entry, a browser-support
+    # declaration) reaches it; user decision 2026-10-07.
+    "frontend-a11y": CoverageFloor(0.25, "inclusive"),
 }
 
 
@@ -316,6 +319,49 @@ _FOWLER_REVERSAL = Citation(
     "Fowler, Reversal Adjustment (an accounting entry is corrected by a "
     "reversing entry, not edited)",
     "https://martinfowler.com/eaaDev/ReversalAdjustment.html",
+)
+# Frontend accessibility pack (T049): #19. WCAG 2.2 is one W3C
+# Recommendation; each citation names its success criterion and links the
+# criterion's Understanding page.
+_WCAG_111 = Citation(
+    "WCAG 2.2 SC 1.1.1 Non-text Content (Level A)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html",
+)
+_WCAG_131 = Citation(
+    "WCAG 2.2 SC 1.3.1 Info and Relationships (Level A)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html",
+)
+_WCAG_412 = Citation(
+    "WCAG 2.2 SC 4.1.2 Name, Role, Value (Level A)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html",
+)
+_USING_ARIA_4 = Citation(
+    "W3C Using ARIA, fourth rule (do not use aria-hidden=\"true\" on a "
+    "focusable element)",
+    "https://www.w3.org/TR/using-aria/#4thrule",
+)
+_WCAG_144 = Citation(
+    "WCAG 2.2 SC 1.4.4 Resize Text (Level AA)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html",
+)
+_WCAG_1410 = Citation(
+    "WCAG 2.2 SC 1.4.10 Reflow (Level AA)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/reflow.html",
+)
+_WCAG_CONFORMANCE = Citation(
+    "WCAG 2.2 Conformance Requirement 1 (every success criterion of the "
+    "level is satisfied: one failure fails conformance)",
+    "https://www.w3.org/TR/WCAG22/#conformance-reqs",
+)
+_ISO_25010_COMPATIBILITY = Citation(
+    "ISO/IEC 25010:2023 (compatibility; flexibility: adaptability to "
+    "operational environments)",
+    "https://www.iso.org/standard/78176.html",
+)
+_BROWSERSLIST = Citation(
+    "Browserslist (shared browser-target configuration read by Babel, "
+    "Autoprefixer, ESLint and bundlers)",
+    "https://github.com/browserslist/browserslist",
 )
 # Healthcare pack (T047): #9 and #28.
 _HIPAA_514 = Citation(
@@ -977,6 +1023,39 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "ledger_rows_mutated_observed", 25, 0, "at_most",
             (_SEC_17A4, _FOWLER_REVERSAL), PROJECT_DEFAULT,
             area=AREAS[2],
+        ),
+    ),
+    # T049 frontend accessibility pack (PACK_FLOORS): #19. One WCAG failure
+    # fails conformance, hence at most 0 for the four markup rules; a rule
+    # with nothing to judge (no image, no form control, no aria-hidden, no
+    # HTML entry, no markup) abstains. Weights 25/25/20/15/15 proposed by the
+    # implementer (Level A text alternatives and form names first; 25+25 and
+    # 20+15+15 each make an exact 50), checked by the Supervisor at Stage 4.
+    "frontend-a11y": _rules(
+        RatingRule(
+            "images_without_alt_observed", 25, 0, "at_most",
+            (_WCAG_111,), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "form_controls_without_label_observed", 25, 0, "at_most",
+            (_WCAG_131, _WCAG_412), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "aria_hidden_focusable_observed", 20, 0, "at_most",
+            (_WCAG_412, _USING_ARIA_4), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "viewport_missing_or_zoom_disabled_observed", 15, 0, "at_most",
+            (_WCAG_144, _WCAG_1410), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "browser_support_declaration_missing", 15, 0, "at_most",
+            (_ISO_25010_COMPATIBILITY, _BROWSERSLIST), PROJECT_DEFAULT,
+            area=AREAS[18],
         ),
     ),
 }

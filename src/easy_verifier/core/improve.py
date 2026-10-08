@@ -197,6 +197,28 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # frontend-a11y pack (T049)
+    "images_without_alt_observed": (
+        "Give every image an alt text that says what it conveys, or alt=\"\" "
+        "when it is purely decorative."
+    ),
+    "form_controls_without_label_observed": (
+        "Name every form control: a <label> tied to it, or aria-label / "
+        "aria-labelledby; a placeholder is not a label."
+    ),
+    "aria_hidden_focusable_observed": (
+        "Remove aria-hidden from focusable elements, or take them out of the "
+        "focus order (tabindex=\"-1\", disabled) while they are hidden."
+    ),
+    "viewport_missing_or_zoom_disabled_observed": (
+        "Declare <meta name=\"viewport\" content=\"width=device-width, "
+        "initial-scale=1\"> and never set user-scalable=no or a maximum-scale "
+        "below 2."
+    ),
+    "browser_support_declaration_missing": (
+        "Declare the browsers you support in a browserslist (package.json "
+        "\"browserslist\" or .browserslistrc) so tooling targets them."
+    ),
     # infrastructure (T042)
     "iac_wildcard_iam_observed": (
         "Replace \"*\" IAM actions and resources (and RBAC verbs) with the "

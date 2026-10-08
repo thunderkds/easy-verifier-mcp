@@ -17,7 +17,7 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 
 | Key in the `score` payload | What it holds |
 |---|---|
-| `ratings` | One entry per dimension (thirteen since T043 added reliability, T041 supply-chain, T044 api, T045 data, T046 operations and T042 infrastructure), then one per optional pack the repository enabled (T047/T048, e.g. `healthcare` or `finance`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
+| `ratings` | One entry per dimension (thirteen since T043 added reliability, T041 supply-chain, T044 api, T045 data, T046 operations and T042 infrastructure), then one per optional pack the repository enabled (T047/T048/T049, e.g. `healthcare`, `finance` or `frontend-a11y`, named in the overall `disclosure`): a number with its rule inputs, or an abstention with a `reason_code` |
 | `overall` | The overall `value`, its `contributors`, `rated_by` and `abstentions`, and a one-line `disclosure` |
 | `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet (an optional pack's areas count only in a run where it is enabled); both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |
@@ -37,10 +37,11 @@ Over MCP, a `needs_input` block may ride along (`picks`, `gate_evaluations`, `re
   dimensions contributed, how each was rated (`rules`, `blended (w …)`, `agent-rated`) and which
   abstained and why.
 - Two overalls are comparable only when the same dimensions contributed.
-- A dimension speaks only for the evaluation areas its rules cover. Today 27 of the 32 areas have
-  rating rules (counting the optional packs) and 5 have none (#32, and #28 in the optional healthcare pack, are checked only for
+- A dimension speaks only for the evaluation areas its rules cover. Today 28 of the 32 areas have
+  rating rules (counting the optional packs) and 4 have none (#32, and #28 in the optional healthcare pack, are checked only for
   their documents); #9 is rated only when the healthcare pack is enabled, and #3 only when the
-  finance pack is enabled (its ledger correctness is judgment, quoted for the agent). See
+  finance pack is enabled (its ledger correctness is judgment, quoted for the agent), and #19
+  only when the frontend-a11y pack is enabled (markup text only, nothing rendered). See
   [AREA_COVERAGE.md](AREA_COVERAGE.md) for the area-by-area map.
 
 ## When to trust a number

@@ -19,13 +19,13 @@ DDR-0008). Rule thresholds, weights and citations are in [`SCORING_RULES.md`](SC
 | Status | Areas | Meaning |
 |---|---|---|
 | Covered | 6 | At least one rule measures the area as planned |
-| Partial | 21 | Rules exist, but part of the area is not measured yet (see Notes) |
-| Not yet | 5 | No rule; the planned dimension or pack is not built |
+| Partial | 22 | Rules exist, but part of the area is not measured yet (see Notes) |
+| Not yet | 4 | No rule; the planned dimension or pack is not built |
 
 13 dimensions exist today: the original 7, reliability (T043), supply-chain (T041), api (T044), data (T045), operations (T046) and infrastructure (T042), plus the optional healthcare
-(T047) and finance (T048) packs, which rate only in repositories that enable them
-(`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` or an agent pick). All planned
-dimensions exist; the remaining optional pack (frontend accessibility) is task T049 on the Kanban.
+(T047), finance (T048) and frontend accessibility (T049) packs, which rate only in repositories
+that enable them (`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]` /
+`["frontend-a11y"]` or an agent pick). All planned dimensions and optional packs exist.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
 coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
@@ -35,7 +35,8 @@ either not rated for lack of evidence or have no rule at all.
 Every score now says this itself: the payload's `areas_measured` and `areas_without_rule` (both in
 area order, derived from the rule tables) and the report's "Areas no rule covers yet" list (T082).
 An optional pack's rules count there only in a run where the pack is enabled: in any other run areas 9
-and 28 (healthcare) and 3 (finance) stay listed, because nothing measured them.
+and 28 (healthcare), 3 (finance) and 19 (frontend-a11y) stay listed, because nothing measured
+them.
 
 Class (planned areas): **S** static rule from code/config · **G** evidence gathered, judgment at the
 agent gate · **X** process or live-system fact: only documentation presence is checked.
@@ -62,7 +63,7 @@ agent gate · **X** process or live-system fact: only documentation presence is 
 | 16 | Test strategy, coverage, false confidence, isolation | Covered | `test-strategy` · `source_files_without_covering_test_share`<br>`test-strategy` · `assertion_density_per_test`<br>`test-strategy` · `test_config_and_ci_missing`<br>`test-strategy` · `tests_without_assertions_share`<br>`test-strategy` · `skipped_test_share`<br>`test-strategy` · `network_calls_in_unit_tests_observed` | — |  |
 | 17 | Type safety & code quality | Covered | `code-quality` · `lint_config_missing`<br>`code-quality` · `format_config_missing`<br>`code-quality` · `type_escapes_per_kloc`<br>`code-quality` · `strict_type_config_missing` | — |  |
 | 18 | Maintainability, reuse, library judgment, patterns | Partial | `code-quality` · `functions_over_ccn_10_share`<br>`code-quality` · `max_function_ccn` | — | duplication not yet measured |
-| 19 | Accessibility, responsive UX, browser compat | Not yet | — | frontend accessibility pack (T049) | class S |
+| 19 | Accessibility, responsive UX, browser compat | Partial | `frontend-a11y` · `images_without_alt_observed`<br>`frontend-a11y` · `form_controls_without_label_observed`<br>`frontend-a11y` · `aria_hidden_focusable_observed`<br>`frontend-a11y` · `viewport_missing_or_zoom_disabled_observed`<br>`frontend-a11y` · `browser_support_declaration_missing` | — | optional pack, rated only when enabled; markup text only (nothing rendered): image alt, form-control names and aria-hidden on focusable elements (WCAG 2.2 A), viewport in HTML entry documents (zoom not disabled), declared browser support; contrast, keyboard behaviour and what a component renders are not measured; a tag with a spread or template expression is not verifiable |
 | 20 | Dependencies, vulns, licenses, obsolescence | Partial | `security` · `lockfile_missing`<br>`supply-chain` · `lockfile_missing`<br>`supply-chain` · `licence_file_missing` | — | lockfile and licence file presence; live vulnerability status (CVE feeds) is not verifiable offline (class X) and obsolescence is not measured |
 | 21 | CI quality & reproducibility | Partial | `supply-chain` · `ci_actions_unpinned_share`<br>`supply-chain` · `ci_lockfile_install_missing` | — | external CI actions pinned by SHA and a lockfile-faithful install (registry `lockfile_install`); abstain where no CI workflow is quoted; other CI quality not measured |
 | 22 | Artifact provenance, SBOM, signing, promotion, rollback | Partial | `supply-chain` · `ci_provenance_step_missing`<br>`supply-chain` documentation check | — | an SBOM, signing or provenance step in CI or release configuration; rollback is a documentation check (present or missing, never a number); promotion not measured |

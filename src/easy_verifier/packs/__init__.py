@@ -10,9 +10,10 @@ rules in ``judge.RATING_RULES`` / ``judge.DOCUMENTATION_RULES``, its floor in
 from __future__ import annotations
 
 from ..core.models import DimensionDescriptor
-from . import finance, healthcare
+from . import finance, frontend_a11y, healthcare
 
 PACKS: dict[str, DimensionDescriptor] = {
     healthcare.NAME: healthcare.DESCRIPTOR,
     finance.NAME: finance.DESCRIPTOR,
+    frontend_a11y.NAME: frontend_a11y.DESCRIPTOR,
 }
