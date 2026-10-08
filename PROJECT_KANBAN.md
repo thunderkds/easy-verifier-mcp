@@ -14,6 +14,7 @@
 
 - [ ] **T084** — Follow-up (T083 review P2): `breaking_api_changes_observed` still counts removals from diff files the api pack did not read when at least one other spec/route file was read (value partly uncited); user chose 2026-10-08: count only removals in files actually read; list unread files with removals as "not counted" | backend-developer | C1 | Risk: Med | P2 | ⬜ Todo (decided; guide at pickup)
 - [ ] **T085** — Follow-up (T049 review P2): frontend-a11y `browser_support_declaration_missing` credits Next/Nuxt default browser targets as declared, like the default viewport; derivation says "framework default" (user 2026-10-08; tapchat-web a11y 45 → ~60) | backend-developer | C1 | Risk: Low | P2 | ⬜ Todo (decided; guide at pickup)
+- [ ] **T086** — Follow-up (T057 review P2): `blast_radius.migration_patterns()` reads curated + local layer only; after T078 it should use the per-call resolved conventions so a repo's `.easy-verifier.toml` `migration_dirs` apply (and are embedded for replay) | backend-developer | C1 | Risk: Low | P2 | ⬜ Todo (after T078 + T057 merge)
 
 **Wave 16 — Business-domain area coverage (added 2026-10-06, user request: uncovered business-domain areas; run order T082 → T043 → T047 → T048, floors 0.25 user-approved)**
 
