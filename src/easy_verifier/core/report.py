@@ -69,6 +69,7 @@ from easy_verifier.core.models import (
 from easy_verifier.core.redact import redact
 from easy_verifier.core.roles import parse_agent_input
 from easy_verifier.core.score import ScoreResult, score_packs
+from easy_verifier.core.structure import repo_conventions
 from easy_verifier.dimensions import dimension_names
 
 REPORTS_DIRNAME = "reports"
@@ -144,7 +145,10 @@ def write_report(
     ctx = _Ctx(repo=repo)
     score = (
         score_packs(
-            packs, validated.by_dimension, document_input.get("gate_evaluations")
+            packs,
+            validated.by_dimension,
+            document_input.get("gate_evaluations"),
+            conventions=repo_conventions(repo, document_input),
         )
         if _scoreable(tuple(slot.dimension for slot in packs.slots))
         else None

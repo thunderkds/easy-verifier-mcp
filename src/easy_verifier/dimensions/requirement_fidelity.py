@@ -44,9 +44,7 @@ from ..core.models import (
 from ..core.redact import redact
 from ..core.roles import _config_matcher, _registry, role
 from ..core.structure import (
-    _curated as _curated_conventions,
-)
-from ..core.structure import (
+    context_conventions,
     convention_values,
     find_issue_references,
     find_requirement_items,
@@ -523,7 +521,7 @@ def _code_facts(context: DimensionContext) -> None:
     test_texts = _read_all(context, tests)
     _found(context, TESTS_SOURCE, bool(test_texts), "not found: no in-scope test file")
 
-    conventions = _curated_conventions()
+    conventions = context_conventions(context)
     routes = _routes_fact(context, source_texts, test_texts, conventions, tables)
     if plan is not None:
         routes = _with_note(
@@ -722,11 +720,12 @@ def _issue_fact(context: DimensionContext, conventions) -> SampledMetric:
             ),
         )
     patterns = convention_values(conventions, "issue_reference_patterns")
+    exclusions = convention_values(conventions, "issue_reference_exclusions")
     read = set(context.files_read)
     referencing = []
     refs: dict[str, None] = {}
     for sha, body, names in commits:
-        found = find_issue_references(body, patterns)
+        found = find_issue_references(body, patterns, exclusions)
         if found:
             referencing.append(f"{sha[:8]} {found[0]}")
         refs.update(dict.fromkeys(n for n in names if n in read))

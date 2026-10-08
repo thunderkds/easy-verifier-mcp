@@ -37,11 +37,12 @@ from ..core.models import (
 from ..core.redact import redact
 from ..core.roles import GENERIC_API_FACTS, _matcher, role
 from ..core.scope import KIND_CHANGES
-from ..core.structure import find_routes
+from ..core.structure import _curated as _curated_conventions
+from ..core.structure import context_conventions, find_routes
 from ..core.tokens import strip
 from . import _code_extract
 from .blast_radius import _diff_files
-from .requirement_fidelity import _curated_conventions, _suffix_tokens, _tokens_for
+from .requirement_fidelity import _suffix_tokens, _tokens_for
 
 NAME = "api"
 
@@ -213,7 +214,7 @@ def _scan(context: DimensionContext, sources: list[str]) -> dict:
     """Routes, validation, spec-generator, versioning-marker and version-path
     sites over the whole text of ``sources``."""
     tables = curated_metric_tables()
-    by_suffix = _suffix_tokens(_curated_conventions())
+    by_suffix = _suffix_tokens(context_conventions(context))
     scan: dict = {
         "read": 0, "routes": [], "validation": [], "generators": [],
         "markers": [], "versioned": [], "route_languages": set(),

@@ -15,23 +15,30 @@ textual, never parsed: a derivation built on these says so.
 
 from __future__ import annotations
 
+import dataclasses
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from .metric_tables import curated_metric_tables, token_regex
 from .metrics import LanguageTables, _is_test_file
+from .redact import redact
 from .registry import (
+    CURATED,
     RECEIVER_ASSIGN_KIND,
     RECEIVER_KIND,
     RECEIVER_PARAM_KIND,
     Registry,
     RegistryEntry,
+    is_config_convention,
+    layered_conventions,
     load_conventions,
+    parse_local_entries,
+    with_config_conventions,
 )
-from .roles import _config_matcher
+from .roles import GENERIC_PATTERNS, _config_matcher, load_repo_conventions
 from .tokens import LanguageSyntax, strip
 
 MAX_HANDLER_LINES = 10
@@ -88,6 +95,80 @@ def convention_values(entry: RegistryEntry | None, field: str) -> tuple[str, ...
 @lru_cache(maxsize=1)
 def _curated() -> RegistryEntry:
     return load_conventions()[0]
+
+
+def repo_conventions(
+    repo: str | Path, document: Mapping | None = None
+) -> RegistryEntry:
+    """The conventions one scoring call uses (T078): curated, plus the local
+    layer, plus ``repo``'s ``.easy-verifier.toml`` ``[conventions]``, plus the
+    ``.easy-verifier.toml`` items replayed in ``document``'s
+    ``registry_entries`` (that call only, never saved). Add-only, curated
+    always wins. Never cached: one repository's extras never reach another's
+    score in a long-running server. A non-curated value that redaction would
+    alter is dropped (:func:`repo_convention_notes` says so)."""
+    return _resolved_conventions(repo, document)[0]
+
+
+def repo_convention_notes(
+    repo: str | Path, document: Mapping | None = None
+) -> tuple[str, ...]:
+    """Why values of :func:`repo_conventions` were ignored: one note per
+    field and source whose values look like a secret (never quoted)."""
+    return _resolved_conventions(repo, document)[1]
+
+
+def _resolved_conventions(
+    repo: str | Path, document: Mapping | None
+) -> tuple[RegistryEntry, tuple[str, ...]]:
+    entry, _ = layered_conventions()
+    entry = with_config_conventions(entry, load_repo_conventions(Path(repo).resolve()))
+    raw = document.get("registry_entries") if document is not None else None
+    replayed: dict[str, list[str]] = {}
+    for item in parse_local_entries(raw, GENERIC_PATTERNS)[0]:
+        if is_config_convention(item):
+            replayed.setdefault(item.field, []).extend(item.cited.value)
+    entry = with_config_conventions(entry, replayed) if replayed else entry
+    return _without_secrets(entry)
+
+
+def _without_secrets(entry: RegistryEntry) -> tuple[RegistryEntry, tuple[str, ...]]:
+    """``entry`` without the non-curated values redaction would alter: such a
+    value is never used, embedded in ``registry_entries`` or quoted (T078
+    Stage 4), so the score stays replayable and the value stays home."""
+    notes: list[str] = []
+    fields = {}
+    for field, cited_values in entry.fields.items():
+        kept = []
+        for cited in cited_values:
+            clean = tuple(
+                v for v in cited.value if cited.source_tag == CURATED or redact(v) == v
+            )
+            if len(clean) < len(cited.value):
+                notes.append(
+                    f"conventions.{field}: {len(cited.value) - len(clean)} value(s) "
+                    f"from {redact(cited.citation_url)} ignored: looks like a secret"
+                )
+            if clean:
+                kept.append(dataclasses.replace(cited, value=clean))
+        fields[field] = tuple(kept)
+    if not notes:
+        return entry, ()
+    return dataclasses.replace(entry, fields=fields), tuple(notes)
+
+
+def context_conventions(context: object) -> RegistryEntry:
+    """The conventions a dimension reads: the call's resolved entry
+    (``run_dimension``), else the context repository's, else curated."""
+    found = getattr(context, "conventions", None)
+    if found is None:
+        repo = getattr(context, "repo_path", None)
+        found = _curated() if repo is None else repo_conventions(repo)
+        try:
+            context.conventions = found
+        except AttributeError:
+            pass
+    return found
 
 
 def route_tokens_for(
@@ -519,4 +600,7 @@ __all__ = [
     "find_routes",
     "layer_of",
     "route_tokens_for",
+    "context_conventions",
+    "repo_conventions",
+    "repo_convention_notes",
 ]

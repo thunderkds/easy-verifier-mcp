@@ -229,4 +229,4 @@ def test_a_repository_importing_a_dto_is_not_a_violation(tmp_path: Path) -> None
     metric = metrics["layer_direction_violations"]
     assert metric.outcome == 0
     assert "3 of 3" in metric.derivation
-    assert "only the curated layer_paths apply" in metric.derivation
+    assert "curated layer_paths only" in metric.derivation  # T078 note

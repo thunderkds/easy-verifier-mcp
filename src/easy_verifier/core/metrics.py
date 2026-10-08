@@ -234,6 +234,13 @@ def _serializable(metric: Metric) -> dict:
     }
 
 
+LAYER_PATHS_CURATED_NOTE = (
+    "curated layer_paths only: no local-layer or .easy-verifier.toml layer "
+    "paths were declared"
+)
+"""T078: the layer rule's source note when no repository extra applies."""
+
+
 @dataclass(frozen=True)
 class LanguageTables:
     """The registry's language knowledge, as plain compiled data (T031).
@@ -294,6 +301,9 @@ class LanguageTables:
     language declares, the tokens that set it inside that statement."""
 
     layer_of: Callable[[str], str | None] | None = field(default=None, compare=False)
+    layer_paths_note: str = field(default=LAYER_PATHS_CURATED_NOTE, compare=False)
+    """Which layer_paths sources ``layer_of`` applies (T078), for the
+    derivation: curated only, or plus the local layer / .easy-verifier.toml."""
     """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
     declared ``layer_paths`` conventions, bound by the builder
     (``metric_tables``); ``None`` classifies nothing."""
@@ -1427,11 +1437,6 @@ MIN_CLASSIFIED_SHARE = 0.50
 """Below this share of non-shared source files in a layer, the layer rule
 abstains (user, DDR-0011)."""
 
-_LAYER_PATHS_NOTE = (
-    "only the curated layer_paths apply: local-layer and .easy-verifier.toml "
-    "layer paths are not used in scoring until conventions are embedded for "
-    "replay (T075)"
-)
 
 MAX_LAYER_EXAMPLES = 5
 """Violating import statements quoted by file:line in the derivation."""
@@ -1469,7 +1474,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             reason=(
                 f"{share}, below the declared minimum share of "
                 f"{MIN_CLASSIFIED_SHARE:.2f}, so the layer direction of this "
-                "code is not measurable; " + _LAYER_PATHS_NOTE
+                "code is not measurable; " + view.tables.layer_paths_note
             )
         )
     # A stem shared by files of different layers names no layer: skipped.
@@ -1510,7 +1515,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         f"{len(violations)} import statement(s) from a lower to a higher layer "
         "(data -> service, service -> api, data -> api)"
         + (f", e.g. {examples}" if examples else "")
-        + f". {share} ({_LAYER_PATHS_NOTE}); shared and unclassified files "
+        + f". {share} ({view.tables.layer_paths_note}); shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,

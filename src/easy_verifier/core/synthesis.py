@@ -37,6 +37,7 @@ from .pipeline import (
     run_dimension,
 )
 from .roles import apply_registry_entries, parse_agent_input, validate_agent_input
+from .structure import repo_conventions
 
 BUDGET_MODEL = "per-dimension"
 
@@ -107,6 +108,11 @@ def combined_pack(
     # any dimension runs, so this call already uses them (T036).
     if agent_input is not None:
         apply_registry_entries(parse_agent_input(agent_input), repo_path)
+    # T078: resolved once, after the layer is written, for every dimension.
+    conventions = repo_conventions(
+        repo_path,
+        parse_agent_input(agent_input) if agent_input is not None else None,
+    )
     count = _batch_count(batches, agent_input)
 
     # Canonical, deterministic order regardless of the order requested (AC #10).
@@ -124,6 +130,7 @@ def combined_pack(
                 task_id=task_id,
                 picks=picks,
                 batches=count,
+                conventions=conventions,
             )
         except (RepoPathError, ValidationError):
             # NOT isolated. AC #6's robustness is about one *dimension* failing

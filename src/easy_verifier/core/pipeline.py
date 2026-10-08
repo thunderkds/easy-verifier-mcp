@@ -25,6 +25,7 @@ from .models import (
     RedactionHit,
     SourceMiss,
 )
+from .registry import RegistryEntry
 from .roles import (
     load_repo_config,
     resolution_warnings,
@@ -55,6 +56,7 @@ def run_dimension(
     task_id: str | None = None,
     picks: Mapping[str, Sequence[str]] | None = None,
     batches: int | str = 1,
+    conventions: RegistryEntry | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
@@ -71,6 +73,10 @@ def run_dimension(
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
     context.batches = parse_batches(batches)
+    # T078: the call's resolved conventions (structure.repo_conventions);
+    # without them a dimension resolves the repository's own on first use.
+    if conventions is not None:
+        context.conventions = conventions
 
     # Source roles resolve once, before `collect`, so every dimension -- the
     # bespoke three included -- reads from the same role -> files map, and the
