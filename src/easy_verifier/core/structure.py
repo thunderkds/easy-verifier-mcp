@@ -23,7 +23,14 @@ from pathlib import PurePosixPath
 
 from .metric_tables import curated_metric_tables, token_regex
 from .metrics import LanguageTables, _is_test_file
-from .registry import RECEIVER_KIND, Registry, RegistryEntry, load_conventions
+from .registry import (
+    RECEIVER_ASSIGN_KIND,
+    RECEIVER_KIND,
+    RECEIVER_PARAM_KIND,
+    Registry,
+    RegistryEntry,
+    load_conventions,
+)
 from .roles import _config_matcher
 from .tokens import LanguageSyntax, strip
 
@@ -161,9 +168,10 @@ def find_routes(
     if not route_tokens or syntax is None:
         return ()
     code = strip(text, syntax)
+    bound, weak = _bound_tokens(code, route_tokens)
     found = [
         (match.start(), match.end(), method, token)
-        for method, token, regex in _route_patterns(_bound_tokens(code, route_tokens))
+        for method, token, regex in _route_patterns(bound)
         for match in regex.finditer(code)
     ]
     routes: list[Route] = []
@@ -175,6 +183,8 @@ def find_routes(
         if not decorator and _one_argument(code, text, end):
             # one argument is no route: Express app.get(name) reads a setting
             # (T075, carried from the T073 review)
+            continue
+        if token in weak and not _router_call(code, text, end):
             continue
         taken = end
         literal = _PATH_LITERAL.match(text, end)
@@ -193,24 +203,27 @@ _NAME = r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*"
 _RECEIVER_MARK = "<receiver>"
 
 
-def _bound_tokens(code: str, route_tokens: Sequence[str]) -> tuple[str, ...]:
+def _bound_tokens(
+    code: str, route_tokens: Sequence[str]
+) -> tuple[tuple[str, ...], frozenset[str]]:
     """``route_tokens`` with each ``<receiver>`` token expanded to the names
-    ``code`` binds to a ``RECEIVER=<constructor>`` call (T079); ordinary
-    tokens pass through. ``x = y = ctor(`` binds both ``x`` and ``y``."""
-    constructors = [
-        value.partition("=")[2]
-        for value in route_tokens
-        if value.startswith(f"{RECEIVER_KIND}=")
-    ]
+    ``code`` binds to a receiver (T079), and the expanded tokens that are
+    *weak* (router-module bindings, see :func:`_weak_names`). Ordinary tokens
+    pass through. ``x = y = ctor(`` binds both ``x`` and ``y``."""
+    values: dict[str, list[str]] = {}
+    for value in route_tokens:
+        kind, _, rest = value.partition("=")
+        values.setdefault(kind, []).append(rest)
     templates = [
         v for v in route_tokens if v.partition("=")[2].startswith(_RECEIVER_MARK)
     ]
-    plain = [
+    plain = tuple(
         v
         for v in route_tokens
-        if v not in templates and not v.startswith(f"{RECEIVER_KIND}=")
-    ]
-    names: dict[str, None] = {}
+        if v not in templates and v.partition("=")[0] not in _RECEIVER_KINDS
+    )
+    strong: dict[str, None] = {}
+    constructors = values.get(RECEIVER_KIND)
     if constructors and templates:
         ctor = "|".join(token_regex(c) for c in constructors)
         binding = re.compile(
@@ -220,13 +233,72 @@ def _bound_tokens(code: str, route_tokens: Sequence[str]) -> tuple[str, ...]:
             for target in match[1].split("="):
                 name = target.split(":")[0].strip()
                 if name:
-                    names[name] = None
-    return tuple(plain) + tuple(
-        f"{method}={name}{token[len(_RECEIVER_MARK) :]}"
-        for template in templates
-        for method, _, token in [template.partition("=")]
-        for name in names
+                    strong[name] = None
+    weak = (
+        {n: None for n in _weak_names(code, values) if n not in strong}
+        if templates
+        else {}
     )
+
+    def expand(names):
+        return tuple(
+            f"{method}={name}{token[len(_RECEIVER_MARK) :]}"
+            for template in templates
+            for method, _, token in [template.partition("=")]
+            for name in names
+        )
+
+    weak_tokens = expand(weak)
+    return plain + expand(strong) + weak_tokens, frozenset(
+        t.partition("=")[2] for t in weak_tokens
+    )
+
+
+_RECEIVER_KINDS = (RECEIVER_KIND, RECEIVER_PARAM_KIND, RECEIVER_ASSIGN_KIND)
+_IDENT = r"[A-Za-z_$][\w$]*"
+_PROPERTY_ASSIGN = re.compile(
+    rf"(?<![\w$.=!<>])({_IDENT})\s*=\s*{_IDENT}(?:\.{_IDENT})+\s*(?=[;,\n)]|$)"
+)
+
+
+def _weak_names(code: str, values: dict[str, list[str]]) -> list[str]:
+    """Names a router module binds without constructing an app: the
+    parameters of the function a file exports (``RECEIVER_PARAM`` prefixes)
+    and names assigned from a property access (``RECEIVER_ASSIGN=property``)."""
+    names: list[str] = []
+    for prefix in values.get(RECEIVER_PARAM_KIND, ()):
+        head = token_regex(prefix).removeprefix(r"\b")
+        for match in re.finditer(
+            rf"{head}\s*(?:async\s+)?(?:"
+            rf"(?:function\b\s*(?:{_IDENT})?\s*)?\(([^)]*)\)|({_IDENT})\s*=>)",
+            code,
+        ):
+            params = match[1] if match[1] is not None else match[2]
+            for param in params.split(","):
+                found = re.match(rf"\s*({_IDENT})", param)
+                if found:
+                    names.append(found[1])
+    if "property" in values.get(RECEIVER_ASSIGN_KIND, ()):
+        names += [m[1] for m in _PROPERTY_ASSIGN.finditer(code)]
+    return names
+
+
+def _router_call(code: str, text: str, end: int) -> bool:
+    """Whether the call opened at ``end`` looks like a route registration
+    rather than an HTTP client call: a ``/`` path literal, and a function
+    handler or a middleware chain (3 or more arguments)."""
+    literal = _PATH_LITERAL.match(text, end)
+    if not literal or not literal[2].startswith("/"):
+        return False
+    parts = _split_arguments(_arguments(code, end)[0])
+    if len(parts) < 2:
+        return False
+    return len(parts) >= 3 or bool(_FUNCTION_ARGUMENT.match(parts[-1]))
+
+
+_FUNCTION_ARGUMENT = re.compile(
+    rf"(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|{_IDENT}\s*=>)"
+)
 
 
 @lru_cache(maxsize=64)

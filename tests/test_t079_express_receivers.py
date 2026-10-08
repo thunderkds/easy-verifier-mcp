@@ -115,3 +115,71 @@ def test_constructors_are_cited_registry_data():
     } <= values
     assert all(c.citation_url.startswith("https://expressjs.com") for c in cited)
     assert reg.convention_value_problem("route_tokens", "RECEIVER=express(") is None
+
+
+# --- amendment: router-module rule (AC 7) -------------------------------------
+
+
+@pytest.mark.parametrize(
+    "head",
+    [
+        "module.exports = function (app, webapp) {",
+        "module.exports = function(webapp) {",
+        "module.exports = async (webapp) => {",
+        "module.exports = webapp => {",
+        "export default function (webapp) {",
+        "export default function router(webapp = null) {",
+    ],
+)
+def test_exported_function_parameter_binds_receiver(head):
+    text = head + "\n  webapp.get('/api/a', function (req, res) {});\n};\n"
+    assert [r.path for r in _routes(text)] == ["/api/a"]
+
+
+@pytest.mark.parametrize(
+    "assign",
+    [
+        "let webapp = app.webapp,",
+        "var webapp = app.app;",
+        "const webapp = this.router;",
+    ],
+)
+def test_property_assignment_binds_receiver(assign):
+    text = f"{assign}\nwebapp.post('/api/a', function (req, res) {{}});\n"
+    assert [r.path for r in _routes(text)] == ["/api/a"]
+
+
+def test_middleware_chain_with_identifier_handler_counts():
+    text = "let webapp = app.webapp;\nwebapp.get('/a', auth, handler);\n"
+    assert [r.path for r in _routes(text)] == ["/a"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "$.get('/x', cb);\n",
+        "axios.get('/x', cfg);\n",
+        "http.get('/x', cb);\n",
+        "module.exports = function (app, webapp) {\n  webapp.get('setting');\n};\n",
+        "module.exports = function (app, webapp) {\n  webapp.get(name, cb);\n};\n",
+        "module.exports = function (app, webapp) {\n  webapp.get('x', cb);\n};\n",
+        "const http = this.http;\nhttp.get('/x', cfg);\n",
+        "const http = require('http');\nhttp.get('/x', cfg);\n",
+        "function f(webapp) { webapp.get('/x', cfg); }\n",
+        "module.exports = function (api) {\n  other.get('/x', cb);\n};\n",
+    ],
+)
+def test_loose_shapes_stay_zero(text):
+    assert _routes(text) == ()
+
+
+def test_weak_receiver_kinds_are_cited_registry_data():
+    values = {
+        v for c in REGISTRY.languages["js-ts"].fields["route_tokens"] for v in c.value
+    }
+    assert "RECEIVER_PARAM=module.exports =" in values
+    assert "RECEIVER_ASSIGN=property" in values
+    assert (
+        reg.convention_value_problem("route_tokens", "RECEIVER_PARAM=export default")
+        is None
+    )

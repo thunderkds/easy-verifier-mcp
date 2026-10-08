@@ -427,9 +427,16 @@ LAYERS = ("api", "service", "data", "shared")
 """``shared`` is cross-cutting (T074): never part of a layer-direction
 violation and left out of the classified share."""
 RECEIVER_KIND = "RECEIVER"
+RECEIVER_PARAM_KIND = "RECEIVER_PARAM"
+RECEIVER_ASSIGN_KIND = "RECEIVER_ASSIGN"
 """``route_tokens`` kind (T079): ``RECEIVER=<constructor>`` names a call whose
 result is an application or router; a ``<METHOD>=<receiver>.get(`` token then
-matches on every name bound to one in the same file."""
+matches on every name bound to one in the same file. Router modules (T079
+amendment) bind weaker: ``RECEIVER_PARAM=<export prefix>`` names the parameters
+of the function a file exports (``module.exports =``), and
+``RECEIVER_ASSIGN=property`` the names assigned from a property access
+(``let webapp = app.webapp``); such a name counts only for a call with a
+``/`` path literal and a function handler or a middleware chain."""
 
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
 REQUIREMENT_ITEM_KINDS = ("id", "line")
@@ -480,8 +487,11 @@ _VALUE_SHAPES = {
         "<layer>=<glob> with layer api, service or data, e.g. api=**/controllers/**",
     ),
     "route_tokens": (
-        re.compile(rf"^({'|'.join(HTTP_METHODS)}|{RECEIVER_KIND})=\S.*$"),
-        "<METHOD>=<token> with METHOD one of " + ", ".join(HTTP_METHODS)
+        re.compile(
+            rf"^({'|'.join(HTTP_METHODS)}|{RECEIVER_KIND}|{RECEIVER_PARAM_KIND}|{RECEIVER_ASSIGN_KIND})=\S.*$"
+        ),
+        "<METHOD>=<token> with METHOD one of "
+        + ", ".join(HTTP_METHODS)
         + ", e.g. GET=@Get(; or RECEIVER=<constructor>, e.g. RECEIVER=express(",
     ),
     "route_files": (
@@ -627,7 +637,6 @@ class Registry:
                             item["review_status"] = REJECTED
                         found.append(item)
         return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
-
 
     def detection_keys(self, language: str) -> tuple[tuple[str, str], ...]:
         """``(framework, dependency)`` pairs from ``language``'s ``frameworks``
