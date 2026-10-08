@@ -33,8 +33,11 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (2026-10-08T07:28:23Z, code at base commit; temp repo with git-ignored toml `[conventions] migration_dirs = ["dbchanges"]`, commit 2 adds `dbchanges/002.sql` = `ALTER TABLE t DROP COLUMN id;`; `score --scope changes --ref HEAD~1..HEAD --all`):
+- blast-radius `destructive_migration_ops`: derivation "0 destructive migration operation(s) in the diff of 1 changed file(s): none"
+- data `destructive_migration_ops_observed`: abstained, "no migration file with an up section, SQL or changelog was found, so no destructive operation could be observed"
+- payload `registry_entries` already embeds the toml item (`migration_dirs: ['dbchanges']`, user-supplied), yet neither dimension used it.
+- real-repo sha256 baselines (coffee-shop-api, kitchd `--scope project --all`) captured in background to scratchpad/before.*.sha.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
