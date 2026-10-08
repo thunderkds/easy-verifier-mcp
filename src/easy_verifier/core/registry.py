@@ -205,7 +205,8 @@ The convention fields (T073, DDR-0011, FR-068) are read by
   fix the method. A token starting ``<receiver>`` (``"GET=<receiver>.get("``)
   matches on each name bound, in the same file, to the result of a
   ``"RECEIVER=<constructor>"`` call (``"RECEIVER=express("``);
-  ``RECEIVER_PARAM=<export prefix>`` and ``RECEIVER_ASSIGN=property`` bind weaker router-module names: T079;
+  ``RECEIVER_PARAM=<export prefix>`` and ``RECEIVER_ASSIGN=property``
+  bind weaker router-module names: T079;
 * the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
   and local layer, never a language) holds the language-agnostic
   :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data|shared>=<glob>"``),
