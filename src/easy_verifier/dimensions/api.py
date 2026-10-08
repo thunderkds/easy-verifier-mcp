@@ -436,6 +436,15 @@ def _breaking_metric(scope, read: set[str]) -> SampledMetric:
         if path in read:
             cited.add(path)
         gone.extend(removed)
+    if not cited:
+        return _metric(
+            name,
+            abstention="no API specification or route source file in this diff "
+            "was read" + (
+                f", so the {len(gone)} removed endpoint(s) or field(s) found in "
+                "it cannot be cited" if gone else ""
+            ),
+        )
     return _metric(
         name, len(gone), cited,
         f"{len(gone)} endpoint(s) or specification field(s) removed and not "

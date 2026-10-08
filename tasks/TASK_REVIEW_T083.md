@@ -36,12 +36,20 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-10-08T02:54:40Z on base 129de71 (pre-fix). Repro: temp git repo, commit 1 = `prod.tfvars` + README, commit 2 changes only `prod.tfvars`; `easy-verifier score --repo <r> --scope changes --ref HEAD~1..HEAD </dev/null` (via `python -c` calling `easy_verifier.adapters.cli.main`, same entry point):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+2026-10-08T02:54:40Z
+validation error: metric 'breaking_api_changes_observed' (api) reports a value but cites no evidence
+exit=2
+```
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+(Note: changes scope needs `--ref`; a bare working-tree diff resolves to "changes scope could not be resolved", so the repro uses a committed range.)
+
+**AFTER**: 2026-10-08T02:55:41Z same repro, post-fix: score completes (exit 0), api metric:
+`"name": "breaking_api_changes_observed", "outcome": {"abstained": true, "reason": "no API specification or route source file in this diff was read"}`. Real repo `project/bryony/bryony` `--ref HEAD~1..HEAD` (2026-10-08T02:57:59Z): exit=0, metric value 0, cited.
+
+**DELTA**: `score --scope changes` on a diff with no API spec or route source file now completes, with the breaking-change metric abstaining honestly instead of crashing the whole score.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T083.jsonl`, never the
 implementing agent alone]

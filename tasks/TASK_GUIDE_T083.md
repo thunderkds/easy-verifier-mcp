@@ -24,26 +24,28 @@
 - Risk: Medium
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
-- [ ] Phase 1 feedback loop built and running
-- [ ] Bug reproduces deterministically on the loop
-- [ ] 3–5 ranked falsifiable hypotheses listed (consistent with confirmed mental model)
-- [ ] Correct hypothesis identified via Phase 4 instrumentation
+- [x] Phase 1 feedback loop built and running
+- [x] Bug reproduces deterministically on the loop
+- [x] 3–5 ranked falsifiable hypotheses listed (consistent with confirmed mental model)
+- [x] Correct hypothesis identified via Phase 4 instrumentation
 
 ### Attempts Log (filled live during diagnosis — required if >1 hypothesis tested)
 | # | Hypothesis | Predicted signal | Actual result | Verdict |
 |---|---|---|---|---|
+| 1 | `_breaking_metric` returns `_metric(name, len(gone), cited)` with `cited` empty when no diff file is a spec/source file (or none was read); invariant at core/metrics.py raises | .tfvars-only range reproduces; red tests fail with MetricCitationError / value=1 uncited | Repro exit=2 with the exact error; unit test with read=set() gives value=1, computed_from=() | confirmed |
+| 2 | Bare working-tree diff is the trigger (guide's repro wording) | `--scope changes` without ref crashes | Without `--ref` the scope is unresolved ("changes scope could not be resolved") and api abstains; no crash. A committed range (`--ref HEAD~1..HEAD`) is required | rejected (repro needs a ref) |
 
 ### Fix Gates (Pillar 2)
-- [ ] Regression test written before the fix (or no-seam documented)
-- [ ] Fix applied; regression test passes
-- [ ] Phase 1 loop no longer reproduces the bug
-- [ ] Fix matches the "correct behaviour" definition from the mental model
+- [x] Regression test written before the fix (or no-seam documented)
+- [x] Fix applied; regression test passes
+- [x] Phase 1 loop no longer reproduces the bug
+- [x] Fix matches the "correct behaviour" definition from the mental model
 
 ### Cleanup Checklist (Pillar 3)
-- [ ] All [DEBUG-...] instrumentation removed (grep verified)
-- [ ] Throwaway prototypes deleted
-- [ ] Correct hypothesis stated in commit message
-- [ ] Post-mortem: what would have prevented this?
+- [x] All [DEBUG-...] instrumentation removed (grep verified)
+- [x] Throwaway prototypes deleted
+- [x] Correct hypothesis stated in commit message
+- [x] Post-mortem: what would have prevented this? A T044 test of a changes-scope diff touching no spec/route file; the metric's citation set was built conditionally but the value unconditionally. Every metric whose citations depend on a per-file filter needs an "all filtered out" test.
 
 ### Verification Command (exact, runnable)
 
