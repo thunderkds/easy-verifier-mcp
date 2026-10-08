@@ -3071,6 +3071,13 @@ PACK_METRICS: dict[str, tuple[str, ...]] = {
         "ledger_tables_without_audit_columns_observed",
         "ledger_rows_mutated_observed",
     ),
+    "frontend-a11y": (
+        "images_without_alt_observed",
+        "form_controls_without_label_observed",
+        "aria_hidden_focusable_observed",
+        "viewport_missing_or_zoom_disabled_observed",
+        "browser_support_declaration_missing",
+    ),
 }
 """Metrics of an optional pack (T047). A pack's evidence computes only these, and
 no other dimension computes them, so a repository that does not enable the

@@ -128,7 +128,11 @@ def gather_combined(
         '["healthcare"] (PHI in test data and logs, BAA and residency '
         "documents), or that it handles money, send agent_input.packs = "
         '["finance"] (float money fields, ledger audit columns and '
-        "append-only ledgers); a repository may also list them in "
+        "append-only ledgers), or that it has a web frontend to check for "
+        "accessibility, send agent_input.packs = "
+        '["frontend-a11y"] (image alt text, form labels, aria-hidden on '
+        "focusable elements, viewport, browser support); a repository may "
+        "also list them in "
         ".easy-verifier.toml "
         "packs. Otherwise use the response as-is."
     ),

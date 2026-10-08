@@ -527,6 +527,14 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # frontend-a11y pack (T049)
+    "images_without_alt_observed": "images without alt text",
+    "form_controls_without_label_observed": "form controls without a label",
+    "aria_hidden_focusable_observed": "focusable elements hidden with aria-hidden",
+    "viewport_missing_or_zoom_disabled_observed": (
+        "entry pages with no viewport or with zoom disabled"
+    ),
+    "browser_support_declaration_missing": "no declared browser support",
     # infrastructure (T042)
     "iac_wildcard_iam_observed": "wildcard IAM or RBAC permissions",
     "iac_open_ingress_observed": "ingress open to the whole internet",
@@ -614,6 +622,11 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "log statements in source files (the pack's log_calls)": None,
     "money-named field declarations (the pack's money_declarations)": None,
     "ledger, transaction or payment tables (the pack's ledger_declarations)": None,
+    "markup files (the pack's markup_files)": "markup files",
+    "HTML entry documents (the pack's viewport_entries)": "HTML entry pages",
+    "browser-support declarations (the pack's browser_support)": (
+        "a browser-support declaration"
+    ),
 }
 """Plain name per declared sought source (every dimension's
 ``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks

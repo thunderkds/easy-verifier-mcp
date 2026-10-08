@@ -519,6 +519,7 @@ _PREFIXED_FIELDS = frozenset(
         "requirement_item_patterns",
         "route_files",
         "phi_values",
+        "browser_support",
     }
 )
 """Fields whose values are ``<kind>=<pattern>``: path and local-shape checks
@@ -1382,6 +1383,28 @@ PACK_FIELDS: dict[str, tuple[str, ...]] = {
         "audit_columns",
         "ledger_mutations",
     ),
+    "frontend-a11y": (
+        "markup_files",
+        "markup_excluded",
+        "comments",
+        "attribute_bindings",
+        "dynamic_attributes",
+        "image_tags",
+        "alt_attributes",
+        "form_controls",
+        "unnamed_input_types",
+        "name_attributes",
+        "label_tags",
+        "label_for_attributes",
+        "focusable_tags",
+        "focusable_with_href",
+        "aria_hidden_attributes",
+        "viewport_entries",
+        "viewport_default_entries",
+        "viewport_declarations",
+        "zoom_disabled",
+        "browser_support",
+    ),
 }
 """Optional packs (T047, DDR-0008 §4): ``registry/packs/<pack>.toml`` holds a
 pack's cited patterns, read by :func:`load_pack` and never as a language.
@@ -1401,6 +1424,14 @@ word lists (``money_names``, ``money_excluded_words``, ``ledger_names``,
 ``non_ledger_heads``, ``name_suffixes``), globs (``schema_paths``,
 ``persistence_paths``) and
 regular expressions (the rest).
+
+The frontend-a11y fields (area #19) are described in
+``registry/packs/frontend-a11y.toml``: globs (``markup_files``,
+``markup_excluded``, ``viewport_entries``, ``viewport_default_entries``),
+element and attribute names, regular expressions (``comments``,
+``attribute_bindings``, ``dynamic_attributes``, ``viewport_declarations``,
+``zoom_disabled``) and ``browser_support`` ``<file glob>=<regular
+expression>`` pairs.
 """
 
 _REGEX_FIELDS = frozenset(
@@ -1416,6 +1447,12 @@ _REGEX_FIELDS = frozenset(
         "entity_markers",
         "audit_columns",
         "ledger_mutations",
+        "comments",
+        "attribute_bindings",
+        "dynamic_attributes",
+        "viewport_declarations",
+        "zoom_disabled",
+        "browser_support",
     }
 )
 """Pack fields whose values are Python regular expressions (compiled on load),

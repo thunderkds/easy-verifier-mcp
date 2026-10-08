@@ -50,6 +50,7 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | infrastructure | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
+| frontend-a11y *(optional pack)* | 0.25 |
 
 architecture (DDR-0011, T074): documents carry 20 and code 80. A missing architecture description or
 decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
@@ -151,6 +152,37 @@ target is a ledger declared in the same repository. With no ledger, both ledger 
 and mutation sites are quoted in the pack for the agent and feed no rule. The 50/25/25 weights are
 user-approved (2026-10-06).
 
+frontend-a11y (optional pack, T049, floor 0.25 user-decided 2026-10-07): enabled like healthcare
+(`packs = ["frontend-a11y"]` or `agent_input.packs`), never guessed from detected frameworks. Three
+pseudo-roles (markup files; HTML entry documents; a browser-support declaration), so any one reaches
+the floor. Markup is every in-scope file matching `markup_files` (HTML, JSX/TSX, Vue, Svelte,
+Jinja, ERB; the first 500 in path order) minus `markup_excluded` (tests, stories, build output),
+with `comments` blanked. Tags are lexed generically (quoted values and `{…}` expressions skipped; an
+opening `<` right after an identifier is a comparison); framework spellings come from the registry:
+`attribute_bindings` reduce `:alt`, `v-bind:alt`, `[alt]` and `[attr.alt]` to `alt`, Svelte
+`{alt}` is the `alt` attribute, and `dynamic_attributes` (a JSX/Svelte spread, `v-bind="…"`,
+`$$props`, a Jinja `{{ … }}` / `{% … %}` or ERB `<% … %>` outside a quoted value) make an element
+*not verifiable*: listed in the derivation, never counted as missing. Only lowercase DOM tags are
+checked; capitalised components are not followed. An `image_tags` element without `alt_attributes`
+counts (`alt=""` is a decorative image and allowed). A `form_controls` element counts unless its
+`type` is in `unnamed_input_types` (hidden, submit, reset, button, image), it has a
+`name_attributes` attribute (aria-label, aria-labelledby, title; a placeholder is not a label), it
+sits inside a `label_tags` element, or its literal `id` is named by a `for`/`htmlFor` in the same
+file. `aria-hidden` counts on an element that is focusable (`focusable_tags`, `focusable_with_href`
+with `href`, or a `tabindex` ≥ 0; `tabindex` < 0 and `disabled` remove it). Each of these three
+rules abstains when nothing verifiable was found (no image, no form control needing a name, no
+`aria-hidden`). An HTML entry (`viewport_entries`: `index.html`, SvelteKit `src/app.html`, the Rails
+application layout) counts when it has no `viewport_declarations`; a `viewport_default_entries` file
+(Next.js root `app/layout.*` or `pages/_document.*`, `nuxt.config.*`) gets its framework's default
+viewport; either counts when `zoom_disabled` matches (`user-scalable=no`, a `maximum-scale` below 2,
+Next `userScalable: false` / `maximumScale: 1`); the rule abstains with no entry document. Browser
+support is declared when a `browser_support` file matches its expression (a browserslist query in
+`.browserslistrc`, a package.json `browserslist` key, Babel `targets`, Vite `build.target`);
+repository level (one declaration anywhere passes); abstains with no markup. Weights 25/25/20/15/15
+are the implementer's proposal (Level A text alternatives and form names first; 25+25 and 20+15+15
+each make an exact 50), checked by the Supervisor at Stage 4. Contrast, keyboard behaviour and what
+a component renders need a rendered page and are not measured.
+
 ## Rules and the registry fields they read
 
 Metrics come from static analysis: file and pattern matching, complexity counts, the import graph,
@@ -200,6 +232,11 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | finance *(optional pack)* | `float_money_observed` | 50 | = 0 | pack fields `money_names`, `money_excluded_words`, `money_declarations`, `float_types`, `persistence_float_types`, `persistence_paths`, `schema_paths`; source files as reliability plus schema files; abstains with no money-named declaration |
 | | `ledger_tables_without_audit_columns_observed` | 25 | = 0 | pack fields `ledger_names`, `non_ledger_heads`, `name_suffixes`, `ledger_declarations`, `entity_classes`, `entity_markers`, `audit_columns`; abstains with no ledger |
 | | `ledger_rows_mutated_observed` | 25 | = 0 | pack field `ledger_mutations` against the declared ledgers; abstains with no ledger |
+| frontend-a11y *(optional pack)* | `images_without_alt_observed` | 25 | = 0 | pack fields `markup_files`, `markup_excluded`, `comments`, `attribute_bindings`, `dynamic_attributes`, `image_tags`, `alt_attributes`; abstains with no verifiable image |
+| | `form_controls_without_label_observed` | 25 | = 0 | same markup fields, `form_controls`, `unnamed_input_types`, `name_attributes`, `label_tags`, `label_for_attributes`; abstains with no verifiable form control |
+| | `aria_hidden_focusable_observed` | 20 | = 0 | same markup fields, `aria_hidden_attributes`, `focusable_tags`, `focusable_with_href`; abstains with no `aria-hidden` element |
+| | `viewport_missing_or_zoom_disabled_observed` | 15 | = 0 | pack fields `viewport_entries`, `viewport_default_entries`, `viewport_declarations`, `zoom_disabled`; abstains with no entry document |
+| | `browser_support_declaration_missing` | 15 | = 0 | pack field `browser_support`; abstains with no markup |
 | supply-chain | `lockfile_missing` | 20 | = 0 | `roles.lockfile` |
 | | `licence_file_missing` | 15 | = 0 | none (generic `licence-file` role patterns) |
 | | `ci_actions_unpinned_share` | 20 | = 0 | none (generic CI facts in `core/roles.py`); abstains where no external `uses:` reference is quoted |
@@ -239,7 +276,10 @@ SLSA, CycloneDX/SPDX, Henry–Kafura,
 Nagappan–Ball, SemVer, ISO 22301 (documentation rule), HIPAA 45 CFR §164.514 (healthcare pack;
 §164.316, §164.504(e), NIST FIPS 199 and SP 800-144 for its documentation rules), CWE-1339,
 PostgreSQL numeric types, NIST SP 800-53 AU-3, SEC Rule 17a-4(f) and Fowler's Reversal Adjustment
-(finance pack; per-language decimal-type documentation in `registry/packs/finance.toml`), or
+(finance pack; per-language decimal-type documentation in `registry/packs/finance.toml`), WCAG 2.2
+SC 1.1.1, 1.3.1, 4.1.2, 1.4.4, 1.4.10 and its conformance requirement, W3C Using ARIA, ISO/IEC
+25010 compatibility and Browserslist (frontend-a11y pack; framework syntax documentation in
+`registry/packs/frontend-a11y.toml`), or
 `project default` where no external standard fixes the number.
 
 ### Fields that feed no rule directly

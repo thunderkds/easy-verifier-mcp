@@ -1,0 +1,271 @@
+# Frontend accessibility pack — curated pattern entry (T049, DDR-0008 §4,
+# FR-053). Read by core/registry.py load_pack, never as a language. Active only
+# when a repository lists it in .easy-verifier.toml (packs = ["frontend-a11y"])
+# or the agent picks it; an inactive pack reads nothing.
+#
+# Area #19 (accessibility, responsive UX, browser compatibility), checked
+# statically over markup text: nothing is rendered or run, so computed styles
+# (contrast) and what a component renders are out of reach. Matching is
+# deliberately conservative: an element whose attributes are partly unknown
+# (a spread, an object bind, a server-template expression in the tag) is listed
+# as not verifiable, never counted as missing.
+
+# --- which files hold markup, per framework syntax --------------------------
+
+[[markup_files]]
+value = ["**/*.html", "**/*.htm"]
+citation_url = "https://html.spec.whatwg.org/multipage/syntax.html"
+source_tag = "curated"
+
+# React / Next.js JSX and TSX (lowercase tags are DOM elements; capitalised
+# tags are components and are not followed).
+[[markup_files]]
+value = ["**/*.jsx", "**/*.tsx"]
+citation_url = "https://react.dev/learn/writing-markup-with-jsx"
+source_tag = "curated"
+
+[[markup_files]]
+value = ["**/*.vue"]
+citation_url = "https://vuejs.org/guide/scaling-up/sfc.html"
+source_tag = "curated"
+
+[[markup_files]]
+value = ["**/*.svelte"]
+citation_url = "https://svelte.dev/docs/svelte/svelte-files"
+source_tag = "curated"
+
+# Server-rendered templates: Jinja / Django (.html is matched above) and ERB.
+[[markup_files]]
+value = ["**/*.jinja", "**/*.jinja2", "**/*.j2"]
+citation_url = "https://jinja.palletsprojects.com/en/stable/templates/"
+source_tag = "curated"
+
+[[markup_files]]
+value = ["**/*.erb"]
+citation_url = "https://guides.rubyonrails.org/layouts_and_rendering.html"
+source_tag = "curated"
+
+# Not shipped markup: tests, stories, build output and vendored packages.
+[[markup_excluded]]
+value = ["**/__tests__/**", "**/*.test.*", "**/*.spec.*", "**/test/**", "**/tests/**", "**/e2e/**"]
+citation_url = "https://jestjs.io/docs/configuration#testmatch-arraystring"
+source_tag = "curated"
+
+[[markup_excluded]]
+value = ["**/*.stories.*", "**/storybook-static/**"]
+citation_url = "https://storybook.js.org/docs/writing-stories"
+source_tag = "curated"
+
+[[markup_excluded]]
+value = ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**", "**/coverage/**", "**/vendor/**"]
+citation_url = "https://docs.npmjs.com/cli/v10/configuring-npm/folders"
+source_tag = "curated"
+
+# Comments, blanked before matching (line numbers are kept).
+[[comments]]
+value = ['<!--[\s\S]*?-->']
+citation_url = "https://html.spec.whatwg.org/multipage/syntax.html#comments"
+source_tag = "curated"
+
+[[comments]]
+value = ['/\*[\s\S]*?\*/', '(?m)(?<![:"\x27=\w/\\])//[^\n]*$']
+citation_url = "https://tc39.es/ecma262/#sec-comments"
+source_tag = "curated"
+
+[[comments]]
+value = ['\{#[\s\S]*?#\}']
+citation_url = "https://jinja.palletsprojects.com/en/stable/templates/#comments"
+source_tag = "curated"
+
+[[comments]]
+value = ['<%#[\s\S]*?%>']
+citation_url = "https://docs.ruby-lang.org/en/master/ERB.html"
+source_tag = "curated"
+
+# Bound attribute spellings, reduced to the plain attribute name (group
+# "name"): Vue ":alt" / "v-bind:alt", Angular "[alt]" / "[attr.alt]".
+[[attribute_bindings]]
+value = ['(?:v-bind)?:(?P<name>[a-z][\w-]*)']
+citation_url = "https://vuejs.org/guide/essentials/template-syntax.html#attribute-bindings"
+source_tag = "curated"
+
+[[attribute_bindings]]
+value = ['\[(?:attr\.)?(?P<name>[a-z][\w-]*)\]']
+citation_url = "https://angular.dev/guide/templates/binding"
+source_tag = "curated"
+
+# Attributes that are unknown statically, searched in a tag with its quoted
+# values removed: a JSX / Svelte spread, a Vue object bind, Svelte's
+# $$props / $$restProps, a Jinja or ERB expression inside the tag.
+[[dynamic_attributes]]
+value = ['\{\s*\.\.\.']
+citation_url = "https://react.dev/learn/passing-props-to-a-component#forwarding-props-with-the-jsx-spread-syntax"
+source_tag = "curated"
+
+[[dynamic_attributes]]
+value = ['(?:^|\s)v-bind\s*=']
+citation_url = "https://vuejs.org/guide/essentials/template-syntax.html#dynamically-binding-multiple-attributes"
+source_tag = "curated"
+
+[[dynamic_attributes]]
+value = ['\$\$(?:rest)?[pP]rops']
+citation_url = "https://svelte.dev/docs/svelte/legacy-$$props-and-$$restProps"
+source_tag = "curated"
+
+[[dynamic_attributes]]
+value = ['\{\{|\{%']
+citation_url = "https://jinja.palletsprojects.com/en/stable/templates/#synopsis"
+source_tag = "curated"
+
+[[dynamic_attributes]]
+value = ['<%']
+citation_url = "https://docs.ruby-lang.org/en/master/ERB.html"
+source_tag = "curated"
+
+# --- WCAG 2.2 SC 1.1.1: images need a text alternative ----------------------
+
+[[image_tags]]
+value = ["img", "area"]
+citation_url = "https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html"
+source_tag = "curated"
+
+# alt="" is allowed: a decorative image is marked with a null alt (H67).
+[[alt_attributes]]
+value = ["alt"]
+citation_url = "https://www.w3.org/WAI/WCAG22/Techniques/html/H67"
+source_tag = "curated"
+
+# --- WCAG 2.2 SC 1.3.1 / 4.1.2: form controls need a name -------------------
+
+[[form_controls]]
+value = ["input", "select", "textarea"]
+citation_url = "https://html.spec.whatwg.org/multipage/forms.html#category-label"
+source_tag = "curated"
+
+# hidden has no UI; submit / reset / button take their name from value or a
+# default; image takes it from alt.
+[[unnamed_input_types]]
+value = ["hidden", "submit", "reset", "button", "image"]
+citation_url = "https://www.w3.org/TR/html-aam-1.0/#accname-computation"
+source_tag = "curated"
+
+# Accessible-name attributes (title: technique H65). A placeholder is not a
+# label (SC 3.3.2: it disappears on input).
+[[name_attributes]]
+value = ["aria-label", "aria-labelledby", "title"]
+citation_url = "https://www.w3.org/TR/accname-1.2/"
+source_tag = "curated"
+
+[[label_tags]]
+value = ["label"]
+citation_url = "https://html.spec.whatwg.org/multipage/forms.html#the-label-element"
+source_tag = "curated"
+
+# for (HTML, Vue, Svelte) and htmlFor (React); compared lowercased.
+[[label_for_attributes]]
+value = ["for", "htmlfor"]
+citation_url = "https://react.dev/reference/react-dom/components/common#common-props"
+source_tag = "curated"
+
+# --- WCAG 2.2 SC 4.1.2: aria-hidden never on a focusable element ------------
+
+[[focusable_tags]]
+value = ["button", "input", "select", "textarea", "iframe", "summary"]
+citation_url = "https://html.spec.whatwg.org/multipage/interaction.html#focusable-area"
+source_tag = "curated"
+
+[[focusable_with_href]]
+value = ["a", "area"]
+citation_url = "https://html.spec.whatwg.org/multipage/interaction.html#focusable-area"
+source_tag = "curated"
+
+[[aria_hidden_attributes]]
+value = ["aria-hidden"]
+citation_url = "https://www.w3.org/TR/using-aria/#4thrule"
+source_tag = "curated"
+
+# --- viewport (WCAG 2.2 SC 1.4.4 resize text, 1.4.10 reflow) -----------------
+
+# HTML entry documents that must declare a viewport themselves: Vite / CRA /
+# Angular index.html, SvelteKit src/app.html, Rails application layout.
+[[viewport_entries]]
+value = ["**/index.html", "**/src/app.html", "**/layouts/application.html.erb"]
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag"
+source_tag = "curated"
+
+# Entries whose framework emits a viewport meta tag by default: Next.js root
+# layout and pages-router document, Nuxt config. Counted as declared unless
+# they explicitly disable zoom.
+[[viewport_default_entries]]
+value = [
+    "**/app/layout.js", "**/app/layout.jsx", "**/app/layout.ts", "**/app/layout.tsx",
+    "**/pages/_document.js", "**/pages/_document.jsx", "**/pages/_document.ts", "**/pages/_document.tsx",
+]
+citation_url = "https://nextjs.org/docs/app/api-reference/functions/generate-viewport"
+source_tag = "curated"
+
+[[viewport_default_entries]]
+value = ["**/nuxt.config.js", "**/nuxt.config.ts", "**/nuxt.config.mjs"]
+citation_url = "https://nuxt.com/docs/api/nuxt-config#head"
+source_tag = "curated"
+
+[[viewport_declarations]]
+value = ['(?i)<meta\b[^>]*\bname\s*=\s*["\x27{]?\s*["\x27]?viewport\b']
+citation_url = "https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag"
+source_tag = "curated"
+
+[[viewport_declarations]]
+value = ['\bexport\s+(?:const\s+viewport\b|(?:async\s+)?function\s+generateViewport\b)']
+citation_url = "https://nextjs.org/docs/app/api-reference/functions/generate-viewport"
+source_tag = "curated"
+
+# Zoom disabled or capped below 200 %: fails SC 1.4.4 (resize text to 200 %).
+[[zoom_disabled]]
+value = [
+    '(?i)user-scalable\s*=\s*["\x27]?(?:no|0)\b',
+    '(?i)maximum-scale\s*=\s*["\x27]?(?:0?\.\d+|1(?:\.\d+)?)(?![\d.])',
+]
+citation_url = "https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html"
+source_tag = "curated"
+
+[[zoom_disabled]]
+value = [
+    '\buserScalable\s*:\s*(?:false|["\x27]no["\x27])',
+    '\bmaximumScale\s*:\s*(?:0?\.\d+|1(?:\.\d+)?)(?![\d.])',
+]
+citation_url = "https://nextjs.org/docs/app/api-reference/functions/generate-viewport#viewport-object"
+source_tag = "curated"
+
+# --- declared browser support -----------------------------------------------
+
+# "<file glob>=<regular expression>": the file declares the browsers it
+# supports when the expression matches its text. A browserslist query line,
+# a package.json "browserslist" key, a Babel "targets" option, a Vite
+# build.target.
+[[browser_support]]
+value = [
+    '**/.browserslistrc=(?im)^\s*(?:defaults|last\s+\d|[<>]=?\s*\d|not\s|supports\s|cover\s|extends\s|since\s|baseline\s|(?:chrome|firefox|safari|edge|ios_saf|and_chr|ie)\s*[<>=\d])',
+    '**/browserslist=(?im)^\s*(?:defaults|last\s+\d|[<>]=?\s*\d|not\s|supports\s|cover\s|extends\s|since\s|baseline\s|(?:chrome|firefox|safari|edge|ios_saf|and_chr|ie)\s*[<>=\d])',
+    '**/package.json="browserslist"\s*:',
+]
+citation_url = "https://github.com/browserslist/browserslist#queries"
+source_tag = "curated"
+
+[[browser_support]]
+value = [
+    '**/babel.config.js=\btargets\s*:',
+    '**/babel.config.json="targets"\s*:',
+    '**/.babelrc="targets"\s*:',
+    '**/.babelrc.json="targets"\s*:',
+]
+citation_url = "https://babeljs.io/docs/options#targets"
+source_tag = "curated"
+
+[[browser_support]]
+value = [
+    '**/vite.config.js=\bbuild\s*:\s*\{[^}]*?\btarget\s*:',
+    '**/vite.config.ts=\bbuild\s*:\s*\{[^}]*?\btarget\s*:',
+    '**/vite.config.mjs=\bbuild\s*:\s*\{[^}]*?\btarget\s*:',
+]
+citation_url = "https://vite.dev/config/build-options.html#build-target"
+source_tag = "curated"
