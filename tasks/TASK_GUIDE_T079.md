@@ -30,8 +30,10 @@ Express route tokens in `registry/curated/js-ts.toml` are literal receiver names
 
 **Why not a bare wildcard receiver** (Supervisor, measured 2026-10-08): bryony also has `$.get('/…')` (jQuery, 4 hits) — an HTTP *client* call. `axios.get('/api', cfg)`, `http.get(...)`, `map.get('/k')` have the same shape. A wildcard would count client calls as routes. Binding the receiver to `express()`/`Router()` keeps it to server routes without a deny-list.
 
+**Amendment (user, AskUserQuestion 2026-10-08 — "Router-module rule"):** the same-file rule found 0 of bryony's routes — they live in `dashboard/router.js`, `web/router.js`, `scraper/routers/master.js`, where the receiver is a **parameter of an exported function** (`module.exports = function (app, webapp)`) or **assigned from a property** (`let webapp = app.webapp`, `var webapp = app.app`). These now also bind a receiver, when the name is called as `<name>.<method>('/path', handler)` (path literal starting `/`, ≥2 arguments). jQuery `$.get` and other unbound names still do not count.
+
 **Out of scope**:
-- Cross-file receiver tracking (an app created in one file and imported in another) — note as a known limit in the derivation if hit.
+- Full cross-file data-flow tracking (resolving imports). The router-module rule above is a per-file approximation.
 - Other frameworks (Koa/Fastify/Hapi) — separate rows if ever needed.
 - Changing `find_routes` semantics for other languages.
 
@@ -64,6 +66,7 @@ Express route tokens in `registry/curated/js-ts.toml` are literal receiver names
 | 3 | `$.get('/api/x', cb)`, `axios.get('/api/x', cfg)`, `map.get('/k', v)` with no Express binding in the file → **no** route | no client calls |
 | 4 | Existing `app.get(`/`router.get(` and NestJS decorator behaviour unchanged (existing T073/T075 tests green) | no regression |
 | 5 | The receiver rule is data, not a hard-coded name list in Python: the binding constructors (`express()`, `express.Router()`, `Router()`) live in a cited registry/conventions field with `citation_url` (Express routing docs), consistent with DDR-0011 extendable lists | flexible conventions |
+| 7 | Router-module rule (amendment): exported-function parameters and `= <param>.<prop>` assignments bind receivers; `$.get`, `axios.get`, `http.get` on unbound names still 0; a parameter only used as `x.get(name)` (one argument) still 0 | amendment |
 | 6 | Real repo: bryony `requirement-fidelity` and `api` now find bryony's `webapp.*` routes (before/after counts pasted) | real-repo verified |
 
 ---
