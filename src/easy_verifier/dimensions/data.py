@@ -35,6 +35,7 @@ from ..core.models import (
 )
 from ..core.redact import redact
 from ..core.roles import GENERIC_DATA_FACTS, role
+from ..core.structure import context_conventions
 from ..core.tokens import strip
 from . import _code_extract
 from .blast_radius import (
@@ -165,7 +166,7 @@ def _facts(context: DimensionContext) -> dict:
     whole_repo = scope is None or getattr(scope, "kind", None) == "project"
     scope_set = frozenset(scope_files)
     tables = curated_metric_tables()
-    dirs, destructive_pattern = migration_patterns()
+    dirs, destructive_pattern = migration_patterns(context_conventions(context))
 
     schemas = []
     for path in sorted(

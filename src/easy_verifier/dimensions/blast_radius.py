@@ -56,10 +56,10 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import redact
-from ..core.registry import layered_conventions
+from ..core.registry import RegistryEntry, layered_conventions
 from ..core.roles import role
 from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS
-from ..core.structure import convention_values
+from ..core.structure import context_conventions, convention_values
 from ..core.tokens import MAX_LINE_CHARS
 
 NAME = "blast-radius"
@@ -715,15 +715,20 @@ and the ORM migration-API regular expressions, each cited per framework in
 ``registry/curated/conventions.toml``."""
 
 
-def migration_patterns() -> tuple[frozenset[str], re.Pattern[str]]:
+def migration_patterns(
+    entry: RegistryEntry | None = None,
+) -> tuple[frozenset[str], re.Pattern[str]]:
     """The migration directory names and the destructive-operation matcher,
-    from the curated ``conventions`` entry plus the local layer.
+    from ``entry`` (the call's resolved conventions, T086: curated, local
+    layer, ``.easy-verifier.toml``, replayed items) or, with none, the curated
+    ``conventions`` entry plus the local layer.
 
     SQL DDL tokens and ORM API expressions form one case-insensitive
     alternation, DDL first. The curated entry lacking a field is a packaging
     error and raises ``ValueError``.
     """
-    entry, _warnings = layered_conventions()
+    if entry is None:
+        entry, _warnings = layered_conventions()
     missing = [f for f in MIGRATION_FIELDS if not convention_values(entry, f)]
     if missing:
         raise ValueError(f"conventions.toml: missing {', '.join(missing)}")
@@ -778,17 +783,19 @@ def _compat_evidence(context: DimensionContext, scope: object) -> tuple[Excerpt,
             )
         else:
             clipped = any("clipped" in note for note in getattr(scope, "notes", ()))
-            context.compat, excerpts = _read_diff(diff, clipped=clipped)
+            context.compat, excerpts = _read_diff(
+                diff, clipped=clipped, entry=context_conventions(context)
+            )
             _warn(context, COMPAT_METHOD)
     context._compat_excerpts = excerpts
     return excerpts
 
 
 def _read_diff(
-    diff: str, *, clipped: bool
+    diff: str, *, clipped: bool, entry: RegistryEntry | None = None
 ) -> tuple[CompatFacts, tuple[Excerpt, ...]]:
     tables = curated_metric_tables()
-    dirs, destructive = migration_patterns()
+    dirs, destructive = migration_patterns(entry)
     parsed = _diff_files(diff)
     secret = tuple(redact(item["path"]) for item in parsed if item["secret"])
     files = [item for item in parsed if not item["secret"]]

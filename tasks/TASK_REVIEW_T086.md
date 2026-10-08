@@ -39,9 +39,9 @@
 - payload `registry_entries` already embeds the toml item (`migration_dirs: ['dbchanges']`, user-supplied), yet neither dimension used it.
 - real-repo sha256 baselines (coffee-shop-api, kitchd `--scope project --all`) captured in background to scratchpad/before.*.sha.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (2026-10-08T07:52:11Z, same temp repo and command): blast-radius `destructive_migration_ops` = 1 ("dbchanges/002.sql:1-1 DROP COLUMN ..."); data `destructive_migration_ops_observed` = 1; registry_entries still embeds the toml item. Replay without the toml is byte-equal (tests/test_t086_toml_migration_dirs.py). coffee-shop-api and kitchd `--scope project --all` sha256 identical before/after (2a12a8c9...74a, d1384151...56f). Full suite: 2 failed (known container tests), 2537 passed, 2 skipped; ruff clean. New tests fail pre-fix (5 of 8; the other 3 are negatives/replay guards).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**DELTA**: a repo's `.easy-verifier.toml` `migration_dirs` / `destructive_migration_ddl` now drive blast-radius #5 and data #4, and replay byte-equal.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
