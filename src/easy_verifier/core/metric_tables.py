@@ -443,6 +443,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_strict_off": _STRICT,
     "type_config_extends": _STRICT,
     "route_tokens": (),  # T073: read by core/structure.py; its rule lands in T075
+    "data_tokens": ("layer_direction_violations",),  # T088: behaviour layers
     "swallowed_errors": _SWALLOWED,
     "outbound_calls": _TIMEOUTS,
     "call_timeouts": _TIMEOUTS,
