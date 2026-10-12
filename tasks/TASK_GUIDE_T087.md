@@ -66,7 +66,7 @@ nor nested third-party projects.
 
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
-| 1 | Paths matching GitHub Linguist's `vendor.yml` and `generated` path patterns are excluded. The pattern data is vendored under `registry/vendored/`, with its source URL, licence (MIT) and checksum in `NOTICE` / `CHECKSUMS.sha256`, as for `linguist.json`. It covers at least `vendor/`, `third_party/`, `node_modules/` and minified bundles | third-party never feeds a rating |
+| 1 | Paths matching the **third-party categories** of GitHub Linguist's `vendor.yml` are excluded, vendored as a pinned, filtered, checksummed snapshot (commit `d0921d10`, MIT) with NOTICE listing kept and dropped categories. **Kept**: Node/Bower/Yarn-2/Go Godeps dependency dirs, `(3rd|third)[-_]?party/`, `vendors?/`, `[Vv]+endor/`, minified `(\.|-)min\.(js|css)$`, `Carthage/`, `*.framework`, `flow-typed/`, bundled-framework entries (jQuery, MathJax, …). **Dropped**: CI/editor configs, `.d.ts`, `dist/`, `cache/`, `env/`, fixtures, git config files, wrapper scripts, and `[Ee]xtern(als?)?/` (team code on bryony). There are **no default 'generated' patterns**: `generated.rb` is code and counts lockfiles. 'generated' comes only from `.gitattributes` (AC 2). *(Amended 2026-10-12 by the Supervisor after the implementer found that `vendor.yml` is a language-statistics list, not a third-party list; Option A.)* | third-party never feeds a rating |
 | 2 | `.gitattributes` entries with `linguist-vendored` or `linguist-generated` (set, not `-` or `=false`) exclude their paths. A `-linguist-vendored` entry re-includes a path that a default pattern excluded | the repo's own declaration wins |
 | 3 | `.easy-verifier.toml` can declare `exclude = ["glob", …]`. Paths are validated with the same bounds as role globs. An invalid glob is a rejected config, never silently ignored | declared by the project |
 | 4 | **Nested third-party root**: a directory below the repo root that holds its own licence file (`LICENSE*`, `COPYING*`) **and** at least one of `NOTICE*`, `AUTHORS*` or `CONTRIBUTORS*` is excluded as third-party, together with everything below it. The repo root is never excluded this way | Harbor case |
@@ -116,7 +116,7 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 `registry/vendored/linguist.json` + `NOTICE` + `CHECKSUMS.sha256` (how vendored data is pinned and
 cited); `roles.py` toml glob validation (bounds).
 
-Apply exclusion once, at the file-set walk, so every dimension inherits it. Do not filter per
+Apply exclusion through **one path predicate built once per repo** (pattern: `git_ignore_filter`), called by both existing walkers (`scope._walk_files` and `context._walk`), which today disagree (`context._EXCLUDED_DIRS` has `vendor`/`target`, `scope` does not). Never write a third walker, and never filter per
 dimension. Carry the reason through to the payload in the same structure as the existing
 `excluded: secret-bearing` disclosure (DDR-0002). The nested-root predicate is deliberately
 conservative (licence **plus** NOTICE/AUTHORS/CONTRIBUTORS). Do not widen it without the
@@ -141,7 +141,7 @@ Supervisor's approval.
 |------|--------|
 | `src/easy_verifier/core/scope.py` | exclusion predicate + reasons |
 | `src/easy_verifier/core/roles.py` | toml `exclude` key + validation; `_in_excluded_dir` reuse |
-| `src/easy_verifier/registry/vendored/linguist_vendor.json` (+ NOTICE, CHECKSUMS) | vendored Linguist vendor/generated patterns |
+| `src/easy_verifier/registry/vendored/linguist_vendor.json` (+ NOTICE, CHECKSUMS) | filtered snapshot of Linguist `vendor.yml` third-party categories |
 | `src/easy_verifier/core/judge.py` / `report.py` | disclosure in payload + report |
 | `docs/SCORING_RULES.md`, `docs/EVALUATION_GUIDE.md` | one paragraph each |
 | `tests/test_t083_third_party_exclusion.py` | new |
