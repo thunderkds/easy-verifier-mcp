@@ -24,6 +24,7 @@ from .models import (
     EvidencePack,
     RedactionHit,
     SourceMiss,
+    ThirdPartyExclusion,
 )
 from .registry import RegistryEntry
 from .roles import (
@@ -190,9 +191,26 @@ def run_dimension(
         doc_history=getattr(context, "doc_history", None),
         sample=getattr(context, "sample", None),
         whole_file=getattr(context, "whole_file", None),
+        excluded=_redacted_exclusions(resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
+    )
+
+
+def _redacted_exclusions(scope) -> tuple[ThirdPartyExclusion, ...] | None:
+    """The scope's third-party roots (T087), path and rule redacted like every
+    other path that leaves the engine; ``None`` when nothing was excluded."""
+    excluded = getattr(scope, "excluded", ())
+    if not excluded:
+        return None
+    return tuple(
+        replace(
+            item,
+            path=redact_module.scan(item.path).text,
+            rule=redact_module.scan(item.rule).text,
+        )
+        for item in excluded
     )
 
 

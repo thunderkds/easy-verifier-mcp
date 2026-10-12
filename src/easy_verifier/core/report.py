@@ -994,6 +994,7 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         "An assessment appears only when caller findings were submitted; divergence "
         "is shown separately and never blended.</p>"
         f"{overall_html}{_render_area_coverage(ctx, score)}"
+        f"{_render_excluded(ctx, score.excluded)}"
         f'<div class="score-grid">{cards}</div>'
         f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
     )
@@ -1016,6 +1017,22 @@ def _render_area_coverage(ctx: _Ctx, score: ScoreResult) -> str:
         else ""
     )
     return f'<div class="area-coverage"><p>{ctx.esc(text)}</p>{folded}</div>'
+
+
+def _render_excluded(ctx: _Ctx, excluded) -> str:
+    """FR-074: a folded count plus list of the third-party roots the score
+    left out, each with its reason and matched rule (T087)."""
+    if not excluded:
+        return ""
+    rows = "".join(
+        f"<li><code>{ctx.esc(item['path'])}</code> ({ctx.esc(item['reason'])}: "
+        f"{ctx.esc(item['rule'])})</li>"
+        for item in excluded
+    )
+    return (
+        '<details class="third-party-excluded"><summary>Excluded as third-party '
+        f'({len(excluded)})</summary><ul class="miss-list">{rows}</ul></details>'
+    )
 
 
 _GROUP_TITLES = {

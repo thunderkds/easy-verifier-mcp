@@ -60,6 +60,21 @@ class SourceMiss:
 
 
 @dataclass(frozen=True)
+class ThirdPartyExclusion:
+    """One excluded third-party root (T087, FR-074): a directory (``path``
+    ending in ``/``) or a single file the evaluation never reads.
+
+    ``reason`` is one of ``linguist-pattern``, ``gitattributes``, ``declared``
+    or ``nested-project``; ``rule`` is the exact pattern or files that
+    matched. Disclosed so nothing leaves the evaluation silently."""
+
+    path: str
+    reason: str
+    rule: str
+    excluded: str = "third-party"
+
+
+@dataclass(frozen=True)
 class TruncationRecord:
     """The structured truncation report FR-011b requires: whether the byte
     budget rejected anything, and how many excerpts it rejected.
@@ -258,6 +273,11 @@ class EvidencePack:
     than its cap and read batches 1…N of them. ``None`` otherwise, and then
     left out of the serialized pack."""
 
+    excluded: tuple[ThirdPartyExclusion, ...] | None = field(default=None)
+    """Third-party roots the scope left out (T087, FR-074), one entry per
+    root. ``None`` when nothing was excluded, and then left out of the
+    serialized pack."""
+
     whole_file: tuple[SampledMetric, ...] | None = field(default=None)
     """Structure metrics a code tier computed over the whole text of every
     source file when it had no more sources than its cap (T076, FR-072): one
@@ -433,7 +453,9 @@ class SampleFacts:
     metrics: tuple[SampledMetric, ...] = ()
 
 
-_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history", "sample", "whole_file"})
+_OMITTED_WHEN_ABSENT = frozenset(
+    {"compat", "doc_history", "sample", "whole_file", "excluded"}
+)
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
 of the serialized pack while unset, so every pack that does not use them
 serializes byte-for-byte as before."""

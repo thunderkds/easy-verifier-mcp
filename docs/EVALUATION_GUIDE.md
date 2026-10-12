@@ -22,6 +22,7 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 | `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet (an optional pack's areas count only in a run where it is enabled); both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |
 | `samples` | Present only for large repositories: which batches of source files were read |
+| `excluded` | Present only when something was left out as third-party: one entry per excluded root, with its reason (`linguist-pattern`, `gitattributes`, `declared` or `nested-project`) and the rule that matched. No rating, layer, cycle or document role is computed from these files; the report shows them as a folded list under the overall |
 | `improvement_plan` | Every unmet or unmeasured rule of every rated dimension, grouped and ranked by gain |
 | `assessments`, `divergences` | Present only if you sent findings; never blended into a rating |
 

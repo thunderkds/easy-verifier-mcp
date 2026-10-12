@@ -58,7 +58,7 @@ from ..core.models import (
 from ..core.redact import redact
 from ..core.registry import RegistryEntry, layered_conventions
 from ..core.roles import role
-from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS
+from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS, third_party_filter
 from ..core.structure import context_conventions, convention_values
 from ..core.tokens import MAX_LINE_CHARS
 
@@ -588,7 +588,13 @@ def _churn_ranking(
         return
 
     ok, out, _ = _run_git(repo, ["ls-files"])
-    tracked = set(out.splitlines()) if ok else set()
+    # Third-party files are not the team's churn (T087): ranked like the scope.
+    is_third_party = third_party_filter(repo)
+    tracked = (
+        {name for name in out.splitlines() if is_third_party(name) is None}
+        if ok
+        else set()
+    )
     ranked = sorted(
         (name for name in counts if name in tracked),
         key=lambda name: (-counts[name], name),

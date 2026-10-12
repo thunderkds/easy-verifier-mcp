@@ -9,7 +9,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -113,6 +113,11 @@ class ScoreResult:
     priority batches of its sources were read. In :meth:`to_dict` for both
     adapters, only when non-empty, so a repository at or under the cap
     serialises exactly as before."""
+    excluded: tuple[dict[str, str], ...] = ()
+    """Third-party roots the evaluation left out (T087, FR-074): ``{path,
+    excluded: "third-party", reason, rule}``, one per root. In
+    :meth:`to_dict` for both adapters, only when non-empty, so a repository
+    with nothing excluded serialises exactly as before."""
     continue_batches: dict[str, Any] | None = None
     """MCP-only (T068, FR-061): ``{batches_done, batches_total, files_read,
     files_in_scope, question}`` while batches remain. Like ``needs_input``,
@@ -159,6 +164,8 @@ class ScoreResult:
         }
         if self.samples:
             payload["samples"] = [dict(item) for item in self.samples]
+        if self.excluded:
+            payload["excluded"] = [dict(item) for item in self.excluded]
         payload |= {
             "metrics": json.loads(self.metrics.serialize()),
             "provenance": [
@@ -399,6 +406,15 @@ def score_packs(
         for slot in packs.slots
         if slot.pack is not None and slot.pack.sample is not None
     )
+    # Every pack resolved the same scope, so any pack carries the same list.
+    excluded = next(
+        (
+            tuple(asdict(item) for item in slot.pack.excluded)
+            for slot in packs.slots
+            if slot.pack is not None and slot.pack.excluded
+        ),
+        (),
+    )
     return ScoreResult(
         ratings,
         overall,
@@ -416,6 +432,7 @@ def score_packs(
             )
         ),
         samples=samples,
+        excluded=excluded,
     )
 
 
