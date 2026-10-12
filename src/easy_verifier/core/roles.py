@@ -938,6 +938,13 @@ def load_repo_packs(repo: str | Path) -> tuple[str, ...]:
     return _repo_config(_resolved_repo(repo))[2]
 
 
+def load_repo_excludes(repo: str | Path) -> tuple[str, ...]:
+    """The validated ``exclude`` globs of the target's optional
+    ``.easy-verifier.toml`` (T087). Absent file or key → ``()``; an invalid
+    glob raises :class:`RoleInputError`."""
+    return _repo_config(_resolved_repo(repo))[3]
+
+
 def active_packs(
     repo: str | Path, document: Mapping | None
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -971,11 +978,16 @@ def _agent_packs(value: object, errors: list[str]) -> tuple[str, ...]:
 
 def _repo_config(
     repo: str | Path,
-) -> tuple[dict[str, tuple[str, ...]], dict[str, tuple[str, ...]], tuple[str, ...]]:
+) -> tuple[
+    dict[str, tuple[str, ...]],
+    dict[str, tuple[str, ...]],
+    tuple[str, ...],
+    tuple[str, ...],
+]:
     root = Path(repo)
     path = root / CONFIG_FILENAME
     if not path.exists() and not path.is_symlink():
-        return {}, {}, ()
+        return {}, {}, (), ()
 
     def fail(reason: str) -> RoleInputError:
         return RoleInputError(CONFIG_FILENAME, [reason])
@@ -993,12 +1005,12 @@ def _repo_config(
 
     errors: list[str] = []
     for key in data:
-        if key not in ("roles", "conventions", "packs"):
+        if key not in ("roles", "conventions", "packs", "exclude"):
             errors.append(
-                f"{redact(key)}: unknown key; only [roles], [conventions] and "
-                "packs are accepted, and they may only add paths to existing "
-                "roles, patterns to conventions or optional packs (no floors, "
-                "rules or removals)"
+                f"{redact(key)}: unknown key; only [roles], [conventions], "
+                "packs and exclude are accepted, and they may only add paths to "
+                "existing roles, patterns to conventions, optional packs or "
+                "third-party paths to exclude (no floors, rules or removals)"
             )
     configured = data.get("roles", {})
     if not isinstance(configured, dict):
@@ -1027,9 +1039,27 @@ def _repo_config(
             result[name] = tuple(valid)
     conventions = _config_conventions(data.get("conventions", {}), errors)
     packs = _agent_packs(data.get("packs", []), errors)
+    exclude = _config_excludes(data.get("exclude", []), errors)
     if errors:
         raise RoleInputError(CONFIG_FILENAME, errors)
-    return dict(sorted(result.items())), conventions, packs
+    return dict(sorted(result.items())), conventions, packs, exclude
+
+
+def _config_excludes(value: object, errors: list[str]) -> tuple[str, ...]:
+    """``exclude = ["glob", ...]`` (T087, FR-074): third-party paths the
+    project declares, bounded exactly like role globs. One bad glob rejects
+    the whole file; it is never silently dropped."""
+    if not isinstance(value, list):
+        errors.append("exclude: must be a list of path globs")
+        return ()
+    valid = []
+    for index, glob in enumerate(value):
+        problem = _config_glob_problem(glob)
+        if problem:
+            errors.append(f"exclude[{index}] {_quote(glob)}: {problem}")
+        else:
+            valid.append(glob)
+    return tuple(valid)
 
 
 def _config_conventions(
@@ -1311,6 +1341,14 @@ def _pick_problem(root: Path, value: object) -> str | None:
         return "secret-bearing file (DDR-0002); its contents are never read"
     if _in_excluded_dir(relative):
         return "resolves into an excluded vendor/build directory"
+    from .scope import third_party_filter  # scope imports this module
+
+    hit = third_party_filter(root)(relative)
+    if hit is not None:
+        return (
+            f"third-party ({hit.reason}: {redact(hit.rule)}); "
+            "it can never fill a role"
+        )
     return None
 
 

@@ -102,14 +102,18 @@ HOT = ("app/m249.py", "app/m248.py", "app/m247.py")
 
 @pytest.fixture(scope="module")
 def big_repo(tmp_path_factory) -> Path:
-    """450 sources across app/, scripts/, vendor/ with git history: the last
-    three app files by path are the most churned, so churn -- not path --
-    must put them first."""
+    """450 sources across app/, scripts/, generated/ with git history: the
+    last three app files by path are the most churned, so churn -- not path --
+    must put them first. (`generated/`, not `vendor/`: since T087 a vendor
+    directory is third-party and leaves the scope, while a generated one is
+    still evaluated, last.)"""
     repo = tmp_path_factory.mktemp("t068") / "big"
     files = {"README.md": "# Big\n\nA large fixture.\n"}
     files |= {f"app/m{i:03}.py": _module(f"a{i}", "scripts", i) for i in range(APP)}
     files |= {f"scripts/s{i:03}.py": _module(f"s{i}", "app", i) for i in range(SCRIPTS)}
-    files |= {f"vendor/v{i:03}.py": _module(f"v{i}", "app", i) for i in range(VENDOR)}
+    files |= {
+        f"generated/v{i:03}.py": _module(f"v{i}", "app", i) for i in range(VENDOR)
+    }
     files |= {
         f"tests/test_m{i:03}.py": f"def test_m{i}():\n    assert True\n"
         for i in range(5)
@@ -241,9 +245,12 @@ def test_no_git_history_falls_back_to_class_then_path_and_says_so(tmp_path) -> N
 
 
 def test_generated_and_vendored_files_are_last_never_dropped(small: Path) -> None:
+    # T087: third-party files (a vendor dir, a minified bundle) are excluded
+    # and disclosed before batching, so they never count toward a batch.
     pack = run_dimension(code_quality.DESCRIPTOR, small, scope="project", batches="all")
-    assert pack.sample.files_read == pack.sample.files_in_scope == 10
-    assert {"vendor/lib.py", "web/bundle.min.js"} <= set(pack.files_read)
+    assert pack.sample.files_read == pack.sample.files_in_scope == 8
+    assert not {"vendor/lib.py", "web/bundle.min.js"} & set(pack.files_read)
+    assert {item.path for item in pack.excluded} == {"vendor/", "web/bundle.min.js"}
 
 
 # ---------------------------------------------------------------------------

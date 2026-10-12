@@ -132,12 +132,16 @@ _EXCLUDED_DIRS = frozenset(
         "dist",
         "build",
         "target",
-        "vendor",
         ".mypy_cache",
         ".pytest_cache",
         ".ruff_cache",
     }
 )
+
+"""Build, cache and tool directories, shared by both walks (this module's
+`_walk` and `scope._walk_files`). Third-party code such as `vendor/` is not
+here: `scope.third_party_filter` excludes it and the payload discloses it
+(T087)."""
 
 _ADR_DIR_NAMES = frozenset({"adr", "adrs", "decisions"})
 
@@ -665,6 +669,7 @@ def _walk(
     contained_only: bool = True,
     _visited: set[Path] | None = None,
     _skip: Callable[[str], bool] | None = None,
+    _third_party: Callable[[str], object] | None = None,
 ) -> Iterator[str]:
     """Yield matching files under the directory, depth-first and sorted.
 
@@ -687,6 +692,10 @@ def _walk(
     :func:`git_ignore_filter`, decided once per top-level walk); an ignored
     directory is still descended so a secret-bearing file inside it stays
     visible.
+
+    Third-party files (T087, :func:`.scope.third_party_filter`, built once per
+    top-level walk) are not yielded either; the scope's ``excluded`` list is
+    where they are disclosed.
     """
     # Checked on entry rather than at the recursive call, so it covers the roots
     # `_candidate_docs` passes in too: `docs/` itself can be the escaping link.
@@ -709,6 +718,10 @@ def _walk(
         _visited = set()
     if _skip is None:
         _skip = git_ignore_filter(repo)
+    if _third_party is None:
+        from .scope import third_party_filter  # scope imports this module
+
+        _third_party = third_party_filter(repo)
     if resolved in _visited:
         return
     _visited.add(resolved)
@@ -723,6 +736,7 @@ def _walk(
                     contained_only=contained_only,
                     _visited=_visited,
                     _skip=_skip,
+                    _third_party=_third_party,
                 )
         elif (
             entry.is_file()
@@ -730,7 +744,7 @@ def _walk(
             and (not contained_only or _is_contained(entry, repo))
         ):
             relative = entry.relative_to(repo).as_posix()
-            if not _skip(relative):
+            if not _skip(relative) and _third_party(relative) is None:
                 yield relative
 
 

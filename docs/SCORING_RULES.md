@@ -31,6 +31,18 @@ The only judgment input is the calling agent's `gate_evaluations`, blended as
 `rules × (1 − w) + agent × w` with `w = 0.5 × confidence` and always shown with its parts. It is
 accepted only for solution-fit (`no_static_rule`) and for dimensions with a borderline input.
 
+### Third-party code is excluded first
+
+Before any rule runs, files the repository's team did not write leave the evaluated file set
+(T087, DDR-0012 §5), for every scope kind, so they feed no rating, layer, cycle, document role or
+batch. A file is third-party when it matches a kept third-party category of GitHub Linguist's
+`vendor.yml` (a pinned, filtered snapshot in `registry/vendored/linguist_vendor.json`; the NOTICE
+there lists every kept and dropped category, and lockfiles, CI configs and `.d.ts` files are never
+excluded), when `.gitattributes` sets `linguist-vendored` or `linguist-generated` on it (an explicit
+`-linguist-vendored` re-includes it), when `.easy-verifier.toml` lists it under `exclude`, or when it
+sits below a directory that holds its own licence file and a NOTICE, AUTHORS or CONTRIBUTORS file.
+Each excluded root is disclosed once in the payload's `excluded` list with its reason and rule.
+
 ### Coverage floors
 
 | Dimension | Floor |
