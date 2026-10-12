@@ -71,13 +71,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1 | 🔄 started 2026-10-12
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-12 (scraping-devops excludes docker-registry/harbor/ nested-project → 0 Harbor citations, overall withheld: own code is compose YAML + shell; bryony excludes frontend/app/scripts/vendor/ 19 files, 59 unchanged; kitchd/ai-training/coffee unchanged; 2609 passed; follow-up: infrastructure does not read compose YAML)
 - [x] **T078** — Repo-local / `.easy-verifier.toml` conventions used in scoring and embedded for byte-equal replay (toml items per-call only, user 2026-10-08) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-08 (layer_paths/route_tokens/requirement/issue patterns honour extras add-only; replay byte-equal with toml deleted, nothing written to disk; secret-shaped values dropped with a warning; no-toml payloads change only by the corrected disclosure text; 2465 passed, 2 known container failures)
 - [x] **T057** — Migration knowledge into cited registry fields (`migration_dirs`, `destructive_migration_ddl` IGNORECASE tokens, `destructive_migration_apis` curated-only regex; user option D 2026-10-08) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (pure relocation: coffee/kitchd/changes-scope/destructive-hit payloads byte-identical; local layer can add dir names; 2512 passed, 2 known container failures; follow-up T086)
 - [x] **T079** — Route tokens: Express routes on any app/router name — receivers bound to `express()`/`Router()` in the file, exported-function params, and properties read from them (router-module rule, user 2026-10-08) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-08 (bryony 3→18 routes, routes↔tests 0/3→5/18 tested, overall 42 unchanged; Stage 4 P1 fixed: `$ = window.jQuery` callbacks no longer routes; cited registry rows `RECEIVER*`; 2382 passed, 2 known container failures)
