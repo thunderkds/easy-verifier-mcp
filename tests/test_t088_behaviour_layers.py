@@ -321,3 +321,122 @@ def test_barrel_index_on_the_path_is_service_and_tests_take_no_layer(
     assert not metric.abstained, metric.outcome
     assert "5 of 5 non-shared" in metric.derivation
     assert "(2 api, 2 service, 1 data)" in metric.derivation
+
+
+# --- AC 11: dynamic import with a literal directory prefix -----------------
+
+DISPATCH = {
+    "server/router.js": (
+        "const express = require('express');\n"
+        "const ControllerManager = require('./controller-manager');\n"
+        "const webapp = express();\n"
+        "webapp.all('/api/:controller', function (req, res) {\n"
+        "  res.json(ControllerManager.handle(req));\n"
+        "});\n"
+    ),
+    "server/controller-manager.js": (
+        "const fs = require('fs');\n"
+        "const loaded = {};\n"
+        "fs.readdirSync(__dirname + '/controllers').forEach(function (name) {\n"
+        "  loaded[name] = require('./controllers/' + name);\n"
+        "});\n"
+        "module.exports = { handle: function (req) { return loaded; } };\n"
+    ),
+    "server/controllers/accounts.js": (
+        "const store = require('../../lib/store');\n"
+        "module.exports = { list: function () { return store.all(); } };\n"
+    ),
+    "server/controllers/groups.js": (
+        "const mongoose = require('mongoose');\n"
+        "const Group = mongoose.model('Group');\n"
+        "module.exports = { list: function () { return Group.find({}); } };\n"
+    ),
+    "lib/store.js": STORE,
+    "lib/other.js": "const store = require('./store');\nmodule.exports = store;\n",
+}
+
+
+def _check_dispatch(root: Path) -> None:
+    metric = _layer(root, DISPATCH)
+    assert not metric.abstained, metric.outcome
+    assert "5 of 6 non-shared" in metric.derivation
+    assert "5 by behaviour (1 api, 2 service, 2 data)" in metric.derivation
+    assert (
+        "1 prefix edge(s) from dynamic imports with a literal directory prefix"
+    ) in metric.derivation
+    assert (
+        "server/controller-manager.js:4 -> './controllers/' (2 file(s))"
+    ) in metric.derivation
+
+
+def test_ac11_prefix_edge_links_every_controller_in_the_directory(tmp_path) -> None:
+    _check_dispatch(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("text", "prefixes"),
+    [
+        ("const c = require('./controllers/' + name);\n", ((1, "./controllers/"),)),
+        ("const c = require(`./strategies/${name}`);\n", ((1, "./strategies/"),)),
+        ("const c = await import('../dir/' + x);\n", ((1, "../dir/"),)),
+        ("const c = require(name);\n", ()),
+        ("const c = require(base + name);\n", ()),
+        ("const c = require(`${base}/x`);\n", ()),
+        ("// require('./dir/' + x)\n", ()),
+    ],
+)
+def test_ac11_js_dynamic_prefix_forms(text, prefixes) -> None:
+    assert _evidence("server/m.js", text).prefixes == prefixes
+
+
+@pytest.mark.parametrize(
+    ("text", "prefixes"),
+    [
+        (
+            "import importlib\nm = importlib.import_module('app.plugins.' + n)\n",
+            ((2, "app.plugins."),),
+        ),
+        (
+            'import importlib\nm = importlib.import_module(f"app.plugins.{n}")\n',
+            ((2, "app.plugins."),),
+        ),
+        ("import importlib\nm = importlib.import_module(n)\n", ()),
+    ],
+)
+def test_ac11_python_dynamic_prefix_forms(text, prefixes) -> None:
+    assert _evidence("app/loader.py", text).prefixes == prefixes
+
+
+def test_ac11_python_prefix_resolves_non_recursively() -> None:
+    from easy_verifier.core.metrics import _prefix_targets
+
+    files = [
+        "src/app/loader.py",
+        "src/app/plugins/a.py",
+        "src/app/plugins/b.py",
+        "src/app/plugins/deep/c.py",
+    ]
+    assert _prefix_targets("src/app/loader.py", "app.plugins.", files) == {
+        "src/app/plugins/a.py",
+        "src/app/plugins/b.py",
+    }
+    assert _prefix_targets("src/app/loader.py", "./plugins/", files) == {
+        "src/app/plugins/a.py",
+        "src/app/plugins/b.py",
+    }
+
+
+@pytest.mark.parametrize("extreme", ["never", "everything"])
+def test_ac11_sabotaged_prefix_edges_break_the_dispatch_fixture(
+    tmp_path, monkeypatch, extreme
+) -> None:
+    from easy_verifier.core import metrics
+
+    if extreme == "never":
+        monkeypatch.setattr(metrics, "_prefix_targets", lambda *a: set())
+    else:
+        monkeypatch.setattr(
+            metrics, "_prefix_targets", lambda path, _p, files: set(files) - {path}
+        )
+    with pytest.raises(AssertionError):
+        _check_dispatch(tmp_path)

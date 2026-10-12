@@ -49,6 +49,7 @@ or by checking :attr:`Metric.abstained` first.
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -1466,7 +1467,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         return _no_imports("source-file")
     layer_of = view.tables.layer_of or (lambda _path: None)
     hints = {path: layer_of(path) for path in files}
-    behaviour, cited = _behaviour_layers(view, files, statements)
+    behaviour, cited, linked = _behaviour_layers(view, files, statements)
     layers = {path: behaviour.get(path) or hints[path] for path in files}
     considered = [path for path in files if layers[path] != "shared"]
     classified = {p: layers[p] for p in considered if layers[p] in LAYER_RANK}
@@ -1488,6 +1489,12 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         + (": " if disagreements else "")
         + "; ".join(disagreements[:MAX_LAYER_EXAMPLES])
     )
+    if linked:
+        disagreed += (
+            f"; {len(linked)} prefix edge(s) from dynamic imports with a literal "
+            "directory prefix, each linking every source file directly in that "
+            "directory: " + "; ".join(linked[:MAX_LAYER_EXAMPLES])
+        )
     if not considered or len(classified) / len(considered) < MIN_CLASSIFIED_SHARE:
         if not any(layer in ("api", "data") for layer in behaviour.values()):
             return MetricAbstention(
@@ -1585,7 +1592,7 @@ def _behaviour_layers(
     file: also its directory) and no other file quoted here has that name."""
     evidence_of = view.tables.layer_evidence
     if evidence_of is None:
-        return {}, {}
+        return {}, {}, []
     texts: dict[str, list[Excerpt]] = {}
     for excerpt in view.pack.excerpts:
         if excerpt.path in files:
@@ -1632,6 +1639,17 @@ def _behaviour_layers(
         return {path: frozenset(names) for path, names in imported.items()}
 
     found = observe({})
+    linked: list[str] = []
+    for path, items in found.items():
+        for excerpt, ev in items:
+            for line, prefix in ev.prefixes:
+                at = excerpt.start_line + line - 1
+                loaded = _prefix_targets(path, prefix, files)
+                if loaded:
+                    targets.setdefault((path, at), set()).update(loaded)
+                    linked.append(
+                        f"{path}:{at} -> {prefix!r} ({len(loaded)} file(s))"
+                    )
     imported: dict[str, frozenset[str]] = {}
     for _round in range(3):
         again = bound(found)
@@ -1691,7 +1709,29 @@ def _behaviour_layers(
             if t in below or behaviour.get(t) == "data"
         )
         cited[path] = f"{path}:{toward[0]}" if toward else path
-    return behaviour, cited
+    return behaviour, cited, linked
+
+
+def _prefix_targets(path: str, prefix: str, files: Sequence[str]) -> set[str]:
+    """The in-scope files directly in the directory a literal dynamic-import
+    prefix names (T088 AC 11), non-recursive: ``./controllers/`` relative to
+    ``path``'s directory, or dotted ``pkg.mod.`` as a directory ``pkg/mod``
+    at any depth."""
+    if prefix.startswith("."):
+        base = posixpath.normpath(
+            posixpath.join(posixpath.dirname(path), prefix)
+        )
+        return {f for f in files if f != path and posixpath.dirname(f) == base}
+    folder = prefix.rstrip(".").replace(".", "/")
+    return {
+        f
+        for f in files
+        if f != path
+        and (
+            posixpath.dirname(f) == folder
+            or posixpath.dirname(f).endswith("/" + folder)
+        )
+    }
 
 
 def _common_directory(files: Sequence[str]) -> tuple[str, ...]:

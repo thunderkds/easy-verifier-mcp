@@ -653,6 +653,10 @@ class LayerEvidence:
     """Roots of dotted route handler names (``views`` of ``views.index``)."""
     imports: tuple[tuple[int, frozenset[str]], ...] = ()
     """``(line, names)`` per import statement: the names it binds."""
+    prefixes: tuple[tuple[int, str], ...] = ()
+    """``(line, prefix)`` per dynamic import whose directory part is a string
+    literal (T088 AC 11): ``./controllers/`` of ``require('./controllers/' +
+    name)``, ``pkg.mod.`` of ``importlib.import_module('pkg.mod.' + name)``."""
 
 
 MAX_BINDING_ROUNDS = 4
@@ -692,6 +696,31 @@ _JS_IMPORT_WORDS = frozenset(
         "exports",
     }
 )
+
+
+_DYNAMIC_IMPORTS = (
+    # require('./dir/' + x), import('./dir/' + x)
+    re.compile(r"\b(?:require|import)\s*\(\s*(['\"])(\.{1,2}/[^'\"\n]*/)\1\s*\+"),
+    # require(`./dir/${x}`), import(`./dir/${x}`)
+    re.compile(r"\b(?:require|import)\s*\(\s*()`(\.{1,2}/[^`$\n]*/)\$\{"),
+    # importlib.import_module('pkg.mod.' + x)
+    re.compile(r"\bimport_module\s*\(\s*(['\"])([A-Za-z_][\w.]*\.)\1\s*\+"),
+    # importlib.import_module(f'pkg.mod.{x}')
+    re.compile(r"\bimport_module\s*\(\s*f(['\"])([A-Za-z_][\w.]*\.)\{"),
+)
+"""Dynamic imports with a literal directory prefix (T088 AC 11). A fully
+dynamic import (``require(name)``, ``require(base + name)``) has no literal
+prefix and matches none."""
+
+
+def _dynamic_prefixes(lines: list[str]) -> tuple[tuple[int, str], ...]:
+    """``(line, prefix)`` over code lines with strings kept, comments blanked."""
+    return tuple(
+        (number, match[2])
+        for number, line in enumerate(lines, 1)
+        for regex in _DYNAMIC_IMPORTS
+        for match in regex.finditer(line)
+    )
 
 
 def _data_tables(registry: Registry):
@@ -783,6 +812,7 @@ def layer_evidence(
         "defines": frozenset(defines),
         "handlers": handlers,
         "imports": tuple(imports),
+        "prefixes": _dynamic_prefixes(kept),
     }
     if routes:
         return LayerEvidence("api", routes[0].line, **common)
