@@ -1026,3 +1026,14 @@ structure vs LLM meaning split — meaning stays agent-side).
 
 **Decision (user, AskUserQuestion 2026-10-07):** `agent_instructions_missing` becomes a #29 documentation rule (present/missing, no weight) — repos that do not use coding agents are not penalised; its 10 points are redistributed over the remaining weighted rules (must still sum to 100 and admit an exact 50).
 **Decision (Supervisor, correcting its own spawn instruction):** `agent_config_secrets_observed` counts only the exact-pattern redaction detectors (`private_key_pem`, `aws_access_key_id`, `aws_secret_access_key`, `jwt`, `credential_assignment`), not the heuristic `high_entropy_string` / `key_material_segment`. **Why:** on real repos all 5 hits were CLAUDE.md template prose (100% false positives); `core/redact.py` exemptions stay untouched (T029/T051 sign-off, hub file).
+
+## 2026-10-12 — PROPOSED: recognize architecture by behaviour and content, not names → see DDR-0012
+
+Retest showed the name-based rules fail both ways: scraping-devops' "Folder structures" README was
+reported missing, and bryony passed on `event_design.md` (event payloads). User: we cover only A,
+risk is B and C; "find a way", not abstain. Layers are assigned by behaviour (route registration /
+DB-ORM call / import path between), with folder names only a hint. Request path is reported, not
+scored: the DB is another service, so only in-repo code is scored. Document roles are filled by
+content shape or declaration, never by a name alone; kit names leave GENERIC_PATTERNS. Vendored-code
+exclusion is a prerequisite. DDR-0011 weights are unchanged. Log:
+`BRAINSTORMING_LOG_document-recognition.md`.

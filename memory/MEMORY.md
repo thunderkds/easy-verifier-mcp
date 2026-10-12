@@ -261,6 +261,7 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 - 🔒 **[DDR-0006: any-language source roles; calling agent contributes only at MCP hard gates](decisions.md)** (2026-09-26) — coverage = roles filled/declared, no language exemptions; generic patterns + Python/JS-TS/Rust/Java tables + add-only `.easy-verifier.toml`; MCP-only `needs_input` detect (picks) and evaluate (abstain or ±10% of threshold) gates; capped blend `w=0.5·c`, agent-rated where rules abstain, parts always shown; agent input replayable via CLI `--agent-input`. Wave 9 complete (T026+T027+T028; live Docker MCP: kitchd/bryony/ai-training 7/7); merged to `develop` via PR #13 (196cb15, 2026-09-28); T029 = redact.py false positive on ordinary filenames.
 
 ### Gotchas (see [learnings.md](learnings.md))
+- ⚠️ **[develop may be stale — check integration branches before IDs/scans](learnings.md)** (2026-10-12) — `feat/wave16-business-domain-coverage` was 127 commits ahead (T041–T086 done, T025 in progress); Wave 17 IDs T083–T086 collided.
 
 - ⚠️ **[Parallel tasks: merge gate waits for both; shared active_task mis-attributes step limits; doc 'Not yet' ≠ areas_without_rule](learnings.md)** (2026-10-06, Wave 16).
 - ⚠️ **Stage 3 worktrees are created off the root commit** — an agent's worktree may contain only `LICENSE`+`README.md`. Every spawn prompt must order the agent to verify `PROJECT_SPEC.md` + its own guide are present and rebase onto the planning branch if not.

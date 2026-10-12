@@ -739,3 +739,13 @@ With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as
 - None of bryony/kitchd/ai-training/coffee (nor anything under ~/workspace) has .tf/Helm/k8s files. Positive real-repo check used a shallow clone of GoogleCloudPlatform/microservices-demo into the scratchpad (read-only, `--repo` only) → infrastructure 70.
 - Pre-existing: shared `container-config` glob `**/k8s/**` matches source (`src/k8s/client.go`) — affects security; needs its own task.
 - `score --scope changes` crashed on a non-code diff (api `breaking_api_changes_observed` value with no citation) → bugfix T083.
+
+## 2026-10-12 — `develop` was not the project's real state; check integration branches at wake
+
+`wake` reads `develop` only. On 2026-10-12 it reported "nothing in progress, last work T048 on
+10-06", but `feat/wave16-business-domain-coverage` was 127 commits ahead. It held T041–T049, T057,
+T078, T079, T083–T086 (all Done on 10-07/08) and T025 In Progress. Consequences: Wave 17 was planned
+on develop with **colliding IDs T083–T086**; T079 was re-guided although already Done; the bryony
+retest ran against stale code. **Fix**: at session start, run
+`git for-each-ref refs/heads` with `rev-list --count develop..<b>` and treat any branch far ahead as
+the live state before assigning IDs or scanning.
