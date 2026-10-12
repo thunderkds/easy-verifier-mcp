@@ -301,6 +301,10 @@ class LanguageTables:
     language declares, the tokens that set it inside that statement."""
 
     layer_of: Callable[[str], str | None] | None = field(default=None, compare=False)
+    layer_evidence: Callable[..., object] | None = field(default=None, compare=False)
+    """``(path, text, imported names) -> structure.LayerEvidence`` (T088,
+    DDR-0012): what a file's code does (route, DB/ORM call), bound by the
+    builder; ``None`` observes nothing, so only the path hints classify."""
     layer_paths_note: str = field(default=LAYER_PATHS_CURATED_NOTE, compare=False)
     """Which layer_paths sources ``layer_of`` applies (T078), for the
     derivation: curated only, or plus the local layer / .easy-verifier.toml."""
@@ -1461,20 +1465,50 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
     if not statements:
         return _no_imports("source-file")
     layer_of = view.tables.layer_of or (lambda _path: None)
-    layers = {path: layer_of(path) for path in files}
+    hints = {path: layer_of(path) for path in files}
+    behaviour, cited = _behaviour_layers(view, files, statements)
+    layers = {path: behaviour.get(path) or hints[path] for path in files}
     considered = [path for path in files if layers[path] != "shared"]
     classified = {p: layers[p] for p in considered if layers[p] in LAYER_RANK}
+    by_behaviour = sum(1 for p in classified if p in behaviour)
+    disagreements = [
+        f"{path} (hint {hints[path]}, behaviour {behaviour[path]} at {cited[path]})"
+        for path in files
+        if path in behaviour and hints[path] and hints[path] != behaviour[path]
+    ]
     share = (
         f"{len(classified)} of {len(considered)} non-shared source file(s) quoted "
-        "here classify into a layer (api, service, data) by the declared "
-        "layer_paths conventions"
+        f"here classify into a layer (api, service, data): {by_behaviour} by "
+        f"behaviour ({_behaviour_counts(behaviour)}), "
+        f"{len(classified) - by_behaviour} by the layer_paths hints only"
+    )
+    disagreed = (
+        f"; {len(disagreements)} disagreement(s) with the layer_paths hints, "
+        "behaviour wins"
+        + (": " if disagreements else "")
+        + "; ".join(disagreements[:MAX_LAYER_EXAMPLES])
     )
     if not considered or len(classified) / len(considered) < MIN_CLASSIFIED_SHARE:
+        if not any(layer in ("api", "data") for layer in behaviour.values()):
+            return MetricAbstention(
+                reason=(
+                    "framework_not_recognized: no source file quoted here "
+                    "registers a route or calls a recognised DB/ORM API (the "
+                    "registry's route_tokens and data_tokens), and the "
+                    f"layer_paths hints classify {len(classified)} of "
+                    f"{len(considered)} non-shared source file(s), below the "
+                    f"declared minimum share of {MIN_CLASSIFIED_SHARE:.2f}; "
+                    + view.tables.layer_paths_note
+                )
+            )
         return MetricAbstention(
             reason=(
                 f"{share}, below the declared minimum share of "
                 f"{MIN_CLASSIFIED_SHARE:.2f}, so the layer direction of this "
-                "code is not measurable; " + view.tables.layer_paths_note
+                "code is not measurable"
+                + ("" if "api" in behaviour.values() else
+                   "; no route registration was found here")
+                + disagreed + "; " + view.tables.layer_paths_note
             )
         )
     # A stem shared by files of different layers names no layer: skipped.
@@ -1515,11 +1549,146 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         f"{len(violations)} import statement(s) from a lower to a higher layer "
         "(data -> service, service -> api, data -> api)"
         + (f", e.g. {examples}" if examples else "")
-        + f". {share} ({view.tables.layer_paths_note}); shared and unclassified files "
+        + f". {share} ({view.tables.layer_paths_note}){disagreed}. "
+        + _BEHAVIOUR_METHOD
+        + "; "
+        "shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
     )
+
+
+_BEHAVIOUR_METHOD = (
+    "A file's layer is what its code does (DDR-0012): api registers a route "
+    "(route_tokens) or is the module of a dotted route handler; data calls a "
+    "data_tokens DB/ORM method on a client or model name it imports from a "
+    "DB/ORM package or an in-repo file binding one; service is a file on an "
+    "import path from an api file to a data file; a file with route and DB "
+    "calls is api, and its DB access is never scored; a file the behaviour "
+    "does not classify takes its layer_paths hint"
+)
+
+
+def _behaviour_counts(behaviour: Mapping[str, str]) -> str:
+    return ", ".join(
+        f"{sum(1 for v in behaviour.values() if v == layer)} {layer}"
+        for layer in ("api", "service", "data")
+    )
+
+
+def _behaviour_layers(
+    view: _PackView, files: Sequence[str], statements
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Behaviour layers over the layer rule's own import edges (T088): an
+    import statement names a file when it holds the file's stem (an ``index``
+    file: also its directory) and no other file quoted here has that name."""
+    evidence_of = view.tables.layer_evidence
+    if evidence_of is None:
+        return {}, {}
+    texts: dict[str, list[Excerpt]] = {}
+    for excerpt in view.pack.excerpts:
+        if excerpt.path in files:
+            texts.setdefault(excerpt.path, []).append(excerpt)
+    owners: dict[str, set[str]] = {}
+    for path in files:
+        pure = PurePosixPath(path)
+        barrel = {pure.parent.name} if pure.stem == "index" else set()
+        for name in {_file_name(path)} | barrel:
+            if name:
+                owners.setdefault(name, set()).add(path)
+    unique = {name: found.pop() for name, found in owners.items() if len(found) == 1}
+    patterns = {name: _names_pattern([name]) for name in unique}
+    targets: dict[tuple[str, int], set[str]] = {}
+    for excerpt, line, text in statements:
+        targets[(excerpt.path, line)] = {
+            unique[name]
+            for name in unique
+            if unique[name] != excerpt.path and patterns[name].search(text)
+        }
+
+    def observe(imported: Mapping[str, frozenset[str]]):
+        found = {}
+        for path, excerpts in texts.items():
+            for excerpt in excerpts:
+                ev = evidence_of(path, excerpt.text, imported.get(path, frozenset()))
+                found.setdefault(path, []).append((excerpt, ev))
+        return found
+
+    def bound(found) -> dict[str, frozenset[str]]:
+        imported: dict[str, set[str]] = {}
+        for path, items in found.items():
+            for excerpt, ev in items:
+                for line, names in ev.imports:
+                    at = (path, excerpt.start_line + line - 1)
+                    for target in targets.get(at, ()):
+                        for _e, tev in found.get(target, ()):
+                            exported = "exports" in tev.defines
+                            take = names if exported else names & tev.defines
+                            imported.setdefault(path, set()).update(take)
+        return {path: frozenset(names) for path, names in imported.items()}
+
+    found = observe({})
+    imported: dict[str, frozenset[str]] = {}
+    for _round in range(3):
+        again = bound(found)
+        if again == imported:
+            break
+        imported = again
+        found = observe(imported)
+    behaviour: dict[str, str] = {}
+    cited: dict[str, str] = {}
+    handled: dict[str, str] = {}
+    for path, items in found.items():
+        for excerpt, ev in items:
+            if ev.layer is None or behaviour.get(path) == "api":
+                continue
+            if ev.layer == "api" or path not in behaviour:
+                behaviour[path] = ev.layer
+                cited[path] = f"{path}:{excerpt.start_line + ev.line - 1}"
+            if ev.layer == "api":
+                for line, names in ev.imports:
+                    at = (path, excerpt.start_line + line - 1)
+                    if names & ev.handlers:
+                        for target in targets.get(at, ()):
+                            handled.setdefault(target, cited[path])
+    for target, at in handled.items():
+        if behaviour.get(target) != "api":
+            behaviour[target] = "api"
+            cited[target] = f"route handler module, routed at {at}"
+    edges: dict[str, set[str]] = {}
+    lines: dict[tuple[str, str], int] = {}
+    for (path, line), found_targets in targets.items():
+        for target in found_targets:
+            edges.setdefault(path, set()).add(target)
+            lines.setdefault((path, target), line)
+    reverse: dict[str, set[str]] = {}
+    for path, found_targets in edges.items():
+        for target in found_targets:
+            reverse.setdefault(target, set()).add(path)
+
+    def reach(start: str, graph) -> set[str]:
+        seen: set[str] = set()
+        roots = [path for path, layer in behaviour.items() if layer == start]
+        queue = [node for root in roots for node in graph.get(root, ())]
+        while queue:
+            node = queue.pop()
+            if node in seen or node in behaviour:
+                continue
+            seen.add(node)
+            queue.extend(graph.get(node, ()))
+        return seen
+
+    below = reach("data", reverse)
+    for path in sorted(reach("api", edges) & below):
+        behaviour[path] = "service"
+        toward = sorted(
+            lines[(path, t)]
+            for t in edges.get(path, ())
+            if t in below or behaviour.get(t) == "data"
+        )
+        cited[path] = f"{path}:{toward[0]}" if toward else path
+    return behaviour, cited
 
 
 def _common_directory(files: Sequence[str]) -> tuple[str, ...]:
