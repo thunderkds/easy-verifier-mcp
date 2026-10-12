@@ -13,9 +13,9 @@
 ### Todo
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
-- [ ] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T089** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T087) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2
+- 💡 Follow-up from T087 (2026-10-12, no guide yet): the infrastructure dimension does not read a repo's own Rancher/ELK/compose YAML. scraping-devops' "infrastructure 100" was all Harbor files; without Harbor it abstains
 
 - [x] **T084** — Follow-up (T083 review P2): `breaking_api_changes_observed` still counts removals from diff files the api pack did not read when at least one other spec/route file was read (value partly uncited); user chose 2026-10-08: count only removals in files actually read; list unread files with removals as "not counted" | backend-developer | C1 | Risk: Med | P2 | ✅ Done 2026-10-08 (removals counted only in read files; unread files listed "not counted"; route tokens from resolved conventions; 22-spec repro 66→60, coffee sha256 unchanged; 2536 passed, 2 known container failures)
 - [x] **T085** — Follow-up (T049 review P2): frontend-a11y `browser_support_declaration_missing` credits Next/Nuxt default browser targets as declared, like the default viewport; derivation says "framework default" (user 2026-10-08; tapchat-web a11y 45 → ~60) | backend-developer | C1 | Risk: Low | P2 | ✅ Done 2026-10-08 (new cited pack field browser_support_default_entries: Next.js config = framework-default targets; Nuxt dropped — no official doc states a default browser target (only esbuild transform target esnext); tapchat-web a11y 45→60, overall 60→64, pack-off sha256 unchanged; 2536 passed, 2 known container failures)
@@ -71,6 +71,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-10-12
 
 ### Ready for Review
 
