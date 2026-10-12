@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-06
+**Last updated**: 2026-10-12
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,6 +11,12 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+
+**Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T083 → T079 (Wave 15) → T084 → T086 → T085)**
+- [ ] **T083** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1
+- [ ] **T084** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T083, T079) | backend-developer | C3 | Risk: Med | P1
+- [ ] **T086** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T083) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T085** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T084) | backend-developer | C2 | Risk: Low | P2
 
 **Wave 16 — Business-domain area coverage (added 2026-10-06, user request: uncovered business-domain areas; run order T082 → T043 → T047 → T048, floors 0.25 user-approved)**
 

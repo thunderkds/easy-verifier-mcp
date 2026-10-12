@@ -965,3 +965,14 @@ so the gain is exactly computable without inference; weight-share would be wrong
 
 **Rejected**: gain = weight; agent-written plan (unreproducible numbers); report-only (agent cannot
 name items it never sees). Source: `BRAINSTORMING_LOG_improvement-plan.md`.
+
+## 2026-10-12 — PROPOSED: recognize architecture by behaviour and content, not names → see DDR-0012
+
+Retest showed the name-based rules fail both ways: scraping-devops' "Folder structures" README was
+reported missing, and bryony passed on `event_design.md` (event payloads). User: we cover only A,
+risk is B and C; "find a way", not abstain. Layers are assigned by behaviour (route registration /
+DB-ORM call / import path between), with folder names only a hint. Request path is reported, not
+scored: the DB is another service, so only in-repo code is scored. Document roles are filled by
+content shape or declaration, never by a name alone; kit names leave GENERIC_PATTERNS. Vendored-code
+exclusion is a prerequisite. DDR-0011 weights are unchanged. Log:
+`BRAINSTORMING_LOG_document-recognition.md`.
