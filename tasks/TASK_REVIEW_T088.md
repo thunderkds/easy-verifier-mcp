@@ -158,5 +158,7 @@ Prefix edges hand-checked against bryony source:
 3. A request path through the prefix edge: `backend/server/dashboard/router.js:5` `require('./controller-manager')`, then `controller-manager.js:35` (prefix), then `controllers/search.js:14` `require('../../../platform/db/services/dashboard-sector')`, then `dashboard-sector.js:27` `self.modelClass.find(query)` with `modelClass: mongoose.model('DBSector')` at :14 (data). `search.js` and `controller-manager.js` are therefore service, which is correct.
 New disagreement worth noting: `backend/platform/core/models/index.js` has hint data and behaviour service at :9 (`Companies = require('./company').Companies`). It is a model barrel on an api→data path, so it is service per the barrel edge case.
 
+Follow-up `4fd5d88`: the full suite at `3481720` flagged `test_metrics.py::test_metrics_module_imports_nothing_that_reads_the_filesystem`, because `metrics.py` had imported `posixpath`. The fix replaces it with `PurePosixPath`. After the fix, `tests/test_t088_behaviour_layers.py` and `tests/test_metrics.py` give 60 passed. A re-run of bryony `--all` at `4fd5d88` gave a layer derivation byte-identical to the `a07549e` run above. Full suite at `3481720`: 2635 passed, and 4 failed: the 3 pre-existing failures (2 container tests, t029) plus that posixpath test, which is now fixed.
+
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
