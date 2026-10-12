@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass | `tests/test_t088_behaviour_layers.py` (14 tests: SC1–SC6, SC7 both extremes `never`/`always`, data-without-routes is not `framework_not_recognized`, AC8 Nest DI + TypeORM, Nest Prisma subclass imported cross-file, FastAPI `Depends(get_db)` + Python relative imports, Django urls handler module + `objects.filter`, barrel `index.js` + tests take no layer). `14 passed in 1.01s` (implementer run at `0451f17`) |
+| Verification command run | ☒ pass | Full suite at `0451f17` (2026-10-12T10:33Z–10:38Z): `3 failed, 2622 passed, 2 skipped in 350.48s (0:05:50)`. The 3 failures are pre-existing and outside T088: 2 container tests (stale docker image) and `test_t029...test_every_tracked_path_of_this_repo_survives_redaction` (fails identically on develop `72223c5` in the main checkout, on `tests/test_t087_third_party_exclusion.py`). `ruff check src tests`: `All checks passed!` |
+| Negative cases hold | ☒ pass | SC3 (`items.find`, `[3].find`, `this.cache.find` with mongoose imported: not data); SC4 (route file querying `User.find` is api, 0 violations); SC6 (`framework_not_recognized`); SC7 sabotage both extremes make SC1 and SC2 fail (pytest.raises(AssertionError)) |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
 | Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **UI: Visual regression (diff or verdict pasted)** | ☒ N/A | backend only (guide: UI/Design AC N/A) |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☒ N/A | backend only (guide: UI/Design AC N/A) |
+| **UI: Responsiveness at target viewports** | ☒ N/A | backend only (guide: UI/Design AC N/A) |
 
 ---
 
@@ -68,9 +68,56 @@ DONE
 
 Summary: bryony abstains at 88/195 classified (45%), kitchd 32/177 (18%), ai-training 2/79 (3%), scraping-devops has no import graph (abstains, no source imports read), coffee-shop-api 35/35 classified by folder name with 0 violations (no cited examples: there are none). No file is classified by what its code does.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured 2026-10-12T10:38Z–10:39Z at `0451f17` (final; identical layer output to the first post-change run at `82a40e5`, 10:05Z), same command, one repo at a time. Run log:
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+=== bryony 2026-10-12T10:38:52Z
+warning [batches]: read batches 1 of 6 (200 of 1159 in-scope source files, most important and most-changed first); continue with --batches 2, or --all
+exit 0 2026-10-12T10:39:19Z
+=== scraping-devops 2026-10-12T10:39:19Z
+exit 0 2026-10-12T10:39:24Z
+=== kitchd 2026-10-12T10:39:24Z
+exit 0 2026-10-12T10:39:35Z
+=== ai-training 2026-10-12T10:39:35Z
+exit 0 2026-10-12T10:39:40Z
+=== coffee-shop-api 2026-10-12T10:39:40Z
+exit 0 2026-10-12T10:39:43Z
+DONE
+```
+
+`layer_direction_violations` (architecture) per repo:
+
+```
+## bryony  overall=59  architecture=83
+  ABSTAINED: 89 of 195 non-shared source file(s) quoted here classify into a layer (api, service, data): 21 by behaviour (0 api, 0 service, 21 data), 68 by the layer_paths hints only, below the declared minimum share of 0.50, so the layer direction of this code is not measurable; no route registration was found here; 20 disagreement(s) with the layer_paths hints, behaviour wins: backend/platform/db/services/company-custom-data.js (hint service, behaviour data at backend/platform/db/services/company-custom-data.js:78); backend/platform/db/services/company-custom-field-management.js (hint service, behaviour data at backend/platform/db/services/company-custom-field-management.js:33); backend/platform/db/services/dashboard-benchmarking-group.js (hint service, behaviour data at backend/platform/db/services/dashboard-benchmarking-group.js:142); backend/platform/db/services/dashboard-company-group.js (hint service, behaviour data at backend/platform/db/services/dashboard-company-group.js:142); backend/platform/db/services/dashboard-company.js (hint service, behaviour data at backend/platform/db/services/dashboard-company.js:73); curated layer_paths only: no local-layer or .easy-verifier.toml layer paths were declared
+## scraping-devops  overall=None  architecture=None
+  ABSTAINED: no import statement was found in this pack's source-file excerpts, so there is no import graph to measure; that is not the same as a graph without edges. import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import
+## kitchd  overall=56  architecture=100
+  ABSTAINED: 49 of 177 non-shared source file(s) quoted here classify into a layer (api, service, data): 37 by behaviour (17 api, 0 service, 20 data), 12 by the layer_paths hints only, below the declared minimum share of 0.50, so the layer direction of this code is not measurable; 3 disagreement(s) with the layer_paths hints, behaviour wins: apps/api/prisma/seed.ts (hint api, behaviour data at apps/api/prisma/seed.ts:32); apps/api/src/auth/guards/roles.guard.ts (hint api, behaviour data at apps/api/src/auth/guards/roles.guard.ts:48); apps/api/src/realtime/realtime.gateway.ts (hint api, behaviour data at apps/api/src/realtime/realtime.gateway.ts:63); curated layer_paths only: no local-layer or .easy-verifier.toml layer paths were declared; all 185 source files -- computed over the whole text of those files, not only the excerpts quoted in this pack
+## ai-training  overall=60  architecture=83
+  ABSTAINED: framework_not_recognized: no source file quoted here registers a route or calls a recognised DB/ORM API (the registry's route_tokens and data_tokens), and the layer_paths hints classify 2 of 79 non-shared source file(s), below the declared minimum share of 0.50; curated layer_paths only: no local-layer or .easy-verifier.toml layer paths were declared; all 90 source files -- computed over the whole text of those files, not only the excerpts quoted in this pack
+## coffee-shop-api  overall=80  architecture=80
+  value: 0
+  derivation: 0 import statement(s) from a lower to a higher layer (data -> service, service -> api, data -> api). 35 of 35 non-shared source file(s) quoted here classify into a layer (api, service, data): 4 by behaviour (4 api, 0 service, 0 data), 31 by the layer_paths hints only (curated layer_paths only: no local-layer or .easy-verifier.toml layer paths were declared); 0 disagreement(s) with the layer_paths hints, behaviour wins. A file's layer is what its code does (DDR-0012): api registers a route (route_tokens) or is the module of a dotted route handler; data calls a data_tokens DB/ORM method on a client or model name it imports from a DB/ORM package or an in-repo file binding one; service is a file on an import path from an api file to a data file; a file with route and DB calls is api, and its DB access is never scored; a file the behaviour does not classify takes its layer_paths hint; shared and unclassified files never count, and a file stem shared by files of different layers names none; only the import statements quoted in this pack are seen; import statements are the registry's import tokens, found textually in excerpts of registry-language files; a statement names a file when it contains the file's stem (a package's __init__-style file: its directory) as a whole word -- a textual match, not a resolved import; all 85 source files -- computed over the whole text of those files, not only the excerpts quoted in this pack
+```
+
+Extra data point, bryony with every batch (`score --all`, 2026-10-12T10:07Z–10:08Z, `82a40e5`): `435 of 1062 non-shared source file(s) quoted here classify into a layer (api, service, data): 28 by behaviour (4 api, 0 service, 24 data), 407 by the layer_paths hints only, below the declared minimum share of 0.50 ...; 22 disagreement(s) with the layer_paths hints, behaviour wins` (overall 42, architecture 83).
+
+| Repo | BEFORE classified share / result | AFTER classified share / result | Violations | Disagreements with path hints |
+|---|---|---|---|---|
+| bryony (batch 1 of 6) | 88/195 (45%), abstains | 89/195 (46%): 21 by behaviour (0 api, 0 service, 21 data), abstains; "no route registration was found here" | not counted (abstains) | 20 (all hint service → behaviour data) |
+| scraping-devops | no import graph, abstains | unchanged (no import statement in source excerpts) | — | — |
+| kitchd | 32/177 (18%), abstains | 49/177 (28%): 37 by behaviour (17 api, 0 service, 20 data), abstains | not counted (abstains) | 3 (hint api → behaviour data) |
+| ai-training | 2/79 (3%), abstains | abstains `framework_not_recognized` (psycopg/Streamlit are outside the first framework set) | — | — |
+| coffee-shop-api | 35/35 by hints, value 0 | 35/35: 4 by behaviour (4 api), 31 by hints only, value 0 (MikroORM is outside the first set, so data/service come from hints) | 0 | 0 |
+
+Hand-checked against source (implementer, 2026-10-12):
+- bryony disagreements: `backend/platform/db/services/company-custom-data.js:78` `this.modelClass.find({dealId, customFieldId}).count().exec(fn);` with `modelClass: mongoose.model('DBCompanyCustomData')` at :21 — true data. `company-custom-field-management.js:33` `self.modelClass.find(searchOpts)` with `modelClass: mongoose.model('DBCompanyCustomFieldManagement')` at :17 — true. `dashboard-benchmarking-group.js:142` `this.modelClass.findOneAndUpdate({` with `modelClass: mongoose.model('DBBenchmarkingGroup')` at :24 — true. bryony api (only in later batches): `backend/server/dashboard/router.js:83` `webapp.get('/api/health-check', ...)`, `backend/server/scraper/routers/master.js:16`, `backend/server/web/router.js:18` — true routes on a T079 receiver. bryony controllers stay hint-only because `router.js:107` dispatches `webapp.all('/api/:controller/:action', authenticate, apiHandler)` through `controller-manager.js:35` `require('./controllers/' + name)` (dynamic), so no static import path exists: correctly not assumed.
+- kitchd disagreements: `apps/api/prisma/seed.ts:32` `await prisma.organization.findFirst({` (`const prisma = new PrismaClient()` :22) — true data; `apps/api/src/auth/guards/roles.guard.ts:48` `this.prisma.user.findUnique(...)` (`prisma: PrismaService` :27, PrismaService `extends PrismaClient` in `prisma/prisma.service.ts`, cross-file) — true; `apps/api/src/realtime/realtime.gateway.ts:63` `this.prisma.user.findUnique({` — true. kitchd api: `announcements.controller.ts:44` `@Get()`, `auth.controller.ts:10` `@Post('signup')` — true; data via a Prisma transaction client `inventory.service.ts:69` `tx.stockMovement.create({` — true. 0 service: kitchd's Nest services call Prisma themselves, so they are data, and no file sits between.
+- coffee-shop-api api: `category.controller.ts:70` `@Get()`, `product.controller.ts:46` `@Get()`, `user.controller.ts:53` `@Post()` — true.
+- Cited violations: none exist on any of the 5 repos (coffee measures 0; the others abstain), so there is no violation citation to hand-check; violation citation format is pinned by SC2 (`lib/store.js:1 (data -> api)`).
+
+**DELTA**: A file's layer now comes from what its code does — a route registration makes it api, a cited DB/ORM call on an imported or bound model/client makes it data, a file on the import path between them is service — with folder conventions only filling gaps and every hint/behaviour disagreement reported with its evidence line, and a repository whose frameworks are not recognised abstains `framework_not_recognized` instead of a share count.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
