@@ -191,7 +191,7 @@ def test_summary_has_a_factual_evidence_status_line() -> None:
     )
     line = re.search(r'<p class="summary-evidence">(.*?)</p>', summary).group(1)
     assert line == (
-        "Evidence: 4 of 8 dimensions rated; lowest measured rule weight "
+        "Evidence: 9 of 13 dimensions rated; lowest measured rule weight "
         f"{share * 100:.0f}% (code-quality); 3 warnings — see What we "
         "couldn&#x27;t measure."
     )

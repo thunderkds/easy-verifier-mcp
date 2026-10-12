@@ -15,16 +15,30 @@ textual, never parsed: a derivation built on these says so.
 
 from __future__ import annotations
 
+import dataclasses
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from .metric_tables import curated_metric_tables, token_regex
 from .metrics import LanguageTables, _is_test_file
-from .registry import Registry, RegistryEntry, load_conventions
-from .roles import _config_matcher
+from .redact import redact
+from .registry import (
+    CURATED,
+    RECEIVER_ASSIGN_KIND,
+    RECEIVER_KIND,
+    RECEIVER_PARAM_KIND,
+    Registry,
+    RegistryEntry,
+    is_config_convention,
+    layered_conventions,
+    load_conventions,
+    parse_local_entries,
+    with_config_conventions,
+)
+from .roles import GENERIC_PATTERNS, _config_matcher, load_repo_conventions
 from .tokens import LanguageSyntax, strip
 
 MAX_HANDLER_LINES = 10
@@ -81,6 +95,80 @@ def convention_values(entry: RegistryEntry | None, field: str) -> tuple[str, ...
 @lru_cache(maxsize=1)
 def _curated() -> RegistryEntry:
     return load_conventions()[0]
+
+
+def repo_conventions(
+    repo: str | Path, document: Mapping | None = None
+) -> RegistryEntry:
+    """The conventions one scoring call uses (T078): curated, plus the local
+    layer, plus ``repo``'s ``.easy-verifier.toml`` ``[conventions]``, plus the
+    ``.easy-verifier.toml`` items replayed in ``document``'s
+    ``registry_entries`` (that call only, never saved). Add-only, curated
+    always wins. Never cached: one repository's extras never reach another's
+    score in a long-running server. A non-curated value that redaction would
+    alter is dropped (:func:`repo_convention_notes` says so)."""
+    return _resolved_conventions(repo, document)[0]
+
+
+def repo_convention_notes(
+    repo: str | Path, document: Mapping | None = None
+) -> tuple[str, ...]:
+    """Why values of :func:`repo_conventions` were ignored: one note per
+    field and source whose values look like a secret (never quoted)."""
+    return _resolved_conventions(repo, document)[1]
+
+
+def _resolved_conventions(
+    repo: str | Path, document: Mapping | None
+) -> tuple[RegistryEntry, tuple[str, ...]]:
+    entry, _ = layered_conventions()
+    entry = with_config_conventions(entry, load_repo_conventions(Path(repo).resolve()))
+    raw = document.get("registry_entries") if document is not None else None
+    replayed: dict[str, list[str]] = {}
+    for item in parse_local_entries(raw, GENERIC_PATTERNS)[0]:
+        if is_config_convention(item):
+            replayed.setdefault(item.field, []).extend(item.cited.value)
+    entry = with_config_conventions(entry, replayed) if replayed else entry
+    return _without_secrets(entry)
+
+
+def _without_secrets(entry: RegistryEntry) -> tuple[RegistryEntry, tuple[str, ...]]:
+    """``entry`` without the non-curated values redaction would alter: such a
+    value is never used, embedded in ``registry_entries`` or quoted (T078
+    Stage 4), so the score stays replayable and the value stays home."""
+    notes: list[str] = []
+    fields = {}
+    for field, cited_values in entry.fields.items():
+        kept = []
+        for cited in cited_values:
+            clean = tuple(
+                v for v in cited.value if cited.source_tag == CURATED or redact(v) == v
+            )
+            if len(clean) < len(cited.value):
+                notes.append(
+                    f"conventions.{field}: {len(cited.value) - len(clean)} value(s) "
+                    f"from {redact(cited.citation_url)} ignored: looks like a secret"
+                )
+            if clean:
+                kept.append(dataclasses.replace(cited, value=clean))
+        fields[field] = tuple(kept)
+    if not notes:
+        return entry, ()
+    return dataclasses.replace(entry, fields=fields), tuple(notes)
+
+
+def context_conventions(context: object) -> RegistryEntry:
+    """The conventions a dimension reads: the call's resolved entry
+    (``run_dimension``), else the context repository's, else curated."""
+    found = getattr(context, "conventions", None)
+    if found is None:
+        repo = getattr(context, "repo_path", None)
+        found = _curated() if repo is None else repo_conventions(repo)
+        try:
+            context.conventions = found
+        except AttributeError:
+            pass
+    return found
 
 
 def route_tokens_for(
@@ -161,9 +249,10 @@ def find_routes(
     if not route_tokens or syntax is None:
         return ()
     code = strip(text, syntax)
+    bound, weak = _bound_tokens(code, route_tokens)
     found = [
         (match.start(), match.end(), method, token)
-        for method, token, regex in _route_patterns(tuple(route_tokens))
+        for method, token, regex in _route_patterns(bound)
         for match in regex.finditer(code)
     ]
     routes: list[Route] = []
@@ -176,6 +265,8 @@ def find_routes(
             # one argument is no route: Express app.get(name) reads a setting
             # (T075, carried from the T073 review)
             continue
+        if token in weak and not _router_call(code, text, end):
+            continue
         taken = end
         literal = _PATH_LITERAL.match(text, end)
         routes.append(
@@ -187,6 +278,113 @@ def find_routes(
             )
         )
     return tuple(routes)
+
+
+_NAME = r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*"
+_RECEIVER_MARK = "<receiver>"
+
+
+def _bound_tokens(
+    code: str, route_tokens: Sequence[str]
+) -> tuple[tuple[str, ...], frozenset[str]]:
+    """``route_tokens`` with each ``<receiver>`` token expanded to the names
+    ``code`` binds to a receiver (T079), and the expanded tokens that are
+    *weak* (router-module bindings, see :func:`_weak_names`). Ordinary tokens
+    pass through. ``x = y = ctor(`` binds both ``x`` and ``y``."""
+    values: dict[str, list[str]] = {}
+    for value in route_tokens:
+        kind, _, rest = value.partition("=")
+        values.setdefault(kind, []).append(rest)
+    templates = [
+        v for v in route_tokens if v.partition("=")[2].startswith(_RECEIVER_MARK)
+    ]
+    plain = tuple(
+        v
+        for v in route_tokens
+        if v not in templates and v.partition("=")[0] not in _RECEIVER_KINDS
+    )
+    strong: dict[str, None] = {}
+    constructors = values.get(RECEIVER_KIND)
+    if constructors and templates:
+        ctor = "|".join(token_regex(c) for c in constructors)
+        binding = re.compile(
+            rf"((?:{_NAME}(?:\s*:\s*[\w.<>]+)?\s*=\s*)+)(?:new\s+)?(?:{ctor})"
+        )
+        for match in binding.finditer(code):
+            for target in match[1].split("="):
+                name = target.split(":")[0].strip()
+                if name:
+                    strong[name] = None
+    weak = (
+        {n: None for n in _weak_names(code, values, strong) if n not in strong}
+        if templates
+        else {}
+    )
+
+    def expand(names):
+        return tuple(
+            f"{method}={name}{token[len(_RECEIVER_MARK) :]}"
+            for template in templates
+            for method, _, token in [template.partition("=")]
+            for name in names
+        )
+
+    weak_tokens = expand(weak)
+    return plain + expand(strong) + weak_tokens, frozenset(
+        t.partition("=")[2] for t in weak_tokens
+    )
+
+
+_RECEIVER_KINDS = (RECEIVER_KIND, RECEIVER_PARAM_KIND, RECEIVER_ASSIGN_KIND)
+_IDENT = r"[A-Za-z_$][\w$]*"
+_PROPERTY_ASSIGN = re.compile(
+    rf"(?<![\w$.=!<>])({_IDENT})\s*=\s*({_IDENT})(?:\.{_IDENT})+\s*(?=[;,\n)]|$)"
+)
+
+
+def _weak_names(
+    code: str, values: dict[str, list[str]], strong: dict[str, None]
+) -> list[str]:
+    """Names a router module binds without constructing an app: the
+    parameters of the function a file exports (``RECEIVER_PARAM`` prefixes)
+    and names assigned from a property of one of those parameters or of a
+    constructor-bound name (``RECEIVER_ASSIGN=property``): ``var $ =
+    window.jQuery`` reads from nothing the file exports, so it binds nothing."""
+    names: list[str] = []
+    for prefix in values.get(RECEIVER_PARAM_KIND, ()):
+        head = token_regex(prefix).removeprefix(r"\b")
+        for match in re.finditer(
+            rf"{head}\s*(?:async\s+)?(?:"
+            rf"(?:function\b\s*(?:{_IDENT})?\s*)?\(([^)]*)\)|({_IDENT})\s*=>)",
+            code,
+        ):
+            params = match[1] if match[1] is not None else match[2]
+            for param in params.split(","):
+                found = re.match(rf"\s*({_IDENT})", param)
+                if found:
+                    names.append(found[1])
+    if "property" in values.get(RECEIVER_ASSIGN_KIND, ()):
+        sources = {*names, *strong}
+        names += [m[1] for m in _PROPERTY_ASSIGN.finditer(code) if m[2] in sources]
+    return names
+
+
+def _router_call(code: str, text: str, end: int) -> bool:
+    """Whether the call opened at ``end`` looks like a route registration
+    rather than an HTTP client call: a ``/`` path literal, and a function
+    handler or a middleware chain (3 or more arguments)."""
+    literal = _PATH_LITERAL.match(text, end)
+    if not literal or not literal[2].startswith("/"):
+        return False
+    parts = _split_arguments(_arguments(code, end)[0])
+    if len(parts) < 2:
+        return False
+    return len(parts) >= 3 or bool(_FUNCTION_ARGUMENT.match(parts[-1]))
+
+
+_FUNCTION_ARGUMENT = re.compile(
+    rf"(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|{_IDENT}\s*=>)"
+)
 
 
 @lru_cache(maxsize=64)
@@ -402,4 +600,7 @@ __all__ = [
     "find_routes",
     "layer_of",
     "route_tokens_for",
+    "context_conventions",
+    "repo_conventions",
+    "repo_convention_notes",
 ]

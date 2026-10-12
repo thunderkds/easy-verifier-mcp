@@ -308,3 +308,66 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["--locked-mode"]
+citation_url = "https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies"
+source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["[Required", "AbstractValidator <", "ModelState.IsValid", "[ApiController"]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/mvc/models/validation"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["*.AddSwaggerGen (", "*.AddOpenApi ("]
+citation_url = "https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview"
+source_tag = "curated"
+
+[[api_version_markers]]
+value = ["*.AddApiVersioning (", "[ApiVersion ("]
+citation_url = "https://github.com/dotnet/aspnet-api-versioning/wiki"
+source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["DbContext", "DbSet"]
+citation_url = "https://learn.microsoft.com/en-us/ef/core/modeling/"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable: false", "unique: true", "table.ForeignKey (", ".IsRequired (", ".IsUnique (", ".HasForeignKey ("]
+citation_url = "https://learn.microsoft.com/en-us/ef/core/modeling/keys"
+source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/global.json"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/tools/global-json"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["ILogger"]
+citation_url = "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["Serilog"]
+citation_url = "https://github.com/serilog/serilog/wiki/Getting-Started"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["NLog"]
+citation_url = "https://github.com/NLog/NLog/wiki/Getting-started-with-.NET-Core-2---Console-application"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["OpenTelemetry"]
+citation_url = "https://opentelemetry.io/docs/languages/dotnet/instrumentation/"
+source_tag = "curated"

@@ -510,12 +510,40 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T082 (FR-073): no rating or overall changed; the payload
     # gained areas_measured and areas_without_rule, and the overall disclosure
     # gained "measured 3 of 32 evaluation areas". Nothing else differs.
+    # Merged T082 + T043 (2026-10-06): both additions above, regenerated together.
+    # Regenerated for T078: only the layer_paths disclosure text changed
+    # ("curated layer_paths only: ..."); every other byte is identical.
     # Regenerated for T043 (reliability dimension): every existing rating,
     # metric and the overall (61) are byte-identical; added are the
     # reliability rating (insufficient_measured_weight: no outbound call,
     # retry or query in the fixture), its pack's metrics, the four
     # reliability metrics in every pack, and reliability's warning,
     # provenance and abstained plan line.
+    # Regenerated for T041 (supply-chain dimension): every existing rating,
+    # metric and the overall (61) are byte-identical; added are the
+    # supply-chain rating (below_coverage_floor), its four new metrics in
+    # every pack, its rollback documentation result (area #22 now counts as
+    # measured), and its warning, provenance and abstained plan line.
+    # Regenerated for T044 (api dimension): every existing rating and the
+    # overall (61) are unchanged; added are the api rating
+    # (below_coverage_floor: no route, validation or spec in the fixture), its
+    # four metrics in every pack, its warning, provenance and plan line, and
+    # area #7 leaves areas_without_rule; the disclosure counts 10 dimensions.
+    # Regenerated for T045 (data dimension): every existing rating and the
+    # overall (61) are unchanged; added are the data rating
+    # (below_coverage_floor: no migration, schema or data model in the
+    # fixture), its four metrics in every pack, its warning, provenance and
+    # plan line, and area #4 leaves areas_without_rule; 11 dimensions.
+    # Regenerated for T046 (operations dimension): every existing rating and
+    # the overall are unchanged; added are the operations rating, its eight
+    # metrics in every pack, its documentation results, warning, provenance and
+    # plan line, and areas #14/#26/#29/#30 leave areas_without_rule; 12
+    # dimensions.
+    # Regenerated for T042 (infrastructure dimension): every existing rating
+    # and the overall (61) are unchanged; added are the infrastructure rating
+    # (below_coverage_floor: no IaC in the fixture), its seven metrics in every
+    # pack, its documentation result, warning, provenance and plan line, and
+    # areas #11/#23/#24 leave areas_without_rule; 13 dimensions.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

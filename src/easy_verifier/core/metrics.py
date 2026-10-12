@@ -234,6 +234,13 @@ def _serializable(metric: Metric) -> dict:
     }
 
 
+LAYER_PATHS_CURATED_NOTE = (
+    "curated layer_paths only: no local-layer or .easy-verifier.toml layer "
+    "paths were declared"
+)
+"""T078: the layer rule's source note when no repository extra applies."""
+
+
 @dataclass(frozen=True)
 class LanguageTables:
     """The registry's language knowledge, as plain compiled data (T031).
@@ -294,6 +301,9 @@ class LanguageTables:
     language declares, the tokens that set it inside that statement."""
 
     layer_of: Callable[[str], str | None] | None = field(default=None, compare=False)
+    layer_paths_note: str = field(default=LAYER_PATHS_CURATED_NOTE, compare=False)
+    """Which layer_paths sources ``layer_of`` applies (T078), for the
+    derivation: curated only, or plus the local layer / .easy-verifier.toml."""
     """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
     declared ``layer_paths`` conventions, bound by the builder
     (``metric_tables``); ``None`` classifies nothing."""
@@ -321,6 +331,44 @@ class LanguageTables:
     """Source suffix -> the language's T043 reliability tokens (areas #6, #12,
     #13, #15), present only where ``syntax`` is and the language declares the
     field; read through :func:`reliability_findings`."""
+    request_validation: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    api_spec_generators: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    api_version_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T044 api tokens (area #7); read by the
+    ``api`` dimension over whole files."""
+    orm_model_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    logging_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T046 logging/tracing tokens (area #14);
+    read by the ``operations`` dimension over whole files."""
+    schema_constraint_markers: Mapping[str, re.Pattern[str]] = field(
+        default_factory=dict
+    )
+    migration_rollback_markers: Mapping[str, re.Pattern[str]] = field(
+        default_factory=dict
+    )
+    """Source suffix -> the language's T045 data tokens (area #4); read by the
+    ``data`` dimension over whole files."""
+    ci_files: Callable[[str], bool] | None = None
+    release_files: Callable[[str], bool] | None = None
+    """Path matchers for the ``ci-workflow`` and ``release-config`` roles
+    (T041): which excerpts of a supply-chain pack are CI or release files."""
+
+    lockfile_install: re.Pattern[str] | None = None
+    """The registry's ``lockfile_install`` tokens, all languages, as one
+    alternation; ``None`` when no language declares any."""
+
+    action_reference: re.Pattern[str] | None = None
+    """Generic layer: an external step reference, group 1 being the reference
+    (``uses: actions/checkout@v4`` -> ``actions/checkout@v4``)."""
+
+    pinned_reference: tuple[re.Pattern[str], ...] = ()
+    local_reference: tuple[str, ...] = ()
+    """Generic layer: a reference is pinned when a pattern matches it, and is
+    not an external dependency when it starts with a local prefix."""
+
+    provenance_steps: re.Pattern[str] | None = None
+    """Generic layer: tokens showing an SBOM, signing or provenance step,
+    matched case-insensitively."""
 
 
 @dataclass(frozen=True)
@@ -1389,11 +1437,6 @@ MIN_CLASSIFIED_SHARE = 0.50
 """Below this share of non-shared source files in a layer, the layer rule
 abstains (user, DDR-0011)."""
 
-_LAYER_PATHS_NOTE = (
-    "only the curated layer_paths apply: local-layer and .easy-verifier.toml "
-    "layer paths are not used in scoring until conventions are embedded for "
-    "replay (T075)"
-)
 
 MAX_LAYER_EXAMPLES = 5
 """Violating import statements quoted by file:line in the derivation."""
@@ -1431,7 +1474,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             reason=(
                 f"{share}, below the declared minimum share of "
                 f"{MIN_CLASSIFIED_SHARE:.2f}, so the layer direction of this "
-                "code is not measurable; " + _LAYER_PATHS_NOTE
+                "code is not measurable; " + view.tables.layer_paths_note
             )
         )
     # A stem shared by files of different layers names no layer: skipped.
@@ -1472,7 +1515,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         f"{len(violations)} import statement(s) from a lower to a higher layer "
         "(data -> service, service -> api, data -> api)"
         + (f", e.g. {examples}" if examples else "")
-        + f". {share} ({_LAYER_PATHS_NOTE}); shared and unclassified files "
+        + f". {share} ({view.tables.layer_paths_note}); shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
@@ -2683,6 +2726,335 @@ def _strict_type_config_missing(view: _PackView) -> _Computed:
     )
 
 
+# ---------------------------------------------------------------------------
+# Supply-chain CI evidence (T041, areas #20-#22). Computed only over the
+# supply-chain pack; every token and pattern is the registry's or the generic
+# layer's (core/roles.py GENERIC_CI_FACTS), never this module's.
+# ---------------------------------------------------------------------------
+
+SUPPLY_CHAIN = "supply-chain"
+
+_SUPPLY_CHAIN_ONLY = (
+    "only the supply-chain pack quotes CI and release configuration, and this "
+    "is the {dimension!r} pack"
+)
+
+
+def _ci_lines(
+    view: _PackView, match: Callable[[str], bool] | None
+) -> tuple[list[tuple[str, int, str]], list[str], list[str]]:
+    """``(lines, files, clipped)`` over the excerpts whose path ``match``
+    accepts: each non-comment line with its path and line number (a trailing
+    `` #`` comment removed), the distinct paths, and the paths whose excerpt
+    ends in the line-cap clip marker."""
+    lines: list[tuple[str, int, str]] = []
+    files: dict[str, None] = {}
+    clipped: dict[str, None] = {}
+    for excerpt in view.pack.excerpts if match is not None else ():
+        if not match(excerpt.path):
+            continue
+        files.setdefault(excerpt.path)
+        if excerpt_clipped(excerpt.text):
+            clipped.setdefault(excerpt.path)
+        for offset, line in enumerate(excerpt.text.splitlines()):
+            code = line.split(" #", 1)[0]
+            if code.lstrip().startswith("#"):
+                continue
+            lines.append((excerpt.path, excerpt.start_line + offset, code))
+    return lines, list(files), list(clipped)
+
+
+def _ci_abstention(view: _PackView) -> MetricAbstention | None:
+    if view.pack.dimension != SUPPLY_CHAIN:
+        return MetricAbstention(
+            reason=_SUPPLY_CHAIN_ONLY.format(dimension=view.pack.dimension)
+        )
+    return None
+
+
+def _no_ci_file(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            f"no CI workflow file was quoted in this pack, so there is no {what} "
+            "to examine; that is not the same as a pipeline without one "
+            "(the ci-workflow role's miss is in sources_missing)"
+        )
+    )
+
+
+def _ci_actions_unpinned_share(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    lines, files, clipped = _ci_lines(view, tables.ci_files)
+    if not files:
+        return _no_ci_file("action reference")
+    if clipped:
+        return MetricAbstention(
+            reason=(
+                "a CI workflow excerpt was clipped at the line cap ("
+                + ", ".join(clipped)
+                + "), so references beyond it were never read"
+            )
+        )
+    if tables.action_reference is None:
+        return MetricAbstention(reason="no action-reference token is declared")
+    external: list[tuple[str, int, str]] = []
+    for path, number, line in lines:
+        found = tables.action_reference.search(line)
+        if found and not found[1].startswith(tables.local_reference):
+            external.append((path, number, found[1]))
+    if not external:
+        return MetricAbstention(
+            reason=(
+                "no external action reference (uses: owner/repo@ref, or a step "
+                "or service image:) appears in "
+                "the quoted CI workflows, so there is nothing to pin; that is a "
+                "zero denominator, not a share of 0"
+            )
+        )
+    unpinned = [
+        item
+        for item in external
+        if not any(pattern.search(item[2]) for pattern in tables.pinned_reference)
+    ]
+    return (
+        len(unpinned) / len(external),
+        tuple(sorted({path for path, _n, _r in external})),
+        f"{len(unpinned)} of {len(external)} external action reference(s) in "
+        f"{len(files)} CI workflow file(s) are not pinned to a full commit SHA "
+        "or image digest: "
+        + (", ".join(f"{p}:{n} {r}" for p, n, r in unpinned[:5]) or "none")
+        + (f", and {len(unpinned) - 5} more" if len(unpinned) > 5 else "")
+        + "; a reference is any `uses:` or `image:` value outside the "
+        "repository (not starting ./), pinned when it matches the generic "
+        "layer's pinned-reference patterns (a full commit SHA, or an image "
+        "@sha256 digest)",
+    )
+
+
+def _ci_lockfile_install_missing(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    lines, files, clipped = _ci_lines(view, tables.ci_files)
+    if not files:
+        return _no_ci_file("install command")
+    if tables.lockfile_install is None:
+        return MetricAbstention(reason="no lockfile-install token is declared")
+    hits = [
+        (path, number)
+        for path, number, line in lines
+        if tables.lockfile_install.search(line)
+    ]
+    if not hits and clipped:
+        return MetricAbstention(
+            reason=(
+                "no lockfile-faithful install command was found, but a CI "
+                "workflow excerpt was clipped at the line cap ("
+                + ", ".join(clipped)
+                + "), so it may sit beyond what was read"
+            )
+        )
+    cited = sorted({path for path, _n in hits}) or sorted(files)
+    return (
+        0 if hits else 1,
+        tuple(cited),
+        (
+            f"{len(hits)} CI line(s) run a lockfile-faithful install: "
+            + ", ".join(f"{p}:{n}" for p, n in hits[:5])
+            if hits
+            else f"no line of {len(files)} quoted CI workflow file(s) runs a "
+            "lockfile-faithful install"
+        )
+        + "; 0 when any does, else 1 (missing); the commands are the "
+        "registry's lockfile_install tokens (per language) matched in "
+        "non-comment CI lines",
+    )
+
+
+def _ci_provenance_step_missing(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    ci_lines, ci_files, ci_clipped = _ci_lines(view, tables.ci_files)
+    rel_lines, rel_files, rel_clipped = _ci_lines(view, tables.release_files)
+    files = [*ci_files, *(f for f in rel_files if f not in ci_files)]
+    if not files:
+        return MetricAbstention(
+            reason=(
+                "no CI workflow or release configuration file was quoted in "
+                "this pack, so there is nothing to look for an SBOM, signing or "
+                "provenance step in (the roles' misses are in sources_missing)"
+            )
+        )
+    if tables.provenance_steps is None:
+        return MetricAbstention(reason="no provenance-step token is declared")
+    hits = [
+        (path, number)
+        for path, number, line in (*ci_lines, *rel_lines)
+        if tables.provenance_steps.search(line)
+    ]
+    clipped = [*ci_clipped, *rel_clipped]
+    if not hits and clipped:
+        return MetricAbstention(
+            reason=(
+                "no SBOM, signing or provenance step was found, but an excerpt "
+                "was clipped at the line cap (" + ", ".join(clipped) + "), so "
+                "it may sit beyond what was read"
+            )
+        )
+    cited = sorted({path for path, _n in hits}) or sorted(files)
+    return (
+        0 if hits else 1,
+        tuple(cited),
+        (
+            f"{len(hits)} line(s) show an SBOM, signing or provenance step: "
+            + ", ".join(f"{p}:{n}" for p, n in hits[:5])
+            if hits
+            else f"no line of {len(files)} quoted CI or release file(s) shows one"
+        )
+        + "; 0 when any does, else 1 (missing); the tokens are the generic "
+        "layer's (slsa, provenance, attest, sbom, cyclonedx, spdx, cosign, "
+        "sigstore, syft), matched case-insensitively in non-comment lines",
+    )
+
+
+API = "api"
+
+API_METRICS = (
+    "api_spec_missing",
+    "api_version_missing",
+    "request_validation_missing",
+    "breaking_api_changes_observed",
+)
+"""The T044 api rule metrics (area #7), computed by the ``api`` dimension over
+whole files and the changes-scope diff and stored on ``pack.whole_file``."""
+
+
+def _api_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the api dimension did not store the
+    metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != API:
+        return MetricAbstention(
+            reason=(
+                "only the api pack records API specification, route, validation "
+                f"and versioning facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no API facts "
+            "were gathered"
+        )
+    )
+
+
+DATA = "data"
+
+DATA_METRICS = (
+    "migrations_missing",
+    "migrations_without_rollback_share",
+    "schema_constraints_missing",
+    "destructive_migration_ops_observed",
+)
+"""The T045 data rule metrics (area #4), computed by the ``data`` dimension
+over whole files and stored on ``pack.whole_file``."""
+
+
+def _data_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the data dimension did not store the
+    metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != DATA:
+        return MetricAbstention(
+            reason=(
+                "only the data pack records migration, schema and constraint "
+                f"facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no data facts "
+            "were gathered"
+        )
+    )
+
+
+OPERATIONS = "operations"
+
+OPERATIONS_METRICS = (
+    "logging_library_missing",
+    "audit_log_writes_missing",
+    "codeowners_missing",
+    "agent_guardrails_missing",
+    "agent_config_secrets_observed",
+    "tool_version_pin_missing",
+    "dev_environment_missing",
+)
+"""The T046 operations rule metrics (areas #14, #26, #29, #30), computed by
+the ``operations`` dimension over whole files and stored on
+``pack.whole_file``."""
+
+
+def _operations_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the operations dimension did not store
+    the metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != OPERATIONS:
+        return MetricAbstention(
+            reason=(
+                "only the operations pack records ownership, observability, "
+                f"agent and setup facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no operations "
+            "facts were gathered"
+        )
+    )
+
+
+INFRASTRUCTURE = "infrastructure"
+
+INFRASTRUCTURE_METRICS = (
+    "iac_wildcard_iam_observed",
+    "iac_open_ingress_observed",
+    "iac_unencrypted_storage_observed",
+    "terraform_locked_remote_state_missing",
+    "terraform_environment_separation_missing",
+    "database_backup_unconfigured",
+    "database_ha_unconfigured",
+)
+"""The T042 infrastructure rule metrics (areas #11, #23, #24), computed by
+the ``infrastructure`` dimension over whole files and stored on
+``pack.whole_file``."""
+
+
+def _infrastructure_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the infrastructure dimension did not store
+    the metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != INFRASTRUCTURE:
+        return MetricAbstention(
+            reason=(
+                "only the infrastructure pack records IaC facts, and this is "
+                f"the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no "
+            "infrastructure facts were gathered"
+        )
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -2703,6 +3075,13 @@ PACK_METRICS: dict[str, tuple[str, ...]] = {
         "float_money_observed",
         "ledger_tables_without_audit_columns_observed",
         "ledger_rows_mutated_observed",
+    ),
+    "frontend-a11y": (
+        "images_without_alt_observed",
+        "form_controls_without_label_observed",
+        "aria_hidden_focusable_observed",
+        "viewport_missing_or_zoom_disabled_observed",
+        "browser_support_declaration_missing",
     ),
 }
 """Metrics of an optional pack (T047). A pack's evidence computes only these, and
@@ -2971,6 +3350,54 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         MetricDefinition(name, FAMILY_SECURITY_SURFACE, EVIDENCE_LOCAL, _pack_only)
         for names in PACK_METRICS.values()
         for name in names
+    ),
+    MetricDefinition(
+        "licence_file_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("licence-file"),
+    ),
+    MetricDefinition(
+        "ci_actions_unpinned_share",
+        FAMILY_SECURITY_SURFACE,
+        WHOLE_SET,
+        _ci_actions_unpinned_share,
+    ),
+    MetricDefinition(
+        "ci_lockfile_install_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        WHOLE_SET,
+        _ci_lockfile_install_missing,
+    ),
+    MetricDefinition(
+        "ci_provenance_step_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        WHOLE_SET,
+        _ci_provenance_step_missing,
+    ),
+    # T044: api; computed over whole files by the api pack itself
+    *(
+        MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _api_fact)
+        for name in API_METRICS
+    ),
+    # T045: data; computed over whole files by the data pack itself
+    *(
+        MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _data_fact)
+        for name in DATA_METRICS
+    ),
+    # T046: operations; computed over whole files by the operations pack itself
+    *(
+        MetricDefinition(
+            name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _operations_fact
+        )
+        for name in OPERATIONS_METRICS
+    ),
+    # T042: infrastructure; computed over whole files by its own pack
+    *(
+        MetricDefinition(
+            name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _infrastructure_fact
+        )
+        for name in INFRASTRUCTURE_METRICS
     ),
 )
 

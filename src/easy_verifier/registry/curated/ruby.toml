@@ -286,3 +286,61 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["--frozen", "--deployment", "BUNDLE_FROZEN"]
+citation_url = "https://bundler.io/man/bundle-config.1.html"
+source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["params.require (", "params.permit ("]
+citation_url = "https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters"
+source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[roles.schema-file]]
+value = ["**/db/schema.rb", "**/db/structure.sql"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#schema-dumping-and-you"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["ApplicationRecord", "ActiveRecord::Base"]
+citation_url = "https://guides.rubyonrails.org/active_record_basics.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["null: false", "foreign_key: true", "add_foreign_key", "unique: true"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#foreign-keys"
+source_tag = "curated"
+
+[[migration_rollback_markers]]
+value = ["def change"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html#using-the-change-method"
+source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.ruby-version"]
+citation_url = "https://github.com/rbenv/rbenv#choosing-the-ruby-version"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["Rails.logger"]
+citation_url = "https://guides.rubyonrails.org/debugging_rails_applications.html#the-logger"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["Logger.new"]
+citation_url = "https://docs.ruby-lang.org/en/master/Logger.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["OpenTelemetry::"]
+citation_url = "https://opentelemetry.io/docs/languages/ruby/instrumentation/"
+source_tag = "curated"

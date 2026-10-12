@@ -43,7 +43,7 @@ from pathlib import Path, PurePosixPath
 
 from ..core.context import _is_secret_bearing
 from ..core.git import run_git_text
-from ..core.metric_tables import curated_metric_tables
+from ..core.metric_tables import curated_metric_tables, token_regex
 from ..core.metrics import code_kind
 from ..core.models import (
     CompatFacts,
@@ -56,8 +56,10 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import redact
+from ..core.registry import RegistryEntry, layered_conventions
 from ..core.roles import role
 from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS
+from ..core.structure import context_conventions, convention_values
 from ..core.tokens import MAX_LINE_CHARS
 
 NAME = "blast-radius"
@@ -702,27 +704,41 @@ def _run_git(repo: Path, args: list[str]) -> tuple[bool, str, str]:
 MAX_COMPAT_LISTED = 20
 """#5 items quoted per kind; the rest are counted, not quoted (NFR-009)."""
 
-MIGRATION_DIRS = frozenset(
-    {"migrations", "migration", "migrate", "alembic", "changelog"}
+MIGRATION_FIELDS = (
+    "migration_dirs",
+    "destructive_migration_ddl",
+    "destructive_migration_apis",
 )
-"""Directory names (any case) that make a file a schema migration: Django,
-Laravel, Prisma, Knex and golang-migrate ``migrations/``, Flyway
-``db/migration/``, Rails ``db/migrate/``, Alembic ``alembic/``, Liquibase
-``db/changelog/``."""
+"""The ``conventions`` registry fields holding the migration knowledge (T057):
+directory names (any case) that make a file a schema migration, SQL DDL tokens
+and the ORM migration-API regular expressions, each cited per framework in
+``registry/curated/conventions.toml``."""
 
-_DESTRUCTIVE = re.compile(
-    r"\bdrop\s+(?:table|column|schema|database)\b"
-    r"|\brename\s+(?:column|to)\b"
-    r"|\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?"
-    r"(?:_?if_?exists)?\b"
-    r"|\bdrop_?if_?exists\b",
-    re.IGNORECASE,
-)
-"""SQL DDL (``DROP TABLE``/``COLUMN``, ``RENAME COLUMN``/``TO``) and the
-migration APIs named after it: ``drop_table``/``remove_column`` (Rails,
-Alembic), ``RemoveField``/``DeleteModel``/``RenameField`` (Django),
-``dropColumn``/``renameColumn``/``dropIfExists`` (Knex, Laravel, Sequelize),
-``DropColumn``/``RenameTable`` (EF Core)."""
+
+def migration_patterns(
+    entry: RegistryEntry | None = None,
+) -> tuple[frozenset[str], re.Pattern[str]]:
+    """The migration directory names and the destructive-operation matcher,
+    from ``entry`` (the call's resolved conventions, T086: curated, local
+    layer, ``.easy-verifier.toml``, replayed items) or, with none, the curated
+    ``conventions`` entry plus the local layer.
+
+    SQL DDL tokens and ORM API expressions form one case-insensitive
+    alternation, DDL first. The curated entry lacking a field is a packaging
+    error and raises ``ValueError``.
+    """
+    if entry is None:
+        entry, _warnings = layered_conventions()
+    missing = [f for f in MIGRATION_FIELDS if not convention_values(entry, f)]
+    if missing:
+        raise ValueError(f"conventions.toml: missing {', '.join(missing)}")
+    dirs = frozenset(v.lower() for v in convention_values(entry, "migration_dirs"))
+    ddl = [
+        token_regex(t) for t in convention_values(entry, "destructive_migration_ddl")
+    ]
+    apis = list(convention_values(entry, "destructive_migration_apis"))
+    return dirs, re.compile("|".join(ddl + apis), re.IGNORECASE)
+
 
 _DOWN_START = re.compile(r"\b(?:down|downgrade)\b\s*(?:[=(:]|$)", re.IGNORECASE)
 _UP_START = re.compile(r"\b(?:up|upgrade|change)\b\s*(?:[=(:]|$)", re.IGNORECASE)
@@ -767,16 +783,19 @@ def _compat_evidence(context: DimensionContext, scope: object) -> tuple[Excerpt,
             )
         else:
             clipped = any("clipped" in note for note in getattr(scope, "notes", ()))
-            context.compat, excerpts = _read_diff(diff, clipped=clipped)
+            context.compat, excerpts = _read_diff(
+                diff, clipped=clipped, entry=context_conventions(context)
+            )
             _warn(context, COMPAT_METHOD)
     context._compat_excerpts = excerpts
     return excerpts
 
 
 def _read_diff(
-    diff: str, *, clipped: bool
+    diff: str, *, clipped: bool, entry: RegistryEntry | None = None
 ) -> tuple[CompatFacts, tuple[Excerpt, ...]]:
     tables = curated_metric_tables()
+    dirs, destructive = migration_patterns(entry)
     parsed = _diff_files(diff)
     secret = tuple(redact(item["path"]) for item in parsed if item["secret"])
     files = [item for item in parsed if not item["secret"]]
@@ -804,8 +823,8 @@ def _read_diff(
                     added_names.add(name)
                 elif sign == "-":
                     removed.append((item["old_path"], number, text, name, hunk))
-        if _is_migration(path):
-            ops.extend(_destructive_ops(item))
+        if _is_migration(path, dirs):
+            ops.extend(_destructive_ops(item, destructive))
 
     hunks_adding: dict[int, set[str]] = {}
     for item in files:
@@ -943,15 +962,21 @@ def _declared_name(pattern: re.Pattern[str], text: str) -> str | None:
     return inside[-1] if inside else None
 
 
-def _is_migration(path: str) -> bool:
+def _is_migration(path: str, dirs: frozenset[str] | None = None) -> bool:
+    """``path`` sits under a migration directory (``dirs``, default the
+    registry's) and is not a down or Flyway undo file."""
     pure = PurePosixPath(path)
     if ".down." in pure.name or re.match(r"U\d", pure.name):
         return False
-    return any(part.lower() in MIGRATION_DIRS for part in pure.parts[:-1])
+    dirs = migration_patterns()[0] if dirs is None else dirs
+    return any(part.lower() in dirs for part in pure.parts[:-1])
 
 
-def _destructive_ops(item: dict) -> list[tuple[str, int, str, str]]:
+def _destructive_ops(
+    item: dict, destructive: re.Pattern[str] | None = None
+) -> list[tuple[str, int, str, str]]:
     """Destructive operations on added lines, outside down sections."""
+    destructive = migration_patterns()[1] if destructive is None else destructive
     status = (
         "in a new migration file"
         if item["status"] == "added"
@@ -968,7 +993,7 @@ def _destructive_ops(item: dict) -> list[tuple[str, int, str, str]]:
             down = False
         if sign != "+" or down or _COMMENT_LINE.match(text):
             continue
-        hit = _DESTRUCTIVE.search(text)
+        hit = destructive.search(text)
         if hit:
             found.append((item["path"], number, text, f"{hit.group(0)} {status}"))
     return found

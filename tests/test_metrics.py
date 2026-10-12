@@ -304,6 +304,38 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
     needs_imports |= {"todo_without_ticket_share"}
     # T074 (DDR-0011): the layer rule needs imports between classified files.
     needs_imports |= {"layer_direction_violations"}
+    # T041: the CI metrics quote only the supply-chain pack.
+    needs_imports |= {
+        "ci_actions_unpinned_share",
+        "ci_lockfile_install_missing",
+        "ci_provenance_step_missing",
+        # T044: the api facts are stored only by the api pack.
+        "api_spec_missing",
+        "api_version_missing",
+        "request_validation_missing",
+        "breaking_api_changes_observed",
+        # T046: computed only by the operations dimension.
+        "logging_library_missing",
+        "audit_log_writes_missing",
+        "codeowners_missing",
+        "agent_guardrails_missing",
+        "agent_config_secrets_observed",
+        "tool_version_pin_missing",
+        "dev_environment_missing",
+        # T042: computed only by the infrastructure dimension.
+        "iac_wildcard_iam_observed",
+        "iac_open_ingress_observed",
+        "iac_unencrypted_storage_observed",
+        "terraform_locked_remote_state_missing",
+        "terraform_environment_separation_missing",
+        "database_backup_unconfigured",
+        "database_ha_unconfigured",
+        # T045: computed only by the data dimension.
+        "migrations_missing",
+        "migrations_without_rollback_share",
+        "schema_constraints_missing",
+        "destructive_migration_ops_observed",
+    }
     for metric in whole_set:
         if not truncated and metric.name in needs_imports:
             continue
@@ -345,6 +377,34 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
         "outbound_calls_without_timeout_observed",
         "retries_without_backoff_observed",
         "queries_in_loops_observed",
+        # T041: the fixture does not declare the licence-file role.
+        "licence_file_missing",
+        # T044: computed only by the api dimension.
+        "api_spec_missing",
+        "api_version_missing",
+        "request_validation_missing",
+        "breaking_api_changes_observed",
+        # T046: computed only by the operations dimension.
+        "logging_library_missing",
+        "audit_log_writes_missing",
+        "codeowners_missing",
+        "agent_guardrails_missing",
+        "agent_config_secrets_observed",
+        "tool_version_pin_missing",
+        "dev_environment_missing",
+        # T042: computed only by the infrastructure dimension.
+        "iac_wildcard_iam_observed",
+        "iac_open_ingress_observed",
+        "iac_unencrypted_storage_observed",
+        "terraform_locked_remote_state_missing",
+        "terraform_environment_separation_missing",
+        "database_backup_unconfigured",
+        "database_ha_unconfigured",
+        # T045: computed only by the data dimension.
+        "migrations_missing",
+        "migrations_without_rollback_share",
+        "schema_constraints_missing",
+        "destructive_migration_ops_observed",
     }
 
     # AC #5: unaffected by truncation, both ways.

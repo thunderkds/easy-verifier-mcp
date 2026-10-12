@@ -270,3 +270,51 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["go mod verify", "-mod=readonly"]
+citation_url = "https://go.dev/ref/mod#go-mod-verify"
+source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["validator.New (", "*.ShouldBindJSON (", "*.ShouldBind ("]
+citation_url = "https://gin-gonic.com/en/docs/examples/binding-and-validation/"
+source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["gorm.Model"]
+citation_url = "https://gorm.io/docs/models.html"
+source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[logging_markers]]
+value = ["log/slog"]
+citation_url = "https://pkg.go.dev/log/slog"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["go.uber.org/zap"]
+citation_url = "https://pkg.go.dev/go.uber.org/zap"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["github.com/sirupsen/logrus"]
+citation_url = "https://github.com/sirupsen/logrus#example"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["github.com/rs/zerolog"]
+citation_url = "https://github.com/rs/zerolog#getting-started"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["go.opentelemetry.io/otel"]
+citation_url = "https://opentelemetry.io/docs/languages/go/instrumentation/"
+source_tag = "curated"

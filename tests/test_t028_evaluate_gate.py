@@ -416,10 +416,10 @@ def test_overall_discloses_each_rating_kind() -> None:
         {"solution-fit": _ev(70, 0.8), "code-quality": _ev(88, 0.6)}, ratings, _packs()
     )
     overall = rate_overall(applied)
-    assert overall.contributor_count == 7
+    assert overall.contributor_count == 12
     assert "solution-fit" in overall.contributors
     assert "architecture" not in overall.contributors
-    assert "(5 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
+    assert "(10 rule-rated, 1 blended, 1 agent-rated)" in overall.disclosure
     assert "abstained: architecture (below_coverage_floor" in overall.disclosure
     assert dict(overall.contributor_values)["code-quality"] == 65
     assert dict(overall.rated_by) == {
@@ -435,7 +435,7 @@ def test_overall_never_averages_abstained_dimension_without_evaluation() -> None
     overall = rate_overall(ratings)
     assert "architecture" not in overall.contributors
     assert "solution-fit" not in overall.contributors  # no_static_rule
-    assert "(6 rule-rated, 0 blended, 0 agent-rated)" in overall.disclosure
+    assert "(11 rule-rated, 0 blended, 0 agent-rated)" in overall.disclosure
 
 
 def test_ratings_without_agent_input_equal_ratings_with_empty_evaluations() -> None:

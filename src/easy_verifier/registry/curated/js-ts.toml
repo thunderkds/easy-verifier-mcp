@@ -404,6 +404,22 @@ value = ["GET=app.get(", "POST=app.post(", "PUT=app.put(", "PATCH=app.patch(", "
 citation_url = "https://expressjs.com/en/guide/routing.html"
 source_tag = "curated"
 
+# T079: Express names its application anything (`var webapp = express()`), so
+# a call on a name bound to one of these constructors in the same file is a
+# route; an unbound receiver ($.get, axios.get, map.get) is not.
+[[route_tokens]]
+value = ["RECEIVER=express(", "RECEIVER=express.Router(", "RECEIVER=Router(", "GET=<receiver>.get(", "POST=<receiver>.post(", "PUT=<receiver>.put(", "PATCH=<receiver>.patch(", "DELETE=<receiver>.delete(", "ANY=<receiver>.all("]
+citation_url = "https://expressjs.com/en/guide/routing.html"
+source_tag = "curated"
+
+# T079 amendment: a router module receives its app (`module.exports = function
+# (app, webapp)`) or reads it from a property (`let webapp = app.webapp`).
+# Express routers are mounted this way; the express.Router docs show the export.
+[[route_tokens]]
+value = ["RECEIVER_PARAM=module.exports =", "RECEIVER_PARAM=export default", "RECEIVER_ASSIGN=property"]
+citation_url = "https://expressjs.com/en/guide/routing.html#express-router"
+source_tag = "curated"
+
 # Reliability fields (T043): areas #6, #12, #13, #15.
 
 [[swallowed_errors]]
@@ -524,4 +540,127 @@ source_tag = "curated"
 [[transaction_markers]]
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
+source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["npm ci"]
+citation_url = "https://docs.npmjs.com/cli/commands/npm-ci"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["--frozen-lockfile"]
+citation_url = "https://pnpm.io/cli/install#--frozen-lockfile"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["--immutable"]
+citation_url = "https://yarnpkg.com/cli/install#options"
+source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["z.object (", "z.strictObject (", "z.array (", "Joi.object (", "celebrate (", "checkSchema (", "validationResult ("]
+citation_url = "https://zod.dev/api"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["@IsString (", "@IsNotEmpty (", "@IsInt (", "@IsNumber (", "@IsEmail (", "@IsUUID (", "@IsEnum (", "@IsBoolean (", "@ValidateNested (", "ValidationPipe", "ZodValidationPipe"]
+citation_url = "https://docs.nestjs.com/techniques/validation"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["yup.object (", "ajv.compile (", "new Ajv ("]
+citation_url = "https://ajv.js.org/guide/getting-started.html"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["SwaggerModule.createDocument (", "swaggerJsdoc (", "swaggerJSDoc (", "autoSchemaFile"]
+citation_url = "https://docs.nestjs.com/openapi/introduction"
+source_tag = "curated"
+
+[[api_version_markers]]
+value = ["*.enableVersioning (", "@Version ("]
+citation_url = "https://docs.nestjs.com/techniques/versioning"
+source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["@Entity ("]
+citation_url = "https://typeorm.io/entities"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["@Entity ("]
+citation_url = "https://mikro-orm.io/docs/defining-entities"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["new Schema (", "new mongoose.Schema ("]
+citation_url = "https://mongoosejs.com/docs/guide.html"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["sequelize.define ("]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-basics/"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable: false", "unique: true", "@ManyToOne (", "@OneToOne (", "@JoinColumn (", "@Unique ("]
+citation_url = "https://typeorm.io/entities#column-options"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = [".notNullable (", ".unique (", ".references (", ".foreign ("]
+citation_url = "https://knexjs.org/guide/schema-builder.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["allowNull: false", "references:"]
+citation_url = "https://sequelize.org/docs/v6/core-concepts/model-basics/#column-options"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["required: true", "ref:"]
+citation_url = "https://mongoosejs.com/docs/schematypes.html#schematype-options"
+source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.nvmrc"]
+citation_url = "https://github.com/nvm-sh/nvm#nvmrc"
+source_tag = "curated"
+
+[[roles.tool-version-pin]]
+value = ["**/.node-version"]
+citation_url = "https://github.com/nodenv/nodenv#choosing-the-node-version"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["winston"]
+citation_url = "https://github.com/winstonjs/winston#usage"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["pino"]
+citation_url = "https://getpino.io/#/docs/api"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["@opentelemetry/"]
+citation_url = "https://opentelemetry.io/docs/languages/js/instrumentation/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["new Logger ("]
+citation_url = "https://docs.nestjs.com/techniques/logger"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["bunyan", "log4js"]
+citation_url = "https://github.com/trentm/node-bunyan#introduction"
 source_tag = "curated"

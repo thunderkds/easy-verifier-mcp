@@ -12,12 +12,14 @@
 
 ### Todo
 
+- [x] **T084** — Follow-up (T083 review P2): `breaking_api_changes_observed` still counts removals from diff files the api pack did not read when at least one other spec/route file was read (value partly uncited); user chose 2026-10-08: count only removals in files actually read; list unread files with removals as "not counted" | backend-developer | C1 | Risk: Med | P2 | ✅ Done 2026-10-08 (removals counted only in read files; unread files listed "not counted"; route tokens from resolved conventions; 22-spec repro 66→60, coffee sha256 unchanged; 2536 passed, 2 known container failures)
+- [x] **T085** — Follow-up (T049 review P2): frontend-a11y `browser_support_declaration_missing` credits Next/Nuxt default browser targets as declared, like the default viewport; derivation says "framework default" (user 2026-10-08; tapchat-web a11y 45 → ~60) | backend-developer | C1 | Risk: Low | P2 | ✅ Done 2026-10-08 (new cited pack field browser_support_default_entries: Next.js config = framework-default targets; Nuxt dropped — no official doc states a default browser target (only esbuild transform target esnext); tapchat-web a11y 45→60, overall 60→64, pack-off sha256 unchanged; 2536 passed, 2 known container failures)
+- [x] **T086** — Follow-up (T057 review P2): `blast_radius.migration_patterns()` reads curated + local layer only; after T078 it should use the per-call resolved conventions so a repo's `.easy-verifier.toml` `migration_dirs` apply (and are embedded for replay) | backend-developer | C1 | Risk: Low | P2 | ✅ Done 2026-10-08 (migration_patterns(entry) gets the per-call resolved conventions in blast-radius #5 and data #4; toml migration_dirs/DDL extras apply and replay byte-equal; toml destructive_migration_apis refused; coffee/kitchd sha256 unchanged; 2537 passed, 2 known container failures)
+
 **Wave 16 — Business-domain area coverage (added 2026-10-06, user request: uncovered business-domain areas; run order T082 → T043 → T047 → T048, floors 0.25 user-approved)**
 
 **Wave 15 — Code-derived rules, flexible conventions (added 2026-10-04, user request; DDR-0011, PRD FR-067…FR-071)**
 
-- [ ] **T079** — Route tokens: generic Express-style `<any>.get('/…')` / `.post("/…")` forms (bryony's `webapp.get('/api/...')` unmatched → requirement-fidelity below floor) | backend-developer | C1 | Risk: Low | P1
-- [ ] **T078** — Embed repo-local / .easy-verifier.toml conventions for byte-equal replay, then use them in scoring (T075 AC 10, split out) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 14 — Evaluation experience: readable report + evaluation guide (added 2026-10-04, user brief; PRD FR-065/066)**
 
@@ -28,13 +30,6 @@
 **Wave 10 — Cited reference registry (added 2026-09-28, user request; DDR-0007, PRD FR-041…FR-049)**
 
 **Wave 11 — 32 evaluation areas, 13 dimensions, optional packs (added 2026-09-28, user request; DDR-0008, PRD FR-050…FR-054)**
-- [ ] **T057** — Move T055's migration knowledge (migration dir names, destructive DDL + Rails/Django/Alembic/Knex/Laravel/EF API names) from `blast_radius.py` constants into cited registry fields (DDR-0007) — follow-up of T055 (user, 2026-09-29); guide to be written at Stage 2 before pickup | backend-developer | C2 | Risk: Med | P2
-- [ ] **T041** — New dimension: supply-chain (#20, #21, #22) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T042** — New dimension: infrastructure (#11, #23, #24) (HITL: floor) | backend-developer | C3 | Risk: Med | P1
-- [ ] **T044** — New dimension: api (#7) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T045** — New dimension: data (#4) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (HITL: floor) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2
 
 **Follow-up from T068 Stage 4 (2026-10-04, no guide yet — needs user go-ahead)**
 - 💡 Cap per-file citation lists in score payload + report (bryony payload 476 KB → 1.08 MB → 1.64 MB per batch; architecture card lists hundreds of paths) — works against the token-saving goal of DDR-0010
@@ -42,7 +37,7 @@
 
 **Deferred ideas (revisit after T029–T049 are done — no guide yet, not pickable)**
 - 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev".
-- [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2
+- [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2 | 🔄 In Progress 2026-10-08 (namespace temvar; script/docs/tests first, push only after explicit user go)
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
 _(complete — T026, T027, T028 merged to `feat/any-language-discovery`)_
@@ -71,13 +66,22 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-_(empty)_
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T078** — Repo-local / `.easy-verifier.toml` conventions used in scoring and embedded for byte-equal replay (toml items per-call only, user 2026-10-08) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-08 (layer_paths/route_tokens/requirement/issue patterns honour extras add-only; replay byte-equal with toml deleted, nothing written to disk; secret-shaped values dropped with a warning; no-toml payloads change only by the corrected disclosure text; 2465 passed, 2 known container failures)
+- [x] **T057** — Migration knowledge into cited registry fields (`migration_dirs`, `destructive_migration_ddl` IGNORECASE tokens, `destructive_migration_apis` curated-only regex; user option D 2026-10-08) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (pure relocation: coffee/kitchd/changes-scope/destructive-hit payloads byte-identical; local layer can add dir names; 2512 passed, 2 known container failures; follow-up T086)
+- [x] **T079** — Route tokens: Express routes on any app/router name — receivers bound to `express()`/`Router()` in the file, exported-function params, and properties read from them (router-module rule, user 2026-10-08) | backend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-08 (bryony 3→18 routes, routes↔tests 0/3→5/18 tested, overall 42 unchanged; Stage 4 P1 fixed: `$ = window.jQuery` callbacks no longer routes; cited registry rows `RECEIVER*`; 2382 passed, 2 known container failures)
+- [x] **T049** — Frontend accessibility pack (#19) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (opt-in `packs=["frontend-a11y"]`, floor 0.25; weights img alt 25 / form labels 25 / aria-hidden focusable 20 / viewport-zoom 15 / browser support 15 (cited WCAG 2.2, accepted under 2026-10-07 policy); tapchat-web 45, overall 65→60, pack off byte-identical; 2407 passed, 2 known container failures; open P2: Next default browser targets not credited)
+- [x] **T083** — Bugfix: `score --scope changes` crashes (MetricCitationError, api `breaking_api_changes_observed`) on a diff with no API spec/route source file (from T044) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-08 (`_breaking_metric` abstains "no API specification or route source file in this diff was read" when nothing cited; repro needs `--ref`; CLI exit 2→0, MCP agrees; 2 regression tests; 2340 passed, 2 known container failures; follow-up T084)
+- [x] **T042** — New dimension: infrastructure (#11, #23, #24) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights wildcard IAM 20 / open ingress 20 / unencrypted storage 15 / locked remote state 15 / env separation 5 / DB backup 15 / DB HA 10 (cited, accepted under user policy); microservices-demo 70 (59→60); the 4 usual repos have no IaC and abstain, overall unchanged; cut: CloudFormation/Pulumi DB resources for #24; 2340 passed)
+- [x] **T046** — New dimension: operations (#14, #25, #26, #29, #30) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights logging 20 / audit 10 / codeowners 20 / agent guardrails 10 / agent-config secrets 20 / tool pin 10 / dev env 10 (cited, accepted under user policy); agent instructions = #29 doc rule (user); secrets = exact-pattern detectors only; kitchd 50, this repo 40, coffee/ai-training/bryony abstain (1 of 7 roles); 2309 passed)
+- [x] **T045** — New dimension: data (#4) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights migrations 30 / rollback 30 / constraints 20 / destructive ops 20 (cited, accepted under user policy); coffee 100 (77→80), kitchd 70 (55→56, Prisma has no down migrations), ai-training 40 (66→62), bryony 40 (62→59); 2281 passed)
+- [x] **T044** — New dimension: api (#7) (floor 0.25 user-approved 2026-10-07; cited weights accepted) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (weights spec 30 / validation 30 / version 20 / breaking-changes 20 (cited, accepted under user policy); coffee 100 (72→77), ai-training 75 (64→66), kitchd 38 (57→55), bryony abstains — no webapp.get route tokens (T079) + batch-1 sampling; 2258 passed)
+- [x] **T041** — New dimension: supply-chain (#20, #21, #22) (floor 0.40 + weights 20/15/20/20/25 user-approved 2026-10-07) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-07 (floor 0.40, weights 20/15/20/20/25 user-approved; CI `image:` counts for the pin rule (user, D1); kitchd 55 (58→57), bryony 35 (67→62), ai-training/coffee abstain — no CI file (DDR-0010 measured weight); 2235 passed; Stage 4 P1 licence globs matched source code → fixed; known limits: templated `${{ }}` image counts unpinned, shared container image must be rebuilt)
 - [x] **T048** — Finance pack (#3) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (float money 50 + ledger audit 25 + ledger mutation 25, user-approved; TS `number` persistence-only; coffee 72→77 finance 100, kitchd 58→48 (4 real float money columns), bryony 67→56 (12 Mongoose Number); inactive byte-identical; 2207 passed)
 - [x] **T047** — Pack mechanism + healthcare pack (#9, #28) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-06 (packs via `.easy-verifier.toml` / `agent_input.packs`; healthcare #9 PHI 50/50 + #9/#28 doc rules, floor 0.25; inactive = byte-identical; coffee 72→77 & bryony 67→73 with pack, healthcare 100; 2136 passed)
 - [x] **T043** — New dimension: reliability (#6, #12, #13, #15, #32) (HITL: floor) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-06 (weights 35/35/10/20 + floor 0.25 user-approved; #6 evidence-only; coffee 100 (65→72), bryony 61 (69→67), kitchd 0 (72→58, real N+1); 2087 passed; container image rebuild after merge)
@@ -164,7 +168,7 @@ _(empty)_
 | ~~T004~~ | **CLOSED 2026-08-15.** Fingerprint is unsalted SHA-256, 12-hex prefix, 4-char mask — the user confirmed reports stay inside the evaluated repo, so correlation is worth more than dictionary resistance. Rationale and revisit condition in `memory/decisions.md`. **T004 is unblocked.** | — |
 | ~~T016~~ | **Docker block CLOSED 2026-09-16** — the daemon is reachable, the image builds, and the container passes every hardening check on a live run. The task stays open only for two **script-side** defects the first complete run exposed (stale tool count; a harness that drops the final response, so its last assertion could never have passed) — in progress on `fix/t016-verifier`. | — |
 | ~~T017~~ | **CLOSED 2026-09-16.** The user chose byte-equality after a declared normalization (**DDR-0005**); FR-022 and the KPI row were contradicting each other, and both are now updated. **T017 is unblocked.** | — |
-| T025 | **Docker Hub namespace not chosen.** Guide uses `<NS>` placeholder; user will supply it (2026-09-24). No spawn until it is filled into `tasks/TASK_GUIDE_T025.md` and the Fidelity Gate is signed. T024 dependency satisfied (committed `edbf482`). | user |
+| ~~T025~~ | ~~**Docker Hub namespace not chosen.**~~ **CLOSED 2026-10-08.** User supplied https://hub.docker.com/r/temvar/easy-verifier-mcp → namespace `temvar`; guide filled and Fidelity Gate signed. Publishing (`--push`) still needs the user's explicit go. | user |
 
 > Both are gates at pickup time, not blockers on planning — the guides are written and the tasks are
 > spawnable the moment the decision is recorded.

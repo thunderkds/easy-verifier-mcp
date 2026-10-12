@@ -53,7 +53,7 @@ def test_every_area_has_exactly_one_row_in_code_order() -> None:
 def test_row_rules_equal_rating_rules_by_area() -> None:
     code = _code_rules()
     for number, row in _rows().items():
-        listed = set(re.findall(r"`([a-z-]+)` · `([a-z0-9_]+)`", row["rules"]))
+        listed = set(re.findall(r"`([a-z0-9-]+)` · `([a-z0-9_]+)`", row["rules"]))
         assert listed == code[judge.AREAS[number - 1]], f"area {number}"
 
 

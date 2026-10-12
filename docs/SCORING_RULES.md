@@ -43,8 +43,14 @@ accepted only for solution-fit (`no_static_rule`) and for dimensions with a bord
 | test-strategy | 0.20 |
 | blast-radius | 0.25 |
 | reliability | 0.25 |
+| supply-chain | 0.40 |
+| api | 0.25 |
+| data | 0.25 |
+| operations | 0.25 |
+| infrastructure | 0.25 |
 | healthcare *(optional pack)* | 0.25 |
 | finance *(optional pack)* | 0.25 |
+| frontend-a11y *(optional pack)* | 0.25 |
 
 architecture (DDR-0011, T074): documents carry 20 and code 80. A missing architecture description or
 decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
@@ -57,6 +63,45 @@ schemas, exceptions and providers are `shared` boundary contracts. Only the cura
 apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in scoring until
 conventions are embedded for replay (T075). A README heading naming "Architecture" fills the
 `architecture-doc` role (coverage) and passes the description rule, citing the same excerpt.
+
+supply-chain (T041, floor 0.40 and weights user-approved 2026-10-07): five roles (package manifest,
+lockfile, CI workflow, licence file, release configuration), so two of them reach the floor and a
+repository with none of them abstains with every role named.
+
+operations (T046, floor 0.25 user decision 2026-10-07; weights proposed by T046 and accepted under
+user policy 2026-10-07): seven roles (CODEOWNERS; runbook, incident or SLO documents; observability
+config; logging or tracing in source files; coding-agent config; tool-version pin; dev environment),
+so two of them reach the floor and a repository with none abstains with every role named. Documents
+alone never rate: they fill one role and carry no weight. Coding-agent instruction files
+(CLAUDE.md, AGENTS.md, ...) are a #29 documentation rule, not a weighted rule (user decision
+2026-10-07), so a repository that uses no coding agent is not penalised. Agent guardrails and agent-config secrets
+abstain when no agent file is committed; git-ignored agent files are never read. Secrets are counted
+by the shared redaction scanner's exact-pattern detectors (`core/redact.py`), never quoted. The lockfile part of #30 is
+supply-chain's `lockfile_missing`.
+
+infrastructure (T042, floor 0.25 user decision 2026-10-07; weights proposed by T042 and accepted
+under user policy 2026-10-07): four roles (Terraform files, Kubernetes manifests, CloudFormation or
+Pulumi templates, container config), so one of them reaches the floor and a repository with none
+abstains with every role named. Container config alone reaches the floor but leaves every rule
+without IaC to measure, so the dimension abstains rather than rating. Only literal values count; a
+setting from a variable or expression is named as not verifiable offline. The disaster-recovery
+document (#24) is a documentation rule; live drift (#23) and restore drills (#24) are not
+verifiable offline and have no rule. IaC tokens are generic-layer data
+(`GENERIC_INFRASTRUCTURE_FACTS` in `core/roles.py`): IaC files belong to no registry language.
+
+data (T045, floor 0.25 user decision 2026-10-07; weights proposed by T045 and accepted under user
+policy 2026-10-07): three roles (migration files in a directory the blast-radius migration rule
+names; committed schema files: SQL, Prisma, Rails `db/schema.rb`; data models in source files), so
+one of them reaches the floor and a repository with none abstains with every role named. A
+repository with no migration, schema or data model (a library) abstains, never 0. The four metrics
+are computed over the whole text of the in-scope migration (newest 200), schema and model files.
+
+api (T044, floor 0.25 user decision 2026-10-07; weights proposed by T044 and accepted under user
+policy 2026-10-07): three roles (committed API specification file; route definitions in source files;
+request validation in source files), so one of them reaches the floor and a repository with none
+abstains with every role named. A library with no route and no specification abstains
+`insufficient_measured_weight`, never 0. The four metrics are computed over the whole text of the
+in-scope source files (priority batches above 200, disclosed as a sample) and the changes-scope diff.
 
 reliability (T043, floor user-approved 2026-10-06): its roles are three code pseudo-roles (source
 files of a registry language; outbound HTTP client calls; database access calls) and the README, so
@@ -107,6 +152,37 @@ target is a ledger declared in the same repository. With no ledger, both ledger 
 and mutation sites are quoted in the pack for the agent and feed no rule. The 50/25/25 weights are
 user-approved (2026-10-06).
 
+frontend-a11y (optional pack, T049, floor 0.25 user-decided 2026-10-07): enabled like healthcare
+(`packs = ["frontend-a11y"]` or `agent_input.packs`), never guessed from detected frameworks. Three
+pseudo-roles (markup files; HTML entry documents; a browser-support declaration), so any one reaches
+the floor. Markup is every in-scope file matching `markup_files` (HTML, JSX/TSX, Vue, Svelte,
+Jinja, ERB; the first 500 in path order) minus `markup_excluded` (tests, stories, build output),
+with `comments` blanked. Tags are lexed generically (quoted values and `{…}` expressions skipped; an
+opening `<` right after an identifier is a comparison); framework spellings come from the registry:
+`attribute_bindings` reduce `:alt`, `v-bind:alt`, `[alt]` and `[attr.alt]` to `alt`, Svelte
+`{alt}` is the `alt` attribute, and `dynamic_attributes` (a JSX/Svelte spread, `v-bind="…"`,
+`$$props`, a Jinja `{{ … }}` / `{% … %}` or ERB `<% … %>` outside a quoted value) make an element
+*not verifiable*: listed in the derivation, never counted as missing. Only lowercase DOM tags are
+checked; capitalised components are not followed. An `image_tags` element without `alt_attributes`
+counts (`alt=""` is a decorative image and allowed). A `form_controls` element counts unless its
+`type` is in `unnamed_input_types` (hidden, submit, reset, button, image), it has a
+`name_attributes` attribute (aria-label, aria-labelledby, title; a placeholder is not a label), it
+sits inside a `label_tags` element, or its literal `id` is named by a `for`/`htmlFor` in the same
+file. `aria-hidden` counts on an element that is focusable (`focusable_tags`, `focusable_with_href`
+with `href`, or a `tabindex` ≥ 0; `tabindex` < 0 and `disabled` remove it). Each of these three
+rules abstains when nothing verifiable was found (no image, no form control needing a name, no
+`aria-hidden`). An HTML entry (`viewport_entries`: `index.html`, SvelteKit `src/app.html`, the Rails
+application layout) counts when it has no `viewport_declarations`; a `viewport_default_entries` file
+(Next.js root `app/layout.*` or `pages/_document.*`, `nuxt.config.*`) gets its framework's default
+viewport; either counts when `zoom_disabled` matches (`user-scalable=no`, a `maximum-scale` below 2,
+Next `userScalable: false` / `maximumScale: 1`); the rule abstains with no entry document. Browser
+support is declared when a `browser_support` file matches its expression (a browserslist query in
+`.browserslistrc`, a package.json `browserslist` key, Babel `targets`, Vite `build.target`);
+repository level (one declaration anywhere passes); abstains with no markup. Weights 25/25/20/15/15
+are the implementer's proposal (Level A text alternatives and form names first; 25+25 and 20+15+15
+each make an exact 50), checked by the Supervisor at Stage 4. Contrast, keyboard behaviour and what
+a component renders need a rendered page and are not measured.
+
 ## Rules and the registry fields they read
 
 Metrics come from static analysis: file and pattern matching, complexity counts, the import graph,
@@ -156,18 +232,60 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | finance *(optional pack)* | `float_money_observed` | 50 | = 0 | pack fields `money_names`, `money_excluded_words`, `money_declarations`, `float_types`, `persistence_float_types`, `persistence_paths`, `schema_paths`; source files as reliability plus schema files; abstains with no money-named declaration |
 | | `ledger_tables_without_audit_columns_observed` | 25 | = 0 | pack fields `ledger_names`, `non_ledger_heads`, `name_suffixes`, `ledger_declarations`, `entity_classes`, `entity_markers`, `audit_columns`; abstains with no ledger |
 | | `ledger_rows_mutated_observed` | 25 | = 0 | pack field `ledger_mutations` against the declared ledgers; abstains with no ledger |
+| frontend-a11y *(optional pack)* | `images_without_alt_observed` | 25 | = 0 | pack fields `markup_files`, `markup_excluded`, `comments`, `attribute_bindings`, `dynamic_attributes`, `image_tags`, `alt_attributes`; abstains with no verifiable image |
+| | `form_controls_without_label_observed` | 25 | = 0 | same markup fields, `form_controls`, `unnamed_input_types`, `name_attributes`, `label_tags`, `label_for_attributes`; abstains with no verifiable form control |
+| | `aria_hidden_focusable_observed` | 20 | = 0 | same markup fields, `aria_hidden_attributes`, `focusable_tags`, `focusable_with_href`; abstains with no `aria-hidden` element |
+| | `viewport_missing_or_zoom_disabled_observed` | 15 | = 0 | pack fields `viewport_entries`, `viewport_default_entries`, `viewport_declarations`, `zoom_disabled`; abstains with no entry document |
+| | `browser_support_declaration_missing` | 15 | = 0 | pack fields `browser_support`, `browser_support_default_entries` (a Next.js config counts as the framework default when nothing explicit is declared); abstains with no markup |
+| supply-chain | `lockfile_missing` | 20 | = 0 | `roles.lockfile` |
+| | `licence_file_missing` | 15 | = 0 | none (generic `licence-file` role patterns) |
+| | `ci_actions_unpinned_share` | 20 | = 0 | none (generic CI facts in `core/roles.py`); abstains where no external `uses:` reference is quoted |
+| | `ci_lockfile_install_missing` | 20 | = 0 | `lockfile_install` *(opt)*; abstains where no CI workflow is quoted |
+| | `ci_provenance_step_missing` | 25 | = 0 | none (generic CI facts in `core/roles.py`); looks in CI workflows and release configuration |
+| api | `api_spec_missing` | 30 | = 0 | none (generic `api-spec` role patterns); `api_spec_generators` *(opt)* credits a specification generated from code; abstains with no route and no specification |
+| | `api_version_missing` | 20 | = 0 | `route_tokens`, `api_version_markers` *(opt)*, generic version segment `^v[0-9]+$` (AIP-185) over route paths, non-import path literals and specification paths/packages; abstains with no route and no specification |
+| | `request_validation_missing` | 30 | = 0 | `route_tokens`, `request_validation` *(opt)*; repository level (any validation beside routes), not per route; abstains with no route |
+| | `breaking_api_changes_observed` | 20 | = 0 | `route_tokens`, generic specification definition lines; changes scope only (routes or spec keys removed and not re-added), abstains elsewhere |
+| data | `migrations_missing` | 30 | = 0 | `orm_model_markers` *(opt)*, generic `schema-file` patterns, blast-radius `MIGRATION_DIRS`; abstains with no migration, schema file or data model |
+| | `migrations_without_rollback_share` | 30 | = 0 | `migration_rollback_markers` *(opt)*, blast-radius down/downgrade pattern, generic Liquibase rollback and `*.down.*`/Flyway undo file pairs; abstains with no migration |
+| | `schema_constraints_missing` | 20 | = 0 | `schema_constraint_markers` *(opt)*, generic SQL/Prisma/Liquibase constraint syntax; abstains with no schema, migration or model file |
+| | `destructive_migration_ops_observed` | 20 | = 0 | blast-radius destructive-operation pattern, outside down sections and comment lines; abstains with no migration |
+| operations | `logging_library_missing` | 20 | = 0 | `logging_markers` *(opt)*, generic `observability-config` patterns; abstains with no source file and no observability config |
+| | `audit_log_writes_missing` | 10 | = 0 | generic audit-call pattern (`GENERIC_OPERATIONS_FACTS`), comments and strings blanked; abstains with no source file |
+| | `codeowners_missing` | 20 | = 0 | generic `codeowners` patterns |
+| | `agent_guardrails_missing` | 10 | = 0 | generic hook path and hooks/deny/approval_policy/sandbox_mode keys; abstains with no agent file |
+| | `agent_config_secrets_observed` | 20 | = 0 | `core/redact.py` exact-pattern detectors only (PEM key, AWS keys, JWT, credential assignment; not the entropy or key-material heuristics) over the agent files read; abstains with no agent file |
+| | `tool_version_pin_missing` | 10 | = 0 | registry `roles.tool-version-pin` (`.nvmrc`, `.python-version`, ...), generic `.tool-versions`/`mise.toml` |
+| | `dev_environment_missing` | 10 | = 0 | generic `dev-environment` patterns (devcontainer, Nix, Devbox, Makefile/justfile/Taskfile, bin/setup) |
+| infrastructure | `iac_wildcard_iam_observed` | 20 | = 0 | generic `wildcard_iam` (HCL/JSON/CloudFormation `"*"` action or resource, Kubernetes RBAC `"*"` verb/resource/apiGroup, inline or as a lone block-list item); abstains with no IaC file |
+| | `iac_open_ingress_observed` | 20 | = 0 | generic `open_cidr` (security-group, firewall and NetworkPolicy sources; a route's `cidr_block` is not one); the nearest ingress/egress word above decides the direction, egress is not counted; abstains with no IaC file |
+| | `iac_unencrypted_storage_observed` | 15 | = 0 | generic `unencrypted_storage` (`encrypted = false`, `StorageEncrypted: false`) plus RDS/EBS Terraform resources that never set encryption; abstains with no IaC file |
+| | `terraform_locked_remote_state_missing` | 15 | = 0 | generic `remote_backend` (any backend but `local`, or `cloud`), an s3 backend counts only with `use_lockfile`/`dynamodb_table`; repository level; abstains with no Terraform file |
+| | `terraform_environment_separation_missing` | 5 | = 0 | generic `environment_paths` (environment folders, per-environment tfvars) and `terraform.workspace`; abstains with no Terraform file |
+| | `database_backup_unconfigured` | 15 | = 0 | generic `database_resource` blocks without a literal `database_backup` setting; abstains with no database resource |
+| | `database_ha_unconfigured` | 10 | = 0 | generic `database_resource` blocks without a literal `database_ha` setting; abstains with no database resource |
 | solution-fit | none by design | — | — | always abstains (`no_static_rule`); judging fit is left to the agent |
 
+supply-chain also carries one documentation rule (area #22, rollback): a document named for
+rollback is *present* (with its file) or *missing*, never a number. Live vulnerability status
+(CVE feeds) is not verifiable offline and has no rule.
+
 Every threshold carries a citation in the output: ISO/IEC 42010, 29148, 26514, 5055, 29119,
-McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, Henry–Kafura,
+McCabe, NIST SP 500-235, CWE Top 25, CWE-390/1069/400/1050, Google SRE, OWASP ASVS, OpenSSF Scorecard,
+SLSA, CycloneDX/SPDX, Henry–Kafura,
 Nagappan–Ball, SemVer, ISO 22301 (documentation rule), HIPAA 45 CFR §164.514 (healthcare pack;
 §164.316, §164.504(e), NIST FIPS 199 and SP 800-144 for its documentation rules), CWE-1339,
 PostgreSQL numeric types, NIST SP 800-53 AU-3, SEC Rule 17a-4(f) and Fowler's Reversal Adjustment
-(finance pack; per-language decimal-type documentation in `registry/packs/finance.toml`), or
+(finance pack; per-language decimal-type documentation in `registry/packs/finance.toml`), WCAG 2.2
+SC 1.1.1, 1.3.1, 4.1.2, 1.4.4, 1.4.10 and its conformance requirement, W3C Using ARIA, ISO/IEC
+25010 compatibility and Browserslist (frontend-a11y pack; framework syntax documentation in
+`registry/packs/frontend-a11y.toml`), or
 `project default` where no external standard fixes the number.
 
 ### Fields that feed no rule directly
 
+- `lockfile_install` feeds `ci_lockfile_install_missing` only and is optional: a language without a
+  frozen-lockfile install mode (Java, Kotlin) declares none (T041).
 - `manifests` detects the language and switches on its `roles.*` globs.
 - `frameworks` detects framework entries. A framework can only add `test_name_patterns`,
   `test_declarations`, `assertions`, `security_sinks`, `roles.test-config`, and

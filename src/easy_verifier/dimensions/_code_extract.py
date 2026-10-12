@@ -34,7 +34,7 @@ from pathlib import PurePosixPath
 
 from ..core import batches
 from ..core.context import MAX_EXCERPT_LINES, MAX_LINE_CHARS
-from ..core.metric_tables import curated_metric_tables
+from ..core.metric_tables import curated_metric_tables, with_conventions
 from ..core.metrics import _is_source_file, compute_sampled_metrics
 from ..core.models import (
     DimensionContext,
@@ -43,6 +43,7 @@ from ..core.models import (
     SampleFacts,
 )
 from ..core.redact import redact
+from ..core.structure import context_conventions
 from ..core.tokens import LanguageSyntax, approximate_ccn, import_statements
 
 MAX_CODE_SOURCES = 200
@@ -231,7 +232,11 @@ def record_sample(
             computed_from=tuple(redact(path) for path in item.computed_from),
             derivation=redact(item.derivation + note) if item.derivation else "",
         )
-        for item in compute_sampled_metrics(dimension, units, curated_metric_tables())
+        for item in compute_sampled_metrics(
+            dimension,
+            units,
+            with_conventions(curated_metric_tables(), context_conventions(context)),
+        )
     )
     if plan:
         context.sample = sample_facts(plan, metrics)

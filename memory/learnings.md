@@ -624,3 +624,118 @@ With the default `ensure_ascii=True`, `json.dumps` escapes non-BMP characters as
 - **Additive pack fields stay byte-identical through `models.to_json_dict`.** Unset `compat`/`doc_history` are omitted, not written as `null`, and both adapters must use it. The existing `tests/snapshots/architecture_pack.json` is the cheapest proof.
 - **Parsing `Scope.diff` is a new read path for DDR-0002.** The diff carries hunks of every changed file, secret-bearing ones included. Classify each file with `context._is_secret_bearing` (new, old and rename paths) before parsing any hunk.
 - **Implementer arithmetic about pinned counts is not evidence.** T040 said 16 required reference fields and the real number was 13. Check with the function (`gate.required_fields()`) before copying a number into evidence or memory.
+
+---
+
+## 2026-10-03 — T065: duplicate Kanban rows and a stale container image
+
+- After the Stage 2 plan commit, `PROJECT_KANBAN.md` held two rows per new task: the Supervisor's Wave 12 rows and a second, differently worded row at the top of Todo (a hook adds one row per TASK_GUIDE when the guide is written — reproduced for T067/T068). Moving the task then left a stale `- [ ]` copy. **Grep the board for the task ID** before and after every move.
+- `tests/integration/test_adapter_parity.py::test_container_parity_is_explicitly_verified` and `test_redaction_proof.py::test_container_redaction_proof_is_not_silent_when_docker_is_missing` fail with `unexpected=['supply-chain']` on clean `develop`: the local image was built from the T041 branch. Pre-existing; rebuild with `docker compose build` to clear.
+- Real repos produce rounding ties: bryony's top plan item (decision records) moves the overall 75 → 87.5 → 88 (ties to even), so a weight-share gain would have said 12.5/12. Recompute, never estimate.
+
+## 2026-10-03 — T066: true mobile screenshots and table wrapping
+
+- Headless Chrome clamps the window to a 500px minimum, so `--window-size=400,…` renders a 500px layout cropped to 400 (T065's "400px" shots were this). For a true 400px viewport, load the report in a 400px-wide iframe.
+- `overflow-wrap: anywhere` inside a table cell lets the column shrink to almost nothing (very tall rows); `overflow-wrap: break-word` wraps long tokens without collapsing the column.
+
+## 2026-10-03 — T067 follow-ups
+
+- The pre-existing 'Context warnings' banner overflows a true 400px viewport (503px wide → page 522/385); not from T067, unfixed. Fix when next touching report CSS.
+- Test fixtures at `worktree` scope on a non-git dir read no source files, so code-quality measures ~20% and now abstains; fixtures needing a rated code-quality must use `project` scope.
+
+## 2026-10-04 — T068 notes
+
+- A subagent can die mid-task on an API rate limit (HTTP 429). Its uncommitted work survives in the worktree; resume the same agent with SendMessage so it keeps its context instead of respawning.
+- Per-file citation lists scale with files read: sampling 200 → 400 files grew the bryony score payload 476 KB → 1.08 MB → 1.64 MB and the report's architecture card lists hundreds of paths. Any feature that reads more files must cap what it cites.
+
+## 2026-10-04 — T069 notes
+
+- Two agents in a row (T067, T069) hit the 90-call `pre_agent_step_limit` near the end of C2 tasks that include real-repo renders + screenshots. Leave Stage 5 re-renders/screenshots to the Supervisor instead of asking the implementer to redo them after a review round.
+- 'Detail unchanged' (AC6-style) is provable on real data: diff a report captured before the change against one after with the new section removed, normalizing only timestamp and first-write marker.
+- zsh: `echo ======` triggers equals-expansion ("= not found") and aborts a loop; quote it.
+
+## 2026-10-04 — T070 notes
+
+- For report restructures, prove 'content preserved' by rendering the SAME scratch copy twice — `PYTHONPATH=<main>/src` (develop) vs `PYTHONPATH=<worktree>/src` — then diff number/href/word multisets. Comparing against an older report from another environment shows false differences (git-history context, coverage %).
+- Measure true 400px overflow with a wrapper page holding a 400px iframe and a script that writes `scrollWidth`/`clientWidth` into `document.title`, read via `google-chrome --headless=new --dump-dom --virtual-time-budget=3000 --allow-file-access-from-files`.
+- Capturing the Demonstration BEFORE as Supervisor before spawn saved the implementer ~10 calls; T070 finished in 45 calls (T067/T069 hit the 90-call limit).
+
+## 2026-10-04 — T073: real-repo sanity before a rule ships
+
+- Run the new finder over a real repo before the rule that uses it is built: on coffee-shop-api (NestJS) `layer_of` classified only 22 of 83 non-test sources — dto/schema/guard/middleware/filter/interceptor/decorator (HTTP layer), migrations (data) and module/config/util/constant/enum/types (cross-cutting) were missing. T074 got a declared `shared` class excluded from the classified share.
+
+## 2026-10-04 — T074: reweighting exposes hidden abstentions
+
+- kitchd's architecture 100 was documents-only: import cycles had silently abstained on byte-budget truncation for a long time. Moving weight from documents to code (DDR-0011) turned it into 'no number'. Before reweighting, check each real repo's current inputs (`ratings[].inputs` vs `unavailable_metrics`) — a high score built only from the rules being down-weighted will collapse.
+- Supervisor guide error caught at review: putting DTO/schema files in the api layer made idiomatic NestJS (services/repositories importing DTOs) 17 'violations'. Boundary contracts belong in `shared`.
+
+## 2026-10-04 — merge gate vs. starting the next task
+
+- Moving the next task to In Progress in the same commit as the previous task's Done blocks the merge (gate reads In Progress rows). Order: Done commit → merge → then the next task's In Progress commit.
+
+## 2026-10-04 — T075/T077: a plausible-looking number can be wrong for three reasons
+
+- coffee-shop-api requirement-fidelity 0 came from (1) NestJS multi-line decorators hiding handler names, (2) `- [ ]` plan tasks counted as requirement items, (3) git paths prefixed because the target sits inside a larger repo. Real-repo Stage 5 caught all three; unit tests passed. For any target inside a larger repo, git log needs `--relative` AND a `-- .` pathspec, or sibling projects' commits fill the window.
+- A regression test that passes without the fix guards nothing — confirm it fails with the fix reverted (T075's nested-repo test was a false pass).
+- `git add -f src tests` sweeps in `__pycache__`; add specific paths.
+
+## 2026-10-05 — T080: docs drift when the rules change; real-repo target paths
+
+- T074–T077 updated SCORING_RULES and AREA_COVERAGE but not EVALUATION_GUIDE, so the guide still said requirement-fidelity "always abstains", and its worked examples were a day out of date. Any task that changes a rule, weight or abstention must also re-check `docs/EVALUATION_GUIDE.md`, including its worked examples (re-run `score`, never copy Kanban numbers).
+- bryony's git repo is `~/workspace/project/bryony/bryony`. The parent `project/bryony` is not a git repo: there the scan sees 1253 files with no churn and overall 66, instead of 1178 files and 69. coffee-shop-api is `~/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`.
+- The same overall from different contributors is not the same result: coffee-shop-api scored 65 both before (2 dimensions rated) and after (4 rated) DDR-0011.
+
+## 2026-10-05 — T081: changes scope is not change-risk scoring; container + stdin gotchas
+
+- `score --scope changes` narrows which files are read, but the rules are repo-health rules. bryony bugfix `09be767d0` (1 file, no test) scored 97: test-strategy/security abstain `below_coverage_floor` (test config, CI, lockfile "not in the resolved changes scope"), architecture rates repo docs, blast-radius `max_fan_in_changed` abstains at the 400-file sweep ceiling. User's vision (2026-10-05): a separate change-risk mode — symbol-level reach to entry points, missed co-change edits, contract changes, regression test required for bugfixes, repo-wide context roles with diff-scoped measurement. Not yet planned.
+- `--ref <branch>` = that branch's tip commit only; a whole branch needs `main...HEAD` (passed through because it contains `..`).
+- CLI `score` reads findings from stdin whenever stdin is not a TTY: from an agent/background shell with stdin open it hangs (looked like a 300 s timeout; real run 11 s). Use `< /dev/null`.
+- Docker image: `safe.directory` covers only `/workspace`, so a nested repo (`/workspace/child`) owned by another UID fails with "dubious ownership" and every git rule loses evidence — the user's "child folder scores lower from the parent" report. `--user "$(id -u):$(id -g)"` avoids it; Dockerfile fix (`safe.directory '*'`) offered, not done.
+- Published image: Docker Hub `temvar/easy-verifier-mcp:0.1.0` / `:latest` (digest `sha256:50310047…0794`, develop `fae8969`, 2026-10-05).
+
+## 2026-10-06 — Wave 16 (T082, T043): parallel Stage 3 gotchas
+
+- **Merge gate blocks ALL merges while ANY task is In Progress / Ready for Review** (`pre_bash_block_unsafe_merge.py` reads the whole board). Two parallel tasks must both reach Done before either merges; the board must never be faked to unblock.
+- **Shared `active_task` + step-limit hook mis-attribute parallel work.** With T082 and T043 running together, T043's state-file writes made `pre_agent_step_limit` count T082's (and the Supervisor's) calls as T043 and kill them at 90. Run verification-heavy tasks sequentially, or expect killed calls and an incomplete trace for one of them; tell agents to batch shell work.
+- **"Not yet" in AREA_COVERAGE ≠ "no rule" in `areas_without_rule()`.** The T072 doc status counts rating rules only; T082's list also treats a documentation rule as coverage. #32 (reliability doc check only) is "Not yet" in the doc but NOT in `areas_without_rule`. Tests comparing them must filter rows whose Rules cell is "—".
+- **Kanban edits by regex: check for duplicate task lines first.** A second `T082` Todo line existed (unknown origin); the Done edit removed the wrong one and left T082 In Progress.
+- **CLI entry is `easy_verifier.adapters.cli`** (no `easy_verifier.__main__`); run `python -m easy_verifier.adapters.cli score … < /dev/null`.
+- **Container tests fail after any new dimension until the image is rebuilt** (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_…`): the local `easy-verifier-mcp:0.1.0` lists the old tool set. Rebuild from develop after merge (network check first).
+- **Resume a step-limited agent with SendMessage instead of re-spawning** (T047): the 90-call `pre_agent_step_limit` kill resets the counter; the resumed agent keeps its context and finished the remaining fixes in one more pass.
+- **Merge gate checks the board BEFORE the command runs**: a single Bash call that edits KANBAN to Done and then merges is still blocked. Commit the Done row first, merge in a separate call.
+- **Pack review probes that found real defects** (T047): import the pack module alone (`python -c "import easy_verifier.packs"`, which caught a circular import) and run `mask()` on mixed-label lines (`MRN … DOB 1984-03-12`, where the label had no `:` and the value leaked through a context line).
+- **Clear `.claude/hooks/.state/active_task` after the last task merges**: while it names a task, the step-limit hook keeps counting the Supervisor's own calls against that task and kills them.
+
+## 2026-10-07 — T041: stale HITL claims, `**/License*` globs, rebase under the merge gate
+
+- **An uncommitted "user sign-off" comment is not a sign-off.** T041's worktree held a diff saying "user sign-off 2026-10-01" for floor/weights with no entry in decisions.md. Re-ask via AskUserQuestion; record in decisions.md before committing. Same values were confirmed, but the date in code had to change.
+- **Prefix globs on licence names match source code.** `**/License*` / `**/license*` matched `src/licenseService.ts`, `License.php`, `LicenseBadge.tsx` → `licence_file_missing` falsely 0. Role globs for conventional files must be exact names (+ `.md/.txt/.rst`, dash-suffix), never `<stem>*`. Probe every new role with `_matcher(GENERIC_PATTERNS[role])` against realistic source paths at review.
+- **`\bkey:` matches hyphenated keys** (`base-image:`). Use `(?<![\w-])key:` for YAML keys.
+- **`git rebase` is blocked by the merge gate while the task is In Progress.** The agent recreated the branch from the base (`checkout -B`) and cherry-picked the task commits — same effect, task branch only. Watch for dropped blocks when replaying conflicted judge.py (agent lost reliability/pack rule blocks once and caught it).
+- **A new dimension breaks the container-parity tests until the image is rebuilt** (`missing=['supply-chain']`). Build a task-tagged image through a compose override (`COMPOSE_FILE=compose.yaml:<scratch>/override.yaml` setting only `image:`) instead of retagging the shared `0.1.0`.
+- **A dimension can abstain on `insufficient_measured_weight` even above its coverage floor** (T067, DDR-0010): supply-chain without CI measures 35/100 weight, so repos without a CI file get no number.
+
+## 2026-10-07 — T044 api: weight sets must admit an exact 50; route evidence on big repos
+
+- `tests/test_judge.py::_rating_with_value` needs some pass/fail/abstain combination of each dimension's weights to rate exactly 50 — 35/25/20/20 failed, 30/30/20/20 works. Tell implementers when they propose weights.
+- api (and requirement-fidelity) abstain on bryony for two reasons: no route token for `webapp.get('/…')` (T079) and default batch 1 (200 of 1178 files) holds no router file. With T079-style tokens + `--batches all`, 15 routes found. T079 unblocks both dimensions on bryony.
+- A spec generated from code (`SwaggerModule.createDocument`, `FastAPI(`) counts as spec present; version-path literals only count in files that declare routes.
+- Supervisor Stage 5 calls count against the task's 90-call step budget too (shared with the agent's calls) — switch active_task to the next task right after merging.
+
+## 2026-10-07 — T045 data: pseudo-roles and non-language suffixes
+
+- `core/roles.py` cannot import from `dimensions/` (circular), so knowledge living in a dimension module (T055 migration constants in blast_radius.py) forces a glob-less pseudo-role ("migration files") — not visible in list-dimensions, not extendable via .easy-verifier.toml. T057 (move to registry) fixes this.
+- `.prisma`/`.sql` belong to no registry language, so their tokens go in the generic layer (GENERIC_DATA_FACTS), not a curated TOML.
+- `core/redact.py` entropy detector masks long digit runs in migration filenames (`Migr…****:6a429a46c56b.ts`) — T029 territory.
+
+## 2026-10-07 — T046 operations: heuristic redaction hits ≠ secrets; sampled batches miss library imports
+
+- Counting every `core/redact.py` hit as a "secret" gave 100% false positives on real CLAUDE.md files (high_entropy_string / key_material_segment on template prose). Use only exact-pattern detectors for any secrets metric.
+- On big repos the default 200-file batch can miss every import of a library the manifest declares (bryony winston): a manifest dependency counts as library presence.
+- The scored repo's `.claude/` may be git-ignored (this repo) → evidence walk never sees it, guardrails rule fails by design.
+
+## 2026-10-07 — T042 infrastructure: no local IaC repo; public clone as positive real repo
+
+- None of bryony/kitchd/ai-training/coffee (nor anything under ~/workspace) has .tf/Helm/k8s files. Positive real-repo check used a shallow clone of GoogleCloudPlatform/microservices-demo into the scratchpad (read-only, `--repo` only) → infrastructure 70.
+- Pre-existing: shared `container-config` glob `**/k8s/**` matches source (`src/k8s/client.go`) — affects security; needs its own task.
+- `score --scope changes` crashed on a non-code diff (api `breaking_api_changes_observed` value with no citation) → bugfix T083.

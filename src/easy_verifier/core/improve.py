@@ -197,6 +197,140 @@ FIX_HINTS: dict[str, str] = {
         "Keep ledger rows append-only: correct an entry by posting a reversing "
         "entry instead of updating or deleting the row."
     ),
+    # frontend-a11y pack (T049)
+    "images_without_alt_observed": (
+        "Give every image an alt text that says what it conveys, or alt=\"\" "
+        "when it is purely decorative."
+    ),
+    "form_controls_without_label_observed": (
+        "Name every form control: a <label> tied to it, or aria-label / "
+        "aria-labelledby; a placeholder is not a label."
+    ),
+    "aria_hidden_focusable_observed": (
+        "Remove aria-hidden from focusable elements, or take them out of the "
+        "focus order (tabindex=\"-1\", disabled) while they are hidden."
+    ),
+    "viewport_missing_or_zoom_disabled_observed": (
+        "Declare <meta name=\"viewport\" content=\"width=device-width, "
+        "initial-scale=1\"> and never set user-scalable=no or a maximum-scale "
+        "below 2."
+    ),
+    "browser_support_declaration_missing": (
+        "Declare the browsers you support in a browserslist (package.json "
+        "\"browserslist\" or .browserslistrc) so tooling targets them."
+    ),
+    # infrastructure (T042)
+    "iac_wildcard_iam_observed": (
+        "Replace \"*\" IAM actions and resources (and RBAC verbs) with the "
+        "specific actions and resources each role needs."
+    ),
+    "iac_open_ingress_observed": (
+        "Restrict ingress sources to known address ranges or a load balancer "
+        "instead of 0.0.0.0/0."
+    ),
+    "iac_unencrypted_storage_observed": (
+        "Enable encryption at rest (storage_encrypted / encrypted = true, "
+        "ideally with a customer-managed KMS key)."
+    ),
+    "terraform_locked_remote_state_missing": (
+        "Store Terraform state in a remote backend with locking (gcs, "
+        "azurerm, HCP Terraform, or s3 with use_lockfile)."
+    ),
+    "terraform_environment_separation_missing": (
+        "Separate environments: one state per environment through "
+        "environment folders, per-environment tfvars or workspaces."
+    ),
+    "database_backup_unconfigured": (
+        "State automated backups in code: backup_retention_period, "
+        "point-in-time recovery or snapshot persistence on every database."
+    ),
+    "database_ha_unconfigured": (
+        "Run production databases across zones (multi_az = true, "
+        "availability_type = \"REGIONAL\", a high-availability tier)."
+    ),
+    # operations (T046)
+    "logging_library_missing": (
+        "Log through a logging or tracing library (OpenTelemetry, a structured "
+        "logger) instead of print statements, so the service can be observed."
+    ),
+    "audit_log_writes_missing": (
+        "Record security-relevant actions (sign-in, permission and data "
+        "changes) to an audit log with who, what and when."
+    ),
+    "codeowners_missing": (
+        "Add a CODEOWNERS file naming an owning team for each part of the "
+        "repository."
+    ),
+    "agent_guardrails_missing": (
+        "Constrain the coding agent in its committed settings: hooks or a "
+        "permission deny list (Claude Code), approval policy or sandbox mode "
+        "(Codex)."
+    ),
+    "agent_config_secrets_observed": (
+        "Remove credentials from agent instruction, settings and MCP files; "
+        "read them from the environment or a secret manager, and rotate any "
+        "that were committed."
+    ),
+    "tool_version_pin_missing": (
+        "Pin the toolchain version (.tool-versions, mise.toml, .nvmrc, "
+        ".python-version, rust-toolchain.toml, ...)."
+    ),
+    "dev_environment_missing": (
+        "Provide a one-command setup: a devcontainer, a Nix/Devbox environment "
+        "or a Makefile/justfile/bin/setup target."
+    ),
+    # data (T045)
+    "migrations_missing": (
+        "Version every schema change as a migration file (Flyway, Liquibase, "
+        "Alembic, Rails, Prisma Migrate, ...) instead of syncing the schema "
+        "from the models at run time."
+    ),
+    "migrations_without_rollback_share": (
+        "Give every migration a down/rollback (or a reversible form), or mark "
+        "an irreversible one explicitly so the rollback plan says so."
+    ),
+    "schema_constraints_missing": (
+        "Declare NOT NULL, unique and foreign-key constraints in the schema so "
+        "the database enforces integrity, not only the application."
+    ),
+    "destructive_migration_ops_observed": (
+        "Split each DROP or RENAME into expand and contract steps (add, migrate "
+        "data, switch readers, then drop in a later release)."
+    ),
+    # api (T044)
+    "api_spec_missing": (
+        "Commit an OpenAPI 3.x, GraphQL SDL or protobuf specification of the "
+        "API, or generate one from the code in the build."
+    ),
+    "api_version_missing": (
+        "Version the public API: put the major version in the route path "
+        "(/v1/...) or the schema package, or enable the framework's versioning."
+    ),
+    "request_validation_missing": (
+        "Validate every request body, query and path parameter at the entry "
+        "point against a schema (allow-list types, lengths and formats)."
+    ),
+    "breaking_api_changes_observed": (
+        "Restore the removed endpoint or field, or ship the removal as a new "
+        "major API version after a deprecation period."
+    ),
+    # supply-chain (T041)
+    "licence_file_missing": (
+        "Add a LICENSE file at the repository root naming the licence by its "
+        "SPDX identifier."
+    ),
+    "ci_actions_unpinned_share": (
+        "Pin every external CI action or image to a full commit SHA or digest, "
+        "keeping the version as a comment."
+    ),
+    "ci_lockfile_install_missing": (
+        "Install dependencies in CI with the lockfile-faithful command (npm ci, "
+        "--frozen-lockfile, --locked) so a stale lockfile fails the build."
+    ),
+    "ci_provenance_step_missing": (
+        "Add a CI or release step that generates an SBOM, signs the artifact or "
+        "emits build provenance (SLSA)."
+    ),
 }
 """One static engine fix line per declared rule metric (FR-057). Each line
 names the real remedy, never a move that only satisfies the metric."""

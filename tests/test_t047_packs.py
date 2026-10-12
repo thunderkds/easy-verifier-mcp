@@ -125,7 +125,7 @@ def test_nothing_else_activates_a_pack(tmp_path) -> None:
 
 
 def test_packs_are_not_dimensions(tmp_path) -> None:
-    assert set(PACKS) == set(PACK_FLOORS) == {"healthcare", "finance"}
+    assert set(PACKS) == set(PACK_FLOORS) == {"healthcare", "finance", "frontend-a11y"}
     assert not set(PACKS) & set(dimension_names())
     assert not set(PACK_FLOORS) & set(COVERAGE_FLOORS)
     with pytest.raises(ValueError, match="unknown dimension"):
