@@ -70,6 +70,9 @@ class Route:
     path: str | None
     """The string literal right after the token, if there is one."""
     handler: str | None
+    module: str | None = dataclasses.field(default=None, compare=False)
+    """The first name of a dotted call handler (``views`` of ``views.index``):
+    the module the handler lives in (T088)."""
 
 
 @dataclass(frozen=True)
@@ -275,6 +278,7 @@ def find_routes(
                 method=method,
                 path=literal[2] if literal else None,
                 handler=(_decorated_name if decorator else _call_handler)(code, end),
+                module=None if decorator else _handler_module(code, end),
             )
         )
     return tuple(routes)
@@ -444,6 +448,14 @@ def _call_handler(code: str, position: int) -> str | None:
     positional = [p for p in parts if p and not _KEYWORD_ARGUMENT.match(p)]
     if positional and _IDENTIFIER.fullmatch(positional[-1]):
         return positional[-1].rsplit(".", 1)[-1]
+    return None
+
+
+def _handler_module(code: str, position: int) -> str | None:
+    parts = _split_arguments(_arguments(code, position)[0])
+    positional = [p for p in parts if p and not _KEYWORD_ARGUMENT.match(p)]
+    if positional and _IDENTIFIER.fullmatch(positional[-1]) and "." in positional[-1]:
+        return positional[-1].split(".", 1)[0]
     return None
 
 
@@ -766,9 +778,7 @@ def layer_evidence(
     if any(m[1] in clients for m in _EXPORT_DEFAULT.finditer(code)):
         defines.add("exports")
     routes = find_routes(text, route_tokens, syntax)
-    handlers = frozenset(
-        r.handler.split(".")[0] for r in routes if r.handler and "." in r.handler
-    )
+    handlers = frozenset(r.module for r in routes if r.module)
     common = {
         "defines": frozenset(defines),
         "handlers": handlers,
