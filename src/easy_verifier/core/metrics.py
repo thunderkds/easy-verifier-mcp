@@ -1607,9 +1607,12 @@ def _behaviour_layers(
             if unique[name] != excerpt.path and patterns[name].search(text)
         }
 
-    def observe(imported: Mapping[str, frozenset[str]]):
+    def observe(imported: Mapping[str, frozenset[str]], previous=None, before=None):
         found = {}
         for path, excerpts in texts.items():
+            if previous is not None and imported.get(path) == before.get(path):
+                found[path] = previous[path]
+                continue
             for excerpt in excerpts:
                 ev = evidence_of(path, excerpt.text, imported.get(path, frozenset()))
                 found.setdefault(path, []).append((excerpt, ev))
@@ -1634,8 +1637,8 @@ def _behaviour_layers(
         again = bound(found)
         if again == imported:
             break
+        found = observe(again, found, imported)
         imported = again
-        found = observe(imported)
     behaviour: dict[str, str] = {}
     cited: dict[str, str] = {}
     handled: dict[str, str] = {}
