@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
-- [ ] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1
 - [ ] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1
 - [ ] **T089** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T087) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2
@@ -72,6 +71,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1 | 🔄 started 2026-10-12
 
 ### Ready for Review
 
