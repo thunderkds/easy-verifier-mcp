@@ -491,6 +491,10 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "language without the field is not credited with that evidence, and the "
         "data rule abstains where nothing else shows it (T045)",
     ),
+    "data_tokens": "only the first set of frameworks declares it (T088: "
+    "JS/TS and Python); a language without it observes no data layer, and the "
+    "layer rule falls back to the layer_paths hints or abstains "
+    "framework_not_recognized",
     "logging_markers": "only languages with a logging or tracing library "
     "declare it; a language without the field is not credited with that "
     "evidence (T046)",
