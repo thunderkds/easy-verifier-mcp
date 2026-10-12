@@ -49,7 +49,6 @@ or by checking :attr:`Metric.abstained` first.
 from __future__ import annotations
 
 import json
-import posixpath
 import re
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -1718,20 +1717,27 @@ def _prefix_targets(path: str, prefix: str, files: Sequence[str]) -> set[str]:
     ``path``'s directory, or dotted ``pkg.mod.`` as a directory ``pkg/mod``
     at any depth."""
     if prefix.startswith("."):
-        base = posixpath.normpath(
-            posixpath.join(posixpath.dirname(path), prefix)
-        )
-        return {f for f in files if f != path and posixpath.dirname(f) == base}
+        parts: list[str] = []
+        for part in (*PurePosixPath(path).parent.parts, *prefix.split("/")):
+            if part == "..":
+                if parts:
+                    parts.pop()
+            elif part not in (".", ""):
+                parts.append(part)
+        base = "/".join(parts)
+        return {f for f in files if f != path and _parent(f) == base}
     folder = prefix.rstrip(".").replace(".", "/")
     return {
         f
         for f in files
         if f != path
-        and (
-            posixpath.dirname(f) == folder
-            or posixpath.dirname(f).endswith("/" + folder)
-        )
+        and (_parent(f) == folder or _parent(f).endswith("/" + folder))
     }
+
+
+def _parent(path: str) -> str:
+    parent = str(PurePosixPath(path).parent)
+    return "" if parent == "." else parent
 
 
 def _common_directory(files: Sequence[str]) -> tuple[str, ...]:
