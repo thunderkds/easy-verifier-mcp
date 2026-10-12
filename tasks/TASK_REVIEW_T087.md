@@ -14,9 +14,9 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | Implementer: `tests/test_t087_third_party_exclusion.py`, 53 tests covering SC 1–5 and AC 1–8: each reason kind, `-linguist-vendored`/`=false` re-include, `!attr` does not re-include, last line and deeper `.gitattributes` win, subdirectory scoping, invalid `exclude` rejected (CLI exit 2), nested both extremes, root never nested, nested-in-excluded disclosed once, secret-bearing file inside third-party never read, symlink containment, `context._walk` and role resolution, third-party pick rejected, worktree/changes scope plus diff, payload/pack/report disclosure, CLI == MCP, churn ranking. `53 passed in 1.89s`. Sabotage pass (each restored afterwards): nested predicate always None → 10 failed; licence-only (NOTICE ignored) → 2 failed; unset re-include ignored → 2 failed; churn filter removed → 1 failed; `context._walk` filter removed → 1 failed. |
+| Verification command run | ☑ pass | Implementer, worktree `src` on main `.venv` (imports confirmed from the worktree): `2 failed, 2609 passed, 2 skipped in 370.58s`. The 2 failures are the known stale-container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). `ruff check src tests` → `All checks passed!`. `scripts/vendor_sources.py --check` → `OK: 5 vendored file(s) match recorded checksums`. Real-repo runs: see Demonstration AFTER. |
+| Negative cases hold | ☑ pass | Implementer: `packages/shared/{LICENSE,package.json,index.ts}` not excluded. Removing NOTICE un-excludes the Harbor fixture. Team files that `vendor.yml` lists are never excluded: `.github/workflows/ci.yml`, `*.d.ts`, `external/`, `bootstrap.conf.js`, `prototype.js`, `__import.scss`, `fabfile.py`, fixtures, `testdata/`, lockfiles, `Jenkinsfile`, `.gitignore`. On kitchd, ai-training and coffee-shop-api nothing is excluded. |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
 | Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
@@ -71,9 +71,78 @@ Architecture = 0: every cycle and every layer violation is a Harbor file; 75 of 
 document rules read are Harbor files (incl. `docker-registry/harbor/vendor/golang.org/x/crypto/...`
 and `static/vendors/*.min.js`). The payload has no `excluded` key.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (backend-developer, commit `21bd791`; the same command, with `runall.sh` running the 5 repos
+one after another; BEFORE for all 5 came from a frozen copy of the pre-change `src`):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+== bryony 09:48:57 UTC exit=0 | == sd 09:49:25 exit=0 | == kitchd 09:49:30 exit=0
+== aitraining 09:49:40 exit=0 | == coffee 09:49:45 exit=0 (Mon Oct 12 2026)
+```
+
+| Repo | Overall BEFORE→AFTER | Architecture BEFORE→AFTER | Other dimensions changed | `excluded` in score JSON |
+|---|---|---|---|---|
+| bryony | 59 → 59 | 83 → 83 | none | `[{"path": "frontend/app/scripts/vendor/", "reason": "linguist-pattern", "rule": "linguist vendor.yml: (^|/)vendors?/", "excluded": "third-party"}]` |
+| scraping-devops | 53 → withheld (no contributor) | 0 → abstain `below_coverage_floor` (0.25 < 0.40) | api 60→abstain, data 80→abstain, infrastructure 100→abstain (`all_metrics_abstained`), reliability 39→abstain (`all_metrics_abstained`), security 50→abstain, test-strategy 40→abstain, requirement-fidelity `insufficient_measured_weight`→`below_coverage_floor` | `[{"path": "docker-registry/harbor/", "reason": "nested-project", "rule": "LICENSE + AUTHORS", "excluded": "third-party"}]` |
+| kitchd | 56 → 56 | 100 → 100 | none | absent (nothing excluded) |
+| ai-training | 60 → 60 | 83 → 83 | none | absent |
+| coffee-shop-api | 80 → 80 | 80 → 80 | none | absent |
+
+scraping-devops: `rating-input citations of docker-registry/harbor/: 0` (AFTER; BEFORE: 105). Why
+every dimension there abstains is explained under Implementer notes below.
+
+Each newly excluded file, justified by hand (AC 7):
+- **bryony**: 19 files, all under `frontend/app/scripts/vendor/`: `MinFaker.js`, `auto.expand.input.js`,
+  `bootstrap-tagsinput.js`, `canvg.min.js`, `infiniScroll.modified.js`, `jquery-browser.js`,
+  `jquery.daterangepicker.js`, `jquery.geocomplete.js`, `jquery.numeric-input.js`, `jquery.rateyo.min.js`,
+  `jquery.tablesorter.js`, `jquery.tablesorter.widgets.js`, `linkedin.js`, `map-google-api.js`,
+  `numeric-input.js`, `nv.d3.js`, `rgbcolor.js`, `stackblur.js`, `typeahead.bundle.js`. These are
+  third-party browser libraries in a vendor directory (the Supervisor expected 16; the right count is 19).
+- **scraping-devops**: 195 files, all under `docker-registry/harbor/`, which holds Harbor's own LICENSE,
+  AUTHORS, NOTICE and `vendor/`. Diffing the project file set BEFORE against AFTER shows nothing removed
+  outside Harbor.
+- kitchd 718 → 718, ai-training 230 → 230, coffee-shop-api 158 → 158 files: nothing newly excluded.
+
+HTML report: `write-report` was run on a scratch copy of scraping-devops, so nothing was written into
+the real repo. Excerpt:
+
+```
+<details class="third-party-excluded"><summary>Excluded as third-party (1)</summary><ul class="miss-list"><li><code>docker-registry/harbor/</code> (nested-project: LICENSE + AUTHORS)</li></ul></details>
+```
+
+**Implementer notes**
+- **scraping-devops withholds its overall, honestly.** Without Harbor, the repository's own files are 352
+  `.yml` (Rancher 2 / Rancher / ELK), 7 `.sh` and a little config, with no source file in a registry
+  language. BEFORE, every rating except security cited only Harbor:
+
+  | Dimension | Rating | Files cited | Harbor files among them |
+  |---|---|---|---|
+  | architecture | 0 | 177 | 175 |
+  | test-strategy | 40 | 160 | 160 |
+  | reliability | 39 | 84 | 84 |
+  | infrastructure | 100 | 27 | 27 |
+  | data | 80 | 5 | 5 |
+  | api | 60 | 2 | 2 |
+  | security | 50 | 66 | 32 |
+
+  Each abstention now names what is missing, e.g. "no in-scope source file of a registry language". This
+  is the intended effect, not a defect. DDR-0012's expectation that scraping-devops "gains a documentation
+  pass" depends on T089 (document recognition by content).
+- **The two `_EXCLUDED_DIRS` sets now agree.** `scope.py` uses `context.py`'s set. The scope walk gains
+  `target` (no change on the 5 repos). `vendor` moves out of the silent set: it is now excluded by the
+  Linguist predicate and disclosed.
+- **Accepted deviation 2:** blast-radius's churn ranking (`git ls-files`, which bypasses both walks) also
+  skips third-party files, so a vendored file cannot feed `changed_files_in_churn_hotspots_share`.
+- **Accepted deviations 1, 3 and 4:**
+  - The test file is named `test_t087_*`.
+  - The T068 fixture moved from `vendor/` to `generated/`.
+  - The legacy-key lists in T055 and T071 gained the new keys.
+  - Quoted, directory-only or over-bound `.gitattributes` lines are skipped. Skipping a line can only
+    leave code in.
+
+**DELTA**: a repository that commits someone else's code, such as scraping-devops's full Harbor copy, is
+no longer scored on that code. Harbor's cycle, layer violations and 105 rating citations are gone. The
+payload and report list each excluded root with its reason and matched rule, and a project can declare
+or re-include paths itself (`.gitattributes`, `.easy-verifier.toml` `exclude`).
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
