@@ -106,7 +106,9 @@ def test_word_joined_identifier_without_a_file_suffix_is_unchanged_behaviour() -
 
 
 def test_decision_record_role_is_widened_back() -> None:
-    assert "BRAINSTORMING_LOG*.md" in GENERIC_PATTERNS["decision-record"]
+    # T089 (DDR-0012 §3, AC 4) supersedes T029 AC 4: kit names left the
+    # generic patterns; a log fills the role by content or declaration.
+    assert "BRAINSTORMING_LOG*.md" not in GENERIC_PATTERNS["decision-record"]
     assert "BRAINSTORMING_LOG.md" not in GENERIC_PATTERNS["decision-record"]
 
 
@@ -115,6 +117,10 @@ def test_a_citation_to_a_suffixed_brainstorming_log_resolves(tmp_path: Path) -> 
     (tmp_path / name).write_text(
         "# Source discovery\n\n## Recommended Path\n\nOption B chosen.\n",
         encoding="utf-8",
+    )
+    # T089: declared, since a kit name alone no longer fills the role
+    (tmp_path / ".easy-verifier.toml").write_text(
+        '[roles]\ndecision-record = ["BRAINSTORMING_LOG_*.md"]\n', encoding="utf-8"
     )
     pack = run_dimension(DIMENSIONS["architecture"], tmp_path)
 

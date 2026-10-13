@@ -22,24 +22,15 @@ from collections.abc import Iterable, Sequence
 from pathlib import PurePosixPath
 
 from .context import MAX_DOC_SOURCES, MAX_LINE_CHARS, _is_secret_bearing
-from .metrics import ARCHITECTURE_HEADING
+from .metrics import (
+    ARCHITECTURE_HEADING,
+    MIN_DECISION_FIELDS,
+    MIN_DESCRIBED_ENTRIES,
+    MIN_DESCRIPTION_WORDS,
+)
 from .models import DocumentEvidence
 from .roles import MAX_ROLE_WALK_FILES, ORIGIN_RULES, _is_template
 from .structure import context_conventions, convention_values, find_requirement_items
-
-MIN_DESCRIBED_ENTRIES = 3
-"""An architecture description names at least this many real repository
-paths, each followed by at least :data:`MIN_DESCRIPTION_WORDS` words of
-description (user sign-off 2026-10-12, G5). Two entries read as an aside
-("see ``src/`` and ``tests/``"); three is the smallest map of a structure."""
-
-MIN_DESCRIPTION_WORDS = 2
-
-MIN_DECISION_FIELDS = 2
-"""Distinct decision-record fields (Context, Decision, Consequences, Status,
-Alternatives) a document must head or label: Nygard's ADR
-(https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
-and MADR (https://adr.github.io/madr/) both carry at least two."""
 
 MAX_SCANNED_DOCUMENTS = MAX_DOC_SOURCES
 """Documents whose content one role scan examines; reaching it with the role
@@ -61,21 +52,6 @@ ARCHITECTURE_DOC = "architecture-doc"
 DECISION_RECORD = "decision-record"
 REQUIREMENTS_DOC = "requirements-doc"
 
-SHAPES = {
-    ARCHITECTURE_DOC: (
-        f"describes at least {MIN_DESCRIBED_ENTRIES} real repository paths "
-        f"(a list item, table row or tree line naming a path that exists, "
-        f"followed by at least {MIN_DESCRIPTION_WORDS} words)"
-    ),
-    DECISION_RECORD: (
-        f"has a decision structure (at least {MIN_DECISION_FIELDS} of the "
-        "headings or fields Context, Decision, Consequences, Status, "
-        "Alternatives; or a dated entry with a decision verb and a rationale)"
-    ),
-    REQUIREMENTS_DOC: (
-        "has a requirement item under the declared requirement_item_patterns"
-    ),
-}
 
 _CHANGELOG = re.compile(r"^(changelog|changes|history|news|release[-_ ]?notes)", re.I)
 

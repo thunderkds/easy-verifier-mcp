@@ -238,7 +238,7 @@ def _snapshot_fixture(root: Path) -> None:
         "The system is a context packer.\n",
         encoding="utf-8",
     )
-    (root / "BRAINSTORMING_LOG.md").write_text(
+    (root / "DECISIONS_LOG.md").write_text(
         "# BRAINSTORMING_LOG.md\n\n## Recommended Path\n\nOption D chosen.\n",
         encoding="utf-8",
     )
@@ -292,7 +292,7 @@ def test_source_found_with_no_matching_markers_counts_as_found_zero_excerpts(
     ],
 )
 def test_heading_variants_are_all_detected(tmp_path: Path, heading_line: str) -> None:
-    (tmp_path / "BRAINSTORMING_LOG.md").write_text(
+    (tmp_path / "DECISIONS_LOG.md").write_text(
         f"{heading_line}\n\nOption D chosen.\n", encoding="utf-8"
     )
     pack = run_dimension(solution_fit.DESCRIPTOR, tmp_path)
@@ -300,7 +300,7 @@ def test_heading_variants_are_all_detected(tmp_path: Path, heading_line: str) ->
     assert any(
         "Option D chosen" in e.text
         for e in pack.excerpts
-        if e.path == "BRAINSTORMING_LOG.md"
+        if e.path == "DECISIONS_LOG.md"
     )
 
 
@@ -420,10 +420,10 @@ def test_requirement_fidelity_standalone_with_no_frs_states_the_miss_plainly(
 
 def test_line_numbers_correct_with_crlf_line_endings(tmp_path: Path) -> None:
     content = "## Recommended Path\r\nOption D chosen.\r\nSecond line.\r\n"
-    (tmp_path / "BRAINSTORMING_LOG.md").write_bytes(content.encode("utf-8"))
+    (tmp_path / "DECISIONS_LOG.md").write_bytes(content.encode("utf-8"))
 
     pack = run_dimension(solution_fit.DESCRIPTOR, tmp_path)
-    matching = [e for e in pack.excerpts if e.path == "BRAINSTORMING_LOG.md"]
+    matching = [e for e in pack.excerpts if e.path == "DECISIONS_LOG.md"]
 
     assert matching
     assert matching[0].start_line == 1

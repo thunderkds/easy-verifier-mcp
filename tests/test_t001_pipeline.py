@@ -311,16 +311,17 @@ def test_found_and_missing_partition_sources_sought_exactly(tmp_path):
 def test_sources_cut_off_by_the_budget_are_reported_as_not_examined(tmp_path):
     """Laziness means later declared sources are never probed. Reporting them as
     absent would be a claim the engine did not check."""
-    for name in ("PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "README.md"):
+    # T089: conventional names (not kit names) still order the reads
+    for name in ("ARCHITECTURE.md", "DECISIONS.md", "README.md"):
         (tmp_path / name).write_text("x" * 50 + "\n", encoding="utf-8")
 
     pack = run_dimension(architecture.DESCRIPTOR, tmp_path, budget_bytes=50)
 
     assert pack.truncated is True
     reasons = {miss.source: miss.reason for miss in pack.sources_missing}
-    # T026: the checklist is source roles; README.md fills the `readme` role.
-    assert "readme" in reasons
-    assert "byte budget" in reasons["readme"]
+    # T026: the checklist is source roles. T089: which role the budget cuts
+    # depends on read order; one cut role must say the budget stopped it.
+    assert any("byte budget" in reason for reason in reasons.values())
     assert set(pack.sources_found) | set(reasons) == set(pack.sources_sought)
 
 
@@ -529,7 +530,7 @@ def test_cli_runs_against_this_repo_and_emits_json():
     payload = json.loads(result.stdout)
     assert payload["dimension"] == "architecture"
     assert payload["mode"] == "kit-aware"
-    assert "PROJECT_SPEC.md" in payload["files_read"]
+    assert "README.md" in payload["files_read"]
 
 
 def test_cli_reports_a_bad_repo_path_without_a_traceback(tmp_path):
@@ -562,24 +563,29 @@ def test_architecture_pack_against_this_repo():
     assert pack.dimension == "architecture"
     assert pack.mode == "kit-aware"
     assert pack.scope == "project"
-    assert "PROJECT_SPEC.md" in pack.files_read
+    # T089: PROJECT_SPEC.md is no longer an architecture-doc name; the role
+    # is filled by a document's content, and that document is read.
+    filled = {item.role: item for item in pack.documents}["architecture-doc"]
+    assert filled.kind == "content" and filled.path in pack.files_read
     assert 0.0 <= pack.coverage_score <= 1.0
 
-    cited = [excerpt for excerpt in pack.excerpts if excerpt.path == "PROJECT_SPEC.md"]
+    cited = [excerpt for excerpt in pack.excerpts if excerpt.path == "README.md"]
     assert cited
 
 
 def test_cited_line_numbers_are_1_indexed_and_match_the_file():
     """An off-by-one here poisons every citation downstream."""
     pack = run_dimension(architecture.DESCRIPTOR, REPO_ROOT)
-    excerpt = next(e for e in pack.excerpts if e.path == "PROJECT_SPEC.md")
+    excerpt = next(e for e in pack.excerpts if e.path == "README.md")
 
-    on_disk = (REPO_ROOT / "PROJECT_SPEC.md").read_text(encoding="utf-8").splitlines()
+    on_disk = (REPO_ROOT / "README.md").read_text(encoding="utf-8").splitlines()
     quoted = excerpt.text.splitlines()[: excerpt.end_line]
 
     assert excerpt.start_line == 1
     # Line L of the excerpt is line (start_line + L - 1) of the file.
     for offset, line in enumerate(quoted):
+        if line.endswith("…[line truncated]"):  # MAX_LINE_CHARS clip
+            continue
         assert line == on_disk[excerpt.start_line - 1 + offset]
 
 

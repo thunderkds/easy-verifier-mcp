@@ -955,6 +955,39 @@ ARCHITECTURE_HEADING = re.compile(r"^\s{0,3}#{1,6}[^\n]*\barchitecture\b", re.I 
 """A Markdown heading naming the architecture (T074, FR-068)."""
 
 
+MIN_DESCRIBED_ENTRIES = 3
+"""An architecture description names at least this many real repository
+paths, each followed by at least :data:`MIN_DESCRIPTION_WORDS` words of
+description (user sign-off 2026-10-12, G5). Two entries read as an aside
+("see ``src/`` and ``tests/``"); three is the smallest map of a structure."""
+
+MIN_DESCRIPTION_WORDS = 2
+
+MIN_DECISION_FIELDS = 2
+"""Distinct decision-record fields (Context, Decision, Consequences, Status,
+Alternatives) a document must head or label: Nygard's ADR
+(https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+and MADR (https://adr.github.io/madr/) both carry at least two."""
+
+
+DOCUMENT_SHAPES = {
+    "architecture-doc": (
+        f"describes at least {MIN_DESCRIBED_ENTRIES} real repository paths "
+        f"(a list item, table row or tree line naming a path that exists, "
+        f"followed by at least {MIN_DESCRIPTION_WORDS} words)"
+    ),
+    "decision-record": (
+        f"has a decision structure (at least {MIN_DECISION_FIELDS} of the "
+        "headings or fields Context, Decision, Consequences, Status, "
+        "Alternatives; or a dated entry with a decision verb and a rationale)"
+    ),
+    "requirements-doc": (
+        "has a requirement item under the declared requirement_item_patterns"
+    ),
+}
+"""What content fills each document role (T089); the miss reason names it."""
+
+
 def _document_rule(role: str) -> Callable[[_PackView], _Computed]:
     """Document role by content or declaration (T089, FR-076, DDR-0012 §3):
     0 when ``pack.documents`` records a document with the role's shape (or a
@@ -964,8 +997,6 @@ def _document_rule(role: str) -> Callable[[_PackView], _Computed]:
     presence = _role_presence(role)
 
     def compute(view: _PackView) -> _Computed:
-        from .documents import SHAPES  # documents imports this module
-
         if role not in view.pack.sources_sought:
             return presence(view)
         evidence = next(
@@ -987,15 +1018,16 @@ def _document_rule(role: str) -> Callable[[_PackView], _Computed]:
                 f"({evidence.kind}"
                 + (f": {cited}" if cited else ": named by the project")
                 + "); 0 when a document "
-                + SHAPES[role]
+                + DOCUMENT_SHAPES[role]
                 + " or the project declares one, else 1; a file name alone "
                 "never fills the role",
             )
         if evidence.bounded is not None:
             return MetricAbstention(
                 reason=(
-                    f"no document read for the {role!r} role {SHAPES[role]}, but "
-                    f"{evidence.bounded}; that is not the same as absent"
+                    f"no document read for the {role!r} role "
+                    f"{DOCUMENT_SHAPES[role]}, but {evidence.bounded}; that is "
+                    "not the same as absent"
                 )
             )
         if not view.files:
@@ -1004,8 +1036,8 @@ def _document_rule(role: str) -> Callable[[_PackView], _Computed]:
             1,
             tuple(sorted(view.files)),
             f"source role {role!r} is not filled: {evidence.scanned} documents "
-            f"read; none {SHAPES[role]}, and none is declared, so the document "
-            "is missing (1)",
+            f"read; none {DOCUMENT_SHAPES[role]}, and none is declared, so the "
+            "document is missing (1)",
         )
 
     return compute

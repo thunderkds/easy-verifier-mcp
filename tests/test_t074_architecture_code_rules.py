@@ -147,12 +147,18 @@ def test_shared_files_leave_the_denominator_and_never_violate(tmp_path: Path) ->
 
 
 def test_readme_architecture_section_is_a_description(tmp_path: Path) -> None:
-    readme = "# r\n\nIntro.\n\n## Architecture\n\nControllers call services.\n"
+    # T089 (AC 7): the heading counts only when its section has the shape
+    readme = (
+        "# r\n\nIntro.\n\n## Architecture\n\n"
+        "- src/app/controllers: HTTP entry points\n"
+        "- src/app/services: business rules here\n"
+        "- src/app/repositories: data access code\n"
+    )
     _pack, metrics = _metrics(_repo(tmp_path, {"README.md": readme, **LAYERED}))
     assert _pack.coverage_score == 0.75
     metric = metrics["architecture_description_missing"]
     assert metric.outcome == 0
-    assert "README.md" in metric.derivation and "Architecture" in metric.derivation
+    assert "README.md (readme-heading" in metric.derivation
     assert any(ref.startswith("README.md") for ref in metric.computed_from)
     # Supervisor review: the section also fills the role for coverage.
     assert "architecture-doc" in _pack.sources_found
@@ -160,9 +166,10 @@ def test_readme_architecture_section_is_a_description(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("name", ["ARCHITECTURE.md", "docs/architecture/overview.txt"])
 def test_architecture_doc_conventions(tmp_path: Path, name: str) -> None:
+    # T089 (AC 4): a conventional name alone no longer fills the role
     root = _repo(tmp_path, {"README.md": "# r\n", name: "Layers.\n", **LAYERED})
     _pack, metrics = _metrics(root)
-    assert metrics["architecture_description_missing"].outcome == 0
+    assert metrics["architecture_description_missing"].outcome == 1
 
 
 def test_missing_documents_fail_even_when_the_budget_truncates(tmp_path: Path) -> None:
