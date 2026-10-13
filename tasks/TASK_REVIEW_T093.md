@@ -14,12 +14,12 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass (implementer) | `tests/test_t093_backend_unit_share.py`, 7 tests: AC1/2/4 monorepo `apps/api`+`apps/web` measured ("3 of 3 ... in backend unit(s) (apps/api)", "10 ... outside backend units (apps/web) are not counted"); AC6 sabotage `_in_backend_unit -> True` abstains "3 of 13"; AC3 no api file keeps whole repo ("of 12 ... quoted here", no unit wording); root-only manifest; api under root with nested `web/` package; two services = union; a classified file outside every unit still counts as a violation. Pre-change: 6 failed, 1 passed (AC3 passes before, by design). Post-change: `7 passed in 0.96s`; with T088: `35 passed in 3.41s`. |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass (implementer) | `tests/test_t093_backend_unit_share.py`, 7 tests: AC1/2/4 monorepo `apps/api`+`apps/web` measured ("3 of 3 ... in backend unit(s) (apps/api)", "10 ... outside backend units (apps/web) are not counted"); AC6 sabotage `_in_backend_unit -> True` abstains "3 of 13"; AC3 no api file keeps whole repo ("of 12 ... quoted here", no unit wording); root-only manifest; api under root with nested `web/` package; two services = union; a classified file outside every unit still counts as a violation. Pre-change: 6 failed, 1 passed (AC3 passes before, by design). Post-change: `7 passed in 0.96s`; with T088: `35 passed in 3.41s`. Amendment (`9acb04a`): +4 tests: AC 8 `layer_of("apps/api/src/x/x.module.ts") == "shared"` (a non-shared conflict stays None); behaviour still overrides a shared hint (`routes.module.js` is api, listed as a disagreement); AC 9 monorepo with 4 `apps/api/**/*.module.js` is measured 3 of 3, and the sabotage `_resolve_hints` = conflict → None abstains 3 of 7. Before the fix: 4 failed, 7 passed. After: `11 passed in 1.82s`; with the T073/T074/T078/T088 layer tests: `131 passed`. |
 | Verification command run | ☒ pass (implementer) | `ruff check src tests` -> `All checks passed!`; kitchd/bryony/coffee/ai-training score runs pasted under Demonstration AFTER. |
 | Negative cases hold | ☒ pass (implementer) | no api file -> whole repository (AC3 test + ai-training byte-identical derivation); single manifest -> same value (coffee 0, 35/35); outside-unit violation still counted. |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☒ pass (implementer) | full suite on `3abe66d`: `2 failed, 2720 passed, 2 skipped in 621.71s`; the 2 failures are the known stale-image container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). |
+| Full smoke suite still green (no regression) | ☒ pass (implementer) | full suite on `3abe66d`: `2 failed, 2720 passed, 2 skipped in 621.71s`; the 2 failures are the known stale-image container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). After the amendment, on `9acb04a`: `2 failed, 2724 passed, 2 skipped in 586.28s`, with the same 2 container tests failing. |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
 | **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
@@ -144,6 +144,61 @@ Why the two monorepos still abstain (diagnosed against the source, not fixed: ou
 **DELTA**: The layer rule's classified share is now taken over backend units only, and the derivation
 names the unit(s), the in-unit count and the files left out and where. On the four real repositories
 no measured/abstained outcome, rating or overall changed (see table).
+
+**AFTER (amendment, AC 8–10; `9acb04a`, shared wins a layer_paths hint conflict)**
+
+Files whose hint flipped from unclassified to shared (a `shared=` glob plus another layer's glob,
+counted over every registry source file of each repository): kitchd **43**, all in `apps/api` and
+all `api+shared` (`*.module.ts`, `dto/**`, `main.ts`, `types/*.d.ts`); bryony 0; coffee-shop-api 0;
+ai-training 0. Of kitchd's 45 previously unclassified `apps/api` files, the other 2 (`app.service.ts`,
+`prisma/prisma.service.ts`) match no shared glob and stay unclassified.
+
+```
+# kitchd  started 2026-10-13T08:41:20Z  exit 0 finished 2026-10-13T08:41:32Z
+layer_direction_violations: value 4: "4 import statement(s) from a lower to a higher layer [...], e.g.
+  apps/api/src/auth/guards/roles.guard.ts:11 (data -> api); apps/api/src/comments/comments.service.ts:12
+  (data -> api); apps/api/src/notes/notes.service.ts:11 (data -> api); apps/api/src/users/users.service.ts:13
+  (data -> api). 43 of 45 non-shared source file(s) in backend unit(s) (apps/api) classify into a
+  layer (api, service, data): 37 by behaviour (17 api, 0 service, 20 data), 6 by the layer_paths hints
+  only; 89 non-shared source file(s) outside backend units (apps/mobile, apps/web, packages/shared,
+  the repository root) are not counted in this share: [...]; violations are still counted over all
+  49 classified file(s) [...]"
+architecture rating: 60  (inputs: description 10/10, decision records 10/10, cycles 40/40, layer 0/40)
+overall: 51
+
+# coffee-shop-api  started 2026-10-13T08:42:11Z  exit 0 finished 2026-10-13T08:42:15Z
+metrics and ratings byte-identical to the first AFTER: value 0, 35 of 35 (root unit); architecture 90; overall 81
+```
+
+| Repo | Share | Measured | Violations | Architecture | Overall |
+|---|---|---|---|---|---|
+| kitchd | 49/177 → 43/45 (95.6%) | no → **yes** | 4 | 100 → 60 | 56 → 51 |
+| bryony `--all` | 450/1063 → 148/515 | no → no (0 flips) | – | 83 → 83 | 42 → 42 |
+| coffee-shop-api | 35/35 → 35/35 | yes → yes (0 flips) | 0 → 0 | 90 → 90 | 81 → 81 |
+| ai-training | 2/79 → unchanged | no → no (0 flips) | – | 83 → 83 | 60 → 60 |
+
+**AC 10 hand-check of kitchd's 4 cited violations: all 4 are false positives.**
+1. `auth/guards/roles.guard.ts:11` `import { ROLES_KEY } from '../decorators/roles.decorator'`: the
+   guard is data by behaviour (a Prisma call at :48). The target is `api` only by the
+   `api=**/*.decorator.*` hint, and it is a `SetMetadata` key constant. This is the guard reading
+   route metadata, not a lower layer depending on a route handler. False positive.
+2. `comments/comments.service.ts:12` `import { ENTITY_TYPES } from './entity-type'`, and
+3. `notes/notes.service.ts:11` `import { LINKED_ENTITY_TYPES } from './linked-entity-type'`: both
+   targets are constant arrays (`export const ENTITY_TYPES = [...] as const`). They are `api` only by
+   `api=**/api/**`, the same `apps/api` folder-name hint AC 8 addresses (no shared glob matches them,
+   so AC 8 does not flip them). False positives.
+4. `users/users.service.ts:13` `import { AuthService, AuthResult } from '../auth/auth.service'`: the
+   real target `auth/auth.service.ts` is data by behaviour, so data → data. The statement was
+   counted because the whole word `auth` matches the stem of `apps/web/src/routes/auth.ts`. That is a
+   frontend file in another package, `api` by the `routes/**` hint. This is a cross-unit textual
+   stem match. False positive.
+
+So kitchd is now measured, but its 4 violations, and so architecture 100 → 60 and overall
+56 → 51, come from the hints and from textual stem matching, not from real lower → higher imports.
+Not fixed here, because each fix is outside AC 8–10. Candidate follow-ups: (a) a folder-name hint
+(`**/api/**`) should not classify a file that a file-name hint or behaviour does not; (b) violation
+targets should be resolved within the source file's own unit or package, not by a repository-wide
+stem match; (c) `*.decorator.*` as api.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
