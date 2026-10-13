@@ -394,6 +394,12 @@ def _scan_role(context, resolution, name: str, known, directories) -> DocumentEv
         context.role_files[name] = (*listed, *found)[: max(len(listed), MAX_ROLE_FILES)]
     for _size, _order, kind, path, cited in sorted(qualified):
         if context.read_source(path) is not None:
+            if name == ARCHITECTURE_DOC:
+                # the description that fills the rule is quoted as evidence,
+                # as a named role file was (T089 AC 13)
+                listed = context.role_files.get(name, ())
+                if path not in listed:
+                    context.role_files[name] = (path, *listed)
             return _filled(name, kind, path, cited, scanned)
 
     bounded = None
