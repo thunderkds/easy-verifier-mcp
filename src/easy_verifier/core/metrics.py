@@ -311,6 +311,10 @@ class LanguageTables:
     """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
     declared ``layer_paths`` conventions, bound by the builder
     (``metric_tables``); ``None`` classifies nothing."""
+    package_manifests: tuple[str, ...] = field(default=(), compare=False)
+    """Repository paths of the ``package-manifest`` role (T093), from the role
+    resolution's whole-repository walk, bound by the dimension: where the layer
+    rule's backend units are. Empty: every file sits in the root's unit."""
 
     auth_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
     """Source suffix -> the language's authentication/session tokens (T056):
@@ -1522,6 +1526,51 @@ def _source_statements(view: _PackView):
     return files, statements
 
 
+_ROOT = "the repository root"
+
+
+def _unit_of(path: str, homes: Sequence[str]) -> str:
+    """The deepest of ``homes`` (manifest directories, ``""`` = the root) at or
+    above ``path``; the root when none is."""
+    return max(
+        (home for home in homes if not home or path.startswith(home + "/")),
+        key=len,
+        default="",
+    )
+
+
+def _backend_units(
+    manifests: Sequence[str], behaviour: Mapping[str, str]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """``(manifest directories, backend units)`` (T093): a backend unit is the
+    deepest manifest directory at or above an api file (by behaviour). No api
+    file, no unit: the share then stays over the whole repository."""
+    parents = {str(PurePosixPath(manifest).parent) for manifest in manifests}
+    homes = tuple(sorted("" if d == "." else d for d in parents))
+    units = sorted(
+        {_unit_of(path, homes) for path, layer in behaviour.items() if layer == "api"}
+    )
+    return homes, tuple(units)
+
+
+def _in_backend_unit(path: str, homes: Sequence[str], units: Sequence[str]) -> bool:
+    """Whether ``path`` counts in the classified share: no unit counts every
+    file; else the file's own (deepest) manifest directory must be a unit."""
+    return not units or _unit_of(path, homes) in units
+
+
+def _import_unit(path: str, homes: Sequence[str]) -> str:
+    """The manifest unit an import's target must share with its importer
+    (T093, AC 12); with no manifests, the whole repository."""
+    return _unit_of(path, homes)
+
+
+def _is_violation_end(path: str, behaviour: Mapping[str, str]) -> bool:
+    """Whether ``path`` may be either end of a violation (T093, AC 11): only
+    a layer from behaviour evidence; a hint-only layer never decides one."""
+    return path in behaviour
+
+
 def _layer_direction_violations(view: _PackView) -> _Computed:
     files, statements = _source_statements(view)
     if not statements:
@@ -1532,18 +1581,39 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
     layers = {path: behaviour.get(path) or hints[path] for path in files}
     considered = [path for path in files if layers[path] != "shared"]
     classified = {p: layers[p] for p in considered if layers[p] in LAYER_RANK}
-    by_behaviour = sum(1 for p in classified if p in behaviour)
+    homes, units = _backend_units(view.tables.package_manifests, behaviour)
+    counted = [p for p in considered if _in_backend_unit(p, homes, units)]
+    outside = [p for p in considered if p not in set(counted)]
+    in_share = [p for p in counted if p in classified]
+    by_behaviour = sum(1 for p in in_share if p in behaviour)
     disagreements = [
         f"{path} (hint {hints[path]}, behaviour {behaviour[path]} at {cited[path]})"
         for path in files
         if path in behaviour and hints[path] and hints[path] != behaviour[path]
     ]
-    share = (
-        f"{len(classified)} of {len(considered)} non-shared source file(s) quoted "
-        f"here classify into a layer (api, service, data): {by_behaviour} by "
-        f"behaviour ({_behaviour_counts(behaviour)}), "
-        f"{len(classified) - by_behaviour} by the layer_paths hints only"
+    where = (
+        "in backend unit(s) (" + ", ".join(u or _ROOT for u in units) + ")"
+        if units
+        else "quoted here"
     )
+    share = (
+        f"{len(in_share)} of {len(counted)} non-shared source file(s) {where} "
+        f"classify into a layer (api, service, data): {by_behaviour} by "
+        "behaviour ("
+        + _behaviour_counts({p: behaviour[p] for p in in_share if p in behaviour})
+        + f"), {len(in_share) - by_behaviour} by the layer_paths hints only"
+    )
+    if outside:
+        groups = sorted({_unit_of(p, homes) or _ROOT for p in outside})
+        share += (
+            f"; {len(outside)} non-shared source file(s) outside backend units ("
+            + ", ".join(groups[:MAX_LAYER_EXAMPLES])
+            + (", ..." if len(groups) > MAX_LAYER_EXAMPLES else "")
+            + ") are not counted in this share: a backend unit is the deepest "
+            "directory holding a package manifest at or above a file that "
+            "registers a route, and a file belongs to the deepest such directory "
+            "above it; violations are not limited to backend units"
+        )
     disagreed = (
         f"; {len(disagreements)} disagreement(s) with the layer_paths hints, "
         "behaviour wins"
@@ -1556,7 +1626,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             "directory prefix, each linking every source file directly in that "
             "directory: " + "; ".join(linked[:MAX_LAYER_EXAMPLES])
         )
-    if not considered or len(classified) / len(considered) < MIN_CLASSIFIED_SHARE:
+    if not counted or len(in_share) / len(counted) < MIN_CLASSIFIED_SHARE:
         if not any(layer in ("api", "data") for layer in behaviour.values()):
             return MetricAbstention(
                 reason=(
@@ -1579,28 +1649,32 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
                 + disagreed + "; " + view.tables.layer_paths_note
             )
         )
+    # Only files classified by behaviour are violation ends (T093, AC 11).
+    ends = {p: lay for p, lay in classified.items() if _is_violation_end(p, behaviour)}
     # A stem shared by files of different layers names no layer: skipped.
-    by_name: dict[str, set[str]] = {}
-    for path, layer in classified.items():
-        by_name.setdefault(_file_name(path), set()).add(layer)
+    # A target resolves only within the importer's own unit (T093, AC 12).
+    by_name: dict[tuple[str, str], set[str]] = {}
+    for path, layer in ends.items():
+        key = (_import_unit(path, homes), _file_name(path))
+        by_name.setdefault(key, set()).add(layer)
     targets = {
-        name: found.pop()
-        for name, found in by_name.items()
-        if len(found) == 1 and name
+        key: found.pop() for key, found in by_name.items() if len(found) == 1 and key[1]
     }
-    patterns = {name: _names_pattern([name]) for name in targets}
+    patterns = {key: _names_pattern([key[1]]) for key in targets}
     violations: list[tuple[Excerpt, int, str, str]] = []
     for excerpt, line, text in statements:
-        source = classified.get(excerpt.path)
+        source = ends.get(excerpt.path)
         if source is None:
             continue
+        unit = _import_unit(excerpt.path, homes)
         higher = sorted(
             {
                 target
-                for name, target in targets.items()
-                if LAYER_RANK[target] > LAYER_RANK[source]
+                for (in_unit, name), target in targets.items()
+                if in_unit == unit
+                and LAYER_RANK[target] > LAYER_RANK[source]
                 and name != _file_name(excerpt.path)
-                and patterns[name].search(text)
+                and patterns[(in_unit, name)].search(text)
             },
             key=LAYER_RANK.get,
         )
@@ -1619,7 +1693,12 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         + (f", e.g. {examples}" if examples else "")
         + f". {share} ({view.tables.layer_paths_note}){disagreed}. "
         + _BEHAVIOUR_METHOD
-        + "; "
+        + "; a violation needs a layer from behaviour at both ends: the "
+        f"{len(classified) - len(ends)} file(s) classified by the layer_paths "
+        "hints only count in the share but are never a violation end; an "
+        "import's target is matched only among files of the importer's own "
+        "manifest unit (the deepest directory holding a package manifest "
+        "above it); "
         "shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "

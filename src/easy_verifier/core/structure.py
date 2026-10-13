@@ -200,7 +200,8 @@ def layer_of(
     ``layer_paths`` are ``<layer>=<glob>`` values (default: curated). ``\\``
     separators are normalised. A file that is not source, is a test (the
     metrics rule over ``tables``, default curated), or matches globs of two
-    different layers is unclassified: a layer is never guessed.
+    different layers is unclassified (unless one is ``shared``, which wins,
+    T093): a layer is never guessed.
     """
     patterns = (
         convention_values(_curated(), "layer_paths")
@@ -214,6 +215,15 @@ def layer_of(
     if _is_test_file(path, tables):
         return None
     layers = {layer for layer, matches in _layer_matchers(patterns) if matches(path)}
+    return _resolve_hints(layers)
+
+
+def _resolve_hints(layers: set[str]) -> str | None:
+    """The one layer the hints name; ``shared`` wins a conflict (T093: a
+    ``*.module.*`` file under an ``apps/api`` folder is shared, since a folder
+    name must not decide). Any other conflict stays unclassified."""
+    if "shared" in layers:
+        return "shared"
     return layers.pop() if len(layers) == 1 else None
 
 

@@ -9,7 +9,8 @@
 # a path hint classifies only a file behaviour does not, and a disagreement is
 # reported, behaviour winning.
 # layer_paths: "<api|service|data|shared>=<repository glob>"; a file matching
-# two layers stays unclassified. "shared" marks cross-cutting files (modules,
+# two layers stays unclassified, unless one is shared, which wins (T093).
+# "shared" marks cross-cutting files (modules,
 # config, utils, constants, enums, types): they are left out of the layer
 # rule's classified share and never take part in a violation (T074). DTOs and
 # schemas are boundary contracts every layer uses, so they are shared. requirement_item_patterns: "id=<token>" matches

@@ -30,6 +30,7 @@ and is reported (FR-027a).
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import PurePosixPath
 
 from ..core import batches
@@ -43,6 +44,7 @@ from ..core.models import (
     SampleFacts,
 )
 from ..core.redact import redact
+from ..core.roles import walked_role_paths
 from ..core.structure import context_conventions
 from ..core.tokens import LanguageSyntax, approximate_ccn, import_statements
 
@@ -235,13 +237,25 @@ def record_sample(
         for item in compute_sampled_metrics(
             dimension,
             units,
-            with_conventions(curated_metric_tables(), context_conventions(context)),
+            replace(
+                with_conventions(curated_metric_tables(), context_conventions(context)),
+                package_manifests=_package_manifests(context),
+            ),
         )
     )
     if plan:
         context.sample = sample_facts(plan, metrics)
     else:
         context.whole_file = metrics
+
+
+def _package_manifests(context: DimensionContext) -> tuple[str, ...]:
+    """The repository's package manifests (T093), from the role resolution's
+    whole-repository walk: batches do not hide a unit's manifest."""
+    resolution = getattr(context, "role_resolution", None)
+    if resolution is None:
+        return ()
+    return walked_role_paths(resolution, "package-manifest")
 
 
 def _whole_note(read: int, candidates: int) -> str:

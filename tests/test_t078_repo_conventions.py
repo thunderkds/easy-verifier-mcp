@@ -169,11 +169,14 @@ def test_repo_conventions_without_extras_is_curated(tmp_path, sot):
 def test_toml_layer_paths_change_architecture_metric_and_are_embedded(tmp_path, sot):
     bare = score(layered_repo(tmp_path / "bare"))
     assert layer_violations(bare)["outcome"]["value"] == 0
+    # T093 AC 11: hints never make a violation, so a declared layer_paths
+    # shows in the share: endpoints/ classifies only with the toml.
+    assert "2 of 3 non-shared source file(s)" in layer_violations(bare)["derivation"]
     assert "registry_entries" not in bare
 
     extended = score(layered_repo(tmp_path / "ext", toml=TOML))
     found = layer_violations(extended)
-    assert found["outcome"]["value"] == 1  # the data -> api import is now seen
+    assert found["outcome"]["value"] == 0  # hint-only ends: never a violation
     assert "3 of 3 non-shared source file(s)" in found["derivation"]
     assert "only the curated layer_paths apply" not in found["derivation"]
     assert extended["registry_entries"] == [TOML_ITEM]
@@ -274,7 +277,7 @@ def save_local_layer_paths(root: Path, values: list[str]) -> None:
 def test_local_layer_conventions_are_used_and_embedded(tmp_path, sot):
     save_local_layer_paths(sot, ["api=**/endpoints/**", "api=**/controllers/**"])
     payload = score(layered_repo(tmp_path / "r"))
-    assert layer_violations(payload)["outcome"]["value"] == 1
+    assert "3 of 3 non-shared" in layer_violations(payload)["derivation"]
     assert payload["registry_entries"] == [
         {
             "language": "conventions",
@@ -370,12 +373,12 @@ def test_no_leak_between_back_to_back_mcp_calls(tmp_path, sot):
         return {k: v for k, v in payload.items() if k != "needs_input"}
 
     first_bare = call(without)
-    assert layer_violations(call(with_toml))["outcome"]["value"] == 1
+    assert "3 of 3 non-shared" in layer_violations(call(with_toml))["derivation"]
     assert call(without) == first_bare
     # a replayed toml item applies to its own call only
-    assert layer_violations(
+    assert "3 of 3 non-shared" in layer_violations(
         call(without, {"registry_entries": [TOML_ITEM]})
-    )["outcome"]["value"] == 1
+    )["derivation"]
     assert call(without) == first_bare
     assert layer_violations(first_bare)["outcome"]["value"] == 0
 

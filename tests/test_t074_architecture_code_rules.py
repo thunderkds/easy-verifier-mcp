@@ -91,9 +91,12 @@ def test_rules_and_weights_are_ddr_0011() -> None:
     assert "layer_direction_violations" in SAMPLED_METRICS["architecture"]
 
 
-def test_a_repository_importing_a_service_is_one_cited_violation(
+def test_a_hint_only_repository_importing_a_service_is_no_violation(
     tmp_path: Path,
 ) -> None:
+    """T093 AC 11: every file here is classified by layer_paths hints only (no
+    route, no DB call), so none is a violation end; they still count in the
+    share. The behaviour case is T088 sc2."""
     files = dict(LAYERED)
     files["src/app/repositories/user_repository.py"] = (
         "import os\nfrom app.services import user_service\n\n\ndef load():\n"
@@ -101,11 +104,11 @@ def test_a_repository_importing_a_service_is_one_cited_violation(
     )
     _pack, metrics = _metrics(_repo(tmp_path, {"README.md": "# r\n", **files}))
     metric = metrics["layer_direction_violations"]
-    assert metric.outcome == 1
-    assert "src/app/repositories/user_repository.py:2" in metric.derivation
-    assert "data -> service" in metric.derivation
+    assert metric.outcome == 0
     assert "3 of 3" in metric.derivation  # classified share
-    assert any("user_repository.py" in ref for ref in metric.computed_from)
+    assert "the 3 file(s) classified by the layer_paths hints only" in (
+        metric.derivation
+    )
 
 
 def test_no_docs_no_cycles_no_violations_rates_80(tmp_path: Path) -> None:
