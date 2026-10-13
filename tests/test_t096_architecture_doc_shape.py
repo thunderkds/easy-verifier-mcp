@@ -239,3 +239,31 @@ def test_a_change_list_no_longer_beats_the_prose_description(tmp_path):
         },
     )
     assert _evidence(repo)[1].path == "PROJECT_SPEC.md"
+
+
+# --- a title is not a section ---------------------------------------------------
+
+READ_LIST = (
+    "Read `apps/api/main.ts`, then `apps/web/main.ts`, then "
+    "`packages/shared/index.ts`.\n"
+)
+
+
+def test_h1_title_naming_architecture_does_not_open_a_section(tmp_path):
+    text = "# Task: the architecture dimension\n\n" + READ_LIST
+    repo = _repo(tmp_path, {"TASK.md": text, **_apps(tmp_path)})
+    assert _evidence(repo)[1].kind is None
+
+
+def test_the_same_text_under_a_level_two_architecture_heading_fills(tmp_path):
+    text = "# Task\n\n## Architecture\n" + READ_LIST
+    repo = _repo(tmp_path, {"TASK.md": text, **_apps(tmp_path)})
+    assert _evidence(repo)[1].kind == "architecture-heading"
+
+
+def test_a_later_level_two_section_is_found_past_an_h1_title(tmp_path):
+    text = "# Architecture notes\n\nintro\n\n## System architecture\n" + READ_LIST
+    repo = _repo(tmp_path, {"TASK.md": text, **_apps(tmp_path)})
+    item = _evidence(repo)[1]
+    assert item.kind == "architecture-heading"
+    assert item.cited[0].startswith("line 6:")

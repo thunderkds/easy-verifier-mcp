@@ -232,14 +232,19 @@ def _section_at(lines: list[str], start: int) -> int:
     )
 
 
-def _architecture_section(text: str) -> tuple[int, str] | None:
-    """``(first line, text)`` of a section headed "Architecture"."""
-    match = ARCHITECTURE_HEADING.search(text)
-    if match is None:
-        return None
-    start = text.count("\n", 0, text.index("#", match.start()))
-    lines = text.splitlines()
-    return start, "\n".join(lines[start : _section_at(lines, start)])
+def _architecture_section(text: str, min_level: int = 1) -> tuple[int, str] | None:
+    """``(first line, text)`` of a section headed "Architecture" at heading
+    level ``min_level`` or deeper. A level-1 heading is the document's title,
+    whose section is the whole document (T096)."""
+    for match in ARCHITECTURE_HEADING.finditer(text):
+        hashes = text.index("#", match.start())
+        level = len(text[hashes:]) - len(text[hashes:].lstrip("#"))
+        if level < min_level:
+            continue
+        start = text.count("\n", 0, hashes)
+        lines = text.splitlines()
+        return start, "\n".join(lines[start : _section_at(lines, start)])
+    return None
 
 
 _URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S*")
@@ -503,7 +508,7 @@ def _shape(name, path, text, known, patterns, directories=frozenset()):
             cited = [(n, line) for n, _p, line in entries]
             return KIND_CONTENT, cited, _size(entries, directories)
         # T096: an architecture section in prose names its paths inline
-        section = _architecture_section(text)
+        section = _architecture_section(text, 2)
         if section is not None:
             start, body = section
             named = prose_paths(body, known, base)
