@@ -59,7 +59,7 @@
 - [ ] All [DEBUG-...] instrumentation removed (grep verified)
 - [ ] Throwaway prototypes deleted
 - [ ] Correct hypothesis stated in commit message
-- [ ] Post-mortem: what would have prevented this?
+- [x] Post-mortem: T091 widened the piece shape for one case (lower-case) without testing its case twin; widen shapes symmetrically and test both cases.
 
 ### Files Must NOT Touch
 `core/roles.py` (T094 runs in parallel), `core/documents.py` (T096 runs in parallel), and the named detectors in `redact.py`.
