@@ -83,6 +83,15 @@ User (2026-10-13): **"yes, agree"**.
 | 9 | Both extremes pinned for AC 8: a `apps/api/src/x/x.module.ts` fixture is shared; a sabotage (conflict → unclassified, today's behaviour) must fail the test | pinned |
 | 10 | Re-run kitchd and coffee-shop-api: kitchd expected measured. Hand-check up to 3 cited violations if any; coffee unchanged. bryony stays abstaining. Its backend unit is mostly standalone scripts (148/515), which is honest, not a defect | real-repo verified |
 
+
+### Amendment 2 (Supervisor, 2026-10-13: kitchd's 4 cited violations were all false positives)
+
+| # | Criterion (testable) | Traces to requirement |
+|---|----------------------|-----------------------|
+| 11 | **A violation needs behaviour at both ends**: an import counts as a layer-direction violation only when both the importing file's layer and the target's layer come from behaviour evidence (route registration / DB-ORM call / service-on-path). Hint-only files still count toward the classified share but are never a violation end. The derivation states this | hints never decide a result (DDR-0012): kitchd cases 1–3 (`*.decorator.*`, `**/api/**`) |
+| 12 | **Import targets resolve within the importer's unit**: the stem match that finds an import's target considers only files in the importing file's own manifest unit (the deepest manifest directory, as for the share). Without manifests, the unit is the whole repo (today) | kitchd case 4: `users.service.ts` matched `apps/web/src/routes/auth.ts` |
+| 13 | Both extremes pinned for AC 11 and AC 12 (sabotage each one back and its fixture fails). Re-run kitchd: report the violations value and hand-check every cited violation. coffee-shop-api: report any change. bryony and ai-training: unchanged | real-repo verified, no false violations |
+
 ---
 
 ## Evaluation & Acceptance
