@@ -7,9 +7,9 @@ test file leaves nothing to count, so the metric abstains instead of reporting 0
 
 from __future__ import annotations
 
-from easy_verifier.core import metrics as metrics_module
-
 from test_t034_security_sinks import SAFE, UNSAFE, pack, sink_metric
+
+from easy_verifier.core import metrics as metrics_module
 
 URL = "https://cwe.mitre.org/data/definitions/89.html"
 BOTH = {"app/db.py": UNSAFE, "tests/test_db.py": UNSAFE}
@@ -27,7 +27,7 @@ def test_test_hit_is_listed_tagged_and_stated_as_not_counted():
     assert f"app/db.py:2 CWE-89 ({URL})" in found.derivation
     assert f"app/db.py:2 CWE-89 ({URL}) [test path]" not in found.derivation
     assert "1 test-path hit(s) are listed and not counted" in found.derivation
-    assert found.derivation.startswith("1 dangerous-sink hit(s)")
+    assert found.derivation.startswith("1 dangerous-sink hit(s) in non-test files")
 
 
 def test_test_hit_is_still_cited():
@@ -44,7 +44,7 @@ def test_only_a_test_hit_counts_zero_and_is_still_cited():
 
 def test_no_test_hit_means_no_not_counted_sentence():
     found = sink_metric(pack({"app/db.py": UNSAFE}))
-    assert "not counted" not in found.derivation
+    assert "test-path hit(s) are listed" not in found.derivation
 
 
 def test_only_test_files_scanned_abstains_never_zero():
@@ -62,5 +62,3 @@ def test_sabotage_predicate_always_test_abstains(monkeypatch):
     monkeypatch.setattr(metrics_module, "_is_test_file", lambda *_a, **_k: True)
     found = sink_metric(pack(BOTH))
     assert found.abstained
-
-

@@ -238,7 +238,7 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `todo_without_ticket_share` | 15 | ≤ 0.50 | `source_extensions`, delimiters |
 | | `strict_type_config_missing` | 10 | = 0 | `type_config_files`, `type_strict`, `type_strict_off`, `type_config_extends` (all *opt*; abstains without a type checker config) |
 | security | `redaction_hits_observed` | 35 | = 0 | none (built-in secret patterns) |
-| | `sink_hits_observed` | 35 | = 0 | `source_extensions`, delimiters, `security_sinks`, `interpolating_strings` *(opt)* |
+| | `sink_hits_observed` | 35 | = 0 | `source_extensions`, delimiters, `security_sinks`, `interpolating_strings` *(opt)*; counts hits in non-test files only (test-path hits are listed, cited and tagged `[test path]` but not counted); abstains when only test files were scanned |
 | | `lockfile_missing` | 15 | = 0 | `roles.lockfile` |
 | | `cookie_flags_missing_observed` | 15 | = 0 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, delimiters, `cookie_calls`, `auth_markers`, `cookie_secure` / `cookie_httponly` / `cookie_samesite` *(opt)*; abstains where no auth or session code was read |
 | test-strategy | `source_files_without_covering_test_share` | 25 | ≤ 0.20 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, `test_candidates` *(opt)* |

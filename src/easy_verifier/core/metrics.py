@@ -875,8 +875,9 @@ _SINK_METHOD = (
     "its CWE page), matched textually after the registry's comment and string "
     "delimiters are blanked (a string that interpolates keeps one mark at its "
     "start) -- no data flow is traced, so a hit is a place to "
-    "look, not a proven vulnerability; test-path hits are counted and tagged; "
-    "a lower bound on the repository, since only these excerpts were read"
+    "look, not a proven vulnerability; test-path hits are listed, cited and "
+    "tagged but not counted; a lower bound on the repository, since only "
+    "these excerpts were read"
 )
 
 
@@ -895,25 +896,41 @@ def _sink_hits_observed(view: _PackView) -> _Computed:
                 "without sinks. " + _SINK_METHOD
             )
         )
+    if all(_is_test_file(excerpt.path, view.tables) for excerpt in scanned):
+        return MetricAbstention(
+            reason=(
+                "only test files were scanned for sinks, so no production code "
+                "was observed; that is not the same as production code without "
+                "sinks. " + _SINK_METHOD
+            )
+        )
     hits: dict[tuple[str, int, str], tuple[str, str]] = {}
     for excerpt in scanned:
         for hit in sink_hits(excerpt.path, excerpt.text, view.tables):
             line = excerpt.start_line + hit.line - 1
             key = (excerpt.path, line, hit.cwe)
             hits.setdefault(key, (excerpt.ref, hit.citation_url))
+    test_hits = {key for key in hits if _is_test_file(key[0], view.tables)}
+    counted = len(hits) - len(test_hits)
     cited = sorted({ref for ref, _url in hits.values()}) or sorted(
         {e.ref for e in scanned}
     )
     listed = ", ".join(
         f"{path}:{line} {cwe} ({url})"
-        + (" [test path]" if _is_test_file(path, view.tables) else "")
+        + (" [test path]" if (path, line, cwe) in test_hits else "")
         for (path, line, cwe), (_ref, url) in sorted(hits.items())
     )
     return (
-        len(hits),
+        counted,
         tuple(cited),
-        f"{len(hits)} dangerous-sink hit(s) in {len(scanned)} excerpt(s): "
+        f"{counted} dangerous-sink hit(s) in non-test files, from "
+        f"{len(scanned)} excerpt(s): "
         + (listed or "none")
+        + (
+            f"; {len(test_hits)} test-path hit(s) are listed and not counted"
+            if test_hits
+            else ""
+        )
         + "; "
         + _SINK_METHOD,
     )
