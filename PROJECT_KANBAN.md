@@ -72,6 +72,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T091** — Bugfix: redaction masks ordinary paths whose name pieces mix letters then digits (`tests/test_t087_third_party_exclusion.py`; t029 tracked-path test red on develop since the T087 merge) | backend-developer | C1 | Risk: Med | P1 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
