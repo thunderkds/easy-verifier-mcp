@@ -178,3 +178,66 @@ def test_violations_still_count_classified_files_outside_units(tmp_path) -> None
     assert not metric.abstained, metric.outcome
     assert metric.outcome == 1
     assert "apps/web/ui/leak.js:1 (data -> api)" in metric.derivation
+
+
+# --- Amendment (AC 8, AC 9): shared wins a layer_paths hint conflict --------
+
+MODULES = {
+    f"apps/api/src/m{i}/m{i}.module.js": "module.exports = {};\n" for i in range(4)
+}
+
+
+def test_ac8_shared_wins_a_hint_conflict_in_an_api_named_folder() -> None:
+    from easy_verifier.core.structure import layer_of
+
+    assert layer_of("apps/api/src/x/x.module.ts") == "shared"
+    assert layer_of("apps/api/src/x/dto/create-x.dto.ts") == "shared"
+    assert layer_of("src/x/x.module.ts") == "shared"
+    # Not shared-vs-other: a conflict between two non-shared layers stays None.
+    assert layer_of("apps/api/models/user.js") is None
+
+
+def test_ac8_behaviour_still_overrides_a_shared_hint(tmp_path) -> None:
+    """A route registered in a ``*.module.js`` file is api by behaviour."""
+    files = {**MONOREPO, "apps/api/src/routes.module.js": ROUTE}
+    del files["apps/api/src/routes.js"]
+    files["apps/api/src/svc.js"] = SERVICE
+    metric = _layer(tmp_path, files)
+    assert not metric.abstained, metric.outcome
+    assert "3 of 3 non-shared source file(s) in backend unit(s) (apps/api)" in (
+        metric.derivation
+    )
+    assert "apps/api/src/routes.module.js (hint shared, behaviour api" in (
+        metric.derivation
+    )
+
+
+def test_ac9_monorepo_api_folder_module_files_leave_the_share(tmp_path) -> None:
+    """Both extremes: with shared winning, 4 NestJS-style module files in
+    ``apps/api`` are shared and the unit share is 3 of 3; sabotaged to
+    today's conflict -> unclassified, they stay in the denominator (3 of 7)
+    and the rule abstains."""
+    files = {
+        **MONOREPO,
+        **MODULES,
+    }
+    metric = _layer(tmp_path, files)
+    assert not metric.abstained, metric.outcome
+    assert "3 of 3 non-shared source file(s) in backend unit(s) (apps/api)" in (
+        metric.derivation
+    )
+
+
+def test_ac9_sabotaged_conflict_unclassified_abstains(tmp_path, monkeypatch) -> None:
+    from easy_verifier.core import structure
+
+    monkeypatch.setattr(structure, "_resolve_hints", lambda layers: (
+        layers.pop() if len(layers) == 1 else None
+    ))
+    files = {
+        **MONOREPO,
+        **MODULES,
+    }
+    metric = _layer(tmp_path, files)
+    assert metric.abstained
+    assert "3 of 7 non-shared" in metric.outcome.reason
