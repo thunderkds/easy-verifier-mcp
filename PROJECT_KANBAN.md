@@ -15,6 +15,7 @@
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
 - [ ] **T089** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T087) | backend-developer | C2 | Risk: Med | P1
 - [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2
+- 💡 Follow-up from T088 (2026-10-13, needs user decision): count the layer rule's classified-share floor only within the backend unit (the manifest folder containing route files), not repo-wide. kitchd would go 49/177 (28%) → 49/87 (56%), measured; bryony's Angular frontend would leave the denominator
 - 💡 Follow-up from T087 (2026-10-12, no guide yet): the infrastructure dimension does not read a repo's own Rancher/ELK/compose YAML. scraping-devops' "infrastructure 100" was all Harbor files; without Harbor it abstains
 
 - [x] **T084** — Follow-up (T083 review P2): `breaking_api_changes_observed` still counts removals from diff files the api pack did not read when at least one other spec/route file was read (value partly uncited); user chose 2026-10-08: count only removals in files actually read; list unread files with removals as "not counted" | backend-developer | C1 | Risk: Med | P2 | ✅ Done 2026-10-08 (removals counted only in read files; unread files listed "not counted"; route tokens from resolved conventions; 22-spec repro 66→60, coffee sha256 unchanged; 2536 passed, 2 known container failures)
@@ -71,13 +72,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1 | 🔄 started 2026-10-12
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-13 (layers by behaviour + hints fallback; AC 11 dynamic-prefix imports: bryony --all service 0→30 via controller-manager.js:35 (54 controllers); coffee measured 0 violations (4 api by behaviour); kitchd 18%→28%, bryony 42%, ai-training framework_not_recognized — all still below the 0.50 share floor; follow-up: backend-only denominator pending user)
 - [x] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-12 (scraping-devops excludes docker-registry/harbor/ nested-project → 0 Harbor citations, overall withheld: own code is compose YAML + shell; bryony excludes frontend/app/scripts/vendor/ 19 files, 59 unchanged; kitchd/ai-training/coffee unchanged; 2609 passed; follow-up: infrastructure does not read compose YAML)
 - [x] **T078** — Repo-local / `.easy-verifier.toml` conventions used in scoring and embedded for byte-equal replay (toml items per-call only, user 2026-10-08) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-08 (layer_paths/route_tokens/requirement/issue patterns honour extras add-only; replay byte-equal with toml deleted, nothing written to disk; secret-shaped values dropped with a warning; no-toml payloads change only by the corrected disclosure text; 2465 passed, 2 known container failures)
 - [x] **T057** — Migration knowledge into cited registry fields (`migration_dirs`, `destructive_migration_ddl` IGNORECASE tokens, `destructive_migration_apis` curated-only regex; user option D 2026-10-08) | backend-developer | C2 | Risk: Med | P2 | ✅ Done 2026-10-08 (pure relocation: coffee/kitchd/changes-scope/destructive-hit payloads byte-identical; local layer can add dir names; 2512 passed, 2 known container failures; follow-up T086)
