@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 18 — Scoring decisions after Wave 17 (added 2026-10-13, user: "yes, agree"; run order T092 → T093)**
-- [ ] **T093** — Layer rule's classified-share floor counts only backend units (nearest manifest above api files; kitchd 49/177 → ~49/87) (Depends on: T088) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
 - 💡 Follow-ups from T089 (2026-10-13, no guide yet): (a) redaction `high_entropy_string` masks a WCAG URL path in this repo's README (`/WAI/WCAG22/Understanding/non-text-content.html`); (b) on kitchd and this repo, architecture-doc is filled by a task guide's Files-to-Change table (true content, weak citation)
@@ -73,6 +72,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T093** — Layer rule's classified-share floor counts only backend units (nearest manifest above api files; kitchd 49/177 → ~49/87) (Depends on: T088) | backend-developer | C2 | Risk: Med | P1 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
