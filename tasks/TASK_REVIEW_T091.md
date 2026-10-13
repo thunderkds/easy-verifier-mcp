@@ -19,12 +19,12 @@
 | Negative cases hold | ☐ pass / ☐ fail | |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | pass | 2648 passed(after t046 fixture fix: full run before it: 3 failed = 2 known container + t046, 2645 passed, 2 skipped); t046 now passes |
+| Full smoke suite still green (no regression) | pass | Full suite after t046 fix: 2 failed (the 2 known container tests), 2648 passed, 2 skipped in 413.81s |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
 | **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
 | Repro loop | pass | `redact("tests/test_t087_third_party_exclusion.py")` -> `test…****:009fc5eee991.py` and t029 `test_every_tracked_path_of_this_repo_survives_redaction` failed on develop 94618c1 (2026-10-13T03:11Z); see Demonstration BEFORE |
-| Regression test | pass | tests/test_t091_letter_digit_pieces.py (2 of 4 positives failed on develop; 5 negatives main-3f9a2b1c.js, xQzRtWvB.., 32-char mixed, interleaved a1b2.., base64url-ish still fingerprint); t029 now passes |
+| Regression test | pass | tests/test_t091_letter_digit_pieces.py (2 of 4 positives failed on develop; 5 negatives main-3f9a2b1c.js, xQzRtWvB.., 32-char mixed, interleaved a1b2.., base64url-ish still fingerprint); t029 now passes. Boundary tests added (abcdefg087 7-letter, Ab087 mixed-case). Sabotage: widened to `[A-Za-z]{1,30}[0-9]{1,8}` -> "2 failed, 9 passed" (both boundary tests failed); restored -> 11 passed. |
 | Smoke suite | pass | t029/t046/t051/t053/t091: 160 passed. Real repos bryony redaction_hits_observed 11 -> 11, kitchd 62 -> 62; score JSON byte-identical before/after (cmp), so no hit disappeared |
 
 ---

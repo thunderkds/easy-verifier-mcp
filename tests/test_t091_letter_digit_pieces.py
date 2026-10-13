@@ -37,3 +37,14 @@ def test_letter_then_digit_pieces_survive(name: str) -> None:
 )
 def test_random_shapes_still_fingerprint(text: str) -> None:
     assert redact(text) != text
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "tests/test_abcdefg087_third_party_exclusion.py",  # 7-letter prefix, past {1,6}
+        "tests/test_Ab087_third_party_exclusion.py",  # mixed-case prefix
+    ],
+)
+def test_piece_shape_boundary_still_fingerprints(name: str) -> None:
+    assert redact(name) != name
