@@ -11,7 +11,9 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T097** — Redaction masks paths whose name pieces have more than 6 letters before digits (`rancher2`) | backend-developer | C1 | Risk: Medium | P1
 - [x] **T096** — A change list is not an architecture description; architecture prose sections count | backend-developer | C2 | Risk: Medium | P2 | ✅ Done 2026-10-13 (change-column tables skipped; `##`+ architecture prose sections naming ≥3 real paths count; kitchd now cites `memory/decisions.md` ## Architecture, this repo `BRAINSTORMING_LOG.md` file list; all ratings unchanged on 6 repos)
+- [ ] **T097** — Bugfix: redaction masks paths whose name pieces have more than 6 letters before digits (`rancher2/…`: 50 of 371 scraping-devops paths unresolvable; found reviewing T094; user "yes, fix it as T097" 2026-10-13) | backend-developer | C1 | Risk: Med | P1
 - [x] **T095** — Redaction masks URL path segments whose pieces are upper-case letters then digits (`WCAG22`) | backend-developer | C1 | Risk: Medium | P2 | ✅ Done 2026-10-13 (`_LETTER_DIGIT_PIECE` admits upper-case run + digit run; this repo security hits 7→3, others unchanged)
 - [x] **T094** — Infrastructure recognises Kubernetes manifests and Compose files by content | backend-developer | C2 | Risk: Medium | P1 | ✅ Done 2026-10-13 (new `core/iac_content.py` + `roles._placed_by_content`; scraping-devops infrastructure abstain → 100 from 50 cited rancher2 manifests, overall 100 with 1 of 13 contributing; other repos ratings unchanged)
 
