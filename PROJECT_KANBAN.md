@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
-- [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2
 - 💡 Follow-ups from T089 (2026-10-13, no guide yet): (a) redaction `high_entropy_string` masks a WCAG URL path in this repo's README (`/WAI/WCAG22/Understanding/non-text-content.html`); (b) on kitchd and this repo, architecture-doc is filled by a task guide's Files-to-Change table (true content, weak citation)
 - 💡 Follow-up from T088 (2026-10-13, needs user decision): count the layer rule's classified-share floor only within the backend unit (the manifest folder containing route files), not repo-wide. kitchd would go 49/177 (28%) → 49/87 (56%), measured; bryony's Angular frontend would leave the denominator
 - 💡 Follow-up from T087 (2026-10-12, no guide yet): the infrastructure dimension does not read a repo's own Rancher/ELK/compose YAML. scraping-devops' "infrastructure 100" was all Harbor files; without Harbor it abstains
@@ -72,6 +71,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
