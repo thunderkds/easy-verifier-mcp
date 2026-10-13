@@ -13,7 +13,6 @@
 ### Todo
 
 **Wave 18 — Scoring decisions after Wave 17 (added 2026-10-13, user: "yes, agree"; run order T092 → T093)**
-- [ ] **T092** — Dangerous-sink hits in test files are reported, not scored (coffee-shop-api security 59→18 from `test/reset-test-db.ts:25`) | backend-developer | C1 | Risk: Med | P1
 - [ ] **T093** — Layer rule's classified-share floor counts only backend units (nearest manifest above api files; kitchd 49/177 → ~49/87) (Depends on: T088) | backend-developer | C2 | Risk: Med | P1
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
@@ -74,6 +73,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T092** — Dangerous-sink hits in test files are reported, not scored (coffee-shop-api security 59→18 from `test/reset-test-db.ts:25`) | backend-developer | C1 | Risk: Med | P1 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
