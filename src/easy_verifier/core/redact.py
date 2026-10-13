@@ -77,6 +77,15 @@ joined by ``_``, ``-`` or ``/`` and written inside a URL path or before ``.ext``
 (``ABC123-DEF456.txt``) is no longer caught by this rule. Credentials are not
 issued in this shape.
 
+T097 lifts the letter-run cap of :data:`_LETTER_DIGIT_PIECE` from 6 to 30 (the
+:data:`_WORD_PIECE` bound), for both cases, so ``rancher2``, ``postgres16``,
+``elasticsearch7`` and ``KUBERNETES1`` are ordinary name pieces and
+``rancher2/cb-ppl/gateway-prod-ingress.yml`` is not fingerprinted. Residue,
+stated plainly: a secret shaped only as single-case letter runs of up to 30
+letters, each followed by a digit run, joined by ``_``, ``-`` or ``/`` inside a
+URL path or before ``.ext``, is no longer caught by this rule. Generated
+credentials are mixed-case alphanumerics, so this is not their shape.
+
 Every pattern below is linear — no nested or adjacent unbounded quantifiers, and
 every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 (ReDoS). This module reads attacker-influenceable content.
@@ -199,7 +208,7 @@ the token in a webhook URL path, and the password inside a
 """
 
 _WORD_PIECE = r"(?:[A-Z]{1,30}|[A-Z]?[a-z]{1,30})"
-_LETTER_DIGIT_PIECE = r"(?:[a-z]{1,6}|[A-Z]{1,6})[0-9]{1,8}"
+_LETTER_DIGIT_PIECE = r"(?:[a-z]{1,30}|[A-Z]{1,30})[0-9]{1,8}"
 _NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}}|{_LETTER_DIGIT_PIECE})"
 _WORD_JOINED_NAME = re.compile(rf"{_NAME_PIECE}(?:[/_-]{_NAME_PIECE}){{1,30}}")
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}(?![A-Za-z0-9+/=_-])")
