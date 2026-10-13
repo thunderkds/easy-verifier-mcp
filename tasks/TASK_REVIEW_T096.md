@@ -15,14 +15,14 @@
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | (implementer) tests/test_t096_architecture_doc_shape.py (27 tests; 18 fail on the pre-change documents.py, 9 negative/guard cases pass both ways); tests/test_t089_document_content.py unedited and green |
-| Verification command run | ☐ pass / ☐ fail | (implementer) full suite (final code): 2 failed, 2772 passed, 2 skipped in 479s; ruff check src tests: All checks passed. The 2 failures: two container tests (stale Docker image, missing=['api','data','infrastructure','operations','supply-chain'], known and unrelated) (a third, tests/test_t001_pipeline.py::test_architecture_pack_against_this_repo, pinned kind == "content"; edited to accept "architecture-heading" too (reason: this repo's role is now filled by prose); and is green after the edit); t096 now has 30 tests incl. the H1-title and level-2 cases |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| Verification command run | ☑ pass (implementer) | full suite `2 failed, 2772 passed, 2 skipped` (the 2 known stale-image container tests); `ruff check src tests` clean. |
+| Negative cases hold | ☑ pass | Tables without a change column, and tables without a separator, behave as before. Prose with 2 paths, or with a missing path, does not qualify. URLs and bare words name nothing. An H1 title does not open a section. Supervisor sabotage: `_architecture_section(text, 1)` makes `test_h1_title_naming_architecture_does_not_open_a_section` fail (`1 failed, 29 passed`). |
+| verify | ☑ pass | Supervisor 2026-10-13 on `c3f4a2a`: t096 + t089 + t001 -> `126 passed in 11.05s`. Real repos (implementer runs, diff vs BEFORE = 2 citation lines only): every rating identical on kitchd 56/100, bryony 59/83, coffee 81/90, ai-training 64/83, scraping-devops (abstains), this repo 43/100. pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review of `core/documents.py` (`CHANGE_COLUMNS`, header tracking in `described_entries`, `prose_paths`, `_architecture_section(min_level)`, `_shape` prose branch). README path unchanged (kind `readme-heading` kept). Regexes are linear. Decisions: kitchd cites `memory/decisions.md` `## Architecture` (real description, accepted); a level-1 title never opens a section. The t001 kind pin was widened by design (AC 7). P0 0 · P1 0. |
+| Full smoke suite still green (no regression) | ☑ pass (implementer) | `2 failed, 2772 passed, 2 skipped`; the 2 failures are the known container tests. |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Backend only. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Backend only. |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Backend only. |
 
 ---
 
@@ -78,5 +78,5 @@ overall 64 | api=75, architecture=83, blast-radius=None, code-quality=77, data=4
 overall 43 | api=0, architecture=100, blast-radius=None, code-quality=31, data=40, infrastructure=None, operations=50, reliability=50, requirement-fidelity=20, security=50, solution-fit=None, supply-chain=None, test-strategy=None
   value None | source role 'architecture-doc' is filled by BRAINSTORMING_LOG.md (content: line 215: - `src/easy_verifier/core/pipeline.py` — `run_dimension()`; owns redaction, budgeting, coverage; line 216: - `src/easy_verifier/core/context.py` — kit detection, kit-aware vs. standalone loading (FR-001…005); line 217: - `src/easy_verifier/core/scope.py` — task | changes | worktree | project resolution (FR-006…008); line 218: - `src/easy_verifier/core/redact.py` — evidence-layer fingerprinting (NFR-010, DDR-0001); line 219: - `src/easy_verifier/core/budget.py` — relevance ordering, lazy truncation (FR-011a/b))\n```\n\n**DELTA**: A table with a Change/Action/Status-style column no longer counts as an architecture description, and a section headed "Architecture" in any document counts when it names three real paths in prose, so kitchd is no longer credited with a task's edit list.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T096.jsonl`, never the
+**WITNESS**: Supervisor re-ran the t096/t089/t001 tests and an H1 sabotage on the branch, 2026-10-13 (event trace T096).
 implementing agent alone]
