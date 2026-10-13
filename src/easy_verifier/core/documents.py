@@ -47,6 +47,7 @@ DOCUMENT_SUFFIXES = (".md", ".rst", ".adoc", ".txt")
 KIND_CONTENT = "content"
 KIND_DECLARED = "declared"
 KIND_README_HEADING = "readme-heading"
+KIND_ARCHITECTURE_HEADING = "architecture-heading"
 
 ARCHITECTURE_DOC = "architecture-doc"
 DECISION_RECORD = "decision-record"
@@ -93,6 +94,13 @@ _SEPARATOR = re.compile(r"^(?:[`*_]*)(?:\s*:[`*_]*\s+|\s+[-–—]+\s+|\s*#+\s*|
 _WORD = re.compile(r"[぀-ヿ㐀-鿿]|[^\W_぀-ヿ㐀-鿿]+")
 _TABLE_SEPARATOR = re.compile(r"^[\s|:-]+$")
 
+CHANGE_COLUMNS = frozenset(
+    {"change", "changes", "action", "edit", "modification", "status", "todo", "reason"}
+)
+"""Column titles of a plan of edits (T096): a table with one lists what to
+touch and why, a to-do for the files it names, not a description of the system
+(``Reason`` covers a "Files Must NOT Touch" table)."""
+
 
 def normalize_path(token: str) -> str:
     """``./src/``, ``/apps/api/**`` and `` `core/judge.py` `` name the paths
@@ -122,16 +130,28 @@ def described_entries(
     found: dict[str, tuple[int, str, str]] = {}
     parents: list[tuple[int, str]] = []
     fenced = False
+    header: str | None = None  # the table row just above, until a separator
+    change_list = False
     for number, line in enumerate(text.splitlines(), 1):
         if line.lstrip().startswith(("```", "~~~")):
             fenced = not fenced
             parents.clear()
+            header, change_list = None, False
             continue
         if len(line) > MAX_LINE_CHARS or not line.strip():
+            header, change_list = None, False
             continue
         if line.lstrip().startswith("|") and line.rstrip().endswith("|"):
+            if _TABLE_SEPARATOR.match(line):
+                change_list = header is not None and _is_change_header(header)
+                header = None
+                continue
+            header = line
+            if change_list:
+                continue
             path, described = _table_entry(line, known, base)
         else:
+            header, change_list = None, False
             depth = _LEAD.match(line).end()
             while parents and parents[-1][0] >= depth:
                 parents.pop()
@@ -147,6 +167,13 @@ def described_entries(
         if described and path not in found:
             found[path] = (number, path, line.strip())
     return list(found.values())
+
+
+def _is_change_header(row: str) -> bool:
+    cells = (
+        cell.strip().strip("`*_ ").lower() for cell in row.strip().strip("|").split("|")
+    )
+    return any(cell in CHANGE_COLUMNS for cell in cells)
 
 
 def _resolve(name: str, known: frozenset[str], prefixes: Sequence[str]) -> str | None:
@@ -205,14 +232,44 @@ def _section_at(lines: list[str], start: int) -> int:
     )
 
 
-def _architecture_section(text: str) -> tuple[int, str] | None:
-    """``(first line, text)`` of a section headed "Architecture"."""
-    match = ARCHITECTURE_HEADING.search(text)
-    if match is None:
-        return None
-    start = text.count("\n", 0, text.index("#", match.start()))
-    lines = text.splitlines()
-    return start, "\n".join(lines[start : _section_at(lines, start)])
+def _architecture_section(text: str, min_level: int = 1) -> tuple[int, str] | None:
+    """``(first line, text)`` of a section headed "Architecture" at heading
+    level ``min_level`` or deeper. A level-1 heading is the document's title,
+    whose section is the whole document (T096)."""
+    for match in ARCHITECTURE_HEADING.finditer(text):
+        hashes = text.index("#", match.start())
+        level = len(text[hashes:]) - len(text[hashes:].lstrip("#"))
+        if level < min_level:
+            continue
+        start = text.count("\n", 0, hashes)
+        lines = text.splitlines()
+        return start, "\n".join(lines[start : _section_at(lines, start)])
+    return None
+
+
+_URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://\S*")
+_CODE_SPAN = re.compile(r"`([^`\n]+)`")
+_PROSE_TOKEN = re.compile(r"[^\s`*,;:()\[\]|<>\"'=]+")
+
+
+def prose_paths(
+    text: str, known: frozenset[str], base: str = ""
+) -> list[tuple[int, str, str]]:
+    """``(line, path, line text)`` of each distinct real path ``text`` names,
+    at its first mention: an inline code span, or a bare token containing a
+    ``/`` (a bare word such as "api" is ordinary prose). URLs name nothing."""
+    found: dict[str, tuple[int, str, str]] = {}
+    for number, line in enumerate(text.splitlines(), 1):
+        if len(line) > MAX_LINE_CHARS:
+            continue
+        plain = _URL.sub(" ", line)
+        spans = _CODE_SPAN.findall(plain)
+        bare = [t for t in _PROSE_TOKEN.findall(_CODE_SPAN.sub(" ", plain)) if "/" in t]
+        for name in (*spans, *bare):
+            path = _resolve(name.rstrip(".").strip(), known, (base, ""))
+            if path is not None and path not in found:
+                found[path] = (number, path, line.strip())
+    return list(found.values())
 
 
 # ---------------------------------------------------------------------------
@@ -437,19 +494,29 @@ def _shape(name, path, text, known, patterns, directories=frozenset()):
     if name == ARCHITECTURE_DOC:
         parent = PurePosixPath(path).parent.as_posix()
         base = "" if parent == "." else parent
+        readme = PurePosixPath(path).name.lower().startswith("readme")
         entries = described_entries(text, known, base)
-        if len(entries) < MIN_DESCRIBED_ENTRIES:
-            return None, [], 0
-        if PurePosixPath(path).name.lower().startswith("readme"):
-            section = _architecture_section(text)
-            if section is not None:
-                start, body = section
-                inside = described_entries(body, known, base)
-                if len(inside) >= MIN_DESCRIBED_ENTRIES:
-                    cited = [(start + n, line) for n, _p, line in inside]
-                    return KIND_README_HEADING, cited, _size(entries, directories)
-        cited = [(n, line) for n, _p, line in entries]
-        return KIND_CONTENT, cited, _size(entries, directories)
+        if len(entries) >= MIN_DESCRIBED_ENTRIES:
+            if readme:
+                section = _architecture_section(text)
+                if section is not None:
+                    start, body = section
+                    inside = described_entries(body, known, base)
+                    if len(inside) >= MIN_DESCRIBED_ENTRIES:
+                        cited = [(start + n, line) for n, _p, line in inside]
+                        return KIND_README_HEADING, cited, _size(entries, directories)
+            cited = [(n, line) for n, _p, line in entries]
+            return KIND_CONTENT, cited, _size(entries, directories)
+        # T096: an architecture section in prose names its paths inline
+        section = _architecture_section(text, 2)
+        if section is not None:
+            start, body = section
+            named = prose_paths(body, known, base)
+            if len(named) >= MIN_DESCRIBED_ENTRIES:
+                cited = [(start + n, line) for n, _p, line in named]
+                kind = KIND_README_HEADING if readme else KIND_ARCHITECTURE_HEADING
+                return kind, cited, _size(named, directories)
+        return None, [], 0
     if name == DECISION_RECORD:
         found = decision_lines(text)
         return (KIND_CONTENT, found, 1) if found else (None, [], 0)
