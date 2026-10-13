@@ -27,6 +27,7 @@ import re
 from collections.abc import Iterator
 from pathlib import PurePosixPath
 
+from ..core.documents import scan_document_roles
 from ..core.git import run_git_text
 from ..core.metric_tables import curated_metric_tables
 from ..core.metrics import code_kind, trace_key_pattern
@@ -132,6 +133,7 @@ _Found = tuple[str, tuple[str, ...], Excerpt]
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """Yield AC trace evidence (kit-aware), then bounded requirement excerpts."""
+    scan_document_roles(context, ("requirements-doc",))
     if context.resolved_scope is not None or context.scope == "project":
         _doc_history(context)
         _code_facts(context)

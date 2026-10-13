@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from ..core.documents import scan_document_roles
 from ..core.metrics import ARCHITECTURE_HEADING
 from ..core.models import (
     DimensionContext,
@@ -61,6 +62,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     Import-statement lines of in-scope source files follow as the last tier
     (T050), so the import graph is measurable from this pack.
     """
+    scan_document_roles(context, (DOC_ROLE, "decision-record"))
     sources = _code_extract.source_candidates(context, "import excerpts")
     _code_extract.record_sample(context, NAME, sources)
     for excerpt in _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS):
