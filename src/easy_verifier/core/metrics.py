@@ -1620,7 +1620,7 @@ def _request_paths(view: _PackView) -> _Computed:
     that calls a DB/ORM API (T090). Reported, never scored: no rating rule
     reads it. Walks the edges T088's behaviour layers already built."""
     files, statements = _source_statements(view)
-    behaviour, _cited, _linked, graph = _behaviour_layers(view, files, statements)
+    behaviour, _cited, linked, graph = _behaviour_layers(view, files, statements)
     if graph is None:
         return MetricAbstention(
             reason="no behaviour evidence is registered for this language set, so "
@@ -1712,7 +1712,15 @@ def _request_paths(view: _PackView) -> _Computed:
         f"DB/ORM call in their own file, {via} through at least one other "
         f"in-repo module, {none} reach none by the import edges seen{cap}. "
         "Reported only: no rule, rating or overall reads it; the database "
-        "belongs to another service (user). " + _BEHAVIOUR_METHOD
+        "belongs to another service (user). "
+        + (
+            f"{len(linked)} dynamic import(s) with a literal directory prefix "
+            "link every file directly in that directory, so a path through one "
+            "names the first such file, not necessarily the one called. "
+            if linked
+            else ""
+        )
+        + _BEHAVIOUR_METHOD
         + "; only the import statements quoted in this pack are seen; "
         + _IMPORT_METHOD
     )

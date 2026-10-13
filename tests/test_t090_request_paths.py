@@ -168,3 +168,19 @@ def test_ac3_report_shows_a_folded_capped_list_in_the_architecture_card(
     assert (
         "GET /users: server/r.js:4 -&gt; lib/svc.js:1 -&gt; lib/store.js:4" in document
     )
+
+
+def test_a_path_through_a_dynamic_prefix_edge_says_it_names_one_of_many(
+    tmp_path,
+) -> None:
+    files = {
+        **EXPRESS,
+        "server/r.js": ROUTE.replace(
+            "require('../lib/svc')", "require('../lib/' + name)"
+        ),
+    }
+    metric = _paths(tmp_path, files)
+    assert "link every file directly in that directory" in metric.derivation
+    assert "names the first such file, not necessarily the one called" in (
+        metric.derivation
+    )
