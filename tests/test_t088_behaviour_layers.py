@@ -111,6 +111,7 @@ def test_sc3_array_find_never_makes_a_file_data() -> None:
         frozenset({"User"}),
         frozenset(),
         ((1, frozenset({"mongoose"})),),
+        data_line=7,
     )
 
 

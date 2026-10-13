@@ -657,6 +657,11 @@ class LayerEvidence:
     """``(line, prefix)`` per dynamic import whose directory part is a string
     literal (T088 AC 11): ``./controllers/`` of ``require('./controllers/' +
     name)``, ``pkg.mod.`` of ``importlib.import_module('pkg.mod.' + name)``."""
+    routes: tuple[Route, ...] = ()
+    """Every route the file registers (T090: reported, never scored)."""
+    data_line: int = 0
+    """1-indexed line of the first DB/ORM call, also in a file that registers
+    routes (its layer stays ``api``); 0 when there is none (T090)."""
 
 
 MAX_BINDING_ROUNDS = 4
@@ -808,21 +813,28 @@ def layer_evidence(
         defines.add("exports")
     routes = find_routes(text, route_tokens, syntax)
     handlers = frozenset(r.module for r in routes if r.module)
-    common = {
-        "defines": frozenset(defines),
-        "handlers": handlers,
-        "imports": tuple(imports),
-        "prefixes": _dynamic_prefixes(kept),
-    }
-    if routes:
-        return LayerEvidence("api", routes[0].line, **common)
+    data_line = 0
     for match in _RECEIVER_CHAIN.finditer(code) if calls and clients else ():
         if match[1] not in clients:
             continue
         for call in _CHAIN_CALL.finditer(match[2]):
             if call[1] in calls:
-                line = code.count("\n", 0, match.start(2) + call.start()) + 1
-                return LayerEvidence("data", line, **common)
+                data_line = code.count("\n", 0, match.start(2) + call.start()) + 1
+                break
+        if data_line:
+            break
+    common = {
+        "defines": frozenset(defines),
+        "handlers": handlers,
+        "imports": tuple(imports),
+        "prefixes": _dynamic_prefixes(kept),
+        "routes": routes,
+        "data_line": data_line,
+    }
+    if routes:
+        return LayerEvidence("api", routes[0].line, **common)
+    if data_line:
+        return LayerEvidence("data", data_line, **common)
     return LayerEvidence(None, **common)
 
 

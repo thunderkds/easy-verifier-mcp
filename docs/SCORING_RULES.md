@@ -85,6 +85,13 @@ apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in
 conventions are embedded for replay (T075). A README heading naming "Architecture" fills the
 `architecture-doc` role (coverage) and passes the description rule, citing the same excerpt.
 
+Unrated metric `request_paths` (T090, FR-077): per route (method, path, `file:line`), the shortest
+in-repo import path to a file that calls a DB/ORM API, each hop cited, with counts of routes whose own
+file makes the call, routes reaching one through other in-repo modules, and routes reaching none. It
+walks the same import edges as `layer_direction_violations`, is listed first 20 routes with the cap
+disclosed, and is **reported, never scored**: it has no weight and no rule reads it, so no rating,
+overall, improvement-plan item or area count changes with it. The database belongs to another service.
+
 supply-chain (T041, floor 0.40 and weights user-approved 2026-10-07): five roles (package manifest,
 lockfile, CI workflow, licence file, release configuration), so two of them reach the floor and a
 repository with none of them abstains with every role named.

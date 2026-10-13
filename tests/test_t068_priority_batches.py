@@ -559,6 +559,9 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # derivation text changed ("N documents read; none ...").
     # Regenerated for T089 AC 10-12: every rating, value and the overall (61)
     # are unchanged; only the decision/requirements shape text changed.
+    # Regenerated for T090 (request_paths): every rating, value and the overall
+    # are unchanged; only the unrated request_paths metric was added, in every
+    # pack like its layer sibling (no route in the fixture, so it abstains).
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 
