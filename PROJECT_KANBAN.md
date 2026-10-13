@@ -72,13 +72,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T091** — Bugfix: redaction masks ordinary paths whose name pieces mix letters then digits (`tests/test_t087_third_party_exclusion.py`; t029 tracked-path test red on develop since the T087 merge) | backend-developer | C1 | Risk: Med | P1 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T091** — Bugfix: redaction masks ordinary paths whose name pieces mix letters then digits (`tests/test_t087_third_party_exclusion.py`; t029 tracked-path test red on develop since the T087 merge) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-13 (root cause: `_NAME_PIECE` rejected letter-then-digit pieces like t087; added `[a-z]{1,6}[0-9]{1,8}`; boundary pinned by sabotage; t029 green; 2648 passed; bryony/kitchd redaction hits unchanged)
 - [x] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-13 (layers by behaviour + hints fallback; AC 11 dynamic-prefix imports: bryony --all service 0→30 via controller-manager.js:35 (54 controllers); coffee measured 0 violations (4 api by behaviour); kitchd 18%→28%, bryony 42%, ai-training framework_not_recognized — all still below the 0.50 share floor; follow-up: backend-only denominator pending user)
 - [x] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-12 (scraping-devops excludes docker-registry/harbor/ nested-project → 0 Harbor citations, overall withheld: own code is compose YAML + shell; bryony excludes frontend/app/scripts/vendor/ 19 files, 59 unchanged; kitchd/ai-training/coffee unchanged; 2609 passed; follow-up: infrastructure does not read compose YAML)
 - [x] **T078** — Repo-local / `.easy-verifier.toml` conventions used in scoring and embedded for byte-equal replay (toml items per-call only, user 2026-10-08) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-08 (layer_paths/route_tokens/requirement/issue patterns honour extras add-only; replay byte-equal with toml deleted, nothing written to disk; secret-shaped values dropped with a warning; no-toml payloads change only by the corrected disclosure text; 2465 passed, 2 known container failures)
