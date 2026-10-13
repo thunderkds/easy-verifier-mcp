@@ -14,6 +14,7 @@
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
 - [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2
+- 💡 Follow-ups from T089 (2026-10-13, no guide yet): (a) redaction `high_entropy_string` masks a WCAG URL path in this repo's README (`/WAI/WCAG22/Understanding/non-text-content.html`); (b) on kitchd and this repo, architecture-doc is filled by a task guide's Files-to-Change table (true content, weak citation)
 - 💡 Follow-up from T088 (2026-10-13, needs user decision): count the layer rule's classified-share floor only within the backend unit (the manifest folder containing route files), not repo-wide. kitchd would go 49/177 (28%) → 49/87 (56%), measured; bryony's Angular frontend would leave the denominator
 - 💡 Follow-up from T087 (2026-10-12, no guide yet): the infrastructure dimension does not read a repo's own Rancher/ELK/compose YAML. scraping-devops' "infrastructure 100" was all Harbor files; without Harbor it abstains
 
@@ -71,13 +72,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T089** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T087) | backend-developer | C2 | Risk: Med | P1 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T089** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T087) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-13 (document roles by content: scraping-devops arch-doc 1→0 via README "Folder structures"; coffee 1→0 via README src/ tree, architecture 80→90, overall 74→76; bryony event_design.md false pass removed (now backend/scripts/README.md by content); ai-training requirements via "## Functional Requirements"; decision-record needs a decision field; kit names out of GENERIC_PATTERNS; 2695 passed)
 - [x] **T091** — Bugfix: redaction masks ordinary paths whose name pieces mix letters then digits (`tests/test_t087_third_party_exclusion.py`; t029 tracked-path test red on develop since the T087 merge) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-13 (root cause: `_NAME_PIECE` rejected letter-then-digit pieces like t087; added `[a-z]{1,6}[0-9]{1,8}`; boundary pinned by sabotage; t029 green; 2648 passed; bryony/kitchd redaction hits unchanged)
 - [x] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-13 (layers by behaviour + hints fallback; AC 11 dynamic-prefix imports: bryony --all service 0→30 via controller-manager.js:35 (54 controllers); coffee measured 0 violations (4 api by behaviour); kitchd 18%→28%, bryony 42%, ai-training framework_not_recognized — all still below the 0.50 share floor; follow-up: backend-only denominator pending user)
 - [x] **T087** — Exclude third-party code from evaluation (Linguist vendor/generated, `.gitattributes`, toml `exclude`, nested third-party roots; disclosed) — scraping-devops' Harbor copy drives architecture 0 | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-12 (scraping-devops excludes docker-registry/harbor/ nested-project → 0 Harbor citations, overall withheld: own code is compose YAML + shell; bryony excludes frontend/app/scripts/vendor/ 19 files, 59 unchanged; kitchd/ai-training/coffee unchanged; 2609 passed; follow-up: infrastructure does not read compose YAML)
