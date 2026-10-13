@@ -207,6 +207,9 @@ The convention fields (T073, DDR-0011, FR-068) are read by
   ``"RECEIVER=<constructor>"`` call (``"RECEIVER=express("``);
   ``RECEIVER_PARAM=<export prefix>`` and ``RECEIVER_ASSIGN=property``
   bind weaker router-module names: T079;
+* ``data_tokens`` — per language (T088, DDR-0012): ``"MODULE=<module>"`` a
+  DB/ORM package and ``"CALL=<method>"`` its query methods, read by the
+  behaviour layer rule (:data:`DATA_TOKEN_KINDS`);
 * the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
   and local layer, never a language) holds the language-agnostic
   :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data|shared>=<glob>"``),
@@ -412,6 +415,7 @@ ENTRY_FIELDS = (
     "schema_constraint_markers",
     "migration_rollback_markers",
     "logging_markers",
+    "data_tokens",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
@@ -450,6 +454,13 @@ of the function a file exports (``module.exports =``), and
 parameter or of a constructor-bound name (``let webapp = app.webapp``);
 such a name counts only for a call with a ``/`` path literal and a
 function handler or a middleware chain."""
+
+DATA_TOKEN_KINDS = ("MODULE", "CALL")
+"""``data_tokens`` kinds (T088, DDR-0012): ``MODULE=<module>`` names a DB/ORM
+package whose imported names are clients or models; ``CALL=<method>`` a method
+that, called on such a name (or on a name bound from one in the same file, or
+imported from an in-repo file that binds one), is a DB/ORM call. A method on
+any other receiver (``[].find(``) is never evidence."""
 
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
 REQUIREMENT_ITEM_KINDS = ("id", "line")
@@ -507,6 +518,10 @@ _VALUE_SHAPES = {
         + ", ".join(HTTP_METHODS)
         + ", e.g. GET=@Get(; or RECEIVER=<constructor>, e.g. RECEIVER=express(",
     ),
+    "data_tokens": (
+        re.compile(rf"^({'|'.join(DATA_TOKEN_KINDS)})=[A-Za-z0-9_$@][A-Za-z0-9_$@/.-]*$"),
+        "MODULE=<module> or CALL=<method>, e.g. MODULE=mongoose, CALL=find (T088)",
+    ),
     "route_files": (
         re.compile(r"^[a-z0-9][a-z0-9-]*=\S+$"),
         "<language>=<glob>, e.g. ruby=config/routes.rb (T075)",
@@ -534,6 +549,7 @@ _PREFIXED_FIELDS = frozenset(
     {
         "layer_paths",
         "route_tokens",
+        "data_tokens",
         "requirement_item_patterns",
         "route_files",
         "phi_values",

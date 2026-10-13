@@ -664,3 +664,31 @@ source_tag = "curated"
 value = ["bunyan", "log4js"]
 citation_url = "https://github.com/trentm/node-bunyan#introduction"
 source_tag = "curated"
+# Data evidence (T088, DDR-0012): "MODULE=<package>" names a DB/ORM package
+# whose imported names are clients or models; "CALL=<method>" is a DB/ORM call
+# only on such a name (or one bound from it, or imported from an in-repo file
+# binding one). A method on any other receiver ([].find) is never evidence.
+[[data_tokens]]
+value = ["MODULE=mongoose", "CALL=find", "CALL=findOne", "CALL=findById", "CALL=findOneAndUpdate", "CALL=findOneAndDelete", "CALL=findByIdAndUpdate", "CALL=findByIdAndDelete", "CALL=updateOne", "CALL=updateMany", "CALL=deleteOne", "CALL=deleteMany", "CALL=insertMany", "CALL=create", "CALL=countDocuments", "CALL=aggregate", "CALL=distinct"]
+citation_url = "https://mongoosejs.com/docs/api/model.html"
+source_tag = "curated"
+[[data_tokens]]
+value = ["MODULE=pg", "CALL=query", "CALL=connect"]
+citation_url = "https://node-postgres.com/apis/pool"
+source_tag = "curated"
+[[data_tokens]]
+value = ["MODULE=mysql2", "CALL=query", "CALL=execute"]
+citation_url = "https://sidorares.github.io/node-mysql2/docs"
+source_tag = "curated"
+[[data_tokens]]
+value = ["MODULE=knex", "CALL=select", "CALL=insert", "CALL=update", "CALL=del", "CALL=where", "CALL=first", "CALL=raw", "CALL=transaction"]
+citation_url = "https://knexjs.org/guide/query-builder.html"
+source_tag = "curated"
+[[data_tokens]]
+value = ["MODULE=typeorm", "CALL=find", "CALL=findOne", "CALL=findBy", "CALL=findOneBy", "CALL=save", "CALL=insert", "CALL=update", "CALL=delete", "CALL=remove", "CALL=count", "CALL=createQueryBuilder", "CALL=query", "CALL=getRepository"]
+citation_url = "https://typeorm.io/repository-api"
+source_tag = "curated"
+[[data_tokens]]
+value = ["MODULE=@prisma/client", "CALL=findUnique", "CALL=findUniqueOrThrow", "CALL=findFirst", "CALL=findFirstOrThrow", "CALL=findMany", "CALL=create", "CALL=createMany", "CALL=update", "CALL=updateMany", "CALL=upsert", "CALL=delete", "CALL=deleteMany", "CALL=count", "CALL=aggregate", "CALL=groupBy", "CALL=$queryRaw", "CALL=$executeRaw", "CALL=$transaction"]
+citation_url = "https://www.prisma.io/docs/orm/reference/prisma-client-reference"
+source_tag = "curated"

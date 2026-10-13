@@ -179,10 +179,12 @@ def metric_tables(
     # The curated layer_paths (T074); structure imports this module, hence
     # the late import. A scoring call binds its resolved conventions (local
     # layer, .easy-verifier.toml) through with_conventions (T078).
-    from .structure import layer_of
+    from .structure import behaviour_evidence, layer_of
 
     return dataclasses.replace(
-        tables, layer_of=lambda path: layer_of(path, tables=tables)
+        tables,
+        layer_of=lambda path: layer_of(path, tables=tables),
+        layer_evidence=behaviour_evidence(None, tables),
     )
 
 
@@ -191,7 +193,7 @@ def with_conventions(
 ) -> LanguageTables:
     """``tables`` classifying layers by ``conventions``' ``layer_paths``
     (T078), with a note naming the sources that applied."""
-    from .structure import convention_values, layer_of
+    from .structure import behaviour_evidence, convention_values, layer_of
 
     paths = convention_values(conventions, "layer_paths")
     extra = [
@@ -217,6 +219,7 @@ def with_conventions(
     return dataclasses.replace(
         tables,
         layer_of=lambda path: layer_of(path, paths, tables=tables),
+        layer_evidence=behaviour_evidence(conventions, tables),
         layer_paths_note=note,
     )
 
@@ -440,6 +443,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_strict_off": _STRICT,
     "type_config_extends": _STRICT,
     "route_tokens": (),  # T073: read by core/structure.py; its rule lands in T075
+    "data_tokens": ("layer_direction_violations",),  # T088: behaviour layers
     "swallowed_errors": _SWALLOWED,
     "outbound_calls": _TIMEOUTS,
     "call_timeouts": _TIMEOUTS,
@@ -487,6 +491,10 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "language without the field is not credited with that evidence, and the "
         "data rule abstains where nothing else shows it (T045)",
     ),
+    "data_tokens": "only the first set of frameworks declares it (T088: "
+    "JS/TS and Python); a language without it observes no data layer, and the "
+    "layer rule falls back to the layer_paths hints or abstains "
+    "framework_not_recognized",
     "logging_markers": "only languages with a logging or tracing library "
     "declare it; a language without the field is not credited with that "
     "evidence (T046)",

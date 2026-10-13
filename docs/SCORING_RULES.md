@@ -68,7 +68,16 @@ architecture (DDR-0011, T074): documents carry 20 and code 80. A missing archite
 decision record is a failed rule whenever the role search ran, never missing evidence. Coverage also
 seeks "source files with import statements", so a repository with code and a README reaches the
 0.40 floor. `layer_direction_violations` counts import statements from a lower to a higher layer
-(data → service, service → api, data → api) between files the `layer_paths` conventions classify;
+(data → service, service → api, data → api) between in-repo files whose layer comes from **what their
+code does** (T088, DDR-0012): *api* registers a route (`route_tokens`, T079 receivers) or is the
+module of a dotted route handler; *data* calls a cited `data_tokens` DB/ORM method on a client or
+model name imported from a DB/ORM package (Mongoose, pg, mysql2, Knex, TypeORM, Prisma, SQLAlchemy,
+Django), bound from one, or imported from an in-repo file binding one (`[].find(` never counts);
+*service* is a file on an import path from an api file to a data file. A file with routes and DB
+calls is api, and its DB access is never scored (the DB is another service's boundary). The
+`layer_paths` conventions are hints: they classify only what behaviour does not, and each
+disagreement (file, hint, behaviour, evidence line) is listed in the derivation. With no route or DB
+call observed and too few hints, the rule abstains `framework_not_recognized`;
 `shared` files (modules, config, utils, constants, enums, types) and unclassified files never count,
 and the rule abstains when fewer than 50% of the non-shared source files quoted classify. DTOs,
 schemas, exceptions and providers are `shared` boundary contracts. Only the curated `layer_paths`
@@ -208,7 +217,7 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | architecture | `architecture_description_missing` | 10 | = 0 | `roles.architecture-doc`; a README heading naming "Architecture" also passes |
 | | `decision_records_missing` | 10 | = 0 | `roles.decision-record` |
 | | `top_level_import_cycles` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax` |
-| | `layer_direction_violations` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax`, conventions `layer_paths` |
+| | `layer_direction_violations` | 40 | = 0 | `source_extensions`, delimiters, `import_syntax`, `route_tokens`, `data_tokens` (behaviour, T088), conventions `layer_paths` (hints) |
 | requirement-fidelity | `requirements_doc_missing` | 10 | = 0 | `roles.requirements-doc`; a missing document fails (1) once the role search ran to completion. `requirements_docs_count` stays computed, unrated (T077) |
 | | `code_commits_with_docs_share` | 10 | ≥ 0.30 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*; the target's own git history, paths relative to it (a subdirectory of a larger repository reads only its own commits, T077). No document = the real share from history, not an abstention (T075) |
 | | `routes_without_test_share` | 40 | ≤ 0.20 | `source_extensions`, delimiters, `route_tokens`, conventions `route_files`, `test_name_patterns`; whole files; a route is tested when a test names its path's static segments or its handler; abstains with no route |

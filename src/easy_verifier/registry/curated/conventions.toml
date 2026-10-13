@@ -4,6 +4,10 @@
 # conventions.toml or .easy-verifier.toml [conventions]; nothing here is the
 # only accepted form.
 #
+# layer_paths are HINTS (T088, DDR-0012): a file's layer comes from what its code
+# does (route -> api, DB/ORM call -> data, on the import path between -> service);
+# a path hint classifies only a file behaviour does not, and a disagreement is
+# reported, behaviour winning.
 # layer_paths: "<api|service|data|shared>=<repository glob>"; a file matching
 # two layers stays unclassified. "shared" marks cross-cutting files (modules,
 # config, utils, constants, enums, types): they are left out of the layer

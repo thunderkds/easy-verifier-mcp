@@ -517,6 +517,9 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T082 (FR-073): no rating or overall changed; the payload
     # gained areas_measured and areas_without_rule, and the overall disclosure
     # gained "measured 3 of 32 evaluation areas". Nothing else differs.
+    # Regenerated for T088 (behaviour layers): only the layer rule's abstention
+    # text changed (framework_not_recognized: no route or DB/ORM call in the
+    # fixture); every rating, value and the overall are byte-identical.
     # Merged T082 + T043 (2026-10-06): both additions above, regenerated together.
     # Regenerated for T078: only the layer_paths disclosure text changed
     # ("curated layer_paths only: ..."); every other byte is identical.

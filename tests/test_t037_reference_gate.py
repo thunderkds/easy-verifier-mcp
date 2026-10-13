@@ -239,6 +239,7 @@ def test_optional_fields_are_never_required():
         "test_candidates",
         "colocated_test_name_patterns",
         "type_stub_names",  # T040: only TypeScript generates code-suffix stubs
+        "data_tokens",  # T088: only the first framework set (JS/TS, Python)
         # T056 (user 2026-09-29): cookie flags refine the cookie metric, and
         # only languages with a type checker have its configuration.
         "cookie_secure",
