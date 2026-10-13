@@ -35,6 +35,7 @@ from pathlib import Path, PurePosixPath
 from .batches import BatchInputError, parse_batches
 from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
 from .findings import ValidationError
+from .iac_content import classify
 from .judge import (  # noqa: F401  (AGENT_INSTRUCTION_PATTERNS re-exported)
     AGENT_INSTRUCTION_PATTERNS,
     PACK_FLOORS,
@@ -76,6 +77,14 @@ it is reported as a pack warning, never a silent stop (NFR-009)."""
 MAX_ROLE_WALK_FILES = 20_000
 """Files examined by one resolution walk. Hitting it is reported as a warning
 and in the miss reason of every role left unfilled."""
+
+MAX_CONTENT_CANDIDATES = 1000
+"""YAML files whose content one resolution examines (T094); hitting it is a
+pack warning, never a silent stop (NFR-009)."""
+
+MAX_CONTENT_BYTES = 256 * 1024
+"""Bytes read of one candidate: the top-level keys sit at the head of a
+manifest, so a larger file (a data dump) is judged on its first part only."""
 
 ORIGIN_RULES = "rules"
 ORIGIN_CONFIG = "config"
@@ -1381,6 +1390,10 @@ class RoleResolution:
     out), in walk order: the repository file set document recognition checks
     entry paths against (T089), so nothing is walked twice."""
 
+    content_truncated: bool = False
+    """More unplaced YAML files than ``MAX_CONTENT_CANDIDATES`` were walked
+    (T094); the rest were not examined by content."""
+
 
 _TEMPLATE_DIRS = frozenset({"template", "templates"})
 _TEMPLATE_NAME = re.compile(r"[._-]template\.", re.IGNORECASE)
@@ -1435,6 +1448,10 @@ def resolve(
         {PurePosixPath(path).name for path in walked}
     )
 
+    by_content, content_truncated = _placed_by_content(
+        root, roles, walked, registry, ecosystems, config
+    )
+
     files: dict[str, tuple[str, ...]] = {}
     origins: dict[tuple[str, str], str] = {}
     truncated: list[str] = []
@@ -1460,6 +1477,8 @@ def resolve(
                 matched[path] = ORIGIN_RULES
             elif config_match is not None and config_match(path):
                 matched[path] = ORIGIN_CONFIG
+        for path in by_content.get(item.name, ()):
+            matched.setdefault(path, ORIGIN_RULES)
         kept = sorted(matched)
         if len(kept) > MAX_ROLE_FILES:
             truncated.append(item.name)
@@ -1479,7 +1498,77 @@ def resolve(
         truncated_roles=tuple(truncated),
         walk_truncated=walk_truncated,
         walked=tuple(walked),
+        content_truncated=content_truncated,
     )
+
+
+_CONTENT_ROLES = ("k8s-manifest", "container-config", "cloud-template")
+_YAML_SUFFIXES = (".yml", ".yaml")
+
+
+def _placed_by_content(
+    root: Path,
+    roles: Sequence[SourceRole],
+    walked: Sequence[str],
+    registry: Registry,
+    ecosystems: tuple[str, ...],
+    config: Mapping[str, Sequence[str]],
+) -> tuple[dict[str, list[str]], bool]:
+    """Walked YAML files no name pattern places, filled into the requested
+    infrastructure roles by content (T094, DDR-0012). Each candidate is read
+    once, bounded; a name match for any of the three roles wins."""
+    wanted = {item.name for item in roles if item.patterns} & set(_CONTENT_ROLES)
+    if not wanted:
+        return {}, False
+    named = [
+        _matcher(GENERIC_PATTERNS[name] + registry.patterns_for(name, ecosystems))
+        for name in _CONTENT_ROLES
+    ]
+    named += [
+        _config_matcher(patterns)
+        for name in _CONTENT_ROLES
+        for patterns in (
+            registry.patterns_for(name, ecosystems, local=True),
+            tuple(config.get(name, ())),
+        )
+        if patterns
+    ]
+    candidates = [
+        path
+        for path in walked
+        if path.lower().endswith(_YAML_SUFFIXES)
+        and not any(match(path) for match in named)
+    ]
+    placed: dict[str, list[str]] = {}
+    for path in candidates[:MAX_CONTENT_CANDIDATES]:
+        text = _read_head(root, path)
+        if text is None:
+            continue
+        for name in classify(text) & wanted:
+            placed.setdefault(name, []).append(path)
+    return placed, len(candidates) > MAX_CONTENT_CANDIDATES
+
+
+def _read_head(root: Path, relative: str) -> str | None:
+    """The first ``MAX_CONTENT_BYTES`` of a contained, non-secret-bearing
+    regular file as text, else ``None`` (a placement check, not evidence)."""
+    path = root / relative
+    try:
+        resolved = path.resolve()
+        if not resolved.is_relative_to(root.resolve()) or not resolved.is_file():
+            return None
+        if _is_secret_bearing(relative) or _is_secret_bearing(resolved.name):
+            return None
+        with resolved.open("rb") as handle:
+            raw = handle.read(MAX_CONTENT_BYTES)
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            if len(raw) < MAX_CONTENT_BYTES:
+                return None
+            return raw.decode("utf-8", errors="ignore")  # cut mid-character
+    except OSError:
+        return None
 
 
 def walked_role_paths(resolution: RoleResolution, name: str) -> tuple[str, ...]:
@@ -1522,6 +1611,12 @@ def resolution_warnings(resolution: RoleResolution) -> tuple[str, ...]:
             f"Source-role resolution was bounded at {MAX_ROLE_WALK_FILES} walked "
             "files; files beyond it were never examined, so an unfilled role here "
             "is not a repository-wide absence."
+        )
+    if resolution.content_truncated:
+        warnings.append(
+            f"Infrastructure YAML recognition by content examined only the first "
+            f"{MAX_CONTENT_CANDIDATES} unplaced .yml/.yaml files in sorted path "
+            "order; later ones were not examined."
         )
     return tuple(warnings)
 
