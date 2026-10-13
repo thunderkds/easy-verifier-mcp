@@ -749,3 +749,67 @@ on develop with **colliding IDs T083–T086**; T079 was re-guided although alrea
 retest ran against stale code. **Fix**: at session start, run
 `git for-each-ref refs/heads` with `rev-list --count develop..<b>` and treat any branch far ahead as
 the live state before assigning IDs or scanning.
+
+## 2026-10-12 — T087 merged: one third-party predicate, and what excluding Harbor revealed
+
+- `scope.third_party_filter(repo)` is the single source for third-party exclusion. It is called by
+  both walks (`scope._walk_files`, `context._walk`), the narrow scopes, role picks and blast-radius
+  churn ranking (which reads `git ls-files` and bypassed both walks). There is now only one
+  `_EXCLUDED_DIRS` (context's). `vendor` left that silent set: it is excluded and **disclosed** as
+  third-party in the payload's `excluded` list.
+- Removing a vendored copy can remove *every* rating. On scraping-devops, all ratings except security
+  cited only Harbor files. Without Harbor, the repo is compose YAML plus shell and everything
+  abstains. Earlier ratings had been grading someone else's code, and "infrastructure 100" was
+  Harbor's. Follow-up: the infrastructure dimension does not read the repo's own Rancher/ELK
+  compose YAML.
+- The merge gate reads the KANBAN **before** the command runs. Commit the KANBAN Done move in a
+  separate Bash call from the merge.
+
+## 2026-10-13 — T088 merged: behaviour layers work; the share denominator now decides
+
+- Data evidence counts only on a name bound to a `data_tokens` `MODULE=` import, directly or through
+  in-repo binding/import, so `[].find(` is never data. Dotted route handlers (`views.index`) make
+  their module api.
+- Dynamic imports with a literal directory prefix (`require('./controllers/' + name)`) link to every
+  file in that directory (AC 11). This is how bryony's 54 controllers became reachable (service
+  0→30). User: "find a way", not "no static path".
+- Even so, kitchd (28%) and bryony (42%) abstain, because the classified-share floor counts the whole
+  repo, including frontend apps that can never be api/service/data. A backend-only denominator is a
+  user decision (score-affecting) and is on the KANBAN as a follow-up.
+- The `pre_agent_step_limit` hook counts the **Supervisor's** Bash calls against the task in
+  `.claude/hooks/.state/active_task`. After an agent finishes, its 90-call budget is charged to the
+  Supervisor's review calls too.
+
+## 2026-10-13 — T091: a "still fingerprints" negative that passed before the fix pins nothing
+
+The first T091 negatives (`main-3f9a2b1c.js`, `xQzRt…`) were caught by *other* rules, so a widened
+`_LETTER_DIGIT_PIECE` would have passed every test. Boundary tests that only the changed rule decides
+(`abcdefg087`: past the {1,6} letter bound; `Ab087`: mixed case), proven by a widening sabotage, are
+what pins it. Ask: "does this negative fail if I widen exactly the thing I changed?"
+
+## 2026-10-13 — T089 merged: content-shape recognition needed three precision rounds
+
+Each content rule, taken literally, had a real-repo false positive. Status+Context made a requirements
+doc an ADR; a bare "## Requirements" over Node/Npm counted as requirements; templates qualified as
+anything. Each was found only by running the 6 repos, never by the fixtures. Expect the same for any
+new content-shape recognizer: budget a precision round per real repo. `PROJECT_SPEC.md` /
+`BRAINSTORMING_LOG*.md` are no longer generic names. Kit repos are recognized by content
+(BRAINSTORMING_LOG "Alternative Paths" + "Recommended Path"). Document scanning happens at
+`collect` (`core/documents.py`), because metrics do no I/O.
+
+## 2026-10-13 — Wave 17 (T087–T091) complete on develop
+
+T087 third-party exclusion, T088 behaviour layers (+AC 11 dynamic-prefix edges), T089 document
+roles by content, T090 request_paths (unrated) and T091 redaction letter+digit pieces are all merged
+(ff3f9cd). Open follow-ups on the KANBAN: backend-only layer-share denominator (needs the user),
+infrastructure not reading compose YAML, WCAG URL redaction false positive, and the kitchd
+arch-doc citation from a task file list.
+
+## 2026-10-13 — T093: making a rule *measurable* exposed its false positives; hold the merge
+
+Once kitchd's layer rule produced a number, all 4 cited violations were false: 3 had a hint-only end
+(`*.decorator.*`, `**/api/**` matching the app folder `apps/api`) and 1 was a stem match into
+another package (`users.service` → `apps/web/src/routes/auth.ts`). Fixed before merge: shared wins a
+hint conflict, a violation needs behaviour at both ends, and import targets resolve within the
+importer's manifest unit. Lesson: when a change turns an abstention into a number, hand-check every
+cited item before merging. A new false penalty is worse than the abstention it replaced.

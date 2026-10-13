@@ -1037,3 +1037,34 @@ scored: the DB is another service, so only in-repo code is scored. Document role
 content shape or declaration, never by a name alone; kit names leave GENERIC_PATTERNS. Vendored-code
 exclusion is a prerequisite. DDR-0011 weights are unchanged. Log:
 `BRAINSTORMING_LOG_document-recognition.md`.
+
+## 2026-10-12 — T087: Linguist vendor.yml is a language-stats list; use only its third-party categories
+
+The implementer found the guide's premise wrong: Linguist `vendor.yml` excludes files from
+*language statistics* (CI configs, `.d.ts`, `dist/`, fixtures, `Vagrantfile`, `[Ee]xtern(als?)?/`),
+and `generated.rb` is Ruby code that counts lockfiles. Used verbatim, it would exclude team code on
+kitchd, bryony and coffee-shop-api. Decision (Supervisor, Option A): vendor a filtered, pinned
+snapshot of the third-party categories only; drop `extern/` (bryony team scripts); "generated"
+comes only from `.gitattributes`. A single path predicate is shared by both walkers
+(`scope._walk_files`, `context._walk`), whose `_EXCLUDED_DIRS` sets disagreed (context had
+`vendor`/`target`). → see DDR-0012 §5
+
+## 2026-10-13 — T089 content-shape precision (Supervisor, implementer findings 1–4)
+
+- architecture-doc: the document with the most described entries wins. "First that qualifies"
+  cited kitchd's BRAINSTORMING_LOG planned-file list over PROJECT_SPEC.
+- decision-record needs a decision field (Decision / Decision Outcome / Recommended Path / Chosen /
+  Selected / Approved direction) plus context-or-alternatives. Context + Status alone made
+  ai-training's requirements doc count as an ADR (architecture 83→100, a false pass). This also
+  brings kit brainstorming logs back for solution-fit by content, after the name pattern was
+  removed.
+- requirements-doc: a requirements-named heading followed by ≥3 list items also fills it. "Find a
+  way": ai-training's "## Functional Requirements" bullets have no FR/US ids.
+  `requirement_items_traced_share` is unchanged. → see DDR-0012 §3
+
+## 2026-10-13 — User: test-path sink hits are shown but not scored (T092); backend-only layer share (T093)
+
+The user agreed to both suggestions ("yes, agree"). (1) `sink_hits_observed` counts only non-test
+hits; test hits are listed and tagged `[test path]`; only test files scanned → abstain. coffee
+security 18→59. (2) The layer classified-share floor counts only backend units (nearest manifest
+above api files). Planned as T093.
