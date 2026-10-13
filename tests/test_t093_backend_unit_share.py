@@ -241,3 +241,34 @@ def test_ac9_sabotaged_conflict_unclassified_abstains(tmp_path, monkeypatch) -> 
     metric = _layer(tmp_path, files)
     assert metric.abstained
     assert "3 of 7 non-shared" in metric.outcome.reason
+
+
+# --- Amendment 2 (AC 11, AC 13): a violation needs behaviour at both ends ---
+
+HINT_ENDS = {
+    **_backend(""),
+    # api by the *.controller.* hint only: registers no route.
+    "src/thing.controller.js": "module.exports = { KIND: 'x' };\n",
+    # data by the models/** hint only: calls no DB API, imports the route file.
+    "src/models/shape.js": (
+        "const routes = require('../routes');\nmodule.exports = {};\n"
+    ),
+}
+HINT_ENDS["src/store.js"] = "const thing = require('./thing.controller');\n" + STORE
+
+
+def test_ac11_hint_only_ends_are_never_violations(tmp_path) -> None:
+    metric = _layer(tmp_path, HINT_ENDS)
+    assert not metric.abstained, metric.outcome
+    assert metric.outcome == 0
+    # hint-only files still count in the share
+    assert "5 of 5 non-shared" in metric.derivation
+    assert "a violation needs a layer from behaviour at both ends" in metric.derivation
+
+
+def test_ac11_sabotaged_hint_ends_count_again(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(metrics_module, "_is_violation_end", lambda *_args: True)
+    metric = _layer(tmp_path, HINT_ENDS)
+    assert metric.outcome == 2, metric.derivation
+    assert "src/store.js:1 (data -> api)" in metric.derivation
+    assert "src/models/shape.js:1 (data -> api)" in metric.derivation

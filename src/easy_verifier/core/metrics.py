@@ -1559,6 +1559,12 @@ def _in_backend_unit(path: str, homes: Sequence[str], units: Sequence[str]) -> b
     return not units or _unit_of(path, homes) in units
 
 
+def _is_violation_end(path: str, behaviour: Mapping[str, str]) -> bool:
+    """Whether ``path`` may be either end of a violation (T093, AC 11): only
+    a layer from behaviour evidence; a hint-only layer never decides one."""
+    return path in behaviour
+
+
 def _layer_direction_violations(view: _PackView) -> _Computed:
     files, statements = _source_statements(view)
     if not statements:
@@ -1600,8 +1606,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             + ") are not counted in this share: a backend unit is the deepest "
             "directory holding a package manifest at or above a file that "
             "registers a route, and a file belongs to the deepest such directory "
-            "above it; violations are still counted over all "
-            f"{len(classified)} classified file(s)"
+            "above it; violations are not limited to backend units"
         )
     disagreed = (
         f"; {len(disagreements)} disagreement(s) with the layer_paths hints, "
@@ -1638,9 +1643,11 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
                 + disagreed + "; " + view.tables.layer_paths_note
             )
         )
+    # Only files classified by behaviour are violation ends (T093, AC 11).
+    ends = {p: lay for p, lay in classified.items() if _is_violation_end(p, behaviour)}
     # A stem shared by files of different layers names no layer: skipped.
     by_name: dict[str, set[str]] = {}
-    for path, layer in classified.items():
+    for path, layer in ends.items():
         by_name.setdefault(_file_name(path), set()).add(layer)
     targets = {
         name: found.pop()
@@ -1650,7 +1657,7 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
     patterns = {name: _names_pattern([name]) for name in targets}
     violations: list[tuple[Excerpt, int, str, str]] = []
     for excerpt, line, text in statements:
-        source = classified.get(excerpt.path)
+        source = ends.get(excerpt.path)
         if source is None:
             continue
         higher = sorted(
@@ -1678,7 +1685,9 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         + (f", e.g. {examples}" if examples else "")
         + f". {share} ({view.tables.layer_paths_note}){disagreed}. "
         + _BEHAVIOUR_METHOD
-        + "; "
+        + "; a violation needs a layer from behaviour at both ends: the "
+        f"{len(classified) - len(ends)} file(s) classified by the layer_paths "
+        "hints only count in the share but are never a violation end; "
         "shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "
