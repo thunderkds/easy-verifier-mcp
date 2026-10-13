@@ -19,7 +19,7 @@
 | Negative cases hold | ☒ pass (implementer) | no api file -> whole repository (AC3 test + ai-training byte-identical derivation); single manifest -> same value (coffee 0, 35/35); outside-unit violation still counted. |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☒ pass (implementer) | full suite on `3abe66d`: `2 failed, 2720 passed, 2 skipped in 621.71s`; the 2 failures are the known stale-image container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). After the amendment, on `9acb04a`: `2 failed, 2724 passed, 2 skipped in 586.28s`, with the same 2 container tests failing. |
+| Full smoke suite still green (no regression) | ☒ pass (implementer) | full suite on `3abe66d`: `2 failed, 2720 passed, 2 skipped in 621.71s`; the 2 failures are the known stale-image container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). After the amendment, on `9acb04a`: `2 failed, 2724 passed, 2 skipped in 586.28s`, with the same 2 container tests failing. After amendment 2, on `1a472bb`: `3 failed, 2727 passed, 2 skipped in 526.75s`, with the 2 known container tests plus `test_score_with_the_same_picks_matches_across_adapters`. That third test passes when re-run alone on the same commit (`1 passed, 5 deselected in 13.00s`), so it is a load flake, not a regression. |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
 | **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
@@ -199,6 +199,55 @@ Not fixed here, because each fix is outside AC 8–10. Candidate follow-ups: (a)
 (`**/api/**`) should not classify a file that a file-name hint or behaviour does not; (b) violation
 targets should be resolved within the source file's own unit or package, not by a repository-wide
 stem match; (c) `*.decorator.*` as api.
+
+**AFTER (amendment 2, AC 11–13; `7200d07` AC 11, `5eb89f3` T078 tests, `1a472bb` AC 12)**
+
+```
+# kitchd  started 2026-10-13T08:57:13Z  exit 0 finished 2026-10-13T08:57:27Z
+layer_direction_violations: value 0: "0 import statement(s) from a lower to a higher layer [...]. 43 of
+  45 non-shared source file(s) in backend unit(s) (apps/api) classify [...]; 89 non-shared source
+  file(s) outside backend units (apps/mobile, apps/web, packages/shared, the repository root) are not
+  counted in this share: [...]; violations are not limited to backend units [...]; a violation needs
+  a layer from behaviour at both ends: the 12 file(s) classified by the layer_paths hints only count
+  in the share but are never a violation end; an import's target is matched only among files of the
+  importer's own manifest unit (the deepest directory holding a package manifest above it); [...]"
+architecture rating: 100
+overall: 56
+
+# coffee-shop-api  started 2026-10-13T08:57:27Z  exit 0 finished 2026-10-13T08:57:31Z
+layer_direction_violations: value 0, 35 of 35 (root unit); derivation adds only the AC 11/12 sentence
+  ("the 31 file(s) classified by the layer_paths hints only [...]")
+architecture rating: 90
+overall: 81
+```
+
+| Repo | Share | Measured | Violations | Architecture | Overall |
+|---|---|---|---|---|---|
+| kitchd | 43/45 | yes | 4 → **0** | 60 → 100 | 51 → 56 |
+| coffee-shop-api | 35/35 | yes | 0 → 0 | 90 | 81 |
+| bryony `--all` | 148/515 | no | – | 83 (not re-run) | 42 |
+| ai-training | 2/79 | no | – | 83 (not re-run) | 60 |
+
+AC 13 hand-check: kitchd cites 0 violations, so there is nothing to check. The 4 earlier false positives
+are gone: cases 1–3 had a hint-only api end (AC 11), and case 4 was a cross-unit stem match (AC 12).
+coffee's 0 is now structural, because only its 4 api files are behaviour-classified (no data by
+behaviour), so no violation end pair exists.
+bryony and ai-training were not re-run because AC 11/12 cannot change them. Both rules act only in
+the violation loop, which runs after the share check, and both repos abstain before it: bryony at
+148/515 (the share computation is untouched), and ai-training via `framework_not_recognized` (no api
+file). The only possible difference is bryony's abstention text, where "violations are still counted
+over all N classified file(s)" became "violations are not limited to backend units".
+
+Tests (AC 13, both rules pinned at both extremes): `test_ac11_hint_only_ends_are_never_violations`
+(0, while hint-only files still count 5 of 5) with `test_ac11_sabotaged_hint_ends_count_again`
+(`_is_violation_end -> True` gives 2). `test_ac12_import_target_resolves_only_within_the_importers_unit`
+(0) with `test_ac12_sabotaged_whole_repo_targets_count_the_cross_unit_import` (`_import_unit -> ""`
+gives 1). `test_ac12_same_unit_violation_in_another_package_still_counts` (1). Before each rule,
+its tests failed (AC 11 fixture: value 2; AC 12: 3 red).
+Prior-task tests changed by AC 11: `tests/test_t074_architecture_code_rules.py`, where the
+hint-only fixture now asserts 0 and the hint-only count (the behaviour case is T088 sc2), and 3 tests
+in `tests/test_t078_repo_conventions.py`. A declared `layer_paths` now shows in the share
+(2 of 3 bare → 3 of 3), not as a hint-only violation. Layer test files: `135 passed`.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
