@@ -33,8 +33,18 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-13T07:49Z-07:50Z at base `f758d75`, before any implementation commit; command per repo: `PYTHONPATH=<worktree>/src .venv/bin/python -m easy_verifier.adapters.cli score --repo <repo> --scope project < /dev/null`, run one at a time):
+
+| repo | run (UTC) | security | overall | sink_hits_observed (security pack) |
+|------|-----------|----------|---------|------------------------------------|
+| coffee-shop-api | 07:49:52-07:49:56 | **18** | 76 | **1** -> fails (earned 0/35) |
+| bryony | 07:49:56-07:50:30 | **50** | 59 | **0** -> passes (35/35) |
+| kitchd | 07:50:30-07:50:45 | **59** | 56 | **0** -> passes (35/35) |
+
+Derivations (verbatim, method tail elided):
+- coffee: `1 dangerous-sink hit(s) in 17 excerpt(s): test/reset-test-db.ts:25 CWE-89 (https://cwe.mitre.org/data/definitions/89.html) [test path]`; computed_from `test/reset-test-db.ts:25-25`
+- bryony: `0 dangerous-sink hit(s) in 16 excerpt(s): none`
+- kitchd: `0 dangerous-sink hit(s) in 17 excerpt(s): none` (cites `apps/web/src/routes/AuthGuard.test.tsx:1-44` among its scanned excerpts; no hit)
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
