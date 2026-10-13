@@ -569,7 +569,8 @@ def test_architecture_pack_against_this_repo():
     assert filled.kind == "content" and filled.path in pack.files_read
     assert 0.0 <= pack.coverage_score <= 1.0
 
-    cited = [excerpt for excerpt in pack.excerpts if excerpt.path == "README.md"]
+    # the document that fills the role is quoted, as PROJECT_SPEC.md was
+    cited = [excerpt for excerpt in pack.excerpts if excerpt.path == filled.path]
     assert cited
 
 
