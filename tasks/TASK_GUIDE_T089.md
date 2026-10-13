@@ -81,6 +81,17 @@ names `PROJECT_SPEC.md` (architecture-doc) and `BRAINSTORMING_LOG*.md` (decision
 | 8 | **Real repos (paste, hand-checked)**: scraping-devops architecture-doc **filled** by README.md (cite the entries). bryony: `event_design.md` **no longer** fills it; report what does, if anything. kitchd and easy-verifier pass on content (their PROJECT_SPEC module tables), or the gap is reported. ai-training is filled by `travel_chatbot/README.md`. coffee-shop-api: report the result | real-repo verified |
 | 9 | Negative fixtures: a changelog listing files (`- src/a.ts: fix typo`) **does** match AC 1's shape. Decide and document whether `CHANGELOG*` / release notes are excluded from architecture-doc candidates. Supervisor default: exclude them | precision |
 
+
+### Amendment (Supervisor, 2026-10-13, after the implementer's findings 1–4)
+
+| # | Criterion (testable) | Traces to requirement |
+|---|----------------------|-----------------------|
+| 10 | **Best document wins**: when several documents qualify for architecture-doc, the one with the **most described entries** fills it (tie: scan priority order). Cited lines come from that document | precision of the citation (finding 1) |
+| 11 | **decision-record needs an actual decision**: a decision field (heading or bold field whose name is one of *Decision*, *Decision Outcome*, *Recommended Path* / *Recommendation*, *Chosen* / *Chosen Option*, *Selected* / *Selected Option*, *Approved direction*) **plus** at least one of *Context*, *Consequences*, *Status*, *Alternatives* / *Considered Options* / *Options*. Covers Nygard ADRs, MADR and brainstorming logs by content. Context + Status alone never fills it. Supersedes AC 2's field rule; the dated-entry form of AC 2 stays | ai-training false positive (finding 2); kit brainstorming logs back for solution-fit by content, not name (finding 4) |
+| 12 | **requirements-doc by structure too**: also filled by a heading naming requirements (*Requirements*, *Functional Requirements*, *Non-functional Requirements*, *User Stories*, *Acceptance Criteria*, *Use Cases*), followed by 3 or more list items before the next heading of the same or higher level. Evidence kind `content`, lines cited. `requirement_items_traced_share` still uses only `requirement_item_patterns` (unchanged) | ai-training false negative (finding 3): "find a way" |
+| 13 | `tests/test_t001_pipeline.py::test_cited_line_numbers_are_1_indexed_and_match_the_file` passes (root-cause the failure; do not weaken the assertion) | suite green |
+| 14 | Real repos re-run after 10–12. This repo's own score is also run (finding 4): show solution-fit's evidence still includes the brainstorming log by content | real-repo verified |
+
 ---
 
 ## Evaluation & Acceptance (How we know the agent worked correctly)
