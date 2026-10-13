@@ -289,10 +289,11 @@ def test_only_exact_pattern_detectors_count_in_agent_config(tmp_path: Path) -> N
         "credential_assignment",
     }
     # Template prose the heuristic detectors fire on (a hyphenated document
-    # path with a digit, as in this repository's CLAUDE.md).
+    # path with a digit inside a piece). T091: `phase0` is a letter run then a
+    # digit run and now reads as a name, so the piece is `phase0b` here.
     prose = (
-        "See [`docs/claude-md/phase0-project-initiation.md`]"
-        "(docs/claude-md/phase0-project-initiation.md) for full detail.\n"
+        "See [`docs/claude-md/phase0b-project-initiation.md`]"
+        "(docs/claude-md/phase0b-project-initiation.md) for full detail.\n"
     )
     assert {h.detector for h in scan(prose).hits} - {
         "high_entropy_string", "key_material_segment"

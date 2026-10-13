@@ -25,27 +25,27 @@
 - Risk: Medium. Accepted residue, same as T029's: a secret shaped only as lowercase-letter-run + digit-run pieces before a `.ext` (`abc123_def456.txt`) is no longer caught by this rule. State it in the docstring as T029 does.
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
-- [ ] Phase 1 feedback loop built and running (the trigger above, plus the t029 test)
-- [ ] Bug reproduces deterministically on the loop
-- [ ] 3–5 ranked falsifiable hypotheses listed (consistent with confirmed mental model)
-- [ ] Correct hypothesis identified via Phase 4 instrumentation
+- [x] Phase 1 feedback loop built and running (the trigger above, plus the t029 test)
+- [x] Bug reproduces deterministically on the loop
+- [x] 3–5 ranked falsifiable hypotheses listed (consistent with confirmed mental model)
+- [x] Correct hypothesis identified via Phase 4 instrumentation
 
 ### Attempts Log (filled live during diagnosis — required if >1 hypothesis tested)
 | # | Hypothesis | Predicted signal | Actual result | Verdict |
 |---|---|---|---|---|
 
 ### Fix Gates (Pillar 2)
-- [ ] Regression test written before the fix (fails on develop `94618c1`)
-- [ ] Fix applied; regression test passes
-- [ ] Phase 1 loop no longer reproduces the bug
-- [ ] Fix matches "Expected": the existing T029/T051/T053 secret-still-fingerprints tests pass unchanged, and new negatives show `main-3f9a2b1c.js`, `xQzRtWvB…`, a 40-char base64url and `a1b2c3d4…` interleaved tokens still fingerprint (both extremes)
-- [ ] Real repos: the security dimension's `redaction_hits_observed` on bryony and kitchd, before → after, pasted. It may only go down. List any hit that disappeared and confirm by hand that it was a path or name, not a secret
+- [x] Regression test written before the fix (fails on develop `94618c1`)
+- [x] Fix applied; regression test passes
+- [x] Phase 1 loop no longer reproduces the bug
+- [x] Fix matches "Expected": the existing T029/T051/T053 secret-still-fingerprints tests pass unchanged, and new negatives show `main-3f9a2b1c.js`, `xQzRtWvB…`, a 40-char base64url and `a1b2c3d4…` interleaved tokens still fingerprint (both extremes)
+- [x] Real repos: the security dimension's `redaction_hits_observed` on bryony and kitchd, before → after, pasted. It may only go down. List any hit that disappeared and confirm by hand that it was a path or name, not a secret
 
 ### Cleanup Checklist (Pillar 3)
-- [ ] All [DEBUG-...] instrumentation removed (grep verified)
-- [ ] Throwaway prototypes deleted
-- [ ] Correct hypothesis stated in commit message
-- [ ] Post-mortem: what would have prevented this?
+- [x] All [DEBUG-...] instrumentation removed (grep verified)
+- [x] Throwaway prototypes deleted
+- [x] Correct hypothesis stated in commit message
+- [x] Post-mortem: what would have prevented this?
 
 ### Evidence (filled by reviewer at Stage 4/5)
 

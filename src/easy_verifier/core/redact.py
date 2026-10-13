@@ -191,7 +191,8 @@ the token in a webhook URL path, and the password inside a
 """
 
 _WORD_PIECE = r"(?:[A-Z]{1,30}|[A-Z]?[a-z]{1,30})"
-_NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}})"
+_LETTER_DIGIT_PIECE = r"[a-z]{1,6}[0-9]{1,8}"
+_NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}}|{_LETTER_DIGIT_PIECE})"
 _WORD_JOINED_NAME = re.compile(rf"{_NAME_PIECE}(?:[/_-]{_NAME_PIECE}){{1,30}}")
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}(?![A-Za-z0-9+/=_-])")
 """A long token that is plainly an ordinary file name — `LOG_source-discovery.md`.
@@ -217,6 +218,14 @@ the hex rule is untouched.
 A bare identifier with no suffix (`BRAINSTORMING_LOG_source-discovery` in prose)
 is judged as before — over-redaction stays the direction outside the one shape
 that breaks citations.
+
+T091 admits a third shape — up to 6 lower-case letters then a run of at most 8 digits
+(`t087`, `v2`, `utf8`, `py3`) — so `test_t087_third_party_exclusion.py` reads as a name.
+Digits *before* letters (`3f9a2b1c`), interleaved runs (`a1b2c3d4`) and mixed case
+still disqualify the piece. Residue added by T091: a secret shaped only as lower-case
+letter-run + digit-run pieces before a `.ext` (`abc123_def456.txt`) is no longer
+caught by this rule; a hash-named artefact written letters-then-digits
+(`main-deadbe12.js`) is likewise exempt.
 
 Residue, stated plainly: a secret made only of single-case letter runs and short
 digit runs joined by `_`/`-`/`/` and written directly before a `.ext` suffix
