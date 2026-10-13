@@ -1482,6 +1482,17 @@ def resolve(
     )
 
 
+def walked_role_paths(resolution: RoleResolution, name: str) -> tuple[str, ...]:
+    """The walked files role ``name``'s rule patterns match (generic plus the
+    active ecosystems'), for a role the dimension did not request (T093):
+    the same whole-repository walk, nothing read, no second walk."""
+    patterns = GENERIC_PATTERNS[name] + _registry().patterns_for(
+        name, resolution.ecosystems
+    )
+    match = _matcher(patterns)
+    return tuple(path for path in resolution.walked if match(path))
+
+
 def source_provenance(resolution: RoleResolution) -> str:
     """The one-line sources provenance (FR-039): which inputs added files."""
     config = {path for (_, path), o in resolution.origins.items() if o == ORIGIN_CONFIG}

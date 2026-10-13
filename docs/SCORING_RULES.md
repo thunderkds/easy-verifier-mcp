@@ -79,7 +79,12 @@ calls is api, and its DB access is never scored (the DB is another service's bou
 disagreement (file, hint, behaviour, evidence line) is listed in the derivation. With no route or DB
 call observed and too few hints, the rule abstains `framework_not_recognized`;
 `shared` files (modules, config, utils, constants, enums, types) and unclassified files never count,
-and the rule abstains when fewer than 50% of the non-shared source files quoted classify. DTOs,
+and the rule abstains when fewer than 50% of the non-shared source files quoted classify. That share
+counts only **backend units** (T093): a backend unit is the deepest directory holding a
+`package-manifest` file at or above an api file, and a file belongs to the deepest such directory
+above it, so a monorepo's frontend apps leave the denominator and the derivation names how many and
+where. With no api file the share is over the whole repository; violations are always counted over
+every classified file. Manifests come from the role resolution's whole-repository walk. DTOs,
 schemas, exceptions and providers are `shared` boundary contracts. Only the curated `layer_paths`
 apply for now: local-layer and `.easy-verifier.toml` layer paths are not used in scoring until
 conventions are embedded for replay (T075). A README heading naming "Architecture" fills the

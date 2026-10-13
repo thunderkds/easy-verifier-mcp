@@ -1,0 +1,180 @@
+"""T093: the layer rule's classified share counts only backend units.
+
+A backend unit is the deepest directory at or above an api file (by
+behaviour) holding a file of the ``package-manifest`` role. Non-shared source
+files owned by another manifest directory (a monorepo's frontend apps) leave
+the share's denominator, and the derivation says how many and where. With no
+api file the denominator stays the whole repository. Violations are still
+counted over every classified file.
+"""
+
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+from easy_verifier.core import metrics as metrics_module
+from easy_verifier.core.metric_tables import curated_metric_tables
+from easy_verifier.core.metrics import compute_metrics
+from easy_verifier.core.pipeline import run_dimension
+from easy_verifier.dimensions import architecture
+
+MANIFEST = '{"name": "x", "version": "1.0.0"}\n'
+ROUTE = (
+    "const express = require('express');\n"
+    "const svc = require('./svc');\n"
+    "const webapp = express();\n"
+    "webapp.get('/users', function (req, res) {\n"
+    "  res.json(svc.list());\n"
+    "});\n"
+    "module.exports = webapp;\n"
+)
+SERVICE = (
+    "const store = require('./store');\n"
+    "function list() {\n  return store.all();\n}\n"
+    "module.exports = { list };\n"
+)
+STORE = (
+    "const mongoose = require('mongoose');\n"
+    "const User = mongoose.model('User', new mongoose.Schema({}));\n"
+    "function all() {\n  return User.find({});\n}\n"
+    "module.exports = { all };\n"
+)
+
+
+def _react(index: int) -> str:
+    return (
+        "import React from 'react';\n"
+        f"export function Widget{index}() {{\n  return null;\n}}\n"
+    )
+
+
+def _backend(prefix: str) -> dict[str, str]:
+    return {
+        f"{prefix}package.json": MANIFEST,
+        f"{prefix}src/routes.js": ROUTE,
+        f"{prefix}src/svc.js": SERVICE,
+        f"{prefix}src/store.js": STORE,
+    }
+
+
+def _web(prefix: str, count: int = 10) -> dict[str, str]:
+    files = {f"{prefix}package.json": MANIFEST}
+    files.update({f"{prefix}ui/widget{i}.js": _react(i) for i in range(count)})
+    return files
+
+
+MONOREPO = {"package.json": MANIFEST, **_backend("apps/api/"), **_web("apps/web/")}
+
+
+def _repo(root: Path, files: dict[str, str]) -> Path:
+    for name, text in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    for args in (("init", "-q"), ("add", "-A"), ("commit", "-qm", "init")):
+        subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
+    return root
+
+
+def _layer(root: Path, files: dict[str, str]):
+    pack = run_dimension(architecture.DESCRIPTOR, _repo(root, files), "project")
+    found = {m.name: m for m in compute_metrics(pack, curated_metric_tables())}
+    return found["layer_direction_violations"]
+
+
+def test_ac1_ac2_ac4_monorepo_backend_unit_is_measured(tmp_path) -> None:
+    metric = _layer(tmp_path, MONOREPO)
+    assert not metric.abstained, metric.outcome
+    assert metric.outcome == 0
+    assert "3 of 3 non-shared source file(s) in backend unit(s) (apps/api)" in (
+        metric.derivation
+    )
+    assert (
+        "10 non-shared source file(s) outside backend units (apps/web) are not "
+        "counted" in metric.derivation
+    )
+
+
+def test_ac6_sabotaged_unit_predicate_whole_repo_abstains(
+    tmp_path, monkeypatch
+) -> None:
+    """Both extremes: the real predicate measures the monorepo (above); a
+    predicate placing every file in a unit (today's whole repository)
+    abstains on the same files."""
+    monkeypatch.setattr(metrics_module, "_in_backend_unit", lambda *_args: True)
+    metric = _layer(tmp_path, MONOREPO)
+    assert metric.abstained
+    assert "3 of 13 non-shared" in metric.outcome.reason
+
+
+def test_ac3_no_api_file_keeps_the_whole_repository(tmp_path) -> None:
+    files = {
+        "package.json": MANIFEST,
+        "apps/api/package.json": MANIFEST,
+        "apps/api/src/svc.js": SERVICE,
+        "apps/api/src/store.js": STORE,
+        **_web("apps/web/"),
+    }
+    metric = _layer(tmp_path, files)
+    assert metric.abstained
+    reason = metric.outcome.reason
+    assert "of 12 non-shared source file(s) quoted here classify" in reason
+    assert "backend unit" not in reason
+
+
+def test_root_manifest_only_is_the_whole_repository(tmp_path) -> None:
+    files = {**_backend(""), **{f"ui/widget{i}.js": _react(i) for i in range(2)}}
+    metric = _layer(tmp_path, files)
+    assert not metric.abstained, metric.outcome
+    assert (
+        "3 of 5 non-shared source file(s) in backend unit(s) (the repository root)"
+        in metric.derivation
+    )
+    assert "outside backend units" not in metric.derivation
+
+
+def test_api_with_only_a_root_manifest_above_it_uses_the_root_unit(tmp_path) -> None:
+    """The root unit does not swallow a nested frontend package: each file
+    belongs to the deepest manifest directory above it."""
+    files = {**_backend(""), **_web("web/", count=4)}
+    metric = _layer(tmp_path, files)
+    assert not metric.abstained, metric.outcome
+    assert (
+        "3 of 3 non-shared source file(s) in backend unit(s) (the repository root)"
+        in metric.derivation
+    )
+    assert "4 non-shared source file(s) outside backend units (web)" in (
+        metric.derivation
+    )
+
+
+def test_two_services_are_the_union_of_their_units(tmp_path) -> None:
+    files = {
+        "package.json": MANIFEST,
+        **_backend("services/a/"),
+        **_backend("services/b/"),
+        **_web("apps/web/", count=12),
+    }
+    metric = _layer(tmp_path, files)
+    assert not metric.abstained, metric.outcome
+    assert (
+        "6 of 6 non-shared source file(s) in backend unit(s) (services/a, "
+        "services/b)" in metric.derivation
+    )
+
+
+def test_violations_still_count_classified_files_outside_units(tmp_path) -> None:
+    """A data file outside every backend unit importing the api route is still
+    a violation: only the share's denominator changes."""
+    leak = "const routes = require('../../api/src/routes');\n" + STORE
+    files = {**MONOREPO, "apps/web/ui/leak.js": leak}
+    metric = _layer(tmp_path, files)
+    assert not metric.abstained, metric.outcome
+    assert metric.outcome == 1
+    assert "apps/web/ui/leak.js:1 (data -> api)" in metric.derivation
