@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-12
+**Last updated**: 2026-10-13
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,12 +11,18 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+- [ ] **T096** — A change list is not an architecture description; architecture prose sections count | backend-developer | C2 | Risk: Medium | P2
+- [ ] **T095** — Redaction masks URL path segments whose pieces are upper-case letters then digits (`WCAG22`) | backend-developer | C1 | Risk: Medium | P2
+- [ ] **T094** — Infrastructure recognises Kubernetes manifests and Compose files by content | backend-developer | C2 | Risk: Medium | P1
+
+**Wave 19 — Follow-ups from Waves 17/18 (added 2026-10-13, user "yes" to continue with the follow-ups; T094/T095/T096 independent, merged one at a time)**
+- [ ] **T094** — Infrastructure recognises Kubernetes manifests (`apiVersion`+`kind`), Compose files (`services:` or v1 top-level `image:`/`build:`) and CloudFormation by content, not folder/file name (DDR-0012; follow-up from T087: scraping-devops abstains on infrastructure once Harbor is excluded) | backend-developer | C2 | Risk: Med | P1
+- [ ] **T095** — Bugfix: redaction masks URL path pieces made of upper-case letters then digits (`/WAI/WCAG22/Understanding/…` in this repo's README; follow-up from T089) | backend-developer | C1 | Risk: Med | P2
+- [ ] **T096** — architecture-doc: a change-list table (`File | Change`) is not a description; an Architecture-headed prose section naming ≥3 real paths counts in any document (follow-up from T089: kitchd cites `tasks/TASK_GUIDE_T029.md` Files-to-Change; kitchd's real description is `PROJECT_SPEC.md` Architecture Summary) | backend-developer | C2 | Risk: Med | P2
 
 **Wave 18 — Scoring decisions after Wave 17 (added 2026-10-13, user: "yes, agree"; run order T092 → T093)**
 
 **Wave 17 — Recognise architecture by behaviour and content, not names (added 2026-10-12, user request after bryony retest; DDR-0012, PRD FR-074…FR-077; run order T087 → T088 → T089 → T090; T079 and T078 already Done)**
-- 💡 Follow-ups from T089 (2026-10-13, no guide yet): (a) redaction `high_entropy_string` masks a WCAG URL path in this repo's README (`/WAI/WCAG22/Understanding/non-text-content.html`); (b) on kitchd and this repo, architecture-doc is filled by a task guide's Files-to-Change table (true content, weak citation)
-- 💡 Follow-up from T087 (2026-10-12, no guide yet): the infrastructure dimension does not read a repo's own Rancher/ELK/compose YAML. scraping-devops' "infrastructure 100" was all Harbor files; without Harbor it abstains
 
 - [x] **T084** — Follow-up (T083 review P2): `breaking_api_changes_observed` still counts removals from diff files the api pack did not read when at least one other spec/route file was read (value partly uncited); user chose 2026-10-08: count only removals in files actually read; list unread files with removals as "not counted" | backend-developer | C1 | Risk: Med | P2 | ✅ Done 2026-10-08 (removals counted only in read files; unread files listed "not counted"; route tokens from resolved conventions; 22-spec repro 66→60, coffee sha256 unchanged; 2536 passed, 2 known container failures)
 - [x] **T085** — Follow-up (T049 review P2): frontend-a11y `browser_support_declaration_missing` credits Next/Nuxt default browser targets as declared, like the default viewport; derivation says "framework default" (user 2026-10-08; tapchat-web a11y 45 → ~60) | backend-developer | C1 | Risk: Low | P2 | ✅ Done 2026-10-08 (new cited pack field browser_support_default_entries: Next.js config = framework-default targets; Nuxt dropped — no official doc states a default browser target (only esbuild transform target esnext); tapchat-web a11y 45→60, overall 60→64, pack-off sha256 unchanged; 2536 passed, 2 known container failures)
