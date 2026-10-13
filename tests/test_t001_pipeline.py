@@ -565,8 +565,10 @@ def test_architecture_pack_against_this_repo():
     assert pack.scope == "project"
     # T089: PROJECT_SPEC.md is no longer an architecture-doc name; the role
     # is filled by a document's content, and that document is read.
+    # T096: the content may be a prose architecture section, not only entries.
     filled = {item.role: item for item in pack.documents}["architecture-doc"]
-    assert filled.kind == "content" and filled.path in pack.files_read
+    assert filled.kind in ("content", "architecture-heading")
+    assert filled.path in pack.files_read
     assert 0.0 <= pack.coverage_score <= 1.0
 
     # the document that fills the role is quoted, as PROJECT_SPEC.md was
