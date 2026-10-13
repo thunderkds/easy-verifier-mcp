@@ -304,6 +304,8 @@ def test_whole_set_abstains_and_evidence_local_computes_under_truncation(truncat
     needs_imports |= {"todo_without_ticket_share"}
     # T074 (DDR-0011): the layer rule needs imports between classified files.
     needs_imports |= {"layer_direction_violations"}
+    # T090: no route is registered in this fixture.
+    needs_imports |= {"request_paths"}
     # T041: the CI metrics quote only the supply-chain pack.
     needs_imports |= {
         "ci_actions_unpinned_share",

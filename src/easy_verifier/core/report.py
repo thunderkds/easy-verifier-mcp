@@ -976,6 +976,13 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         else {}
     )
     samples = {item["dimension"]: item for item in score.samples}
+    request_paths = {
+        item.dimension: item
+        for item in score.metrics
+        if item.name == "request_paths"
+        and item.dimension == "architecture"
+        and not item.abstained
+    }
     cards = "".join(
         _render_score_card(
             ctx,
@@ -983,6 +990,7 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
             assessments.get(rating.dimension),
             divergences.get(rating.dimension),
             samples.get(rating.dimension),
+            request_paths.get(rating.dimension),
         )
         for rating in score.ratings
     )
@@ -1233,6 +1241,7 @@ def _render_score_card(
     assessment: Assessment | AssessmentAbsence | None,
     divergence: Divergence | DivergenceAbsence | None,
     sample: dict[str, Any] | None = None,
+    request_paths: Any = None,
 ) -> str:
     gated = ""
     row = ""
@@ -1306,9 +1315,26 @@ def _render_score_card(
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
         f'<p class="score-row">{ctx.esc(row)}</p>'
         f"{_render_sample(ctx, sample)}"
+        f"{_render_request_paths(ctx, request_paths)}"
         "<details><summary>Rule inputs, citations and cited files</summary>"
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
         f"{_render_divergence(ctx, divergence)}</details></article>"
+    )
+
+
+def _render_request_paths(ctx: _Ctx, metric: Any) -> str:
+    """T090: each route's in-repo request path, a folded list in the
+    architecture card; reported only, no rule reads it. The derivation holds
+    the listed routes one per line and the summary (with the cap) last."""
+    if metric is None:
+        return ""
+    *routes, summary = metric.derivation.split("\n")
+    items = "".join(f"<li><code>{ctx.esc(line)}</code></li>" for line in routes)
+    return (
+        f'<details class="request-paths"><summary>Request paths: '
+        f"{ctx.esc(metric.outcome)} route(s), reported only, not scored"
+        f"</summary><p class=\"rating-method\">{ctx.esc(summary)}</p>"
+        f"<ul>{items}</ul></details>"
     )
 
 

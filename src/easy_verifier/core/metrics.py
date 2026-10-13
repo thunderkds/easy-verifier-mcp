@@ -1484,7 +1484,9 @@ MAX_LAYER_EXAMPLES = 5
 """Violating import statements quoted by file:line in the derivation."""
 
 
-def _layer_direction_violations(view: _PackView) -> _Computed:
+def _source_statements(view: _PackView):
+    """The quoted source files, and each of their import statements as
+    ``(excerpt, line, text)``: the edges both layer metrics walk."""
     files = sorted(
         {
             e.path
@@ -1500,11 +1502,16 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             continue
         for line, text in import_statements(excerpt.text, syntax):
             statements.append((excerpt, excerpt.start_line + line - 1, text))
+    return files, statements
+
+
+def _layer_direction_violations(view: _PackView) -> _Computed:
+    files, statements = _source_statements(view)
     if not statements:
         return _no_imports("source-file")
     layer_of = view.tables.layer_of or (lambda _path: None)
     hints = {path: layer_of(path) for path in files}
-    behaviour, cited, linked = _behaviour_layers(view, files, statements)
+    behaviour, cited, linked, _graph = _behaviour_layers(view, files, statements)
     layers = {path: behaviour.get(path) or hints[path] for path in files}
     considered = [path for path in files if layers[path] != "shared"]
     classified = {p: layers[p] for p in considered if layers[p] in LAYER_RANK}
@@ -1603,6 +1610,120 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
     )
 
 
+MAX_REQUEST_PATHS_LISTED = 20
+"""Routes quoted in the ``request_paths`` derivation (T090); the rest are
+counted and the cap is stated, since every cited hop adds payload."""
+
+
+def _request_paths(view: _PackView) -> _Computed:
+    """Per route, the shortest in-repo import path from its file to a file
+    that calls a DB/ORM API (T090). Reported, never scored: no rating rule
+    reads it. Walks the edges T088's behaviour layers already built."""
+    files, statements = _source_statements(view)
+    behaviour, _cited, _linked, graph = _behaviour_layers(view, files, statements)
+    if graph is None:
+        return MetricAbstention(
+            reason="no behaviour evidence is registered for this language set, so "
+            "no route can be recognised"
+        )
+    found, edges, lines = graph
+    api = {}
+    for path in sorted(found):
+        for excerpt, ev in found[path]:
+            if ev.routes:
+                api.setdefault(path, []).append((excerpt, ev))
+    if not api:
+        return MetricAbstention(
+            reason="no source file quoted here registers a route (the registry's "
+            "route_tokens), so there is no request path to report"
+        )
+
+    def boundary(path: str):
+        for excerpt, ev in found.get(path, ()):
+            if ev.data_line:
+                return excerpt, ev.data_line
+        return None
+
+    def hops(start: str) -> list[str] | None:
+        previous = {start: None}
+        queue = [start]
+        for node in queue:
+            if node != start and boundary(node):
+                chain = [node]
+                while previous[chain[-1]] is not None:
+                    chain.append(previous[chain[-1]])
+                return chain[::-1]
+            for target in sorted(edges.get(node, ())):
+                if target not in previous:
+                    previous[target] = node
+                    queue.append(target)
+        return None
+
+    routes = []
+    for path, items in api.items():
+        chain = [path] if boundary(path) else hops(path)
+        for excerpt, ev in items:
+            for route in ev.routes:
+                routes.append((path, excerpt.start_line + route.line - 1, route, chain))
+    direct = sum(1 for _p, _l, _r, chain in routes if chain and len(chain) == 1)
+    via = sum(1 for _p, _l, _r, chain in routes if chain and len(chain) > 1)
+    none = len(routes) - direct - via
+    ranked = sorted(
+        routes,
+        key=lambda r: (
+            0 if r[3] and len(r[3]) > 1 else 1 if r[3] else 2,
+            r[0],
+            r[1],
+        ),
+    )
+    shown = ranked[:MAX_REQUEST_PATHS_LISTED]
+    refs: set[str] = set()
+    out = []
+    for path, line, route, chain in shown:
+        where = route.path or "(path is not a literal)"
+        head = f"{route.method} {where}: {path}:{line}"
+        if chain is None:
+            out.append(head + " -> reaches no file that calls a DB/ORM API")
+            refs.update(e.ref for e, _ev in api[path])
+            continue
+        parts = [head]
+        for node, nxt in zip(chain, chain[1:], strict=False):
+            if node != path:
+                parts.append(f"{node}:{lines[(node, nxt)]}")
+        hit = boundary(chain[-1])
+        excerpt, at = hit
+        call = excerpt.text.split("\n")[at - 1].strip()[:60]
+        end = excerpt.start_line + at - 1
+        parts.append(
+            f"{chain[-1]}:{end} ({call})" if chain[-1] != path
+            else f"DB/ORM call at line {end} ({call})"
+        )
+        out.append(" -> ".join(parts))
+        for node in chain:
+            refs.update(e.ref for e, _ev in found.get(node, ()))
+    cap = (
+        f"; the first {MAX_REQUEST_PATHS_LISTED} of {len(routes)} routes are "
+        "listed (cap), ordered by paths through modules, then direct, then none"
+        if len(routes) > MAX_REQUEST_PATHS_LISTED
+        else ""
+    )
+    summary = (
+        f"{len(routes)} route(s) found in {len(api)} file(s): {direct} reach a "
+        f"DB/ORM call in their own file, {via} through at least one other "
+        f"in-repo module, {none} reach none by the import edges seen{cap}. "
+        "Reported only: no rule, rating or overall reads it; the database "
+        "belongs to another service (user). " + _BEHAVIOUR_METHOD
+        + "; only the import statements quoted in this pack are seen; "
+        + _IMPORT_METHOD
+    )
+    return (
+        len(routes),
+        tuple(sorted(refs or {e.ref for _p, items in api.items() for e, _v in items})),
+        # The summary is the last line: a whole-file note is appended to the end.
+        "\n".join([*out, summary]),
+    )
+
+
 _BEHAVIOUR_METHOD = (
     "A file's layer is what its code does (DDR-0012): api registers a route "
     "(route_tokens) or is the module of a dotted route handler; data calls a "
@@ -1629,7 +1750,7 @@ def _behaviour_layers(
     file: also its directory) and no other file quoted here has that name."""
     evidence_of = view.tables.layer_evidence
     if evidence_of is None:
-        return {}, {}, []
+        return {}, {}, [], None
     texts: dict[str, list[Excerpt]] = {}
     for excerpt in view.pack.excerpts:
         if excerpt.path in files:
@@ -1746,7 +1867,7 @@ def _behaviour_layers(
             if t in below or behaviour.get(t) == "data"
         )
         cited[path] = f"{path}:{toward[0]}" if toward else path
-    return behaviour, cited, linked
+    return behaviour, cited, linked, (found, edges, lines)
 
 
 def _prefix_targets(path: str, prefix: str, files: Sequence[str]) -> set[str]:
@@ -3437,6 +3558,9 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         _layer_direction_violations,
     ),
     MetricDefinition(
+        "request_paths", FAMILY_CODE_SHAPE, WHOLE_SET, _request_paths
+    ),
+    MetricDefinition(
         "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
     ),
     MetricDefinition(
@@ -3747,7 +3871,11 @@ SAMPLED_METRICS: dict[str, tuple[str, ...]] = {
         "type_escapes_per_kloc",
         "todo_without_ticket_share",
     ),
-    "architecture": ("top_level_import_cycles", "layer_direction_violations"),
+    "architecture": (
+        "top_level_import_cycles",
+        "layer_direction_violations",
+        "request_paths",
+    ),
     "reliability": tuple(_RELIABILITY_RULES),
 }
 """Metrics a code tier computes over the whole text of its priority-batch
