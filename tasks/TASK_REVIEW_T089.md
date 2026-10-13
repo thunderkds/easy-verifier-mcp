@@ -14,8 +14,8 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass | `tests/test_t089_document_content.py` (40 tests: SC 1–6 with MIN_DESCRIBED_ENTRIES 0/3/999; AC 3/4/6/7/9; AC 10 most-entries + tie; AC 11 ai-training shape Status+Context → 1, decision-only → 1, Decision+Status / MADR / kit log → 0; AC 12 "## Functional Requirements" + 3 bullets → 0, 2 bullets → 1, items past the next heading → 1, threshold 0/3/4; AC 14 solution-fit quotes a log by content): `40 passed` (implementer) |
-| Verification command run | ☒ pass | implementer, 2026-10-13 @ 6a54b6f: `3 failed, 2688 passed, 2 skipped in 453.10s`. Failures: the 2 container tests (pre-existing, stale image) and `test_t001_pipeline.py::test_architecture_pack_against_this_repo`, which was fixed next (it now asserts the excerpt of the document that fills architecture-doc, as it once did for PROJECT_SPEC.md); `tests/test_t001_pipeline.py`: `49 passed`. AC 13: `test_cited_line_numbers_are_1_indexed_and_match_the_file` passes with its assertion unchanged. `ruff check src tests`: All checks passed |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass | `tests/test_t089_document_content.py` (47 tests): SC 1–6 with MIN_DESCRIBED_ENTRIES 0/3/999; AC 3/4/6/7/9; AC 10 plus decision B (3 directories outrank 6 files in one directory; ties go to scan priority); AC 11 (ai-training-shaped Status+Context → 1, decision-only → 1, Decision+Status / MADR / kit log → 0); AC 12 plus decision A (`## Functional Requirements` over 3 bullets → 0, bare `## Requirements` / `## System Requirements` over `- Node`/`- Npm`/`- Docker` → 1, threshold tested at 0/3/4); decision C (templates never fill); AC 14 (solution-fit quotes a log by content). Result: `47 passed` (implementer) |
+| Verification command run | ☒ pass | implementer, 2026-10-13 @ 484ce20, full suite: `2 failed, 2695 passed, 2 skipped in 410.63s`. Both failures are the pre-existing container tests (stale image). AC 13 `test_cited_line_numbers_are_1_indexed_and_match_the_file` and `test_architecture_pack_against_this_repo` both pass, with assertions unchanged in substance. `ruff check src tests`: All checks passed |
 | Negative cases hold | ☐ pass / ☐ fail | |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
@@ -85,35 +85,36 @@ ai-training:     architecture-doc ['travel_chatbot/docs/architecture.md'] | deci
 coffee-shop-api: architecture-doc [] | decision-record [] | requirements-doc []
 ```
 
-**AFTER** (re-run after AC 10–14: 2026-10-13T04:38:56Z–04:40:05Z, branch @ `6a54b6f`, same command, one repo at
-a time, all exit 0, plus this repo's main checkout; provenance from `pack.documents`, hand-checked by
-backend-developer against each source file):
+**AFTER** (final, after AC 10–14 and decisions A–C: 2026-10-13T04:59:02Z–05:00:09Z, branch @ `484ce20`,
+same command, one repo at a time, all exit 0, plus this repo's main checkout; provenance from
+`pack.documents`, hand-checked by backend-developer against each source file):
 
 | Repo | architecture_description_missing | decision_records_missing | requirements_doc_missing | architecture | requirement-fidelity | overall |
 |---|---|---|---|---|---|---|
-| bryony | 0 → 0, `content`: `backend/scripts/README.md` "Folder structure" L8–12 (`/common`, `/companies`, `/crunchbase`, `/similarweb` exist; `/salesforce` does not and is not counted). `event_design.md` no longer fills it | 1 → 1 (40 docs read) | **1 → 0**, `content` (AC 12): `backend/scripts/netwise/README.md` L11 `## Requirements` over `- Node v8.1.2`, `- Npm v5.0.3`… (**install prerequisites, see finding A**) | 83 → 83 | abstain → abstain | 59 → 59 |
-| scraping-devops | **1 → 0**, `content`: README.md L6–10 (`- bin: helper scripts`, `- elk: …`, `- vagrant: …`, `- docker-registry: …`, `- rancher: …`) | 1 → 1 (12 read) | **1 → 0**, `content` (AC 12): README.md L40 `### Requirements` over `- Docker Beta`, `- Docker machine`… (**prerequisites, finding A**) | abstain → abstain | abstain → abstain | abstain → abstain |
-| kitchd | 0 → 0, `content` (AC 10, most entries): **`tasks/TASK_GUIDE_T040.md` L258+ "Files to Change" table, 13 entries** (finding B) | 0 → 0, `content`: `docs/adr/0001-…md` L3 `**Status**: Accepted` + L10 `## Decision` | 0 → 0, `content`: PRD.md L33–37 `US-001…US-005` | 100 → 100 | 60 → 60 | 56 → 56 |
-| ai-training | 0 → 0, `content`: `travel_chatbot/README.md` tree L95–100 | 1 → 1 (AC 11: Status + Context, no decision field) | 0 → 0, now `content` (AC 12): `travel_chatbot/docs/trvl_flights_gondola_hotels_requirements.md` L1 heading "…Updated Requirements" over L13–15 bullets | 83 → 83 | abstain → abstain | 60 → 60 |
+| bryony | 0 → 0, `content`: `backend/scripts/README.md` "Folder structure" L8–12 (`/common`, `/companies`, `/crunchbase`, `/similarweb` exist; `/salesforce` does not and is not counted). `event_design.md` no longer fills it | 1 → 1 (40 docs read) | 1 → 1 (the netwise `## Requirements` install list no longer counts, decision A) | 83 → 83 | abstain → abstain | 59 → 59 |
+| scraping-devops | **1 → 0**, `content`: README.md L6–10 (`- bin: helper scripts`, `- elk: …`, `- vagrant: …`, `- docker-registry: …`, `- rancher: …`) | 1 → 1 (12 read) | 1 → 1 (`### Requirements` install list no longer counts, decision A) | abstain `below_coverage_floor` → abstain `insufficient_measured_weight` (the filling README now counts toward coverage) | abstain → abstain | abstain → abstain |
+| kitchd | 0 → 0, `content` (decision B, most distinct directories): **`tasks/TASK_GUIDE_T029.md` L163+ "Files to Change" table — still a task file list** | 0 → 0, `content`: `docs/adr/0001-…md` L3 `**Status**: Accepted` + L10 `## Decision` | 0 → 0, `content`: PRD.md L33–37 `US-001…US-005` | 100 → 100 | 60 → 60 | 56 → 56 |
+| ai-training | 0 → 0, `content`: `travel_chatbot/README.md` tree L95–100 | 1 → 1 (AC 11: Status + Context, no decision field) | 0 → 0, now `content` (AC 12): the requirements doc's L38 `## Functional Requirements` over its bullets | 83 → 83 | abstain → abstain | 60 → 60 |
 | coffee-shop-api | **1 → 0**, `content`: README.md "Project Structure" fenced tree L69–73 under `src/` | 1 → 1 (14 read) | 1 → 1 (14 read) | 80 → **90** | 50 → 50 | 74 → **76** |
-| easy-verifier (main checkout, new in AC 14) | `content`: BRAINSTORMING_LOG.md L215–219 module list | `content`: memory/decisions.md L1 heading "decisions" + L140 `**Consequences**:` | `content`: PRD.md FR/US ids | 100 | 20 | 43 |
+| easy-verifier (main checkout) | `content` (decision B): **`tasks/TASK_GUIDE_T001.md` L170+ "Files to Change" table — a task file list** | `content`: memory/decisions.md L1 heading "decisions" + L140 `**Consequences**:` | `content`: PRD.md FR/US ids | 100 | 20 | 43 |
 
 **AC 14 — solution-fit still reaches the brainstorming logs, by content** (`sfcheck.py`, solution-fit pack):
-- easy-verifier: `decision_lines(BRAINSTORMING_LOG.md)` = `[(58, '## Alternative Paths'), (193, '## Recommended Path')]`; files_read holds BRAINSTORMING_LOG.md and the 6 BRAINSTORMING_LOG_*.md; excerpts `BRAINSTORMING_LOG.md` L67–86, 87–105, 106–123, 124–164, 193–211.
-- kitchd: `decision_lines(BRAINSTORMING_LOG.md)` = `[(22, '## Alternative Paths'), (76, '## Recommended Path')]`; excerpts `BRAINSTORMING_LOG.md` L30–41, 42–53, 54–64, 76–81 plus the react-native log.
+- easy-verifier: `decision_lines(BRAINSTORMING_LOG.md)` = `[(58, '## Alternative Paths'), (193, '## Recommended Path')]`; files_read holds BRAINSTORMING_LOG.md and the 6 BRAINSTORMING_LOG_*.md (the template no longer qualifies, decision C); excerpts `BRAINSTORMING_LOG.md` L67–86, 87–105, 106–123, 124–164, 193–211.
+- kitchd: `decision_lines(BRAINSTORMING_LOG.md)` = `[(22, '## Alternative Paths'), (76, '## Recommended Path')]`; excerpts `BRAINSTORMING_LOG.md` L30–41, 42–53, 54–64, 76–81, plus the react-native log.
 
-**DELTA**: a document role is now filled only by what a document contains (≥3 described real paths, the
-richest document winning; a decision plus its context; requirement items or a requirements heading over
-a list) or by a declaration, with the cited lines in the payload. So scraping-devops and coffee-shop-api
-get credit for the structure their READMEs describe, bryony's `event_design.md` no longer passes on its
-name, and kit brainstorming logs still reach solution-fit by their content.
+**DELTA**: a document role is now filled only by what a document contains, or by a declaration, with the
+cited lines in the payload:
+- architecture-doc: at least 3 described real paths; when several documents qualify, the one covering the most distinct directories wins.
+- decision-record: a decision plus its context.
+- requirements-doc: requirement items, or an explicitly named requirements heading over a list.
 
-Open findings for the Supervisor: (A) AC 12 fills requirements-doc with install-prerequisite lists
-headed "Requirements" (bryony, scraping-devops). (B) AC 10 picks kitchd's TASK_GUIDE "Files to Change"
-table (13 entries) over PROJECT_SPEC.md (5), so the citation got worse, not better. (C)
-`templates/BRAINSTORMING_LOG_template.md` qualifies as a decision record (templates are not excluded
-for that role). (D) A redaction false positive: `high_entropy_string` masks the WCAG URL path in this
-repo's README.md (root cause of the AC 13 failure).
+As a result, scraping-devops and coffee-shop-api get credit for the structure their READMEs describe,
+bryony's `event_design.md` no longer passes on its name, and kit brainstorming logs still reach
+solution-fit by their content.
+
+Remaining findings:
+- (B) On kitchd and on this repo, the winning architecture document is still a TASK_GUIDE "Files to Change" table, even when ranking by distinct directories. No name-based exclusion was added, as instructed.
+- (D) `high_entropy_string` gives a false positive on the WCAG URL path in this repo's README.md. That was the root cause of AC 13; it is not fixed here.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
