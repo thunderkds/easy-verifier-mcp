@@ -17,12 +17,12 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass (implementer) | `tests/test_t094_iac_by_content.py`, 37 tests: `37 passed in 0.62s`. With the predicates present but `resolve()` not yet hooked, 10 of 37 failed (the resolve-level AC 1, 3, 5, 6, 7, 9 tests); before `core/iac_content.py` existed the file failed at import. |
 | Verification command run | pass (implementer) | `ruff check src tests`: `All checks passed!`. `pytest -q`: `2 failed, 2809 passed, 2 skipped in 509.03s`; the 2 failures are `tests/integration/test_adapter_parity.py::test_container_parity_is_explicitly_verified` and `tests/integration/test_redaction_proof.py::test_container_redaction_proof_is_not_silent_when_docker_is_missing` (stale local Docker image, `missing=['api','data','infrastructure','operations','supply-chain']`; the known failure on clean develop per MEMORY.md). |
 | Negative cases hold | pass (implementer) | GitLab CI, CircleCI, GitHub Actions, OpenAPI, `.eslintrc.yml`, Helm `values.yaml`, `rancher-compose.yml` classify as nothing and fill no role in a repo; `apiVersion` nested, `kind` missing, `version:`-only, `image` two levels down, Resources without `AWS::`, a 4 MB dump with the manifest past 256 KB: not placed. |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
+| verify | ☑ pass | Supervisor 2026-10-13 on `57d5acc`: t094 + t042/t087/t026 -> `174 passed in 11.65s`. scraping-devops re-run from the branch: infrastructure 100 (open ingress, wildcard IAM and unencrypted storage all 0, cited `rancher2/…` manifests); overall 100 with the disclosure "1 of 13 dimensions contributed". pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review of `core/iac_content.py` (line-based top-level keys, no parser) and `roles.py` `_placed_by_content`/`_read_head`: bounded reads, containment, secret-bearing skip, `MAX_CONTENT_CANDIDATES` with a warning. Name and config placement win. P0 0 · P1 0. Two follow-ups found and not blocking: (a) 50 of 371 scraping-devops paths (`rancher2/…`) are fingerprinted by redaction, because a letter run longer than 6 before a digit fails `_LETTER_DIGIT_PIECE` (T097); (b) the 50-file role-cap warning (`infrastructure.CAP_WARNING`) does not reach the payload for 197 manifests (KANBAN 💡). |
 | Full smoke suite still green (no regression) | pass (implementer), except the 2 stale-Docker failures above | coffee, kitchd and ai-training payloads sha256-identical before/after; bryony ratings identical, payload differs only in file/line counts (3 Compose files newly placed, listed in the report). |
-| **UI: Visual regression (diff or verdict pasted)** | N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | N/A | [viewports tested, any overflow findings] |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Backend only. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Backend only. |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Backend only. |
 
 ---
 
@@ -66,5 +66,5 @@ kitchd / coffee / ai-training payload sha256 identical to BEFORE; bryony overall
 
 **DELTA**: a repo's own Kubernetes manifests, Compose files (v1 and v2/v3) and CloudFormation templates are read by the infrastructure dimension whatever their folder or file name, so scraping-devops is rated instead of abstaining.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T094.jsonl`, never the
+**WITNESS**: Supervisor re-ran the T094 test set and scraping-devops from the branch, 2026-10-13 (event trace T094).
 implementing agent alone]
