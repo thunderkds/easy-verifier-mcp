@@ -17,8 +17,8 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | tests/test_t090_request_paths.py (10 tests: SC1 Express path `GET /users: server/r.js:4 -> lib/svc.js:1 -> lib/store.js:4 (return User.find({});)`; SC2 none; direct; cycle plus two routes in one file; cap 20 disclosed; no-route abstains; wording; AC4 ratings, overall, improvement_plan, areas equal metric on vs off; AC3 report folded list; prefix-edge disclosure). `10 passed` |
 | Verification command run | pass | Full suite: `2 failed, 2705 passed, 2 skipped in 404.11s`; the 2 failures are the known stale-image container tests (test_container_parity_is_explicitly_verified, test_container_redaction_proof_is_not_silent_when_docker_is_missing). `ruff check src tests`: All checks passed! |
 | Negative cases hold | pass | no route -> abstention not 0; route reaching no data -> listed under none; import cycle terminates; 24 routes -> 20 listed with cap text; derivation holds no 'violation', 'bad' or 'should' |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
+| verify | ☑ pass | Supervisor 2026-10-13 drove the CLI from the branch on kitchd: overall 56 (unchanged); architecture `request_paths` lists e.g. `POST login: apps/api/src/auth/auth.controller.ts:16 -> apps/api/src/auth/auth.service.ts:35 (… this.prisma.user.findUnique …)`; the words violation/bad/should are absent. t090 + t088 tests: 38 passed — pass. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review of `structure.LayerEvidence` (+routes, data_line), `metrics._request_paths` / `_source_statements` / `_behaviour_layers` graph return, the `report.py` folded list, and 3 adjusted tests (t088 equality, test_metrics abstain list, T068 snapshot: only the added metric). P0 0 · P1 0 · P3 1: the metric is present in every pack (most abstain), a small payload cost given the known payload-size issue; accepted. RATING_RULES untouched; the AC 4 on/off test and real-repo `cmp` (ratings, overall, improvement_plan, areas, warnings) are byte-equal. |
 | Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
 | **UI: Visual regression (diff or verdict pasted)** | N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | [method used + output] |
@@ -59,5 +59,4 @@ AC 4 on real repos (`cmp` of the extracted JSON sections, before vs after): rati
 
 **DELTA**: for each recognised route the output now shows the in-repo file:line path from its handler to the first DB/ORM call (or that none is reached), counted and capped at 20, without moving any rating.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-13. Re-ran t090 + t088 (38 passed) and drove `score` on kitchd from the branch (overall 56 unchanged; request paths cited).
