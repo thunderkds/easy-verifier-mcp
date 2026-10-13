@@ -17,8 +17,8 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t092_test_path_sinks.py` (8 tests; run on pre-fix src: 5 failed, incl. count/abstain/derivation; sabotage tests pin both extremes: predicate always-False -> 2, always-True -> abstains) and updated `tests/test_t034_security_sinks.py::test_metric_tags_test_path_hits_and_does_not_count_them` |
 | Verification command run | pass | `pytest tests/test_t092... test_t034... test_t068...`: 127 passed; `ruff check src tests`: All checks passed; real-repo `score` runs in Demonstration |
 | Negative cases hold | pass | test-only pack abstains (never 0); no-test-hit derivation has no 'not counted' sentence; test hit still cited |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
+| verify | ☑ pass | Supervisor 2026-10-13 drove the CLI from the branch on coffee-shop-api: overall 81, security 59; `sink_hits_observed` 0, "0 dangerous-sink hit(s) in non-test files, from 17 excerpt(s): test/reset-test-db.ts:25 CWE-89 … [test path]; 1 test-path hit(s) are listed and not counted" — pass. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review of `_sink_hits_observed` / `_SINK_METHOD`, the SCORING_RULES sink row, t034 flip (counts → does not count; follows the user decision), and the t068 snapshot (only the sink metric's fields; test-strategy's sink now abstains per AC 3). P0 0 · P1 0. Weights untouched. |
 | Full smoke suite still green (no regression) | pass | full run: 3 failed, 2712 passed, 2 skipped -- the 2 known stale-image container tests plus `test_t068 under_the_cap_payload_is_identical_to_develop`, which pinned the old sink wording; snapshot regenerated (only sink text changed, ratings/overall unchanged; test-strategy pack holding only a test file now abstains instead of 0), re-run of that file passes (127 passed with t092/t034) |
 | **UI: Visual regression (diff or verdict pasted)** | N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | [method used + output] |
@@ -60,5 +60,4 @@ Test-path hits that stopped counting, checked by hand: exactly one, coffee `test
 
 **DELTA**: Risky code inside test files is still listed and cited but no longer lowers the security rating (coffee-shop-api 18 -> 59).
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-13. Re-ran the full suite on the branch (2713 passed) and drove `score` on coffee-shop-api (security 18 → 59, overall 76 → 81).
