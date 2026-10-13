@@ -66,7 +66,7 @@ def test_userinfo_and_query_secrets_still_fingerprint() -> None:
 @pytest.mark.parametrize(
     "name",
     [
-        "tests/test_ABCDEFG087_third_party_exclusion_fixture.py",  # noqa: E501
+        "tests/test_ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFG087_third_party_exclusion_fixture.py",  # noqa: E501 (T097: 31 letters, was 7)
         "tests/test_ABC3F9A2B1C_third_party_exclusion_fixture.py",  # noqa: E501
     ],
 )

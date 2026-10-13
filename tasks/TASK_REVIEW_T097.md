@@ -14,18 +14,18 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
-| Repro loop | ☐ pass / ☐ fail | [command/observation that reproduced the bug before the fix] |
-| Regression test | ☐ pass / ☐ fail | [test file path(s) added to lock the fix in] |
-| Smoke suite | ☐ pass / ☐ fail | [bug-specific smoke check beyond the full suite row above] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass (implementer) | tests/test_t097_long_letter_digit_pieces.py; with T091/T095: 40 passed |
+| Verification command run | pass (implementer), 2 env failures | full pytest: 2 failed, 2824 passed, 2 skipped; the 2 failures are Docker container tests (test_adapter_parity::test_container_parity_is_explicitly_verified, test_redaction_proof::test_container_redaction_proof_is_not_silent_when_docker_is_missing), unrelated to redact; ruff: All checks passed |
+| Negative cases hold | ☑ pass | Supervisor probe on `7914444`: a Slack webhook `…/aB3x…`, `AKIA…`, a postgres userinfo password and a `ghp_` token are all still fingerprinted. Implementer negatives: digits-first hex artefact, interleaved, mixed-case, and the 31-letter bound. |
+| verify | ☑ pass | Supervisor 2026-10-13: t097 + t029/t051/t053/t091/t095/redaction -> `231 passed in 3.19s`. scraping-devops: 597 tracked paths, and only `bin/build-push-kibana-docker-image` is still changed by `redact()` (an extensionless word name, a different shape; KANBAN 💡). pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | One regex bound (`{1,6}` -> `{1,30}`, both cases) in an entropy exemption, with the residue documented. The two T091/T095 boundary pins were moved from a 7-letter to a 31-letter piece by design: the boundary itself moved under the user-approved fix. Their mixed-case and digits-first twins are unedited. P0 0 · P1 0. |
+| Full smoke suite still green (no regression) | ☑ pass (implementer) | `2 failed, 2824 passed, 2 skipped`; the 2 failures are the known container tests. |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Backend only. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Backend only. |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Backend only. |
+| Repro loop | pass (implementer) | trigger printed ranc…****:bdeabc3ea4ad.yml before; unchanged path after |
+| Regression test | pass (implementer) | tests/test_t097_long_letter_digit_pieces.py (6 of 15 failed before the fix) |
+| Smoke suite | ☑ pass | Real repos: `redaction_hits_observed` and every rating are unchanged on bryony 11, kitchd 62, coffee 26, ai-training 28 and this repo 3. On scraping-devops the infrastructure rating stays 100, and 51 → 1 of its tracked paths are changed by `redact()`. |
 
 ---
 
@@ -36,12 +36,22 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-10-13T11:22:15Z on develop b496ffc, before any implementation commit.
+```
+$ PYTHONPATH=src python -c "from easy_verifier.core.redact import redact; print(redact('rancher2/cb-ppl/gateway-prod-ingress.yml'))"
+ranc…****:bdeabc3ea4ad.yml
+$ (count of tracked paths where redact(p) != p, scraping-devops, via ls-files)
+597 tracked; 51 changed
+```
+(The repo has grown since the guide's 371/50; 51 changed now, one of which, `bin/build-push-kibana-docker-image`, is a separate shape.)
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: 2026-10-13T11:35:50Z (implementer)
+```
+rancher2/cb-ppl/gateway-prod-ingress.yml
+scraping-devops: 597 tracked; 1 changed  (bin/build-push-kibana-docker-image, extensionless all-word name, no digits: a different shape, out of scope)
+```
 
 **DELTA**: [one sentence — what a user can now do that they could not before]
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T097.jsonl`, never the
+**WITNESS**: Supervisor re-ran the redaction test set, secret probes and the scraping-devops path sweep on the branch, 2026-10-13 (event trace T097).
 implementing agent alone]

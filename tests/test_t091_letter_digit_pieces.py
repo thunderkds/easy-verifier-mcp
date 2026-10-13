@@ -42,7 +42,7 @@ def test_random_shapes_still_fingerprint(text: str) -> None:
 @pytest.mark.parametrize(
     "name",
     [
-        "tests/test_abcdefg087_third_party_exclusion.py",  # 7-letter prefix, past {1,6}
+        "tests/test_abcdefghijklmnopqrstuvwxyzabcdefg087_third_party_exclusion.py",  # noqa: E501 (T097: 31 letters, was 7)
         "tests/test_Ab087_third_party_exclusion.py",  # mixed-case prefix
     ],
 )
