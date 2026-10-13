@@ -1559,6 +1559,12 @@ def _in_backend_unit(path: str, homes: Sequence[str], units: Sequence[str]) -> b
     return not units or _unit_of(path, homes) in units
 
 
+def _import_unit(path: str, homes: Sequence[str]) -> str:
+    """The manifest unit an import's target must share with its importer
+    (T093, AC 12); with no manifests, the whole repository."""
+    return _unit_of(path, homes)
+
+
 def _is_violation_end(path: str, behaviour: Mapping[str, str]) -> bool:
     """Whether ``path`` may be either end of a violation (T093, AC 11): only
     a layer from behaviour evidence; a hint-only layer never decides one."""
@@ -1646,27 +1652,29 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
     # Only files classified by behaviour are violation ends (T093, AC 11).
     ends = {p: lay for p, lay in classified.items() if _is_violation_end(p, behaviour)}
     # A stem shared by files of different layers names no layer: skipped.
-    by_name: dict[str, set[str]] = {}
+    # A target resolves only within the importer's own unit (T093, AC 12).
+    by_name: dict[tuple[str, str], set[str]] = {}
     for path, layer in ends.items():
-        by_name.setdefault(_file_name(path), set()).add(layer)
+        key = (_import_unit(path, homes), _file_name(path))
+        by_name.setdefault(key, set()).add(layer)
     targets = {
-        name: found.pop()
-        for name, found in by_name.items()
-        if len(found) == 1 and name
+        key: found.pop() for key, found in by_name.items() if len(found) == 1 and key[1]
     }
-    patterns = {name: _names_pattern([name]) for name in targets}
+    patterns = {key: _names_pattern([key[1]]) for key in targets}
     violations: list[tuple[Excerpt, int, str, str]] = []
     for excerpt, line, text in statements:
         source = ends.get(excerpt.path)
         if source is None:
             continue
+        unit = _import_unit(excerpt.path, homes)
         higher = sorted(
             {
                 target
-                for name, target in targets.items()
-                if LAYER_RANK[target] > LAYER_RANK[source]
+                for (in_unit, name), target in targets.items()
+                if in_unit == unit
+                and LAYER_RANK[target] > LAYER_RANK[source]
                 and name != _file_name(excerpt.path)
-                and patterns[name].search(text)
+                and patterns[(in_unit, name)].search(text)
             },
             key=LAYER_RANK.get,
         )
@@ -1687,7 +1695,10 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         + _BEHAVIOUR_METHOD
         + "; a violation needs a layer from behaviour at both ends: the "
         f"{len(classified) - len(ends)} file(s) classified by the layer_paths "
-        "hints only count in the share but are never a violation end; "
+        "hints only count in the share but are never a violation end; an "
+        "import's target is matched only among files of the importer's own "
+        "manifest unit (the deepest directory holding a package manifest "
+        "above it); "
         "shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "

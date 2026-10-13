@@ -169,14 +169,47 @@ def test_two_services_are_the_union_of_their_units(tmp_path) -> None:
     )
 
 
-def test_violations_still_count_classified_files_outside_units(tmp_path) -> None:
-    """A data file outside every backend unit importing the api route is still
-    a violation: only the share's denominator changes."""
-    leak = "const routes = require('../../api/src/routes');\n" + STORE
-    files = {**MONOREPO, "apps/web/ui/leak.js": leak}
-    metric = _layer(tmp_path, files)
+LEAK = {
+    **MONOREPO,
+    "apps/web/ui/leak.js": "const routes = require('../../api/src/routes');\n" + STORE,
+}
+
+
+def test_ac12_import_target_resolves_only_within_the_importers_unit(
+    tmp_path,
+) -> None:
+    """A data file in apps/web naming the stem ``routes`` of an api file in
+    apps/api is not a violation: targets resolve within the importer's own
+    manifest unit (kitchd: users.service.ts matched apps/web/.../auth.ts)."""
+    metric = _layer(tmp_path, LEAK)
     assert not metric.abstained, metric.outcome
+    assert metric.outcome == 0
+    assert "matched only among files of the importer's own manifest unit" in (
+        metric.derivation
+    )
+
+
+def test_ac12_sabotaged_whole_repo_targets_count_the_cross_unit_import(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(metrics_module, "_import_unit", lambda *_args: "")
+    metric = _layer(tmp_path, LEAK)
     assert metric.outcome == 1
+    assert "apps/web/ui/leak.js:1 (data -> api)" in metric.derivation
+
+
+def test_ac12_same_unit_violation_in_another_package_still_counts(tmp_path) -> None:
+    """Within one unit (apps/web, its own manifest) a data -> api import is
+    still a violation: AC 12 narrows where targets resolve, nothing more."""
+    files = {
+        "package.json": MANIFEST,
+        **_backend("apps/api/"),
+        **_web("apps/web/", count=0),
+        "apps/web/ui/page.js": ROUTE,
+        "apps/web/ui/leak.js": "const page = require('./page');\n" + STORE,
+    }
+    metric = _layer(tmp_path, files)
+    assert metric.outcome == 1, metric.derivation
     assert "apps/web/ui/leak.js:1 (data -> api)" in metric.derivation
 
 
