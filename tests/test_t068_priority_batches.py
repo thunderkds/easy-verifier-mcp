@@ -562,9 +562,10 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T090 (request_paths): every rating, value and the overall
     # are unchanged; only the unrated request_paths metric was added, in every
     # pack like its layer sibling (no route in the fixture, so it abstains).
-    # Regenerated for T092 (test-path sinks): every rating, value and the
-    # overall are unchanged; only the sink_hits_observed derivation and
-    # abstention wording changed (test-path hits listed, not counted).
+    # Regenerated for T092 (test-path sinks): every rating and the overall
+    # are unchanged; only unrated sink_hits_observed text changed, and the
+    # test-strategy pack (which holds only the one test file) now abstains
+    # instead of reporting 0 (only test files were scanned).
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 
