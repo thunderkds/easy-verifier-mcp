@@ -14,12 +14,12 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass (implementer) | `tests/test_t093_backend_unit_share.py`, 7 tests: AC1/2/4 monorepo `apps/api`+`apps/web` measured ("3 of 3 ... in backend unit(s) (apps/api)", "10 ... outside backend units (apps/web) are not counted"); AC6 sabotage `_in_backend_unit -> True` abstains "3 of 13"; AC3 no api file keeps whole repo ("of 12 ... quoted here", no unit wording); root-only manifest; api under root with nested `web/` package; two services = union; a classified file outside every unit still counts as a violation. Pre-change: 6 failed, 1 passed (AC3 passes before, by design). Post-change: `7 passed in 0.96s`; with T088: `35 passed in 3.41s`. |
+| Verification command run | ☒ pass (implementer) | `ruff check src tests` -> `All checks passed!`; kitchd/bryony/coffee/ai-training score runs pasted under Demonstration AFTER. |
+| Negative cases hold | ☒ pass (implementer) | no api file -> whole repository (AC3 test + ai-training byte-identical derivation); single manifest -> same value (coffee 0, 35/35); outside-unit violation still counted. |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
+| Full smoke suite still green (no regression) | ☒ pass (implementer) | full suite on `3abe66d`: `2 failed, 2720 passed, 2 skipped in 621.71s`; the 2 failures are the known stale-image container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
 | **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
@@ -82,9 +82,68 @@ architecture rating: 83
 overall: 60
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: same command on `3abe66d`, one run at a time (`[...]` as above).
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+# kitchd  started 2026-10-13T08:25:25Z  exit 0 finished 2026-10-13T08:25:44Z
+layer_direction_violations: abstained: "43 of 88 non-shared source file(s) in backend unit(s)
+  (apps/api) classify into a layer (api, service, data): 37 by behaviour (17 api, 0 service, 20
+  data), 6 by the layer_paths hints only; 89 non-shared source file(s) outside backend units
+  (apps/mobile, apps/web, packages/shared, the repository root) are not counted in this share: a
+  backend unit is the deepest directory holding a package manifest at or above a file that registers
+  a route, and a file belongs to the deepest such directory above it; violations are still counted
+  over all 49 classified file(s), below the declared minimum share of 0.50, so the layer direction of
+  this code is not measurable; 3 disagreement(s) [...unchanged...]"
+architecture rating: 100
+overall: 56
+
+# bryony --all  started 2026-10-13T08:26:06Z  exit 0 finished 2026-10-13T08:27:47Z
+layer_direction_violations: abstained: "148 of 515 non-shared source file(s) in backend unit(s)
+  (backend) classify into a layer (api, service, data): 47 by behaviour (4 api, 19 service, 24
+  data), 101 by the layer_paths hints only; 548 non-shared source file(s) outside backend units
+  (backend/scripts/companies/linkedin/queue, backend/scripts/companies/linkedin/scraper,
+  backend/scripts/netwise, design, frontend, ...) are not counted in this share: [...]; violations
+  are still counted over all 450 classified file(s), below the declared minimum share of 0.50, so
+  the layer direction of this code is not measurable; 31 disagreement(s) [...unchanged...]"
+architecture rating: 83
+overall: 42
+
+# coffee-shop-api  started 2026-10-13T08:28:01Z  exit 0 finished 2026-10-13T08:28:06Z
+layer_direction_violations: value 0: "0 import statement(s) from a lower to a higher layer [...]. 35 of
+  35 non-shared source file(s) in backend unit(s) (the repository root) classify into a layer (api,
+  service, data): 4 by behaviour (4 api, 0 service, 0 data), 31 by the layer_paths hints only [...]"
+architecture rating: 90
+overall: 81
+
+# ai-training  started 2026-10-13T08:28:06Z  exit 0 finished 2026-10-13T08:28:14Z
+layer_direction_violations: abstained, derivation byte-identical to BEFORE ("framework_not_recognized
+  [...] classify 2 of 79 non-shared source file(s) [...]")
+architecture rating: 83
+overall: 60
+```
+
+| Repo | Share BEFORE | Share AFTER | Measured | Violations | Architecture | Overall |
+|---|---|---|---|---|---|---|
+| kitchd | 49/177 (27.7%) | 43/88 (48.9%) | no -> no | - | 100 -> 100 | 56 -> 56 |
+| bryony `--all` | 450/1063 (42.3%) | 148/515 (28.7%) | no -> no | - | 83 -> 83 | 42 -> 42 |
+| coffee-shop-api | 35/35 | 35/35 (root unit) | yes -> yes | 0 -> 0 | 90 -> 90 | 81 -> 81 |
+| ai-training | 2/79, no api | unchanged (no api file) | no -> no | - | 83 -> 83 | 60 -> 60 |
+
+AC7 hand-check: no repository became measured, so there are no new violations to check by hand.
+Why the two monorepos still abstain (diagnosed against the source, not fixed: outside T093's scope):
+- kitchd: all 45 unclassified `apps/api` files are `*.module.ts`, `dto/*.dto.ts`, `main.ts`,
+  `prisma.service.ts`, `types/prisma-client.d.ts`. They match the curated `shared=` globs, but they
+  also match `api=**/api/**` because the app's directory is literally `apps/api`. `layer_of` leaves a
+  two-layer match unclassified, so they are counted in the denominator instead of being dropped as
+  shared. Checked: `layer_of("src/notes/notes.module.ts") == "shared"`, while
+  `layer_of("apps/api/src/notes/notes.module.ts") is None`. The guide's "about 49/87" assumed all 49
+  classified files are in `apps/api`; 6 are outside it.
+- bryony: the premise does not hold. Inside `backend/`, 148 of 515 files classify, and
+  `frontend/`/`design/` were contributing hint-classified files (450 - 148 = 302 of the 548 outside).
+
+**DELTA**: The layer rule's classified share is now taken over backend units only, and the derivation
+names the unit(s), the in-unit count and the files left out and where. On the four real repositories
+no measured/abstained outcome, rating or overall changed (see table).
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
