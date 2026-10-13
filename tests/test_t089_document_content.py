@@ -424,8 +424,12 @@ REQUIREMENT_CASES = [
     ("## Functional Requirements\n- search flights\n- search hotels\n- book\n", 0),
     ("## User Stories\n1. a chef plans\n2. staff check off\n3. owner sees\n", 0),
     ("## Functional Requirements\n- search flights\n- search hotels\n", 1),
-    ("## Requirements\n- one\n- two\n## Other\n- three\n- four\n", 1),
+    ("## Functional Requirements\n- one\n- two\n## Other\n- three\n- four\n", 1),
     ("## Installation\n- one\n- two\n- three\n", 1),
+    # decision A: install prerequisites are not requirements
+    ("## Requirements\n- Node\n- Npm\n- Docker\n", 1),
+    ("## System Requirements\n- Node\n- Npm\n- Docker\n", 1),
+    ("## Product Requirements\n- one\n- two\n- three\n", 0),
 ]
 
 
@@ -441,7 +445,37 @@ def test_ac12_requirements_heading_over_three_list_items(tmp_path, text, expecte
 @pytest.mark.parametrize(("minimum", "expected"), [(0, 0), (3, 0), (4, 1)])
 def test_ac12_list_threshold_pinned(tmp_path, monkeypatch, minimum, expected):
     monkeypatch.setattr(documents, "MIN_REQUIREMENT_LIST_ITEMS", minimum)
-    text = "## Requirements\n- one\n- two\n- three\n"
+    text = "## User Stories\n- one\n- two\n- three\n"
     repo = _repo(tmp_path, {"README.md": "# App\n", "notes/doc.md": text})
     metric, _ = _metric(repo, REQUIREMENTS, requirement_fidelity.DESCRIPTOR)
     assert metric.outcome == expected
+
+
+def test_decision_b_distinct_directories_outrank_a_file_list(tmp_path):
+    files = "".join(f"- src/app/f{i}.ts: changes this file here\n" for i in range(6))
+    dirs = _list("a", "b", "c")  # 3 directories beat 6 files in one directory
+    repo = _repo(
+        tmp_path,
+        {
+            "README.md": "# App\n",
+            "docs/plan.md": files,
+            "docs/structure.md": dirs,
+            **{f"src/app/f{i}.ts": "" for i in range(6)},
+            **_dirs("a", "b", "c"),
+        },
+    )
+    assert _metric(repo, ARCH)[1]["architecture-doc"].path == "docs/structure.md"
+
+
+@pytest.mark.parametrize("role", [ARCH, DECISION])
+def test_decision_c_templates_never_fill(tmp_path, role):
+    adr = "## Decision\nX.\n## Status\nAccepted.\n"
+    repo = _repo(
+        tmp_path,
+        {
+            "README.md": "# App\n",
+            "templates/doc.md": _list("a", "b", "c") + adr,
+            **_dirs("a", "b", "c"),
+        },
+    )
+    assert _metric(repo, role)[0].outcome == 1

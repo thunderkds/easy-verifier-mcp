@@ -62,7 +62,12 @@ def _is_changelog(path: str) -> bool:
     return bool(_CHANGELOG.match(PurePosixPath(path).name))
 
 
-_EXCLUDED = {ARCHITECTURE_DOC: _is_changelog, REQUIREMENTS_DOC: _is_template}
+_EXCLUDED = {
+    # T089 decision C: a template is never a project document, for any role
+    ARCHITECTURE_DOC: lambda path: _is_changelog(path) or _is_template(path),
+    DECISION_RECORD: _is_template,
+    REQUIREMENTS_DOC: _is_template,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -215,8 +220,12 @@ def _architecture_section(text: str) -> tuple[int, str] | None:
 # ---------------------------------------------------------------------------
 
 _REQUIREMENTS_HEADING = re.compile(
-    r"^\s{0,3}#{1,6}\s[^\n]*\b(requirements|user stories|acceptance criteria"
-    r"|use cases)\b",
+    # T089 decision A: only explicit names; a bare "Requirements" (or
+    # "Prerequisites", "System Requirements") heading usually lists install
+    # prerequisites
+    r"^\s{0,3}#{1,6}\s[^\n]*\b(functional requirements|non-functional requirements"
+    r"|nonfunctional requirements|product requirements|business requirements"
+    r"|user stories|acceptance criteria|use cases)\b",
     re.I,
 )
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d{1,3}[.)])\s+\S")
@@ -316,12 +325,17 @@ def scan_document_roles(context: object, roles: Sequence[str]) -> None:
     if resolution is None:
         return
     known = known_paths(resolution.walked)
+    directories = frozenset(
+        "/".join(parts[:end])
+        for parts in (path.split("/") for path in resolution.walked)
+        for end in range(1, len(parts))
+    )
     context.documents = tuple(
-        _scan_role(context, resolution, name, known) for name in roles
+        _scan_role(context, resolution, name, known, directories) for name in roles
     )
 
 
-def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
+def _scan_role(context, resolution, name: str, known, directories) -> DocumentEvidence:
     paths = resolution.files.get(name, ())
     for path in paths:
         if resolution.origins.get((name, path)) != ORIGIN_RULES:
@@ -357,7 +371,7 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
             patterns = convention_values(
                 context_conventions(context), "requirement_item_patterns"
             )
-        kind, cited, size = _shape(name, path, text, known, patterns)
+        kind, cited, size = _shape(name, path, text, known, patterns, directories)
         if kind is None:
             continue
         if name == DECISION_RECORD:
@@ -370,9 +384,9 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
             if context.read_source(path) is not None:
                 return _filled(name, kind, path, cited, scanned)
             continue
-        # T089 AC 10: the document with the most described entries wins; a
-        # tie goes to scan priority (the earlier one)
-        qualified.append((-size, len(qualified), kind, path, cited))
+        # T089 AC 10 (decision B): the document describing the most distinct
+        # directories wins, then the most entries, then scan priority
+        qualified.append(((-size[0], -size[1]), len(qualified), kind, path, cited))
 
     if name == DECISION_RECORD and qualified:
         listed = context.role_files.get(name, ())
@@ -396,14 +410,24 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
     return DocumentEvidence(name, None, None, (), scanned, bounded)
 
 
+def _size(entries, directories) -> tuple[int, int]:
+    """(distinct directories, entries): an entry naming a directory counts
+    that directory; one naming a file counts its parent, once."""
+    named = {
+        path if path in directories else path.rpartition("/")[0]
+        for _n, path, _line in entries
+    }
+    return len(named), len(entries)
+
+
 def _filled(name, kind, path, cited, scanned) -> DocumentEvidence:
     lines = tuple(dict.fromkeys(f"line {n}: {line}" for n, line in cited))
     return DocumentEvidence(name, kind, path, lines[:MAX_CITED_LINES], scanned)
 
 
-def _shape(name, path, text, known, patterns) -> tuple[str | None, list, int]:
+def _shape(name, path, text, known, patterns, directories=frozenset()):
     """``(kind or None, cited (line, text), size)``; ``size`` ranks
-    architecture documents by described entries."""
+    architecture documents: (distinct directories described, entries)."""
     if name == ARCHITECTURE_DOC:
         parent = PurePosixPath(path).parent.as_posix()
         base = "" if parent == "." else parent
@@ -417,8 +441,9 @@ def _shape(name, path, text, known, patterns) -> tuple[str | None, list, int]:
                 inside = described_entries(body, known, base)
                 if len(inside) >= MIN_DESCRIBED_ENTRIES:
                     cited = [(start + n, line) for n, _p, line in inside]
-                    return KIND_README_HEADING, cited, len(entries)
-        return KIND_CONTENT, [(n, line) for n, _p, line in entries], len(entries)
+                    return KIND_README_HEADING, cited, _size(entries, directories)
+        cited = [(n, line) for n, _p, line in entries]
+        return KIND_CONTENT, cited, _size(entries, directories)
     if name == DECISION_RECORD:
         found = decision_lines(text)
         return (KIND_CONTENT, found, 1) if found else (None, [], 0)
