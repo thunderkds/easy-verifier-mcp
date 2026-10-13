@@ -14,8 +14,8 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass | `tests/test_t089_document_content.py` (22 tests: SC 1–6 incl. MIN_DESCRIBED_ENTRIES 0/3/999, AC 3/4/6/7/9, entry forms, normalization, third-party, secret, non-English, prose/npm negatives): `22 passed in 1.57s` (implementer) |
+| Verification command run | ☐ pass / ☒ fail | implementer, 2026-10-13: `3 failed, 2669 passed, 2 skipped in 483.85s`; failures: 2 container tests (pre-existing, stale image) and `test_t001_pipeline.py::test_cited_line_numbers_are_1_indexed_and_match_the_file` (still red after switching it from PROJECT_SPEC.md to README.md; not diagnosed, step limit). `ruff check src tests`: All checks passed |
 | Negative cases hold | ☐ pass / ☐ fail | |
 | verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
@@ -85,9 +85,24 @@ ai-training:     architecture-doc ['travel_chatbot/docs/architecture.md'] | deci
 coffee-shop-api: architecture-doc [] | decision-record [] | requirements-doc []
 ```
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (2026-10-13T04:12:55Z–04:13:54Z, branch @ `465598b`, same command, one repo at a time, all exit 0;
+provenance from `pack.documents`, hand-checked by backend-developer against each source file):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+| Repo | architecture_description_missing | decision_records_missing | requirements_doc_missing | architecture | requirement-fidelity | overall |
+|---|---|---|---|---|---|---|
+| bryony | 0 → **0**, now `content`: `backend/scripts/README.md` "Folder structure" L8–12 (`/common`, `/companies`, `/crunchbase`, `/similarweb` exist under backend/scripts; `/salesforce` does not and is not counted). `event_design.md` no longer fills it | 1 → 1 (40 docs read) | 1 → 1 (40 docs read) | 83 → 83 | abstain → abstain | 59 → 59 |
+| scraping-devops | **1 → 0**, `content`: README.md L6–10 (`- bin: helper scripts`, `- elk: …`, `- vagrant: …`, `- docker-registry: …`, `- rancher: …`) | 1 → 1 (12 read) | 1 → 1 (12 read) | abstain → abstain (`below_coverage_floor`) | abstain → abstain | abstain → abstain |
+| kitchd | 0 → 0, `content`: **BRAINSTORMING_LOG.md L85–90** (a planned-files list, see deviations); PROJECT_SPEC.md has only 5 entries (risk table, `/apps/api/src/inventory/**` …) and is scanned later | 0 → 0, `content`: `docs/adr/0001-…md` L3 Status, L6 Context, L10 Decision, L18 Consequences | 0 → 0, `content`: PRD.md L33–37 `US-001…US-005` | 100 → 100 | 60 → 60 | 56 → 56 |
+| ai-training | 0 → 0, `content`: `travel_chatbot/README.md` tree L95–100 (`├── agents/  # …`, `core/`, `edges/`, `nodes/`, `builder.py`) | **1 → 0**, `content`: `travel_chatbot/docs/trvl_flights_gondola_hotels_requirements.md` L4 `**Status**:` + L7 `## Context` (a requirements doc; literal AC 2, see deviations) | **0 → 1**: 44 docs read, no FR-/US-/AC-/Scenario item; its requirements doc uses plain bullets | 83 → **100** | abstain → abstain | 60 → **63** |
+| coffee-shop-api | **1 → 0**, `content`: README.md "Project Structure" fenced tree L69–73 under `src/` (`common/`, `entities/`, `enums/`, `constants/`, `guards/`) | 1 → 1 (14 read) | 1 → 1 (14 read) | 80 → **90** | 50 → 50 | 74 → **76** |
+
+easy-verifier (this repo, `docscan.py`): architecture-doc `content` BRAINSTORMING_LOG.md L215–219 module list;
+decision-record `content` memory/decisions.md; requirements-doc `content` PRD.md (FR/US ids).
+
+**DELTA**: a document role is now filled only by what a document contains (≥3 described real paths, a
+decision structure, or a requirement item) or by a declaration, with the cited lines in the payload,
+so scraping-devops and coffee-shop-api get credit for the structure their READMEs describe and a name
+match such as bryony's `event_design.md` no longer passes.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
