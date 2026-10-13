@@ -29,7 +29,7 @@ from .metrics import (
     MIN_REQUIREMENT_LIST_ITEMS,
 )
 from .models import DocumentEvidence
-from .roles import MAX_ROLE_WALK_FILES, ORIGIN_RULES, _is_template
+from .roles import MAX_ROLE_FILES, MAX_ROLE_WALK_FILES, ORIGIN_RULES, _is_template
 from .structure import context_conventions, convention_values, find_requirement_items
 
 MAX_SCANNED_DOCUMENTS = MAX_DOC_SOURCES
@@ -253,8 +253,10 @@ _DECISION_NAMES = (
     r"|chosen(?: option)?|selected(?: option)?|approved direction)\b"
 )
 _SUPPORT_NAMES = (
-    r"(context|consequences|status|alternatives(?: considered)?"
-    r"|considered options|options)\b"
+    # singular forms too: a kit brainstorming log heads "## Alternative
+    # Paths" and "### Option A"
+    r"(context|consequences|status|alternatives?(?: considered)?"
+    r"|considered options|options?)\b"
 )
 _DECISION_FIELD = re.compile(
     f"(?:{_HEADING_LEAD}{_DECISION_NAMES}|{_FIELD_LEAD}{_DECISION_NAMES}{_FIELD_END})",
@@ -358,6 +360,12 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
         kind, cited, size = _shape(name, path, text, known, patterns)
         if kind is None:
             continue
+        if name == DECISION_RECORD:
+            # T089 AC 14: every decision record found by content is evidence
+            # (solution-fit reads this role), so the scan goes on; the first
+            # one in scan priority fills the rule
+            qualified.append((0, len(qualified), kind, path, cited))
+            continue
         if name != ARCHITECTURE_DOC:
             if context.read_source(path) is not None:
                 return _filled(name, kind, path, cited, scanned)
@@ -366,6 +374,10 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
         # tie goes to scan priority (the earlier one)
         qualified.append((-size, len(qualified), kind, path, cited))
 
+    if name == DECISION_RECORD and qualified:
+        listed = context.role_files.get(name, ())
+        found = [path for *_rest, path, _cited in qualified if path not in listed]
+        context.role_files[name] = (*listed, *found)[: max(len(listed), MAX_ROLE_FILES)]
     for _size, _order, kind, path, cited in sorted(qualified):
         if context.read_source(path) is not None:
             return _filled(name, kind, path, cited, scanned)

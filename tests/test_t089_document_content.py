@@ -393,6 +393,9 @@ DECISION_CASES = [
     ("**Decision**: Postgres\n**Status**: Accepted\n", 0),
     ("## Options\nA or B.\n\n## 🚀 Recommended Path\nOption B.\n", 0),
     ("## Context and Problem Statement\nX.\n\n## Decision Outcome\nY.\n", 0),
+    # kit brainstorming log: singular "Alternative" / "Option" headings
+    ("## Alternative Paths\n### Option A — inline\n## Recommended Path\nA.\n", 0),
+    ("## Alternative Paths\n### Option A — inline\n", 1),  # no decision
 ]
 
 
@@ -409,6 +412,9 @@ def test_ac11_brainstorming_log_reaches_solution_fit_by_content(tmp_path):
     filled = {item.role: item for item in pack.documents}["decision-record"]
     assert (filled.kind, filled.path) == ("content", "BRAINSTORMING_LOG.md")
     assert "BRAINSTORMING_LOG.md" in pack.files_read
+    # read as role evidence, so solution-fit quotes its sections
+    assert any(e.path == "BRAINSTORMING_LOG.md" for e in pack.excerpts)
+    assert "decision-record" in pack.sources_found
 
 
 # --- AC 12: requirements by heading and list ------------------------------------
