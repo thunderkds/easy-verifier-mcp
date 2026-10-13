@@ -17,12 +17,12 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass | `tests/test_t089_document_content.py` (47 tests): SC 1–6 with MIN_DESCRIBED_ENTRIES 0/3/999; AC 3/4/6/7/9; AC 10 plus decision B (3 directories outrank 6 files in one directory; ties go to scan priority); AC 11 (ai-training-shaped Status+Context → 1, decision-only → 1, Decision+Status / MADR / kit log → 0); AC 12 plus decision A (`## Functional Requirements` over 3 bullets → 0, bare `## Requirements` / `## System Requirements` over `- Node`/`- Npm`/`- Docker` → 1, threshold tested at 0/3/4); decision C (templates never fill); AC 14 (solution-fit quotes a log by content). Result: `47 passed` (implementer) |
 | Verification command run | ☒ pass | implementer, 2026-10-13 @ 484ce20, full suite: `2 failed, 2695 passed, 2 skipped in 410.63s`. Both failures are the pre-existing container tests (stale image). AC 13 `test_cited_line_numbers_are_1_indexed_and_match_the_file` and `test_architecture_pack_against_this_repo` both pass, with assertions unchanged in substance. `ruff check src tests`: All checks passed |
 | Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
+| verify | ☑ pass | Supervisor 2026-10-13 drove the CLI from the branch: scraping-devops architecture-doc 0, filled by README.md (content: L6 `- bin: helper scripts`, L7 `- elk: …`, L8 `- vagrant: …`); decision-record 1 ("12 documents read; none has a decision structure"); requirements-doc 1. ai-training architecture-doc 0 (travel_chatbot/README.md tree L95+); decision-record 1 (Status+Context alone no longer counts); requirements-doc 0 (`## Functional Requirements` L38). t089 + t001: 96 passed — pass. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review of `core/documents.py` (new), `metrics._document_rule`, `roles.GENERIC_PATTERNS` (kit names removed), `RoleResolution.walked`, the 3 dimension collect calls, and the test changes in finding 5 (each justified against AC 4/7). P0 0 · P1 0 after 3 rounds of precision decisions (AC 10–12, A–C). Security: cited lines and paths pass through `redact.scan` like `files_read`; candidates go through `peek_source` (refuses secret-bearing and out-of-repo files); third-party and secret-bearing paths never count as entries. Known limitations (follow-ups): the kitchd/this-repo architecture-doc citation is a task's Files-to-Change table (true content, weak citation); a WCAG URL path in README is masked by `high_entropy_string` (a redaction false positive found via AC 13). |
 | Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Backend only. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Backend only. |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Backend only. |
 
 ---
 
@@ -116,5 +116,4 @@ Remaining findings:
 - (B) On kitchd and on this repo, the winning architecture document is still a TASK_GUIDE "Files to Change" table, even when ranking by distinct directories. No name-based exclusion was added, as instructed.
 - (D) `high_entropy_string` gives a false positive on the WCAG URL path in this repo's README.md. That was the root cause of AC 13; it is not fixed here.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-13. Re-ran t089 + t001 (96 passed) and drove `score` on scraping-devops and ai-training from the branch; the results match the implementer's AFTER table.
