@@ -69,6 +69,14 @@ or in a ``/blob/``/``/tree/`` path; a 64/128-hex secret at line start followed b
 two spaces and a word; an upper-case ``_``-joined random value under a
 non-secret key; a word-shaped value under a ``license`` key.
 
+T095 widens :data:`_LETTER_DIGIT_PIECE` to an upper-case letter run then a digit run
+(``WCAG22``, ``HTTP2``, ``ES2015``, ``UTF8``, ``ISO27001``), so a W3C link is not
+fingerprinted. Mixed-case prefixes and digits-before-letters still fail the shape.
+Residue, stated plainly: a secret shaped only as upper-case-run + digit-run pieces
+joined by ``_``, ``-`` or ``/`` and written inside a URL path or before ``.ext``
+(``ABC123-DEF456.txt``) is no longer caught by this rule. Credentials are not
+issued in this shape.
+
 Every pattern below is linear — no nested or adjacent unbounded quantifiers, and
 every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 (ReDoS). This module reads attacker-influenceable content.
@@ -191,7 +199,7 @@ the token in a webhook URL path, and the password inside a
 """
 
 _WORD_PIECE = r"(?:[A-Z]{1,30}|[A-Z]?[a-z]{1,30})"
-_LETTER_DIGIT_PIECE = r"[a-z]{1,6}[0-9]{1,8}"
+_LETTER_DIGIT_PIECE = r"(?:[a-z]{1,6}|[A-Z]{1,6})[0-9]{1,8}"
 _NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}}|{_LETTER_DIGIT_PIECE})"
 _WORD_JOINED_NAME = re.compile(rf"{_NAME_PIECE}(?:[/_-]{_NAME_PIECE}){{1,30}}")
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}(?![A-Za-z0-9+/=_-])")
