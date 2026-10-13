@@ -36,8 +36,11 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: (implementer, 2026-10-13T10:19:10Z, worktree at HEAD 278c963, no implementation commit yet)
+```
+$ PYTHONPATH=src .venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('See https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html for details'))"
+See https://www.w3.org/…****:458fc23ebb1e.html for details
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
