@@ -12,12 +12,12 @@
 
 ### Todo
 - [ ] **T096** — A change list is not an architecture description; architecture prose sections count | backend-developer | C2 | Risk: Medium | P2
-- [ ] **T095** — Redaction masks URL path segments whose pieces are upper-case letters then digits (`WCAG22`) | backend-developer | C1 | Risk: Medium | P2
+- [x] **T095** — Redaction masks URL path segments whose pieces are upper-case letters then digits (`WCAG22`) | backend-developer | C1 | Risk: Medium | P2 | ✅ Done 2026-10-13 (`_LETTER_DIGIT_PIECE` admits upper-case run + digit run; this repo security hits 7→3, others unchanged)
 - [ ] **T094** — Infrastructure recognises Kubernetes manifests and Compose files by content | backend-developer | C2 | Risk: Medium | P1
 
 **Wave 19 — Follow-ups from Waves 17/18 (added 2026-10-13, user "yes" to continue with the follow-ups; T094/T095/T096 independent, merged one at a time)**
 - [ ] **T094** — Infrastructure recognises Kubernetes manifests (`apiVersion`+`kind`), Compose files (`services:` or v1 top-level `image:`/`build:`) and CloudFormation by content, not folder/file name (DDR-0012; follow-up from T087: scraping-devops abstains on infrastructure once Harbor is excluded) | backend-developer | C2 | Risk: Med | P1
-- [ ] **T095** — Bugfix: redaction masks URL path pieces made of upper-case letters then digits (`/WAI/WCAG22/Understanding/…` in this repo's README; follow-up from T089) | backend-developer | C1 | Risk: Med | P2
+- [x] **T095** — Bugfix: redaction masks URL path pieces made of upper-case letters then digits (`/WAI/WCAG22/Understanding/…` in this repo's README; follow-up from T089) | backend-developer | C1 | Risk: Med | P2 | ✅ Done 2026-10-13 (`_LETTER_DIGIT_PIECE` admits upper-case run + digit run; this repo security hits 7→3, others unchanged)
 - [ ] **T096** — architecture-doc: a change-list table (`File | Change`) is not a description; an Architecture-headed prose section naming ≥3 real paths counts in any document (follow-up from T089: kitchd cites `tasks/TASK_GUIDE_T029.md` Files-to-Change; kitchd's real description is `PROJECT_SPEC.md` Architecture Summary) | backend-developer | C2 | Risk: Med | P2
 
 **Wave 18 — Scoring decisions after Wave 17 (added 2026-10-13, user: "yes, agree"; run order T092 → T093)**
