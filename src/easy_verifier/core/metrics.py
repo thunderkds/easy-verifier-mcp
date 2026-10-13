@@ -963,11 +963,8 @@ description (user sign-off 2026-10-12, G5). Two entries read as an aside
 
 MIN_DESCRIPTION_WORDS = 2
 
-MIN_DECISION_FIELDS = 2
-"""Distinct decision-record fields (Context, Decision, Consequences, Status,
-Alternatives) a document must head or label: Nygard's ADR
-(https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
-and MADR (https://adr.github.io/madr/) both carry at least two."""
+MIN_REQUIREMENT_LIST_ITEMS = 3
+"""List items a heading naming requirements must head (T089 AC 12)."""
 
 
 DOCUMENT_SHAPES = {
@@ -977,12 +974,16 @@ DOCUMENT_SHAPES = {
         f"followed by at least {MIN_DESCRIPTION_WORDS} words)"
     ),
     "decision-record": (
-        f"has a decision structure (at least {MIN_DECISION_FIELDS} of the "
-        "headings or fields Context, Decision, Consequences, Status, "
-        "Alternatives; or a dated entry with a decision verb and a rationale)"
+        "has a decision structure (a Decision / Decision Outcome / Recommended "
+        "Path / Recommendation / Chosen / Selected / Approved direction heading "
+        "or field plus a Context, Consequences, Status, Alternatives or Options "
+        "one; or a dated entry with a decision verb and a rationale)"
     ),
     "requirements-doc": (
-        "has a requirement item under the declared requirement_item_patterns"
+        "has a requirement item under the declared requirement_item_patterns, "
+        "or a heading naming requirements (Requirements, User Stories, "
+        f"Acceptance Criteria, Use Cases) over at least "
+        f"{MIN_REQUIREMENT_LIST_ITEMS} list items"
     ),
 }
 """What content fills each document role (T089); the miss reason names it."""

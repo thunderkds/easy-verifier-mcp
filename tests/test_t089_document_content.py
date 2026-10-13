@@ -12,7 +12,7 @@ from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.metrics import MetricAbstention, compute_metrics
 from easy_verifier.core.pipeline import run_dimension
 from easy_verifier.core.roles import GENERIC_PATTERNS
-from easy_verifier.dimensions import architecture, requirement_fidelity
+from easy_verifier.dimensions import architecture, requirement_fidelity, solution_fit
 
 ARCH = "architecture_description_missing"
 DECISION = "decision_records_missing"
@@ -356,3 +356,86 @@ def test_third_party_paths_never_count(tmp_path):
         },
     )
     assert _metric(repo, ARCH)[0].outcome == 1
+
+
+# --- AC 10: the best document wins ---------------------------------------------
+
+
+def _list(*names: str) -> str:
+    return "".join(f"- {name}: describes this part well\n" for name in names)
+
+
+@pytest.mark.parametrize(
+    ("other", "winner"),
+    [(("a", "b", "c", "d"), "docs/structure.md"), (("a", "b", "c"), "README.md")],
+)
+def test_ac10_most_entries_wins_and_a_tie_goes_to_scan_priority(
+    tmp_path, other, winner
+):
+    repo = _repo(
+        tmp_path,
+        {
+            "README.md": _list("a", "b", "c"),
+            "docs/structure.md": _list(*other),
+            **_dirs("a", "b", "c", "d"),
+        },
+    )
+    assert _metric(repo, ARCH)[1]["architecture-doc"].path == winner
+
+
+# --- AC 11: a decision record needs a decision ----------------------------------
+
+DECISION_CASES = [
+    # ai-training shape: a requirements doc with Status + Context, no decision
+    ("**Status**: Architecture approved\n\n## Context\nTravel search.\n", 1),
+    ("## Decision\nUse Postgres.\n", 1),  # a decision with no context
+    ("## Context\nStore.\n\n## Consequences\nCost.\n", 1),
+    ("**Decision**: Postgres\n**Status**: Accepted\n", 0),
+    ("## Options\nA or B.\n\n## 🚀 Recommended Path\nOption B.\n", 0),
+    ("## Context and Problem Statement\nX.\n\n## Decision Outcome\nY.\n", 0),
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), DECISION_CASES)
+def test_ac11_decision_field_plus_one_more(tmp_path, text, expected):
+    repo = _repo(tmp_path, {"README.md": "# App\n", "notes/doc.md": text})
+    assert _metric(repo, DECISION)[0].outcome == expected
+
+
+def test_ac11_brainstorming_log_reaches_solution_fit_by_content(tmp_path):
+    log = "# Log\n\n## Options\nA, B.\n\n## Recommended Path\nB.\n"
+    repo = _repo(tmp_path, {"README.md": "# App\n", "BRAINSTORMING_LOG.md": log})
+    pack = run_dimension(solution_fit.DESCRIPTOR, repo, scope="project")
+    filled = {item.role: item for item in pack.documents}["decision-record"]
+    assert (filled.kind, filled.path) == ("content", "BRAINSTORMING_LOG.md")
+    assert "BRAINSTORMING_LOG.md" in pack.files_read
+
+
+# --- AC 12: requirements by heading and list ------------------------------------
+
+REQUIREMENT_CASES = [
+    # ai-training shape: plain bullets under a requirements heading
+    ("## Functional Requirements\n- search flights\n- search hotels\n- book\n", 0),
+    ("## User Stories\n1. a chef plans\n2. staff check off\n3. owner sees\n", 0),
+    ("## Functional Requirements\n- search flights\n- search hotels\n", 1),
+    ("## Requirements\n- one\n- two\n## Other\n- three\n- four\n", 1),
+    ("## Installation\n- one\n- two\n- three\n", 1),
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), REQUIREMENT_CASES)
+def test_ac12_requirements_heading_over_three_list_items(tmp_path, text, expected):
+    repo = _repo(tmp_path, {"README.md": "# App\n", "notes/doc.md": text})
+    metric, evidence = _metric(repo, REQUIREMENTS, requirement_fidelity.DESCRIPTOR)
+    assert metric.outcome == expected
+    if expected == 0:
+        assert evidence["requirements-doc"].cited[0].startswith("line 1: ## ")
+
+
+@pytest.mark.parametrize(("minimum", "expected"), [(0, 0), (3, 0), (4, 1)])
+def test_ac12_list_threshold_pinned(tmp_path, monkeypatch, minimum, expected):
+    monkeypatch.setattr(documents, "MIN_REQUIREMENT_LIST_ITEMS", minimum)
+    text = "## Requirements\n- one\n- two\n- three\n"
+    repo = _repo(tmp_path, {"README.md": "# App\n", "notes/doc.md": text})
+    metric, _ = _metric(repo, REQUIREMENTS, requirement_fidelity.DESCRIPTOR)
+    assert metric.outcome == expected

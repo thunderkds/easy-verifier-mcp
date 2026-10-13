@@ -576,16 +576,27 @@ def test_architecture_pack_against_this_repo():
 def test_cited_line_numbers_are_1_indexed_and_match_the_file():
     """An off-by-one here poisons every citation downstream."""
     pack = run_dimension(architecture.DESCRIPTOR, REPO_ROOT)
-    excerpt = next(e for e in pack.excerpts if e.path == "README.md")
+    # T089 (AC 13): PROJECT_SPEC.md is no longer an architecture-doc name, so
+    # the excerpt is chosen by property, not by name: a whole document whose
+    # text is the file's own. README.md is not one -- the evidence layer
+    # redacts a WCAG URL path in it (high_entropy_string), and lines over
+    # MAX_LINE_CHARS carry a truncation mark; both differ from disk by design.
+    # (A clipped excerpt is fine: its mark comes after end_line.)
+    redacted = {hit.path for hit in pack.redactions}
+    excerpt = next(
+        e
+        for e in pack.excerpts
+        if e.start_line == 1
+        and e.path not in redacted
+        and "…[line truncated]" not in e.text
+    )
 
-    on_disk = (REPO_ROOT / "README.md").read_text(encoding="utf-8").splitlines()
+    on_disk = (REPO_ROOT / excerpt.path).read_text(encoding="utf-8").splitlines()
     quoted = excerpt.text.splitlines()[: excerpt.end_line]
 
     assert excerpt.start_line == 1
     # Line L of the excerpt is line (start_line + L - 1) of the file.
     for offset, line in enumerate(quoted):
-        if line.endswith("…[line truncated]"):  # MAX_LINE_CHARS clip
-            continue
         assert line == on_disk[excerpt.start_line - 1 + offset]
 
 

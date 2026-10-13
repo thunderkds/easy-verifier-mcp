@@ -24,9 +24,9 @@ from pathlib import PurePosixPath
 from .context import MAX_DOC_SOURCES, MAX_LINE_CHARS, _is_secret_bearing
 from .metrics import (
     ARCHITECTURE_HEADING,
-    MIN_DECISION_FIELDS,
     MIN_DESCRIBED_ENTRIES,
     MIN_DESCRIPTION_WORDS,
+    MIN_REQUIREMENT_LIST_ITEMS,
 )
 from .models import DocumentEvidence
 from .roles import MAX_ROLE_WALK_FILES, ORIGIN_RULES, _is_template
@@ -186,15 +186,11 @@ def _line_entry(rest: str, known, prefixes) -> tuple[str | None, bool]:
     return path, _words(description) >= MIN_DESCRIPTION_WORDS
 
 
-def _architecture_section(text: str) -> tuple[int, str] | None:
-    """``(first line, text)`` of a section headed "Architecture"."""
-    match = ARCHITECTURE_HEADING.search(text)
-    if match is None:
-        return None
-    start = text.count("\n", 0, text.index("#", match.start()))
-    lines = text.splitlines()
+def _section_at(lines: list[str], start: int) -> int:
+    """End (exclusive) of the section whose ATX heading is ``lines[start]``:
+    the next heading of the same or a higher level."""
     level = len(lines[start].lstrip()) - len(lines[start].lstrip().lstrip("#"))
-    end = next(
+    return next(
         (
             index
             for index in range(start + 1, len(lines))
@@ -202,19 +198,71 @@ def _architecture_section(text: str) -> tuple[int, str] | None:
         ),
         len(lines),
     )
-    return start, "\n".join(lines[start:end])
+
+
+def _architecture_section(text: str) -> tuple[int, str] | None:
+    """``(first line, text)`` of a section headed "Architecture"."""
+    match = ARCHITECTURE_HEADING.search(text)
+    if match is None:
+        return None
+    start = text.count("\n", 0, text.index("#", match.start()))
+    lines = text.splitlines()
+    return start, "\n".join(lines[start : _section_at(lines, start)])
+
+
+# ---------------------------------------------------------------------------
+# requirements-doc: a heading naming requirements over a list (AC 12)
+# ---------------------------------------------------------------------------
+
+_REQUIREMENTS_HEADING = re.compile(
+    r"^\s{0,3}#{1,6}\s[^\n]*\b(requirements|user stories|acceptance criteria"
+    r"|use cases)\b",
+    re.I,
+)
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d{1,3}[.)])\s+\S")
+
+
+def requirement_list_lines(text: str) -> list[tuple[int, str]]:
+    """``(line, text)`` of the first heading naming requirements followed by
+    at least :data:`MIN_REQUIREMENT_LIST_ITEMS` list items before the next
+    heading of the same or a higher level (its heading line first), or
+    ``[]``."""
+    lines = text.splitlines()
+    for start, line in enumerate(lines):
+        if len(line) > MAX_LINE_CHARS or not _REQUIREMENTS_HEADING.match(line):
+            continue
+        items = [
+            (index + 1, lines[index].strip())
+            for index in range(start + 1, _section_at(lines, start))
+            if len(lines[index]) <= MAX_LINE_CHARS and _LIST_ITEM.match(lines[index])
+        ]
+        if len(items) >= MIN_REQUIREMENT_LIST_ITEMS:
+            return [(start + 1, line.strip()), *items]
+    return []
 
 
 # ---------------------------------------------------------------------------
 # decision-record: decision structure
 # ---------------------------------------------------------------------------
 
-_DECISION_KEYS = r"(context|decisions?|consequences|status|alternatives)\b"
-_DECISION_HEADING = re.compile(
-    r"^\s{0,3}#{1,6}\s*(?:\d+[.)]?\s*)?" + _DECISION_KEYS, re.I
+_HEADING_LEAD = r"^\s{0,3}#{1,6}\s*(?:\d+[.)]?\s*)?(?:[^\w\s]+\s*)?"
+_FIELD_LEAD = r"^\s{0,3}(?:[-*+]\s+)?(?:\*\*|__)?"
+_FIELD_END = r"(?:\*\*|__)?\s*:"
+_DECISION_NAMES = (
+    r"(decision outcome|decisions?|recommended path|recommendation"
+    r"|chosen(?: option)?|selected(?: option)?|approved direction)\b"
+)
+_SUPPORT_NAMES = (
+    r"(context|consequences|status|alternatives(?: considered)?"
+    r"|considered options|options)\b"
 )
 _DECISION_FIELD = re.compile(
-    r"^\s{0,3}(?:[-*+]\s+)?(?:\*\*|__)?" + _DECISION_KEYS + r"(?:\*\*|__)?\s*:", re.I
+    f"(?:{_HEADING_LEAD}{_DECISION_NAMES}|{_FIELD_LEAD}{_DECISION_NAMES}{_FIELD_END})",
+    re.I,
+)
+_SUPPORT_FIELD = re.compile(
+    f"(?:{_HEADING_LEAD}{_SUPPORT_NAMES}|{_FIELD_LEAD}{_SUPPORT_NAMES}{_FIELD_END})",
+    re.I,
 )
 _DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _DECISION_VERB = re.compile(r"\b(decided|chose|chosen|we will)\b", re.I)
@@ -225,17 +273,18 @@ MAX_DATED_ENTRY_LINES = 10
 def decision_lines(text: str) -> list[tuple[int, str]]:
     """``(line, text)`` showing a decision structure, or ``[]``."""
     lines = text.splitlines()
-    fields: dict[str, tuple[int, str]] = {}
+    decision = support = None
     for number, line in enumerate(lines, 1):
         if len(line) > MAX_LINE_CHARS:
             continue
-        match = _DECISION_HEADING.match(line) or _DECISION_FIELD.match(line)
-        if match is not None:
-            key = match[1].lower()
-            key = "decision" if key == "decisions" else key
-            fields.setdefault(key, (number, line.strip()))
-    if len(fields) >= MIN_DECISION_FIELDS:
-        return sorted(fields.values())
+        if decision is None and _DECISION_FIELD.match(line):
+            decision = (number, line.strip())
+        elif support is None and _SUPPORT_FIELD.match(line):
+            support = (number, line.strip())
+    if decision is not None and support is not None:
+        # T089 AC 11: a decision plus its context; Context + Status alone is
+        # a status page, not a decision record
+        return sorted((decision, support))
     for index, line in enumerate(lines):
         if not _DATE.search(line) or len(line) > MAX_LINE_CHARS:
             continue
@@ -295,6 +344,7 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
 
     scanned = 0
     patterns = None
+    qualified: list = []
     for path in candidates[:MAX_SCANNED_DOCUMENTS]:
         text = context.peek_source(path)
         if text is None:
@@ -305,17 +355,20 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
             patterns = convention_values(
                 context_conventions(context), "requirement_item_patterns"
             )
-        kind, cited = _shape(name, path, text, known, patterns)
-        if kind is not None and context.read_source(path) is not None:
-            return DocumentEvidence(
-                name,
-                kind,
-                path,
-                tuple(dict.fromkeys(f"line {n}: {line}" for n, line in cited))[
-                    :MAX_CITED_LINES
-                ],
-                scanned,
-            )
+        kind, cited, size = _shape(name, path, text, known, patterns)
+        if kind is None:
+            continue
+        if name != ARCHITECTURE_DOC:
+            if context.read_source(path) is not None:
+                return _filled(name, kind, path, cited, scanned)
+            continue
+        # T089 AC 10: the document with the most described entries wins; a
+        # tie goes to scan priority (the earlier one)
+        qualified.append((-size, len(qualified), kind, path, cited))
+
+    for _size, _order, kind, path, cited in sorted(qualified):
+        if context.read_source(path) is not None:
+            return _filled(name, kind, path, cited, scanned)
 
     bounded = None
     if len(candidates) > MAX_SCANNED_DOCUMENTS:
@@ -331,30 +384,36 @@ def _scan_role(context, resolution, name: str, known) -> DocumentEvidence:
     return DocumentEvidence(name, None, None, (), scanned, bounded)
 
 
-def _shape(name, path, text, known, patterns) -> tuple[str | None, list]:
+def _filled(name, kind, path, cited, scanned) -> DocumentEvidence:
+    lines = tuple(dict.fromkeys(f"line {n}: {line}" for n, line in cited))
+    return DocumentEvidence(name, kind, path, lines[:MAX_CITED_LINES], scanned)
+
+
+def _shape(name, path, text, known, patterns) -> tuple[str | None, list, int]:
+    """``(kind or None, cited (line, text), size)``; ``size`` ranks
+    architecture documents by described entries."""
     if name == ARCHITECTURE_DOC:
         parent = PurePosixPath(path).parent.as_posix()
         base = "" if parent == "." else parent
+        entries = described_entries(text, known, base)
+        if len(entries) < MIN_DESCRIBED_ENTRIES:
+            return None, [], 0
         if PurePosixPath(path).name.lower().startswith("readme"):
             section = _architecture_section(text)
             if section is not None:
                 start, body = section
-                entries = described_entries(body, known, base)
-                if len(entries) >= MIN_DESCRIBED_ENTRIES:
-                    return KIND_README_HEADING, [
-                        (start + n, line) for n, _p, line in entries
-                    ]
-        entries = described_entries(text, known, base)
-        if len(entries) >= MIN_DESCRIBED_ENTRIES:
-            return KIND_CONTENT, [(n, line) for n, _p, line in entries]
-        return None, []
+                inside = described_entries(body, known, base)
+                if len(inside) >= MIN_DESCRIBED_ENTRIES:
+                    cited = [(start + n, line) for n, _p, line in inside]
+                    return KIND_README_HEADING, cited, len(entries)
+        return KIND_CONTENT, [(n, line) for n, _p, line in entries], len(entries)
     if name == DECISION_RECORD:
         found = decision_lines(text)
-        return (KIND_CONTENT, found) if found else (None, [])
+        return (KIND_CONTENT, found, 1) if found else (None, [], 0)
     items = find_requirement_items(text, patterns)
-    lines = text.splitlines()
-    if not items:
-        return None, []
-    return KIND_CONTENT, [
-        (item.line, lines[item.line - 1].strip()[:MAX_LINE_CHARS]) for item in items
-    ]
+    if items:
+        lines = text.splitlines()
+        cited = [(i.line, lines[i.line - 1].strip()[:MAX_LINE_CHARS]) for i in items]
+        return KIND_CONTENT, cited, 1
+    found = requirement_list_lines(text)
+    return (KIND_CONTENT, found, 1) if found else (None, [], 0)
