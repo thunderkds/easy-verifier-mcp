@@ -21,6 +21,7 @@ from .budget import budget as _run_budget
 from .context import DEFAULT_SCOPE, RepoPathError, detect_context
 from .models import (
     DimensionDescriptor,
+    DocumentEvidence,
     EvidencePack,
     RedactionHit,
     SourceMiss,
@@ -92,6 +93,7 @@ def run_dimension(
             picks=picks,
         )
         context.role_files = dict(resolution.files)
+        context.role_resolution = resolution
 
     # Scope resolution remains centralized; narrow scopes receive only the
     # explicit selector their resolver requires and never widen on failure.
@@ -191,10 +193,26 @@ def run_dimension(
         doc_history=getattr(context, "doc_history", None),
         sample=getattr(context, "sample", None),
         whole_file=getattr(context, "whole_file", None),
+        documents=_redacted_documents(getattr(context, "documents", None)),
         excluded=_redacted_exclusions(resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
+    )
+
+
+def _redacted_documents(documents) -> tuple[DocumentEvidence, ...] | None:
+    """The document-role evidence (T089) with its path and cited lines
+    redacted like every other path and quote that leaves the engine."""
+    if not documents:
+        return None
+    return tuple(
+        replace(
+            item,
+            path=None if item.path is None else redact_module.scan(item.path).text,
+            cited=tuple(redact_module.scan(line).text for line in item.cited),
+        )
+        for item in documents
     )
 
 

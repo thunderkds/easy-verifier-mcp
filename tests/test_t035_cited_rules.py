@@ -35,6 +35,7 @@ from easy_verifier.core.metric_tables import curated_metric_tables
 from easy_verifier.core.metrics import MetricSet, compute_metrics
 from easy_verifier.core.models import (
     CoverageSummary,
+    DocumentEvidence,
     EvidencePack,
     Excerpt,
     SourceMiss,
@@ -461,6 +462,14 @@ def _pack(
     truncated: bool = False,
 ) -> EvidencePack:
     found = sought if found is None else found
+    # T089: document roles are decided by the recorded scan, not sources_found
+    documents = tuple(
+        DocumentEvidence(role, "content", next(iter(files)))
+        if role in found
+        else DocumentEvidence(role, None, None, scanned=1)
+        for role in sought
+        if role in ("architecture-doc", "decision-record", "requirements-doc")
+    )
     return EvidencePack(
         dimension=dimension,
         mode="kit-aware",
@@ -481,6 +490,7 @@ def _pack(
         truncation=TruncationRecord(
             truncated=truncated, omitted_count=1 if truncated else 0
         ),
+        documents=documents or None,
     )
 
 

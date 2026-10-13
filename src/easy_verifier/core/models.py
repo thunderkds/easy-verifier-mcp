@@ -284,6 +284,12 @@ class EvidencePack:
     full batch, so no sample. ``None`` otherwise, and then left out of the
     serialized pack."""
 
+    documents: tuple[DocumentEvidence, ...] | None = field(default=None)
+    """What filled each document role this pack scores (T089, FR-076): a
+    document's content shape, a declaration, or nothing after a scan of the
+    repository's documents. ``None`` for a pack that scores no document
+    role, and then left out of the serialized pack."""
+
 
 @dataclass(frozen=True)
 class AcceptanceCriterion:
@@ -398,6 +404,30 @@ class CompatFacts:
 
 
 @dataclass(frozen=True)
+class DocumentEvidence:
+    """Which evidence filled one document role (T089, FR-076, DDR-0012 §3).
+
+    ``kind`` is ``content`` (the document has the role's shape),
+    ``readme-heading`` (a README section headed "Architecture" that has the
+    shape), ``declared`` (``.easy-verifier.toml`` or an MCP pick, taken
+    without a content check), or ``None``: no scanned document has the shape.
+    A file name alone never fills a role.
+    """
+
+    role: str
+    kind: str | None
+    path: str | None
+    cited: tuple[str, ...] = ()
+    """``line N: text`` of the lines that show the shape (redacted)."""
+
+    scanned: int = 0
+    """Documents whose content was examined."""
+
+    bounded: str | None = None
+    """Why the scan stopped before every candidate document, else ``None``."""
+
+
+@dataclass(frozen=True)
 class DocHistory:
     """#27 facts of one requirement-fidelity pack (T055)."""
 
@@ -454,7 +484,7 @@ class SampleFacts:
 
 
 _OMITTED_WHEN_ABSENT = frozenset(
-    {"compat", "doc_history", "sample", "whole_file", "excluded"}
+    {"compat", "doc_history", "sample", "whole_file", "excluded", "documents"}
 )
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
 of the serialized pack while unset, so every pack that does not use them

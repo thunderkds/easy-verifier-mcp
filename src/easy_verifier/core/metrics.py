@@ -951,57 +951,95 @@ def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
 # ---------------------------------------------------------------------------
 
 
-_NOT_FOUND = "not found: no file in the repository matched"
-"""Start of the miss reason role resolution gives when its walk was complete
-and nothing matched (``roles.unfilled_reason``): the search ran."""
-
 ARCHITECTURE_HEADING = re.compile(r"^\s{0,3}#{1,6}[^\n]*\barchitecture\b", re.I | re.M)
 """A Markdown heading naming the architecture (T074, FR-068)."""
 
 
-def _readme_section(view: _PackView, pattern: re.Pattern[str]) -> Excerpt | None:
-    for excerpt in view.pack.excerpts:
-        name = PurePosixPath(excerpt.path).name.lower()
-        if name.startswith("readme") and pattern.search(excerpt.text):
-            return excerpt
-    return None
+MIN_DESCRIBED_ENTRIES = 3
+"""An architecture description names at least this many real repository
+paths, each followed by at least :data:`MIN_DESCRIPTION_WORDS` words of
+description (user sign-off 2026-10-12, G5). Two entries read as an aside
+("see ``src/`` and ``tests/``"); three is the smallest map of a structure."""
+
+MIN_DESCRIPTION_WORDS = 2
+
+MIN_REQUIREMENT_LIST_ITEMS = 3
+"""List items a heading naming requirements must head (T089 AC 12)."""
 
 
-def _document_rule(
-    role: str, section: re.Pattern[str] | None = None
-) -> Callable[[_PackView], _Computed]:
-    """Role presence for architecture's document rules (T074, DDR-0011): a
-    missing document fails (1) whenever the role search ran to completion,
-    even if the byte budget later truncated the pack; ``section`` also fills
-    the role with a README heading, cited."""
+DOCUMENT_SHAPES = {
+    "architecture-doc": (
+        f"describes at least {MIN_DESCRIBED_ENTRIES} real repository paths "
+        f"(a list item, table row or tree line naming a path that exists, "
+        f"followed by at least {MIN_DESCRIPTION_WORDS} words)"
+    ),
+    "decision-record": (
+        "has a decision structure (a Decision / Decision Outcome / Recommended "
+        "Path / Recommendation / Chosen / Selected / Approved direction heading "
+        "or field plus a Context, Consequences, Status, Alternatives or Options "
+        "one; or a dated entry with a decision verb and a rationale)"
+    ),
+    "requirements-doc": (
+        "has a requirement item under the declared requirement_item_patterns, "
+        "or a heading naming requirements (Requirements, User Stories, "
+        f"Acceptance Criteria, Use Cases) over at least "
+        f"{MIN_REQUIREMENT_LIST_ITEMS} list items"
+    ),
+}
+"""What content fills each document role (T089); the miss reason names it."""
+
+
+def _document_rule(role: str) -> Callable[[_PackView], _Computed]:
+    """Document role by content or declaration (T089, FR-076, DDR-0012 §3):
+    0 when ``pack.documents`` records a document with the role's shape (or a
+    declaration) for ``role``, 1 when every candidate document was scanned
+    and none has it, an abstention when the scan was cut short. A file name
+    alone never fills the role (``core/documents.py``)."""
     presence = _role_presence(role)
 
     def compute(view: _PackView) -> _Computed:
-        if section is not None:
-            excerpt = _readme_section(view, section)
-            if excerpt is not None:
-                heading = section.search(excerpt.text).group(0).strip()
-                return (
-                    0,
-                    (excerpt.ref,),
-                    f"source role {role!r} is filled by the README section "
-                    f"{heading!r} in {excerpt.ref}: 0 when a role file or a "
-                    "README heading naming the architecture was read, else 1",
-                )
-        computed = presence(view)
-        searched = any(
-            miss.source == role and miss.reason.startswith(_NOT_FOUND)
-            for miss in view.pack.sources_missing
+        if role not in view.pack.sources_sought:
+            return presence(view)
+        evidence = next(
+            (item for item in view.pack.documents or () if item.role == role), None
         )
-        if isinstance(computed, MetricAbstention) and searched and view.files:
-            return (
-                1,
-                tuple(sorted(view.files)),
-                f"source role {role!r} is not filled: no file in the repository "
-                "matched its patterns (the search ran to completion), so the "
-                "document is missing (1), whatever else the byte budget cut",
+        if evidence is None:
+            return MetricAbstention(
+                reason=(
+                    f"no document scan was recorded for the {role!r} role in this "
+                    f"{view.pack.dimension!r} pack, so its content was never checked"
+                )
             )
-        return computed
+        if evidence.kind is not None:
+            cited = "; ".join(evidence.cited)
+            return (
+                0,
+                (evidence.path,),
+                f"source role {role!r} is filled by {evidence.path} "
+                f"({evidence.kind}"
+                + (f": {cited}" if cited else ": named by the project")
+                + "); 0 when a document "
+                + DOCUMENT_SHAPES[role]
+                + " or the project declares one, else 1; a file name alone "
+                "never fills the role",
+            )
+        if evidence.bounded is not None:
+            return MetricAbstention(
+                reason=(
+                    f"no document read for the {role!r} role "
+                    f"{DOCUMENT_SHAPES[role]}, but {evidence.bounded}; that is "
+                    "not the same as absent"
+                )
+            )
+        if not view.files:
+            return _no_files()
+        return (
+            1,
+            tuple(sorted(view.files)),
+            f"source role {role!r} is not filled: {evidence.scanned} documents "
+            f"read; none {DOCUMENT_SHAPES[role]}, and none is declared, so the "
+            "document is missing (1)",
+        )
 
     return compute
 
@@ -3441,7 +3479,7 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         "architecture_description_missing",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
-        _document_rule("architecture-doc", ARCHITECTURE_HEADING),
+        _document_rule("architecture-doc"),
     ),
     MetricDefinition(
         "decision_records_missing",

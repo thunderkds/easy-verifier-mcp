@@ -60,7 +60,9 @@ def test_no_requirements_document_fails_and_one_passes(tmp_path) -> None:
     # the count is still computed (unrated evidence)
     assert "requirements_docs_count" in _metrics(_pack(bare))
 
-    documented = _repo(tmp_path / "doc", {**files, "PRD.md": "# PRD\n"})
+    # T089: a requirements document is one with a requirement item
+    prd = "# PRD\n\n| FR-001 | list orders |\n"
+    documented = _repo(tmp_path / "doc", {**files, "PRD.md": prd})
     assert _value(_pack(documented), "requirements_doc_missing") == 0
 
 

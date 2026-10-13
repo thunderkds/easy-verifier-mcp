@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from ..core.documents import scan_document_roles
 from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
@@ -47,6 +48,7 @@ MARKERS: tuple[str, ...] = (
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """Yield bounded excerpts from sections matching solution-fit markers."""
+    scan_document_roles(context, ("requirements-doc", "decision-record"))
     yield from _doc_extract.iter_excerpts(context, SOURCES_SOUGHT, MARKERS)
 
 

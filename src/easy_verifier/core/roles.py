@@ -108,15 +108,16 @@ def _source_roots(*keywords: str) -> tuple[str, ...]:
 
 GENERIC_PATTERNS: dict[str, tuple[str, ...]] = {
     "readme": ("README*", "Readme*", "readme*"),
+    # T089 (DDR-0012 §3): document-role patterns only order the content scan
+    # (core/documents.py); a name alone never fills the role. This kit's own
+    # names (PROJECT_SPEC.md, BRAINSTORMING_LOG*.md) are not generic.
     "architecture-doc": (
-        "PROJECT_SPEC.md",
         "ARCHITECTURE.md",
         "**/docs/architecture*",
         "**/docs/architecture/**",
         *_docs("architecture", "design"),
     ),
     "decision-record": (
-        "BRAINSTORMING_LOG*.md",
         "**/adr/**",
         "**/adrs/**",
         "**/ADR/**",
@@ -1375,6 +1376,10 @@ class RoleResolution:
     ecosystems: tuple[str, ...]
     truncated_roles: tuple[str, ...]
     walk_truncated: bool
+    walked: tuple[str, ...] = ()
+    """Every file the walk listed (third-party and excluded directories left
+    out), in walk order: the repository file set document recognition checks
+    entry paths against (T089), so nothing is walked twice."""
 
 
 _TEMPLATE_DIRS = frozenset({"template", "templates"})
@@ -1473,6 +1478,7 @@ def resolve(
         ecosystems=ecosystems,
         truncated_roles=tuple(truncated),
         walk_truncated=walk_truncated,
+        walked=tuple(walked),
     )
 
 
