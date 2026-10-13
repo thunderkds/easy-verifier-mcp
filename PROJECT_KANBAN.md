@@ -71,13 +71,13 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
-- [ ] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2 | 🔄 started 2026-10-13
 
 ### Ready for Review
 
 _(empty)_
 
 ### Done
+- [x] **T090** — Report each route's request path (route → in-repo modules → boundary), cited, unweighted (Depends on: T088) | backend-developer | C2 | Risk: Low | P2 | ✅ Done 2026-10-13 (request_paths unrated: kitchd 57 routes / 17 files — 43 DB in own file, 13 via modules, 1 none; bryony --all 18 routes, 5 via modules incl. a 6-hop path to base-mongodb-service.js:21; ratings/overall byte-equal on/off; 2705 passed)
 - [x] **T089** — Document roles filled by content shape or declaration, never by a name alone; kit names out of GENERIC_PATTERNS (scraping-devops false negative, bryony `event_design.md` false positive) (Depends on: T087) | backend-developer | C2 | Risk: Med | P1 | ✅ Done 2026-10-13 (document roles by content: scraping-devops arch-doc 1→0 via README "Folder structures"; coffee 1→0 via README src/ tree, architecture 80→90, overall 74→76; bryony event_design.md false pass removed (now backend/scripts/README.md by content); ai-training requirements via "## Functional Requirements"; decision-record needs a decision field; kit names out of GENERIC_PATTERNS; 2695 passed)
 - [x] **T091** — Bugfix: redaction masks ordinary paths whose name pieces mix letters then digits (`tests/test_t087_third_party_exclusion.py`; t029 tracked-path test red on develop since the T087 merge) | backend-developer | C1 | Risk: Med | P1 | ✅ Done 2026-10-13 (root cause: `_NAME_PIECE` rejected letter-then-digit pieces like t087; added `[a-z]{1,6}[0-9]{1,8}`; boundary pinned by sabotage; t029 green; 2648 passed; bryony/kitchd redaction hits unchanged)
 - [x] **T088** — Layers assigned by observed behaviour (api = route call shape, data = DB/ORM call on imported model/client, service = import path between; path conventions a hint; DB never scored) (Depends on: T087, T079) | backend-developer | C3 | Risk: Med | P1 | ✅ Done 2026-10-13 (layers by behaviour + hints fallback; AC 11 dynamic-prefix imports: bryony --all service 0→30 via controller-manager.js:35 (54 controllers); coffee measured 0 violations (4 api by behaviour); kitchd 18%→28%, bryony 42%, ai-training framework_not_recognized — all still below the 0.50 share floor; follow-up: backend-only denominator pending user)
