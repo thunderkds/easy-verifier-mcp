@@ -12,6 +12,13 @@
 
 ### Todo
 
+**Wave 22 — Shared scoring container + T100 gap (added 2026-10-14; user: "only 1 container for scoring … like the way to the easy-ui-mcp"; DDR-0013, PRD FR-019b amended)**
+- [x] **T101** — One shared scoring container that every repo points at (streamable HTTP on 127.0.0.1:8766, `network_mode: host`, read-only same-path workspace mount, central reports dir, serialised tool calls) | common-infrastructure | C2 | Risk: High | P1 | ✅ Done 2026-10-14 (`--transport streamable-http`, compose `scorer` service, central reports dir, serialised tools; real container scored 2 repos concurrently; container tests green again)
+- 💡 Follow-up from T101 review (no guide yet): report advisory still says "inside the evaluated repository" when `EASY_VERIFIER_REPORTS_DIR` is used; AC6 left `~/.easy-verifier-reports-t101/` owned by UID 10001 (needs sudo to delete)
+- [x] **T102** — Bugfix: 8 stray root scan outputs carry private repo names in their filenames; guard test must check paths | backend-developer | C0 | Risk: Low | P0 | ✅ Done 2026-10-14 (8 root scan outputs removed and git-ignored; guard test checks tracked paths)
+- [x] **T102** — Stray real-repo scan outputs at the repo root carry private names in their filenames | backend-developer | C0 | Risk: Low | P0 | ✅ Done 2026-10-14
+- [x] **T101** — One shared scoring container that every repo points at (streamable HTTP, easy-ui-mcp style) | common-infrastructure | C2 | Risk: High | P1 | ✅ Done 2026-10-14
+
 **Wave 21 — Privacy scrub before push (added 2026-10-14, user: "remove the personal repos inside this one" → names in tracked files; push as a squashed branch)**
 - [x] **T100** — Remove personal/client repository identifiers and personal paths from every tracked file (aliases; real paths move to git-ignored `.local/real-repos.md`; guard test) | backend-developer | C2 | Risk: Med | P0 | ✅ Done 2026-10-14 (146 files scrubbed to aliases; guard test `test_t100_no_personal_identifiers.py`; real paths in git-ignored `.local/real-repos.md`; score payloads byte-identical)
 - [x] **T100** — Remove personal and client repository identifiers from every tracked file | backend-developer | C2 | Risk: Medium | P0 | ✅ Done 2026-10-14

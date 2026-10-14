@@ -71,3 +71,13 @@ def test_no_tracked_file_contains_a_personal_identifier() -> None:
             if _FORBIDDEN.search(line):
                 hits.append(f"{path.relative_to(REPO_ROOT)}:{number}")
     assert not hits, f"{len(hits)} line(s) name a personal identifier: {hits[:20]}"
+
+
+def test_no_tracked_path_contains_a_personal_identifier() -> None:
+    # T102: the contents scan above never matched a file *name*.
+    hits = [
+        str(path.relative_to(REPO_ROOT))
+        for path in _tracked_files()
+        if _FORBIDDEN.search(str(path.relative_to(REPO_ROOT)))
+    ]
+    assert not hits, f"{len(hits)} tracked path(s) name a personal identifier"

@@ -15,7 +15,8 @@ key: nothing here calls an LLM.
 - **No coverage number without its miss list.** A "found 4/6" is always shown next to the two
   sources that weren't found, so the number is auditable rather than a bare percentage.
 - **No execution of target-repository code**, ever — evaluation is read-only.
-- **No writes outside the evaluated repo's `reports/` directory**, and never into this repo.
+- **No writes outside the evaluated repo's `reports/` directory** (or the reports directory you
+  name in `EASY_VERIFIER_REPORTS_DIR`), and never into this repo.
 - **No outbound network requests.** Everything runs locally; secret values are redacted to a
   non-reversible fingerprint the moment they're read, never returned raw.
 
@@ -345,8 +346,9 @@ result is written to stdout.
 
 The MCP adapter exposes the same dimensions, discovery, combined pack, `score`, and `write_report`
 as MCP tools. The default transport is **stdio**, so there is no port and no server lifecycle to
-manage: your MCP client starts the server on demand. An HTTP/SSE opt-in exists, and it binds to
-`127.0.0.1` only.
+manage: your MCP client starts the server on demand. Two HTTP opt-ins exist, and both bind to
+`127.0.0.1` only: `--transport streamable-http` (one shared server at `/mcp`, port from
+`EASY_VERIFIER_PORT`, default `8766`; see Docker below) and the legacy HTTP/SSE `--http`.
 
 Setup for Claude Code, Claude Desktop, Cursor, and other clients:
 [`docs/LOCAL_MCP_GUIDE.md`](docs/LOCAL_MCP_GUIDE.md).
@@ -356,17 +358,42 @@ How a scoring session runs, round by round (diagram):
 The rules, thresholds, weights, and registry fields behind every rating:
 [`docs/SCORING_RULES.md`](docs/SCORING_RULES.md).
 
-### Docker — read-only target, writable reports only
+### Docker — one shared scoring container
 
-The container runs with pinned Python and MCP versions as UID/GID `10001`. It drops all
-capabilities, has no network, publishes no ports, and mounts the target repository read-only.
-Only `reports/` is writable. The target needs no package or executable installed.
+Start one container once; every repository points at it. It runs with pinned Python and MCP
+versions as UID/GID `10001`, drops all capabilities, has a read-only root filesystem, and mounts
+your repositories read-only. It keeps running across sessions and reboots
+(`restart: unless-stopped`).
 
-```console
-docker compose build
-```
+1. Build it, and start it with the absolute parent directory of the repositories you want to score:
 
-Registering the container with an MCP client, preparing `reports/`, and troubleshooting:
+   ```console
+   docker compose build scorer
+   mkdir -p ~/.easy-verifier-reports && sudo chown 10001:10001 ~/.easy-verifier-reports
+   EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer
+   ```
+
+2. Register it from any repository (once per Claude config directory with `--scope user`):
+
+   ```console
+   claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp
+   ```
+
+3. Pass the repository's **absolute** path as the tool's `repo` argument (for example
+   `/home/you/code/my-service`). Reports go to `~/.easy-verifier-reports/<repo name>/`, never into
+   the repository.
+
+Stop it with `docker compose down scorer`. Upgrade with `docker compose build scorer` and then the
+same `docker compose up -d scorer` command, which recreates the container on the new image.
+
+> **Exposure.** The server listens on `127.0.0.1:8766` only (the service uses `network_mode: host`,
+> so its loopback is the host's) and has no authentication: while it runs, **any local process**
+> on this machine can read, read-only, the repositories under `EASY_VERIFIER_WORKSPACE` through it,
+> and write reports into the reports directory. Nothing is reachable from another machine. If that
+> is not acceptable, use one container per session instead.
+
+The alternative, one container per session over stdio with no network at all (your MCP client
+runs `docker run -i` on demand), plus troubleshooting:
 [`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md).
 
 ### Final release gate
@@ -389,6 +416,10 @@ evidence. Record the exact commit, environment, command output, and any unavaila
 Reports are written into the **evaluated repository's** `reports/` directory, never into this
 repo's — even when the two happen to be the same checkout (as they will be if you point this tool
 at itself). Nothing is overwritten; filenames are unique per scope and timestamp.
+
+When `EASY_VERIFIER_REPORTS_DIR` is set to an absolute path (the shared Docker container sets it),
+reports go to `$EASY_VERIFIER_REPORTS_DIR/<repo directory name>/` instead, the repository is not
+touched, and `write_report` returns the report's absolute path.
 
 Each full all-dimension report includes a score panel with the rule-based rating, optional caller
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as

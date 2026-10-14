@@ -51,3 +51,5 @@ Thumbs.db
 # Reports generated INTO a target repo are that repo's concern, not ours —
 # but ignore any that land here during local testing against ourselves.
 /reports/
+/*_before.json
+/*_before.err

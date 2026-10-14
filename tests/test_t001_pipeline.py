@@ -466,21 +466,34 @@ def test_package_contains_no_llm_client_or_api_key_read():
 
 # The one sanctioned read: the local registry directory override (FR-042,
 # DDR-0007). It names a directory, never a key, and is matched verbatim.
-_ALLOWED_ENV_READ = ("core/registry.py", "os.environ.get(SOT_ENV)")
+_ALLOWED_ENV_READS = {
+    "core/registry.py": "os.environ.get(SOT_ENV)",
+    # T101 (DDR-0013): the shared HTTP container's port and reports directory.
+    "adapters/mcp_server.py": 'os.environ.get(PORT_ENV, "")',
+    "core/report.py": 'os.environ.get(REPORTS_DIR_ENV, "")',
+}
 
 
 def test_package_never_reads_the_environment():
-    """No model key can be read from an env var if nothing reads env vars."""
+    """No model key can be read from an env var if nothing reads env vars.
+
+    The only reads are the named EASY_VERIFIER_* settings above, each exactly
+    once."""
+    from easy_verifier.adapters.mcp_server import PORT_ENV
     from easy_verifier.core.registry import SOT_ENV
+    from easy_verifier.core.report import REPORTS_DIR_ENV
 
     assert SOT_ENV == "EASY_VERIFIER_SOT"
+    assert PORT_ENV == "EASY_VERIFIER_PORT"
+    assert REPORTS_DIR_ENV == "EASY_VERIFIER_REPORTS_DIR"
     offenders = []
     for path in PACKAGE_ROOT.rglob("*.py"):
         relative = path.relative_to(PACKAGE_ROOT).as_posix()
         source = path.read_text(encoding="utf-8")
-        if relative == _ALLOWED_ENV_READ[0]:
-            assert source.count(_ALLOWED_ENV_READ[1]) == 1
-            source = source.replace(_ALLOWED_ENV_READ[1], "")
+        allowed = _ALLOWED_ENV_READS.get(relative)
+        if allowed is not None:
+            assert source.count(allowed) == 1, relative
+            source = source.replace(allowed, "")
         if "os.environ" in source or "getenv" in source:
             offenders.append(relative)
     assert offenders == []
