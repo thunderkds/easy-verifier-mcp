@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-13
+**Last updated**: 2026-10-14
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,6 +11,12 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
+
+**Wave 20 — Follow-ups from T094/T097 (added 2026-10-14, user "continue your work"; T098 and T099 independent, merged one at a time)**
+- [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped (optional `capped: [{dimension, role, matched, read}]`; scraping-devops infrastructure 100 from 50 of 197 manifests, undisclosed) | backend-developer | C2 | Risk: Med | P1 | Todo
+- [ ] **T099** — Bugfix: redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`, the last scraping-devops path changed by redact) | backend-developer | C1 | Risk: Med | P2 | Todo
+- [ ] **T099** — Redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`) | backend-developer | C1 | Risk: Medium | P2
+- [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped | backend-developer | C2 | Risk: Medium | P1
 - [x] **T097** — Redaction masks paths whose name pieces have more than 6 letters before digits (`rancher2`) | backend-developer | C1 | Risk: Medium | P1 | ✅ Done 2026-10-13 (`_LETTER_DIGIT_PIECE` letter run 6 → 30, both cases; scraping-devops paths changed by redact 51 → 1; all ratings and hits unchanged on 6 repos)
 - 💡 Follow-up from T097 (2026-10-13, no guide yet): `bin/build-push-kibana-docker-image` (an extensionless all-word name) is still fingerprinted by redaction
 - [x] **T096** — A change list is not an architecture description; architecture prose sections count | backend-developer | C2 | Risk: Medium | P2 | ✅ Done 2026-10-13 (change-column tables skipped; `##`+ architecture prose sections naming ≥3 real paths count; kitchd now cites `memory/decisions.md` ## Architecture, this repo `BRAINSTORMING_LOG.md` file list; all ratings unchanged on 6 repos)
