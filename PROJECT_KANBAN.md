@@ -13,7 +13,7 @@
 ### Todo
 
 **Wave 20 — Follow-ups from T094/T097 (added 2026-10-14, user "continue your work"; T098 and T099 independent, merged one at a time)**
-- [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped (optional `capped: [{dimension, role, matched, read}]`; scraping-devops infrastructure 100 from 50 of 197 manifests, undisclosed) | backend-developer | C2 | Risk: Med | P1 | Todo
+- [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped (optional `capped: [{dimension, role, matched, read}]`; scraping-devops infrastructure 100 from 50 of 197 manifests, undisclosed) | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-14 (worktree .claude/worktrees/t098)
 - [ ] **T099** — Bugfix: redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`, the last scraping-devops path changed by redact) | backend-developer | C1 | Risk: Med | P2 | Todo
 - [ ] **T099** — Redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`) | backend-developer | C1 | Risk: Medium | P2
 - [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped | backend-developer | C2 | Risk: Medium | P1
