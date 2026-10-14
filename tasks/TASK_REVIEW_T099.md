@@ -33,12 +33,24 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-14T03:34:04Z on develop `2452bcf`, before any implementation commit; run by backend-developer):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+$ PYTHONPATH=src .venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('bin/build-push-kibana-docker-image'))"
+bin/…****:e169e83f548e
+$ git -C scraping-devops ls-files | count paths where redact(p) != p
+tracked 597 changed 1
+  bin/build-push-kibana-docker-image -> bin/…****:e169e83f548e
+```
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**AFTER** (2026-10-14T03:37:09Z, worktree `fix/T099-extensionless-paths`):
+
+```
+bin/build-push-kibana-docker-image
+tracked 597 changed 0
+```
+
+**DELTA**: a citation to `bin/build-push-kibana-docker-image` (and any extensionless lower-case word path) now resolves; scraping-devops goes from 1 tracked path changed by `redact()` to 0.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T099.jsonl`, never the
 implementing agent alone]
