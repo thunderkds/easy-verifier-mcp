@@ -847,3 +847,9 @@ A cap that only produces a pack warning string is invisible in `score`, because 
 
 ## 2026-10-14 — T100: tracked files carry aliases, never real repo names
 Real repos are named by alias in every tracked file (node-monorepo, fullstack-ts, k8s-ops, python-ml, nest-api, next-web/node-api, client-app). The alias → absolute path map is `.local/real-repos.md`, which is git-ignored. Write it into each guide's "Real repos" list as aliases plus "paths: `.local/real-repos.md`". `tests/test_t100_no_personal_identifiers.py` fails on any reappearance, including in memory/ and tasks/, so never paste a real path or name into a tracked file.
+
+## 2026-10-14 — T102: an identifier scrub must check file names, not only contents
+T100's acceptance search used `git grep`, which never matches a file **name**. 8 root scan outputs from T035, named after private repos, survived the scrub. The guard test now also checks `git ls-files` paths, and `/*_before.json` / `/*_before.err` are git-ignored. Write real-repo scan scratch to the scratchpad, never the repo root.
+
+## 2026-10-14 — T101: shared scoring container (DDR-0013)
+`docker compose up -d scorer` runs one container (`network_mode: host`, loopback 8766, workspace mounted read-only at the same host path, reports in `EASY_VERIFIER_REPORTS_DIR/<repo>/`); each repo registers `claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp`. Tool calls are serialised by `_CORE_LOCK`. Gotcha: `core/git.py` sets `GIT_CONFIG_NOSYSTEM=1`, so system git config in the image never reaches the engine. The image uses a `/usr/local/bin/git` wrapper with `-c safe.directory=*` (safe because the engine already forces fsmonitor off, hooksPath=/dev/null and no external diff). Do not use `pkill -f <pattern>` inside a Bash call whose own command line contains the pattern: it kills the call (exit 144).
