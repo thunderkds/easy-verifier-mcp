@@ -178,6 +178,16 @@ class ApprovalRequest:
 
 
 @dataclass(frozen=True)
+class CapHit:
+    """One bound a pack's inputs hit (T098, NFR-009): ``matched`` files fit
+    ``role``, only ``read`` of them were used."""
+
+    role: str
+    matched: int
+    read: int
+
+
+@dataclass(frozen=True)
 class EvidencePack:
     """The structured result of one dimension. Evidence only, never a verdict."""
 
@@ -289,6 +299,12 @@ class EvidencePack:
     document's content shape, a declaration, or nothing after a scan of the
     repository's documents. ``None`` for a pack that scores no document
     role, and then left out of the serialized pack."""
+
+    capped: tuple[CapHit, ...] | None = field(default=None)
+    """Every role whose matched files exceeded a cap (T098): the resolution's
+    role cap and the dimension's own per-role cap, one entry per role, sorted
+    by role. ``None`` when no cap was hit, and then left out of the
+    serialized pack."""
 
 
 @dataclass(frozen=True)
@@ -484,7 +500,15 @@ class SampleFacts:
 
 
 _OMITTED_WHEN_ABSENT = frozenset(
-    {"compat", "doc_history", "sample", "whole_file", "excluded", "documents"}
+    {
+        "compat",
+        "doc_history",
+        "sample",
+        "whole_file",
+        "excluded",
+        "documents",
+        "capped",
+    }
 )
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
 of the serialized pack while unset, so every pack that does not use them

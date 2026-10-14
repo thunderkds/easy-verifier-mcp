@@ -57,7 +57,7 @@ from ..core.models import (
 )
 from ..core.redact import redact
 from ..core.registry import RegistryEntry, layered_conventions
-from ..core.roles import role
+from ..core.roles import MAX_ROLE_WALK_FILES, role
 from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS, third_party_filter
 from ..core.structure import context_conventions, convention_values
 from ..core.tokens import MAX_LINE_CHARS
@@ -352,6 +352,12 @@ def _reference_excerpts(
         context.reach = replace(reach, sweep_capped=capped)
     if capped:
         _warn(context, SCAN_CAP_WARNING.format(cap=MAX_SCAN_FILES))
+        # T098: how many files the sweep would have opened. Listed, never
+        # read, and bounded like the role walk (a lower bound past it).
+        context.capped[REFERENCES_SOURCE] = (
+            sum(1 for _ in context.iter_code_sources(limit=MAX_ROLE_WALK_FILES)),
+            MAX_SCAN_FILES,
+        )
 
     if not matched:
         # "Checked and found nothing" is a different statement from "not

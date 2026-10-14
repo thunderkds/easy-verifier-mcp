@@ -27,7 +27,7 @@ import json
 import re
 import tomllib
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
@@ -1394,6 +1394,10 @@ class RoleResolution:
     """More unplaced YAML files than ``MAX_CONTENT_CANDIDATES`` were walked
     (T094); the rest were not examined by content."""
 
+    truncated_matched: Mapping[str, int] = field(default_factory=dict)
+    """Per role in ``truncated_roles``: how many files matched before the
+    ``MAX_ROLE_FILES`` cut (T098), so the score payload can say "50 of 197"."""
+
 
 _TEMPLATE_DIRS = frozenset({"template", "templates"})
 _TEMPLATE_NAME = re.compile(r"[._-]template\.", re.IGNORECASE)
@@ -1455,6 +1459,7 @@ def resolve(
     files: dict[str, tuple[str, ...]] = {}
     origins: dict[tuple[str, str], str] = {}
     truncated: list[str] = []
+    truncated_matched: dict[str, int] = {}
     for item in roles:
         if not item.patterns:
             continue
@@ -1482,6 +1487,7 @@ def resolve(
         kept = sorted(matched)
         if len(kept) > MAX_ROLE_FILES:
             truncated.append(item.name)
+            truncated_matched[item.name] = len(kept)
             kept = kept[:MAX_ROLE_FILES]
         chosen = {path: matched[path] for path in kept}
         for path in picks.get(item.name, ()):
@@ -1499,6 +1505,7 @@ def resolve(
         walk_truncated=walk_truncated,
         walked=tuple(walked),
         content_truncated=content_truncated,
+        truncated_matched=truncated_matched,
     )
 
 

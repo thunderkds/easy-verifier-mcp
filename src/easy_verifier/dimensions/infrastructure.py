@@ -196,6 +196,7 @@ def _facts(context: DimensionContext) -> dict:
             message = CAP_WARNING.format(
                 count=len(ranked), role=name, cap=MAX_FILES_PER_ROLE
             )
+            context.capped[name] = (len(ranked), MAX_FILES_PER_ROLE)
             if message not in context.warnings:
                 context.warnings = (*context.warnings, message)
         files[name] = []
