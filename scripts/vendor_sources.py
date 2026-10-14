@@ -111,11 +111,11 @@ VENDOR_CATEGORIES: dict[str, tuple[bool, str]] = {
     ),
     "Vendor Conventions / Stylesheets imported from packages": (
         False,
-        "matches the team's own *import.scss partials (bryony)",
+        "matches the team's own *import.scss partials (node-monorepo)",
     ),
     "Vendor Conventions / Bootstrap css and js": (
         False,
-        "bootstrap* is a common app entry-point name (bryony bootstrap.conf.js)",
+        "bootstrap* is a common app entry-point name (node-monorepo bootstrap.conf.js)",
     ),
     "Vendor Conventions / Font Awesome": (True, _LIBRARY),
     "Vendor Conventions / Foundation css": (True, _LIBRARY),
@@ -156,11 +156,11 @@ VENDOR_CATEGORIES: dict[str, tuple[bool, str]] = {
     "Commonly Bundled JavaScript frameworks / Prototype": (
         False,
         "prototype.js, effects.js, controls.js are common team file names "
-        "(bryony prototype.js)",
+        "(node-monorepo prototype.js)",
     ),
     "Commonly Bundled JavaScript frameworks / Typescript definition files": (
         False,
-        "the team writes its own .d.ts types (kitchd, coffee-shop-api)",
+        "the team writes its own .d.ts types (fullstack-ts, nest-api)",
     ),
     "Commonly Bundled JavaScript frameworks / MooTools": (True, _LIBRARY),
     "Commonly Bundled JavaScript frameworks / Dojo": (True, _LIBRARY),
@@ -185,7 +185,10 @@ VENDOR_CATEGORIES: dict[str, tuple[bool, str]] = {
     "Commonly Bundled JavaScript frameworks / Knockout": (True, _LIBRARY),
     "Python / Sphinx": (False, "the team's own docs build/theme directories"),
     "Python / django": (False, "env/ and admin_media/ are generic names"),
-    "Python / Fabric": (False, "fabfile.py is the team's own deploy script (bryony)"),
+    "Python / Fabric": (
+        False,
+        "fabfile.py is the team's own deploy script (node-monorepo)",
+    ),
     "Python / WAF": (False, "build-tool wrapper script"),
     "Python / .osx": (False, "the team's own machine setup script"),
     "Obj-C / Xcode": (False, "the team's own templates and image assets"),
@@ -223,7 +226,7 @@ VENDOR_CATEGORIES: dict[str, tuple[bool, str]] = {
     ".NET / Gitpod": (False, "the team's own environment config"),
     ".NET / GitHub.com": (
         False,
-        "the team's own CI and repository config (kitchd .github/workflows)",
+        "the team's own CI and repository config (fullstack-ts .github/workflows)",
     ),
     ".NET / obsidian.md settings": (False, "editor config"),
     ".NET / teamcity CI configuration": (False, "the team's own CI config"),
@@ -235,7 +238,7 @@ category are vendor.yml's own ``## ... ##`` and ``# ...`` comment lines."""
 VENDOR_PATTERN_DROPS: dict[str, str] = {
     "(^|/)[Ee]xtern(als?)?/": (
         "external/ is a common team directory name "
-        "(bryony backend/scripts/companies/external)"
+        "(node-monorepo backend/scripts/companies/external)"
     ),
 }
 """Single patterns dropped from a kept category, with the reason."""

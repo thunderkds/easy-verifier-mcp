@@ -92,7 +92,7 @@ make the score more correctly"; chose the **capped blend** `w = 0.5 × confidenc
 | 2 | R=68 borderline; A=88, c=0.6 | `74 = rules 68 + agent 88 (w 0.30)` in JSON and HTML | automated test |
 | 3 | Evaluation for ungated `architecture` | validation error naming dimension | automated test |
 | 4 | Evaluation citing unknown ref | validation error naming the ref | automated test |
-| 5 | Live MCP stdio session vs Docker image on `ai-training`: call 1 → gates; call 2 with evaluations | blended/agent-rated values + disclosure | `verify` run, transcript pasted |
+| 5 | Live MCP stdio session vs Docker image on `python-ml`: call 1 → gates; call 2 with evaluations | blended/agent-rated values + disclosure | `verify` run, transcript pasted |
 
 ### Verification Command (exact, runnable)
 
@@ -167,7 +167,7 @@ FR-028).
 
 Unit: gate detection at band edges, validation matrix, blend arithmetic table, disclosure strings.
 Integration: MCP two/three-call flows (picks → gates → final), CLI replay parity, report rendering.
-Live: Docker image via MCP stdio on `ai-training`.
+Live: Docker image via MCP stdio on `python-ml`.
 
 ---
 

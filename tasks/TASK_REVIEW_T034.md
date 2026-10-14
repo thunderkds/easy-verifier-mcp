@@ -36,7 +36,7 @@
 **BEFORE**: captured 2026-09-28T06:22:07Z on `13cef1c` (no T034 implementation commit exists; working-tree edits were stashed for the run). A real CLI `score` over a scratch git repo whose `app/db.py` holds an f-string SQL `cursor.execute(...)` (CWE-89) and `subprocess.run(cmd, shell=True)` (CWE-78): no metric named `*sink*` exists, the security pack quotes only `pyproject.toml:1-2`, and neither sink line appears anywhere in the output.
 
 ```text
-$ date -u; git -C /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T034 rev-parse --short HEAD
+$ date -u; git -C <repo>-T034 rev-parse --short HEAD
 2026-09-28T06:22:07Z
 13cef1c
 $ cat -n app/db.py (scratch repo)
@@ -62,7 +62,7 @@ occurrences of 'execute(' / 'shell=True' in output: 0 0
 **AFTER**: re-captured after the Supervisor's AC1/AC3 ruling, on `bdfb0c8` (interpolation mark included). Same scratch repo and command as BEFORE: `sink_hits_observed` = 2 on the security dimension, one hit per sink line with path:line, CWE id and the vendored CWE page; the security pack now quotes `app/db.py:6-6` and `app/db.py:11-11` (excerpts_observed 1 -> 3). The `score` payload carries metrics, not excerpt text, so the literal sink lines still do not appear in it; they are in the pack the metric cites. The security *rating* still abstains (coverage floor) and no rule reads the metric yet -- rules/weights are T035.
 
 ```text
-$ date -u; git -C /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T034 rev-parse --short HEAD
+$ date -u; git -C <repo>-T034 rev-parse --short HEAD
 2026-09-28T07:10:31Z
 bdfb0c8
 $ cat -n app/db.py (scratch repo)

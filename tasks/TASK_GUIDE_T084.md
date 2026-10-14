@@ -71,7 +71,7 @@ Also in scope (same function, left out of T078 because T084 owned it): `_breakin
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | AC 1 temp git repo, `--scope changes --ref HEAD~1..HEAD` | value counts read file only; unread listed | automated test + CLI run |
-| 2 | coffee-shop-api `--scope project` (breaking abstains at project scope) | payload sha256 unchanged BEFORE vs AFTER | real-repo run |
+| 2 | nest-api `--scope project` (breaking abstains at project scope) | payload sha256 unchanged BEFORE vs AFTER | real-repo run |
 
 ### Verification Command (exact, runnable)
 
@@ -90,7 +90,7 @@ Also in scope (same function, left out of T078 because T084 owned it): `_breakin
 
 > **Moved.** See `tasks/TASK_REVIEW_T084.md`.
 
-BEFORE commands (before any code change; paste timestamped output): (1) a temp git repo built so one spec file is read and another with removals is not (e.g. more spec files than `MAX_SPEC_FILES`, or the unread file outside the pack's read set) — `score --scope changes --ref HEAD~1..HEAD </dev/null`, show the api `breaking_api_changes_observed` value includes the unread file's removals while `computed_from` omits it; (2) coffee-shop-api `--scope project </dev/null | sha256sum` baseline (background).
+BEFORE commands (before any code change; paste timestamped output): (1) a temp git repo built so one spec file is read and another with removals is not (e.g. more spec files than `MAX_SPEC_FILES`, or the unread file outside the pack's read set) — `score --scope changes --ref HEAD~1..HEAD </dev/null`, show the api `breaking_api_changes_observed` value includes the unread file's removals while `computed_from` omits it; (2) nest-api `--scope project </dev/null | sha256sum` baseline (background).
 
 ---
 
@@ -102,7 +102,9 @@ BEFORE commands (before any code change; paste timestamped output): (1) a temp g
 
 ## Real repos
 
-real repos (read-only, `--repo` only): coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`, kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`, bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`, tapchat-web (path in `memory/learnings.md`, T049 entry). Run real-repo scores with `run_in_background` and `</dev/null`; worktree code via `PYTHONPATH=<worktree>/src`. CLI: `.venv/bin/python -m easy_verifier.adapters.cli score --repo R --scope project|changes [--ref A..B] [--all] </dev/null`.
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
+real repos (read-only, `--repo` only): nest-api `<real-repos>/nest-api`, fullstack-ts `<real-repos>/fullstack-ts`, node-monorepo `<real-repos>/node-monorepo`, next-web (path in `memory/learnings.md`, T049 entry). Run real-repo scores with `run_in_background` and `</dev/null`; worktree code via `PYTHONPATH=<worktree>/src`. CLI: `.venv/bin/python -m easy_verifier.adapters.cli score --repo R --scope project|changes [--ref A..B] [--all] </dev/null`.
 
 ---
 

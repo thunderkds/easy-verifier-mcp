@@ -21,7 +21,7 @@
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-User (2026-10-04), after reading the coffee-shop-api report: "I saw a lot of information need to care,
+User (2026-10-04), after reading the nest-api report: "I saw a lot of information need to care,
 so I think should update the report like the rated session, general first, I mean like example. Hey,
 I checked from your code, and got 2 of session can evaluated, which weak point I think you should
 focus on improve these one following the rules that refer here." Choice: **B** — engine summary plus
@@ -37,7 +37,7 @@ right after" — detail follows directly, not folded.
 **Out of scope**:
 - Changing any number, plan computation, warning logic, or the detail sections' content.
 - Folding/hiding detail sections.
-- The scanner false positives seen on coffee-shop-api (separate bugfix).
+- The scanner false positives seen on nest-api (separate bugfix).
 
 **Requirement Refs**:
 - FR-063: engine summary content, order, max 3 focus items, citations, warnings line, detail follows unfolded.
@@ -72,7 +72,7 @@ right after" — detail follows directly, not folded.
 | 6 | Detail sections that existed before render after the summary, byte-identical in content to before (only position relative to the summary changes) | FR-063 |
 | 7 | `agent_input.summary` (string, stripped, non-empty, ≤ 2000 chars) renders as a paragraph labelled agent inside the summary, redacted then escaped; invalid → ValidationError before any disk write; accepted by `roles.validate_agent_input` | FR-064 |
 | 8 | Engine summary text is a pure function of the score (CLI/MCP and replay byte-equal under DDR-0005) | FR-022 |
-| 9 | Real repos: reports for coffee-shop-api (copy) and bryony (copy) show the summary; screenshot 1280 + true 400px (iframe) | user report |
+| 9 | Real repos: reports for nest-api (copy) and node-monorepo (copy) show the summary; screenshot 1280 + true 400px (iframe) | user report |
 
 ---
 
@@ -88,13 +88,13 @@ right after" — detail follows directly, not folded.
 | 4 | Agent summary with `FAKEfake…` secret + `<script>` | redacted + escaped, labelled agent | automated |
 | 5 | Agent summary empty / 2001 chars / non-string | ValidationError, `reports/` untouched | automated |
 | 6 | Report HTML before vs after with summary section removed | detail sections identical | automated |
-| 7 | coffee-shop-api copy | summary reads like the user's example; screenshot | verify |
+| 7 | nest-api copy | summary reads like the user's example; screenshot | verify |
 
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t069_report_summary.py -q
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t069_report_summary.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest -q
 ```
 
 ### Evidence
@@ -169,7 +169,7 @@ Add `_render_summary(ctx, score, plan, warnings, agent_summary)` placed first in
 
 ## Test Plan
 
-Unit tests per AC on synthetic scores; HTML structure assertions; Stage 5 on scratch copies of coffee-shop-api and bryony with screenshots.
+Unit tests per AC on synthetic scores; HTML structure assertions; Stage 5 on scratch copies of nest-api and node-monorepo with screenshots.
 
 ---
 

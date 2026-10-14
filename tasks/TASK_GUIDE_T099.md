@@ -11,7 +11,7 @@
 
 ### Mental Model (Supervisor, follow-up from T097)
 - **Observed:** `redact('bin/build-push-kibana-docker-image')` returns `bin/…****:e169e83f548e`.
-  This is the 1 scraping-devops tracked path still changed by redaction after T097, so citations to
+  This is the 1 k8s-ops tracked path still changed by redaction after T097, so citations to
   it cannot resolve.
 - **Expected:** a slash-bearing token whose every piece is a **lower-case** word shape survives the
   long-token entropy rule even without a file suffix. Each piece is `[a-z]{1,30}`, a digit run
@@ -36,7 +36,7 @@
 
 ### Intake
 - **Trigger:** `PYTHONPATH=src .venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('bin/build-push-kibana-docker-image'))"`
-  Also count: on develop `9bfa721`, `git -C <scraping-devops> ls-files` gives 1 path where `redact(p) != p`.
+  Also count: on develop `9bfa721`, `git -C <k8s-ops> ls-files` gives 1 path where `redact(p) != p`.
 - **Severity:** P2
 - **Affected area:** `core/redact.py`, the long-token entropy exemption only. The named detectors are untouched.
 
@@ -47,8 +47,8 @@
 | 2 | The lower-case slash-bearing word paths listed above survive. A no-`/` lower-case identifier ≥ 32 chars is judged as before; a mixed-case extensionless path like `bin/Build-PushKibana-DockerImage-Tool` is judged as before |
 | 3 | Still fingerprinted: `bin/aB3xK9mQzR7tWvY2pL8nC4dF`-style tokens, `AKIA…`, a realistic Slack webhook, userinfo, `?token=`, and every T091/T095/T097 negative |
 | 4 | All existing redaction tests pass with expectations unedited |
-| 5 | scraping-devops: every tracked path survives `redact()` (0 changed), pasted |
-| 6 | Real repos (scraping-devops, bryony, kitchd, coffee-shop-api, ai-training, this repo): security `redaction_hits_observed` and every rating before → after are pasted. Hits may only go down, and each vanished hit is checked by hand as a path |
+| 5 | k8s-ops: every tracked path survives `redact()` (0 changed), pasted |
+| 6 | Real repos (k8s-ops, node-monorepo, fullstack-ts, nest-api, python-ml, this repo): security `redaction_hits_observed` and every rating before → after are pasted. Hits may only go down, and each vanished hit is checked by hand as a path |
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
 - [x] Phase 1 feedback loop built and running (the trigger above)
@@ -86,12 +86,14 @@ The named detectors in `redact.py`, and everything outside `core/redact.py` and 
 
 ### Real repos
 
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
 All read-only:
-- scraping-devops `/home/hungnguyenhuu/workspace/project/bryony/scraping-devops`
-- bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`
-- kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`
-- coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`
-- ai-training `/home/hungnguyenhuu/workspace/training/hoang.hoan/ai-training`
+- k8s-ops `<real-repos>/k8s-ops`
+- node-monorepo `<real-repos>/node-monorepo`
+- fullstack-ts `<real-repos>/fullstack-ts`
+- nest-api `<real-repos>/nest-api`
+- python-ml `<real-repos>/python-ml`
 
 Run them in the background with `</dev/null`. Agent worktrees have no `.venv`, so use the main checkout's interpreter with `PYTHONPATH=src`.
 

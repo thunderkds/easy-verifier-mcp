@@ -254,7 +254,7 @@ def test_form_controls_need_a_name(tmp_path, text, expected):
 
 
 def test_capitalised_components_are_not_dom_elements(tmp_path):
-    # tapchat-web 2026-10-08: <Input placeholder=...> / <Select label=...> are
+    # next-web 2026-10-08: <Input placeholder=...> / <Select label=...> are
     # React components (they may label themselves), never <input> / <select>.
     result = _one(
         tmp_path,

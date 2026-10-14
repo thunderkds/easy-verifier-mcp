@@ -8,6 +8,10 @@
 # src/**/docs/ is unaffected.
 /docs/
 
+# Real-repo alias map: the absolute paths and names of the user's and clients'
+# repositories. Local only; tracked files name aliases, never the repos (T100).
+/.local/
+
 # The memory system IS tracked — CLAUDE.md treats it as mandatory and every
 # sub-agent is told to read it. Only the noisy machine-generated trace is
 # excluded.

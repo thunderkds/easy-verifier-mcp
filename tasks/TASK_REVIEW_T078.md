@@ -18,14 +18,14 @@
 | Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!` |
 | Negative cases hold | ☑ pass | toml-source items refused unless `conventions` + `user-supplied`; non-convention field, malformed value, http link refused; `conventions` as framework refused; secret-shaped toml value dropped (never used, embedded or quoted) |
 | verify | ☑ pass | Supervisor 2026-10-08 CLI: temp repo with git-ignored toml `layer_paths=["api=**/endpoints/**"]` → payload `c75f20d7…`, embedded `{"language":"conventions","field":"layer_paths",…,"citation_url":".easy-verifier.toml","source_tag":"user-supplied"}`; toml deleted, no replay → `260ecf75…` (differs); toml deleted + `--agent-input` replay → `c75f20d7…` (byte-equal); empty SOT dir still 0 files after replay. Coffee no-toml base 71fd4a1 vs branch: only 2 derivation lines differ (the AC 7 disclosure). Implementer: MCP/CLI parity test + manual comparison — pass |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | reviewed `structure.repo_conventions/context_conventions/repo_convention_notes`, `registry._local_entry` + `convention_entries`, `score.py` threading, requirement_fidelity/api/architecture consumers, `report.py` `_render_registry_entries` (redact→escape), tests + 2 pinned-text updates. Findings: **AC 4 vs AC 7 conflict** (Supervisor's guide) resolved for AC 7 — no-toml hashes change only by the corrected disclosure text (coffee `07a08586…`→`2a12a8c9…`, kitchd `4559d8b5…`→`d1384151…`), verified by diff; **P1-security (fixed 7dba53c)** non-curated convention values left the engine unredacted in JSON `registry_entries` (new egress path) → now dropped with a warning when `redact()` would alter them; P3 known limits documented (committed toml is evidence so delete-and-replay differs; write_report shows no warning; `_breaking_metric` still curated tokens — T084) |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | reviewed `structure.repo_conventions/context_conventions/repo_convention_notes`, `registry._local_entry` + `convention_entries`, `score.py` threading, requirement_fidelity/api/architecture consumers, `report.py` `_render_registry_entries` (redact→escape), tests + 2 pinned-text updates. Findings: **AC 4 vs AC 7 conflict** (Supervisor's guide) resolved for AC 7 — no-toml hashes change only by the corrected disclosure text (nest-api `07a08586…`→`2a12a8c9…`, fullstack-ts `4559d8b5…`→`d1384151…`), verified by diff; **P1-security (fixed 7dba53c)** non-curated convention values left the engine unredacted in JSON `registry_entries` (new egress path) → now dropped with a warning when `redact()` would alter them; P3 known limits documented (committed toml is evidence so delete-and-replay differs; write_report shows no warning; `_breaking_metric` still curated tokens — T084) |
 | Full smoke suite still green (no regression) | ☑ pass | implementer on e03aa2f: `2 failed, 2465 passed, 2 skipped` (known stale-image container tests); post-merge full run recorded in the merge step — pass |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend-only |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend-only |
 | **UI: Responsiveness at target viewports** | ☐ N/A | backend-only |
 | Repro loop | ☐ N/A | feature task |
 | Regression test | ☑ pass | T068 snapshot + T074 assertion updated for the disclosure string only; all else unchanged |
-| Smoke suite | ☑ pass | real-repo coffee/kitchd runs (verify row) |
+| Smoke suite | ☑ pass | real-repo nest-api/fullstack-ts runs (verify row) |
 ---
 
 ## Demonstration
@@ -57,9 +57,9 @@ The toml extra is ignored: still "2 of 3" classified, 0 violations (the data -> 
 2. Real repos, no `.easy-verifier.toml`, empty local layer (no-regression baseline):
 
 ```
-coffee exit=0 2026-10-08T04:27:31Z 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  -
+nest-api exit=0 2026-10-08T04:27:31Z 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  -
 coffee2 exit=0 2026-10-08T04:27:34Z 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce  -
-kitchd exit=0 2026-10-08T04:27:43Z 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9  -
+fullstack-ts exit=0 2026-10-08T04:27:43Z 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9  -
 ```
 
 **AFTER**: captured 2026-10-08T05:01Z by backend-developer on worktree HEAD `e03aa2f` (same command, same fixture as BEFORE 1).
@@ -101,14 +101,14 @@ local layer files written: 0
 Real repos, no toml, empty local layer (AC 4). The hash changes only through the AC 7 disclosure string. Swapping that one string in the BEFORE payload reproduces AFTER byte-for-byte:
 
 ```
-coffee before 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce after 2a12a8c9830ad14a0aa42d61883ae16ea7df368588ecc21811a216c216880c74
+nest-api before 07a085869ae70ac87c4f57078edca18151f4991a822fbda19d13021ee94373ce after 2a12a8c9830ad14a0aa42d61883ae16ea7df368588ecc21811a216c216880c74
   old-note occurrences before: 2 | after: 0 | new-note after: 2
   before with ONLY the disclosure string swapped: 2a12a8c9830ad14a0aa42d61883ae16ea7df368588ecc21811a216c216880c74 == after: True
-kitchd before 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9 after d1384151fc663671df1618755b5ee817e9e22116722ca0730bfababced87156f
+fullstack-ts before 4559d8b5c566e256f0e014f8214b909720afeb2a93836784f5dbf52aa0dd31d9 after d1384151fc663671df1618755b5ee817e9e22116722ca0730bfababced87156f
   old-note occurrences before: 4 | after: 0 | new-note after: 4
   before with ONLY the disclosure string swapped: d1384151fc663671df1618755b5ee817e9e22116722ca0730bfababced87156f == after: True
 ```
 
 **DELTA**: A repository's `.easy-verifier.toml` `[conventions]` and the local layer's `conventions.toml` now change the score: layer paths, route tokens, requirement-item and issue-reference patterns. Every extra value used is embedded in `registry_entries`, so replaying those entries with `--agent-input` on a machine without the toml or the local layer reproduces the payload byte-for-byte. A replayed toml value applies to that call only and is never written to disk.
 
-**WITNESS**: Supervisor, 2026-10-08 — independent replay byte-equality run and coffee base-vs-branch payload diff; trace attributed via active_task (`memory/event-trace/T078.jsonl`).
+**WITNESS**: Supervisor, 2026-10-08 — independent replay byte-equality run and nest-api base-vs-branch payload diff; trace attributed via active_task (`memory/event-trace/T078.jsonl`).

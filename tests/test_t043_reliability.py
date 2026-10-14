@@ -296,7 +296,7 @@ def test_test_files_are_not_scanned_for_swallowed_errors():
         ("src/a.go", "resp, err := http.Get(url)\n", 1),
         ("src/a.go", "c := &http.Client{\n\tTimeout: 5 * time.Second,\n}\n", 0),
         ("src/a.go", "c := &http.Client{}\n", 1),
-        # bryony (real repo): Node core requests and jQuery ajax
+        # node-monorepo (real repo): Node core requests and jQuery ajax
         ("src/a.js", "let req = http.request(opts, function (res) {});\n", 1),
         ("src/a.js", "$.ajax({ url: u, timeout: 5000 });\n", 0),
         ("src/a.js", "$.ajax({ url: u, type: 'POST' });\n", 1),

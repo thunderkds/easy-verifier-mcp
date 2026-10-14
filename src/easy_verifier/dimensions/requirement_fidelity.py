@@ -455,7 +455,7 @@ def _commit_file_sets(repo: object) -> Iterator[frozenset[str]]:
             "--no-merges",
             "--name-only",
             # the target's own commits, paths relative to it: it may be a
-            # subdirectory of its repository (coffee-shop-api, T077)
+            # subdirectory of its repository (nest-api, T077)
             "--relative",
             f"--format={_COMMIT_MARK}%H",
             "-n",
@@ -737,7 +737,7 @@ def _commit_messages(repo: object) -> Iterator[tuple[str, str, tuple[str, ...]]]
             "--no-merges",
             "--name-only",
             # the target's own commits, paths relative to it: it may be a
-            # subdirectory of its repository (coffee-shop-api, T075/T077)
+            # subdirectory of its repository (nest-api, T075/T077)
             "--relative",
             f"--format={_COMMIT_MARK}%H{_BODY_MARK}%B{_END_MARK}",
             "-n",

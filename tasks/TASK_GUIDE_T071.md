@@ -77,7 +77,7 @@ philosophy-aligned, no marketing.
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t071_evaluation_docs.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t071_evaluation_docs.py -q
 ```
 
 ### Evidence

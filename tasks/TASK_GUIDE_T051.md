@@ -23,7 +23,7 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-User sign-off of T035 (2026-09-28, 'Merge + fix tasks'): security's `redaction_hits_observed ≤ 0` rule (40/100) is dominated by false positives. On this repo 94 hits are sha256 content hashes in `.claude/harness-lock.json`; most others are long snake_case test names (`def test_agent_guide_dedup…()`) and suffix-less paths; the scan also reads git-ignored `.claude/`. kitchd 222, bryony 132, ai-training 271 hits.
+User sign-off of T035 (2026-09-28, 'Merge + fix tasks'): security's `redaction_hits_observed ≤ 0` rule (40/100) is dominated by false positives. On this repo 94 hits are sha256 content hashes in `.claude/harness-lock.json`; most others are long snake_case test names (`def test_agent_guide_dedup…()`) and suffix-less paths; the scan also reads git-ignored `.claude/`. fullstack-ts 222, node-monorepo 132, python-ml 271 hits.
 
 **Restated intent**:
 > `redaction_hits_observed` counts real secret shapes only: labelled content hashes and word-only identifiers are not fingerprinted, git-ignored files are not scanned, and every real secret shape the suite covers is still caught.
@@ -64,7 +64,7 @@ User sign-off of T035 (2026-09-28, 'Merge + fix tasks'): security's `redaction_h
 | 1 | Hex digests in a hash context (JSON/TOML/YAML value or key named like sha1/sha256/sha512/integrity/hash/checksum/digest, lockfile integrity fields like `sha512-…`, git SHAs in lock files) are not fingerprinted; a hex-looking value under a secret-named key (token, secret, password, api_key) still is | content hashes |
 | 2 | Word-only identifiers (letters-only pieces joined by `_`, e.g. `test_agent_guide_dedup_rules_apply`) are not fingerprinted by the long-token rule even without a file suffix — extending T029's piece-shape exemption with the same guards (≥2 pieces, each single-case or Capitalized letters-only); any digit or mixed-case piece keeps the current behaviour | long identifiers |
 | 3 | The evidence walk skips files ignored by the target repo's `.gitignore` (git available: `git check-ignore`/`ls-files --others --ignored --exclude-standard`; no git: current behaviour) — decided once per run, documented; secret-bearing file guard unchanged | git-ignored files |
-| 4 | All existing redaction/secret tests still pass; a sweep over this repo shows 0 fingerprints on tracked files that contain no real secret; kitchd/bryony/ai-training counts before/after recorded | no regression + real-repo evidence |
+| 4 | All existing redaction/secret tests still pass; a sweep over this repo shows 0 fingerprints on tracked files that contain no real secret; fullstack-ts/node-monorepo/python-ml counts before/after recorded | no regression + real-repo evidence |
 
 ---
 

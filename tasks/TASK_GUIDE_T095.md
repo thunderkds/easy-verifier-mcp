@@ -36,7 +36,7 @@
 | 3 | Still fingerprinted: `A1B2C3D4E5F6G7H8J9K0L1M2` (interleaved), a 40-char base64url token, `main-3F9A2B1C.js` (digits before letters inside a piece), `https://user:Summer2024XqZ@host/…` (userinfo), `?token=…` in a query, and a Slack-webhook-shaped path segment |
 | 4 | All existing T029/T051/T053/T091 redaction tests pass with expectations unedited |
 | 5 | This repo's tracked-path test (`test_t029…::test_every_tracked_path_of_this_repo_survives_redaction`) and line-fidelity test pass, and a new test runs `redact()` over this repo's README with no `high_entropy_string` hit on that URL |
-| 6 | Real repos (bryony, kitchd, coffee-shop-api, this repo): security `redaction_hits_observed` before → after is pasted. It may only go down. Each hit that disappeared is listed and checked by hand as a path or name, not a secret |
+| 6 | Real repos (node-monorepo, fullstack-ts, nest-api, this repo): security `redaction_hits_observed` before → after is pasted. It may only go down. Each hit that disappeared is listed and checked by hand as a path or name, not a secret |
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
 - [ ] Phase 1 feedback loop built and running (the trigger above)

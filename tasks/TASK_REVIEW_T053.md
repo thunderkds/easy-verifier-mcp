@@ -17,7 +17,7 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t053_redaction_noise.py` — 72 tests: detector fix twins (API_TOKEN/api_token/SERVICE_API_KEY/db_password caught; mytoken=, API_TOKEN_URL=, passwords = 3 not), versioned URL paths vs Slack webhook / ?token= / JWT / userinfo password / no-scheme / 9-digit twins, commit/blob/tree/raw SHAs + sha256sum lines vs hex under secret-named key, UPPER_SNAKE constants vs base32 secret, SPDX under license only; vendored asvs.json/NOTICE/CHECKSUMS pinned at 0. 24/24 guards sabotage-caught (PYTHONDONTWRITEBYTECODE=1). One T051 twin changed (Supervisor ruling 2). Supervisor re-run `1277 passed, 2 skipped in 52.81s` |
 | Verification command run | ☑ pass | Supervisor 2026-09-28: pytest `1277 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
 | Negative cases hold | ☑ pass | Supervisor probes: `API_TOKEN = "…"` → fingerprinted (was missed by the named detector); `db_password:` → fingerprinted; Slack webhook token segment, `?token=`, `user:Pa55w0rd@host`, hex under `token =` → fingerprinted; random base32 `KZ7Q…` fingerprinted before and after; repetitive `JBSWY3DP…` uncaught both before and after (low entropy, pre-existing, not a regression) |
-| verify | ☑ pass | Real CLI 4-repo `redaction_hits_observed` (agent AFTER): easy-verifier 19→16, kitchd 59→62, bryony 14→10, ai-training 31→28 (rises = real hard-coded credentials now caught: POSTGRES_PASSWORD, JWT_SECRET, langfuse/openai keys); ratings unchanged; tracked-file sweep 529→194 (vendored asvs.json 346→0). Supervisor probe set confirms ASVS versioned URL, prose commit SHA and UPPER_SNAKE constant unchanged — pass |
+| verify | ☑ pass | Real CLI 4-repo `redaction_hits_observed` (agent AFTER): easy-verifier 19→16, fullstack-ts 59→62, node-monorepo 14→10, python-ml 31→28 (rises = real hard-coded credentials now caught: POSTGRES_PASSWORD, JWT_SECRET, langfuse/openai keys); ratings unchanged; tracked-file sweep 529→194 (vendored asvs.json 346→0). Supervisor probe set confirms ASVS versioned URL, prose commit SHA and UPPER_SNAKE constant unchanged — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/redact.py` diff (credential_assignment left boundary, version-label/URL-path exemption with userinfo/query exclusions, commit/checksum hash-context marks, constant and SPDX exemptions, residual-risk docstring) and new tests. Code review P0 0, P1 0. Rulings: AC5 partial accepted (remaining task-ID/CamelCase/phase0 classes would weaken password detection; security first); T051 twin change accepted; no empty-tree-SHA allowlist. Security review inline (High): no entropy bar moved, named detectors never consult exemptions, 200 KB adversarial inputs ≤0.024 s |
 | Full smoke suite still green (no regression) | ☑ pass | full suite 1277 passed, 2 skipped |
 | **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
@@ -44,16 +44,16 @@ Run log (UTC; repo HEAD; exit code) and security `redaction_hits_observed` extra
 worktree HEAD 7de1e21
 2026-09-28T12:54:11Z start easy-verifier-mcp 7de1e21
 2026-09-28T12:54:12Z end easy-verifier-mcp exit=0
-2026-09-28T12:54:12Z start kitchd 872cc92
-2026-09-28T12:54:14Z end kitchd exit=0
-2026-09-28T12:54:14Z start bryony 8df7b986f
-2026-09-28T12:54:21Z end bryony exit=0
-2026-09-28T12:54:21Z start ai-training 86c98d5
-2026-09-28T12:54:22Z end ai-training exit=0
+2026-09-28T12:54:12Z start fullstack-ts 872cc92
+2026-09-28T12:54:14Z end fullstack-ts exit=0
+2026-09-28T12:54:14Z start node-monorepo 8df7b986f
+2026-09-28T12:54:21Z end node-monorepo exit=0
+2026-09-28T12:54:21Z start python-ml 86c98d5
+2026-09-28T12:54:22Z end python-ml exit=0
 easy-verifier-mcp {'redaction_hits_observed': 19} security rating: 50
-kitchd {'redaction_hits_observed': 59} security rating: 60
-bryony {'redaction_hits_observed': 14} security rating: 60
-ai-training {'redaction_hits_observed': 31} security rating: 60
+fullstack-ts {'redaction_hits_observed': 59} security rating: 60
+node-monorepo {'redaction_hits_observed': 14} security rating: 60
+python-ml {'redaction_hits_observed': 31} security rating: 60
 ```
 Every hit in each security pack (`run_dimension(security, repo, "project")`; path:line detector fingerprint — never raw values):
 ```
@@ -77,7 +77,7 @@ Every hit in each security pack (`run_dimension(security, repo, "project")`; pat
   src/easy_verifier/core/redact.py:137 credential_assignment hunt…****:f52fbd32b2b3
   src/easy_verifier/core/redact.py:163 key_material_segment FAKE…****:5252c44014f7
   src/easy_verifier/core/redact.py:189 high_entropy_string BRAI…****:54e5675171d4
-[kitchd] hits=59 by detector=[('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
+[fullstack-ts] hits=59 by detector=[('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
   pnpm-lock.yaml:145 high_entropy_hex de2b…****:3333781a5f84
   apps/api/src/auth/auth.e2e.spec.ts:39 credential_assignment corr…****:622493693890
   apps/api/src/auth/auth.e2e.spec.ts:65 credential_assignment corr…****:622493693890
@@ -137,7 +137,7 @@ Every hit in each security pack (`run_dimension(security, repo, "project")`; pat
   repo…****:7131be7be111.html:1 high_entropy_string repo…****:7131be7be111
   repo…****:f16d4e14804c.html:1 high_entropy_string repo…****:f16d4e14804c
   repo…****:5bdb8e4dda09.html:1 high_entropy_string repo…****:5bdb8e4dda09
-[bryony] hits=14 by detector=[('high_entropy_hex', 7), ('credential_assignment', 4), ('high_entropy_string', 2), ('key_material_segment', 1)]
+[node-monorepo] hits=14 by detector=[('high_entropy_hex', 7), ('credential_assignment', 4), ('high_entropy_string', 2), ('key_material_segment', 1)]
   nodes/package.json:29 key_material_segment BSD-…****:248dd895a2f8
   frontend/app/scripts/modules/auth/views/register.itemview.js:19 credential_assignment #pas…****:a9ca1573cef4
   frontend/app/scripts/modules/auth/views/register.itemview.js:101 credential_assignment this…****:fcad7430e71a
@@ -152,7 +152,7 @@ Every hit in each security pack (`run_dimension(security, repo, "project")`; pat
   backend/bin/ec2/fabric/fabfile.py:148 high_entropy_hex 5edf…****:d2f648993e74
   backend/bin/fabric/fabfile.py:29 high_entropy_string ssh/…****:d13e7d3f0968
   backend/bin/fabric/fabfile.py:188 high_entropy_hex 5edf…****:d2f648993e74
-[ai-training] hits=31 by detector=[('high_entropy_string', 24), ('credential_assignment', 7)]
+[python-ml] hits=31 by detector=[('high_entropy_string', 24), ('credential_assignment', 7)]
   src/core/llm/factory.py:164 credential_assignment sett…****:7a417f6aeac4
   src/core/llm/factory.py:180 credential_assignment sett…****:7a417f6aeac4
   src/core/llm/factory.py:196 credential_assignment sett…****:fd8e43297e05
@@ -187,7 +187,7 @@ Every hit in each security pack (`run_dimension(security, repo, "project")`; pat
 ```
 Tracked-file sweep of this repo (`git ls-files`, every UTF-8 file through `scan`; sample = first 3 hits per file, lines shown already redacted):
 ```
-[sweep /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T053] tracked files=252 total hits=529 files with hits=53
+[sweep <repo>-T053] tracked files=252 total hits=529 files with hits=53
  by detector: [('high_entropy_string', 422), ('credential_assignment', 45), ('key_material_segment', 39), ('high_entropy_hex', 11), ('aws_access_key_id', 10), ('aws_secret_access_key', 1), ('jwt', 1)]
  by file: [('src/easy_verifier/registry/vendored/asvs.json', 346), ('tests/test_t004_redact.py', 35), ('tasks/TASK_REVIEW_T016.md', 18), ('tests/test_t005_budget.py', 10), ('tests/test_t051_redaction_false_positives.py',
   CLAUDE.md:128 high_entropy_string | See [`docs…****:3bda998323af.md`](docs…****:3bda998323af.md) for full Step 1 / Step 1.5 (Ambiguity Resolution Protocol) / Step 2 detail.
@@ -248,25 +248,25 @@ Named-detector gap (`scan(...)` at 2026-09-28T12:54:22Z; a short low-entropy val
 'db_password: hunter2' -> 'db_password: hunter2' []
 'api_token = "hunter2"' -> 'api_token = "hunter2"' []
 ```
-Observed: 123 hits over 4 repos at the CLI (19 + 59 + 14 + 31); the tracked-file sweep of this repo has 529 hits in 53 files, 346 of them in `registry/vendored/asvs.json` (the `v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json` URL tail), plus `CHECKSUMS.sha256` lines, commit SHAs in `NOTICE`/`linguist.json` URLs, bryony `CHANGELOG.md` `/commit/<sha>` links, `license: BSD-3-Clause`, `content=SYSTEM_PROMPT`-style shapes, `docs/claude-md/*.md` paths, `T0xx`-bearing report/worktree names. `API_TOKEN`, `api_token`, `SERVICE_API_KEY`, `db_password` assignments are not caught by `credential_assignment` (no `\b` between `_` and the secret word).
+Observed: 123 hits over 4 repos at the CLI (19 + 59 + 14 + 31); the tracked-file sweep of this repo has 529 hits in 53 files, 346 of them in `registry/vendored/asvs.json` (the `v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.json` URL tail), plus `CHECKSUMS.sha256` lines, commit SHAs in `NOTICE`/`linguist.json` URLs, node-monorepo `CHANGELOG.md` `/commit/<sha>` links, `license: BSD-3-Clause`, `content=SYSTEM_PROMPT`-style shapes, `docs/claude-md/*.md` paths, `T0xx`-bearing report/worktree names. `API_TOKEN`, `api_token`, `SERVICE_API_KEY`, `db_password` assignments are not caught by `credential_assignment` (no `\b` between `_` and the secret word).
 
 **AFTER** (captured 2026-09-28T13:17Z on `feat/T053-redaction-noise` @ `1b341e0` — the last code/docstring change; `3f719ad` after it only re-wraps one docstring line; same command, same 4 target repos, target HEADs in the log; backend-developer):
 ```
 worktree HEAD 1b341e0
 2026-09-28T13:17:06Z start easy-verifier-mcp 7de1e21
 2026-09-28T13:17:07Z end easy-verifier-mcp exit=0
-2026-09-28T13:17:07Z start kitchd 872cc92
-2026-09-28T13:17:10Z end kitchd exit=0
-2026-09-28T13:17:10Z start bryony 8df7b986f
-2026-09-28T13:17:18Z end bryony exit=0
-2026-09-28T13:17:18Z start ai-training 86c98d5
-2026-09-28T13:17:20Z end ai-training exit=0
+2026-09-28T13:17:07Z start fullstack-ts 872cc92
+2026-09-28T13:17:10Z end fullstack-ts exit=0
+2026-09-28T13:17:10Z start node-monorepo 8df7b986f
+2026-09-28T13:17:18Z end node-monorepo exit=0
+2026-09-28T13:17:18Z start python-ml 86c98d5
+2026-09-28T13:17:20Z end python-ml exit=0
 easy-verifier-mcp {'redaction_hits_observed': 16} security rating: 50
-kitchd {'redaction_hits_observed': 62} security rating: 60
-bryony {'redaction_hits_observed': 10} security rating: 60
-ai-training {'redaction_hits_observed': 28} security rating: 60
+fullstack-ts {'redaction_hits_observed': 62} security rating: 60
+node-monorepo {'redaction_hits_observed': 10} security rating: 60
+python-ml {'redaction_hits_observed': 28} security rating: 60
 ```
-Before → after, security `redaction_hits_observed`: easy-verifier-mcp **19 → 16**, kitchd **59 → 62**, bryony **14 → 10**, ai-training **31 → 28** (123 → 116). No rating changed. The two rises are the AC 4 detector fix catching real hard-coded credentials that `\b` used to hide: ai-training `credential_assignment` 7 → 23 (`POSTGRES_PASSWORD: pt_a…` in docker-compose.yml, `postgres_password="pass…"`, `langfuse_secret_key="sk-t…"`, `openai_api_key = "open…"` / `anthropic_api_key = "anth…"` test fixtures); kitchd 18 → 21 (`POSTGRES_PASSWORD: kitc…` in docker-compose.yml and ci.yml, `JWT_SECRET: "ci-t…"` in ci.yml). The false positives removed: ai-training `content=…_SYSTEM_PROMPT` ×3 and `plan_…=_MIN_PLAN_…` ×16, bryony CHANGELOG `/commit/<sha>` ×3 and `"license": "BSD-3-Clause"`, this repo's `README.md` ×4 / `judge.py` / `vendor_sources.py` ASVS URL and file-name hits.
+Before → after, security `redaction_hits_observed`: easy-verifier-mcp **19 → 16**, fullstack-ts **59 → 62**, node-monorepo **14 → 10**, python-ml **31 → 28** (123 → 116). No rating changed. The two rises are the AC 4 detector fix catching real hard-coded credentials that `\b` used to hide: python-ml `credential_assignment` 7 → 23 (`POSTGRES_PASSWORD: pt_a…` in docker-compose.yml, `postgres_password="pass…"`, `langfuse_secret_key="sk-t…"`, `openai_api_key = "open…"` / `anthropic_api_key = "anth…"` test fixtures); fullstack-ts 18 → 21 (`POSTGRES_PASSWORD: kitc…` in docker-compose.yml and ci.yml, `JWT_SECRET: "ci-t…"` in ci.yml). The false positives removed: python-ml `content=…_SYSTEM_PROMPT` ×3 and `plan_…=_MIN_PLAN_…` ×16, node-monorepo CHANGELOG `/commit/<sha>` ×3 and `"license": "BSD-3-Clause"`, this repo's `README.md` ×4 / `judge.py` / `vendor_sources.py` ASVS URL and file-name hits.
 
 Every hit in each security pack after the change:
 ```
@@ -287,7 +287,7 @@ Every hit in each security pack after the change:
   src/easy_verifier/core/tokens.py:189 credential_assignment matc…****:7b72b24b7a0d
   src/easy_verifier/registry/curated/php.toml:25 high_entropy_string com/…****:832c5b7ddcbf
   src/easy_verifier/registry/vendored/linguist.json:10 key_material_segment 2-Di…****:d5fb98afc34e
-[kitchd] hits=62 by detector=[('high_entropy_string', 22), ('credential_assignment', 21), ('key_material_segment', 18), ('high_entropy_hex', 1)]
+[fullstack-ts] hits=62 by detector=[('high_entropy_string', 22), ('credential_assignment', 21), ('key_material_segment', 18), ('high_entropy_hex', 1)]
   pnpm-lock.yaml:145 high_entropy_hex de2b…****:3333781a5f84
   apps/api/src/auth/auth.e2e.spec.ts:39 credential_assignment corr…****:622493693890
   apps/api/src/auth/auth.e2e.spec.ts:65 credential_assignment corr…****:622493693890
@@ -350,7 +350,7 @@ Every hit in each security pack after the change:
   repo…****:7131be7be111.html:1 high_entropy_string repo…****:7131be7be111
   repo…****:f16d4e14804c.html:1 high_entropy_string repo…****:f16d4e14804c
   repo…****:5bdb8e4dda09.html:1 high_entropy_string repo…****:5bdb8e4dda09
-[bryony] hits=10 by detector=[('credential_assignment', 4), ('high_entropy_hex', 4), ('high_entropy_string', 2)]
+[node-monorepo] hits=10 by detector=[('credential_assignment', 4), ('high_entropy_hex', 4), ('high_entropy_string', 2)]
   frontend/app/scripts/modules/auth/views/register.itemview.js:19 credential_assignment #pas…****:a9ca1573cef4
   frontend/app/scripts/modules/auth/views/register.itemview.js:101 credential_assignment this…****:fcad7430e71a
   backend/server/dashboard/authenticate.js:41 credential_assignment quer…****:12d09cfeec1f
@@ -361,7 +361,7 @@ Every hit in each security pack after the change:
   backend/bin/ec2/fabric/fabfile.py:148 high_entropy_hex 5edf…****:d2f648993e74
   backend/bin/fabric/fabfile.py:29 high_entropy_string ssh/…****:d13e7d3f0968
   backend/bin/fabric/fabfile.py:188 high_entropy_hex 5edf…****:d2f648993e74
-[ai-training] hits=28 by detector=[('credential_assignment', 23), ('high_entropy_string', 5)]
+[python-ml] hits=28 by detector=[('credential_assignment', 23), ('high_entropy_string', 5)]
   docker-compose.yml:6 credential_assignment pt_a…****:cfe88c2ad7e2
   src/core/llm/factory.py:164 credential_assignment sett…****:7a417f6aeac4
   src/core/llm/factory.py:180 credential_assignment sett…****:7a417f6aeac4
@@ -393,7 +393,7 @@ Every hit in each security pack after the change:
 ```
 Tracked-file sweep of this repo after (253 files — `tests/test_t053_redaction_noise.py` added; `tests/` and `tasks/` lines left out of the sample below, they hold deliberate fixtures and pasted evidence):
 ```
-[sweep /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T053] tracked files=253 total hits=194 files with hits=46
+[sweep <repo>-T053] tracked files=253 total hits=194 files with hits=46
  by detector: [('credential_assignment', 74), ('high_entropy_string', 59), ('key_material_segment', 47), ('aws_access_key_id', 10), ('jwt', 2), ('high_entropy_hex', 1), ('aws_secret_access_key', 1)]
  by file: [('tests/test_t004_redact.py', 37), ('tests/test_t053_redaction_noise.py', 26), ('tasks/TASK_REVIEW_T016.md', 18), ('tests/test_t008_security.py', 11), ('tests/test_t051_redaction_false_positives.py', 11), ('ta
   CLAUDE.md:128 high_entropy_string | See [`docs…****:3bda998323af.md`](docs…****:3bda998323af.md) for full Step 1 / Step 1.5 (Ambiguity Resolution Protocol) / Step 2 detail.

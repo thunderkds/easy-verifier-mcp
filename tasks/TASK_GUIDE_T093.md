@@ -24,7 +24,7 @@
 T088 follow-up (2026-10-13): `layer_direction_violations` abstains when fewer than
 `MIN_CLASSIFIED_SHARE` (0.50) of non-shared source files classify. The denominator is the whole
 repository, including frontend apps whose files can never be api, service or data. Results:
-kitchd 49/177 (28%; 88 of 177 are `apps/web` + `apps/mobile`); bryony `--all` 450/1063 (42%,
+fullstack-ts 49/177 (28%; 88 of 177 are `apps/web` + `apps/mobile`); node-monorepo `--all` 450/1063 (42%,
 including `frontend/` and `design/`).
 
 Question to the user: "Should we count only the backend part of the repo? My suggestion: yes."
@@ -70,9 +70,9 @@ User (2026-10-13): **"yes, agree"**.
 | 2 | The share denominator = non-shared source files inside a backend unit. When a unit is nested in another, the **deepest** unit containing the api file is used, so the root `package.json` of a monorepo does not swallow `apps/web` | monorepo frontends leave |
 | 3 | No api file → the denominator is the whole repository (today's behaviour) | no regression |
 | 4 | The derivation states: the backend unit(s) used, files in units / total, and the count of files outside every unit ("N source files outside backend units (apps/web, apps/mobile) are not counted") | disclosed |
-| 5 | Single-manifest repo (coffee-shop-api): result identical to today | no regression |
+| 5 | Single-manifest repo (nest-api): result identical to today | no regression |
 | 6 | Both extremes pinned: a monorepo fixture `apps/api` (manifest, route, model, service) + `apps/web` (manifest, 10 React files) is measured; sabotage the unit predicate to "whole repo" and it must abstain | pinned |
-| 7 | **Real repos (paste, hand-checked)**: kitchd (expect about 49/87, measured), bryony `--all` (backend/ unit), coffee-shop-api (unchanged), ai-training (no api file → unchanged). For each newly measured repo: the violations value and up to 3 cited violations checked by hand against the source | real-repo verified |
+| 7 | **Real repos (paste, hand-checked)**: fullstack-ts (expect about 49/87, measured), node-monorepo `--all` (backend/ unit), nest-api (unchanged), python-ml (no api file → unchanged). For each newly measured repo: the violations value and up to 3 cited violations checked by hand against the source | real-repo verified |
 
 
 ### Amendment (Supervisor, 2026-10-13, after the implementer's real-repo finding)
@@ -81,16 +81,16 @@ User (2026-10-13): **"yes, agree"**.
 |---|----------------------|-----------------------|
 | 8 | **Shared wins a hint conflict**: when a file matches a `shared=` layer_paths hint **and** another layer's hint (e.g. `apps/api/src/notes/notes.module.ts` matches `shared=**/*.module.*` and `api=**/api/**` only because the app folder is named `api`), it is **shared**. Behaviour evidence still overrides any hint (T088). Shared files never count in the share or in a violation, so this can only remove files from the denominator, never add a violation | folder names must not decide (DDR-0012) |
 | 9 | Both extremes pinned for AC 8: a `apps/api/src/x/x.module.ts` fixture is shared; a sabotage (conflict → unclassified, today's behaviour) must fail the test | pinned |
-| 10 | Re-run kitchd and coffee-shop-api: kitchd expected measured. Hand-check up to 3 cited violations if any; coffee unchanged. bryony stays abstaining. Its backend unit is mostly standalone scripts (148/515), which is honest, not a defect | real-repo verified |
+| 10 | Re-run fullstack-ts and nest-api: fullstack-ts expected measured. Hand-check up to 3 cited violations if any; nest-api unchanged. node-monorepo stays abstaining. Its backend unit is mostly standalone scripts (148/515), which is honest, not a defect | real-repo verified |
 
 
-### Amendment 2 (Supervisor, 2026-10-13: kitchd's 4 cited violations were all false positives)
+### Amendment 2 (Supervisor, 2026-10-13: fullstack-ts's 4 cited violations were all false positives)
 
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
-| 11 | **A violation needs behaviour at both ends**: an import counts as a layer-direction violation only when both the importing file's layer and the target's layer come from behaviour evidence (route registration / DB-ORM call / service-on-path). Hint-only files still count toward the classified share but are never a violation end. The derivation states this | hints never decide a result (DDR-0012): kitchd cases 1–3 (`*.decorator.*`, `**/api/**`) |
-| 12 | **Import targets resolve within the importer's unit**: the stem match that finds an import's target considers only files in the importing file's own manifest unit (the deepest manifest directory, as for the share). Without manifests, the unit is the whole repo (today) | kitchd case 4: `users.service.ts` matched `apps/web/src/routes/auth.ts` |
-| 13 | Both extremes pinned for AC 11 and AC 12 (sabotage each one back and its fixture fails). Re-run kitchd: report the violations value and hand-check every cited violation. coffee-shop-api: report any change. bryony and ai-training: unchanged | real-repo verified, no false violations |
+| 11 | **A violation needs behaviour at both ends**: an import counts as a layer-direction violation only when both the importing file's layer and the target's layer come from behaviour evidence (route registration / DB-ORM call / service-on-path). Hint-only files still count toward the classified share but are never a violation end. The derivation states this | hints never decide a result (DDR-0012): fullstack-ts cases 1–3 (`*.decorator.*`, `**/api/**`) |
+| 12 | **Import targets resolve within the importer's unit**: the stem match that finds an import's target considers only files in the importing file's own manifest unit (the deepest manifest directory, as for the share). Without manifests, the unit is the whole repo (today) | fullstack-ts case 4: `users.service.ts` matched `apps/web/src/routes/auth.ts` |
+| 13 | Both extremes pinned for AC 11 and AC 12 (sabotage each one back and its fixture fails). Re-run fullstack-ts: report the violations value and hand-check every cited violation. nest-api: report any change. node-monorepo and python-ml: unchanged | real-repo verified, no false violations |
 
 ---
 
@@ -101,7 +101,7 @@ User (2026-10-13): **"yes, agree"**.
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest -q
 .venv/bin/python -m ruff check src tests
-.venv/bin/easy-verifier score --repo /home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd --scope project < /dev/null
+.venv/bin/easy-verifier score --repo <real-repos>/fullstack-ts --scope project < /dev/null
 ```
 
 ### Evidence

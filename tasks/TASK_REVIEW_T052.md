@@ -17,7 +17,7 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t052_ac_trace_and_churn.py` — AC extraction from TASK_GUIDE tables + PRD FR ids, whole-word traces (FR-027 ≠ FR-027a), docs never count, code/test via shared classifier, bounded TraceSearch summary (counts, ≤20 untraced per kind, ≤30 quoted trace lines), abstain when budget dropped a listed ref or a cap hit, standalone abstains, fan-in only changed targets + abstain when capped, repo-wide churn top-10% ranking, shallow/<20 commits abstain, colocated test names (`src/app.controller.spec.ts` → test, `dimensions/test_strategy.py` → source, Go/Java/Kotlin/C#/Ruby). 14 guards sabotage-caught. Intentional updates: architecture snapshot keys, T010 read bound, T035 abstain test, T031 two-path classification change. Supervisor re-run `1236 passed, 2 skipped in 53.00s` |
 | Verification command run | ☑ pass | Supervisor 2026-09-28 13:33 UTC: pytest `1236 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0) |
 | Negative cases hold | ☑ pass | Standalone mode keeps an honest abstention ('criteria are never inferred'); project-scope hotspot share abstains by design (10% by construction); prefix-style Python `test_*.py` inside src stays source |
-| verify | ☑ pass | Supervisor real CLI kitchd `score --scope project </dev/null`: requirement-fidelity rates 0 (code share 0.761, test share 0.631 vs threshold 0.80), 5/7 contributors, overall 65 (was 90 at 4/7 under T035 with requirement-fidelity abstaining). Agent AFTER: this repo requirement-fidelity 0 (0.714/0.750); changes scope blast-radius 100 with hotspot share 0.143 (this repo) / 0.0 (kitchd); pack JSON this repo 129→148 KB (+14.8%), kitchd 137→166 KB (+20.9%) — pass |
+| verify | ☑ pass | Supervisor real CLI fullstack-ts `score --scope project </dev/null`: requirement-fidelity rates 0 (code share 0.761, test share 0.631 vs threshold 0.80), 5/7 contributors, overall 65 (was 90 at 4/7 under T035 with requirement-fidelity abstaining). Agent AFTER: this repo requirement-fidelity 0 (0.714/0.750); changes scope blast-radius 100 with hotspot share 0.143 (this repo) / 0.0 (fullstack-ts); pack JSON this repo 129→148 KB (+14.8%), fullstack-ts 137→166 KB (+20.9%) — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `dimensions/requirement_fidelity.py`, `dimensions/blast_radius.py`, `core/metrics.py`, `core/models.py`, `core/pipeline.py`, `core/context.py`, `core/registry.py` + `metric_tables.py` (colocated_test_name_patterns), `dimensions/test_strategy.py`, 6 curated TOML. Round 1 P1s fixed: unbounded trace_search/reach pack fields (→ compact summary) and colocated `*.spec.ts` counted as source (→ cited colocated patterns win over source dirs). Rulings: FR ids as criteria, drop backticked identifiers, EVIDENCE_LOCAL + completeness check, ≥20 commits, residual files_read growth (+15%/+21%) accepted as honest reads. Integration note: T037 gate must treat `colocated_test_name_patterns` as optional (Python/PHP/Rust omit it on purpose) — checked at merge. All git via core/git.py. Security inline (Med): bounded walks, no new execution paths |
 | Full smoke suite still green (no regression) | ☑ pass | full suite 1236 passed, 2 skipped |
 | **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
@@ -35,8 +35,8 @@
 
 **BEFORE**: captured by the implementing agent before any T052 implementation commit (worktree HEAD
 7de1e21), real CLI `PYTHONPATH=src python -m easy_verifier.adapters.cli score --repo <repo> <scope> </dev/null`
-on this repo (kit-aware) and on the external kit-aware repo kitchd (`<kitchd>` =
-/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd, read-only). Summary per dimension (rating
+on this repo (kit-aware) and on the external kit-aware repo fullstack-ts (`<fullstack-ts>` =
+<real-repos>/fullstack-ts, read-only). Summary per dimension (rating
 [inputs, ✓ met / ✗ unmet]) with the abstention reasons of the two T052 dimensions, clipped at 230 chars:
 
 ```text
@@ -68,7 +68,7 @@ exit=0
   solution-fit           abstain no_static_rule
   test-strategy          rating  35  [source_files_without_covering_test_share=1.0✗; assertion_density_per_test=2.4285714285714284✓; test_config_and_ci_missing=1✗]
   overall: 74 | 4 of 7
-$ easy-verifier score --repo <kitchd> --scope project   # 2026-09-28T12:53:49Z
+$ easy-verifier score --repo <fullstack-ts> --scope project   # 2026-09-28T12:53:49Z
 exit=0
   architecture           rating 100  [architecture_description_missing=0✓; decision_records_missing=0✓] abstained-metrics: top_level_import_cycles
   blast-radius           abstain all_metrics_abstained
@@ -82,7 +82,7 @@ exit=0
   solution-fit           abstain no_static_rule
   test-strategy          rating 100  [test_config_and_ci_missing=0✓] abstained-metrics: source_files_without_covering_test_share,assertion_density_per_test
   overall: 90 | 4 of 7
-$ easy-verifier score --repo <kitchd> --scope changes --ref HEAD~3   # 2026-09-28T12:53:50Z
+$ easy-verifier score --repo <fullstack-ts> --scope changes --ref HEAD~3   # 2026-09-28T12:53:50Z
 exit=0
   architecture           rating 100  [architecture_description_missing=0✓; decision_records_missing=0✓; top_level_import_cycles=0✓]
   blast-radius           rating 100  [max_fan_in_changed=6✓] abstained-metrics: changed_files_in_churn_hotspots_share
@@ -129,7 +129,7 @@ exit=0
   solution-fit           abstain no_static_rule
   test-strategy          rating  35  [source_files_without_covering_test_share=1.0✗; assertion_density_per_test=2.4285714285714284✓; test_config_and_ci_missing=1✗]
   overall: 51 | 5 of 7
-$ easy-verifier score --repo <kitchd> --scope project   # 2026-09-28T13:31:39Z
+$ easy-verifier score --repo <fullstack-ts> --scope project   # 2026-09-28T13:31:39Z
 exit=0
   architecture           rating 100  [architecture_description_missing=0✓; decision_records_missing=0✓] abstained-metrics: top_level_import_cycles
   blast-radius           abstain all_metrics_abstained
@@ -141,7 +141,7 @@ exit=0
   solution-fit           abstain no_static_rule
   test-strategy          rating 100  [test_config_and_ci_missing=0✓] abstained-metrics: source_files_without_covering_test_share,assertion_density_per_test
   overall: 65 | 5 of 7
-$ easy-verifier score --repo <kitchd> --scope changes --ref HEAD~3   # 2026-09-28T13:31:41Z
+$ easy-verifier score --repo <fullstack-ts> --scope changes --ref HEAD~3   # 2026-09-28T13:31:41Z
 exit=0
   architecture           rating 100  [architecture_description_missing=0✓; decision_records_missing=0✓; top_level_import_cycles=0✓]
   blast-radius           rating 100  [max_fan_in_changed=6✓; changed_files_in_churn_hotspots_share=0.0✓]
@@ -159,12 +159,12 @@ exit=0
 | easy-verifier-mcp | project | AFTER | abst (by design at project scope) | 0 [code 0.714 ✗, test 0.750 ✗] | 60 (5/7) |
 | easy-verifier-mcp | changes --ref 75650d6 | BEFORE | 100 [fan-in 19 ✓; hotspot abst] | abst | 74 (4/7) |
 | easy-verifier-mcp | changes --ref 75650d6 | AFTER | 100 [fan-in 18 ✓; hotspot 0.143 ✓] | 0 [code 0.714 ✗, test 0.750 ✗] | 51 (5/7) |
-| kitchd | project | BEFORE | abst | abst | 90 (4/7) |
-| kitchd | project | AFTER | abst (by design) | 0 [code 0.761 ✗, test 0.631 ✗] | 65 (5/7) |
-| kitchd | changes --ref HEAD~3 | BEFORE | 100 [fan-in 6 ✓; hotspot abst] | abst | 100 (3/7) |
-| kitchd | changes --ref HEAD~3 | AFTER | 100 [fan-in 6 ✓; hotspot 0.0 ✓] | 0 [code 0.761 ✗, test 0.631 ✗] | 75 (4/7) |
+| fullstack-ts | project | BEFORE | abst | abst | 90 (4/7) |
+| fullstack-ts | project | AFTER | abst (by design) | 0 [code 0.761 ✗, test 0.631 ✗] | 65 (5/7) |
+| fullstack-ts | changes --ref HEAD~3 | BEFORE | 100 [fan-in 6 ✓; hotspot abst] | abst | 100 (3/7) |
+| fullstack-ts | changes --ref HEAD~3 | AFTER | 100 [fan-in 6 ✓; hotspot 0.0 ✓] | 0 [code 0.761 ✗, test 0.631 ✗] | 75 (4/7) |
 
-Colocated-test fix effect: kitchd test share 0.012 → 0.631 (its `*.spec.ts` under `src/` are now tests);
+Colocated-test fix effect: fullstack-ts test share 0.012 → 0.631 (its `*.spec.ts` under `src/` are now tests);
 its code share 0.816 → 0.761 (those spec files no longer count as code). This repo unchanged (0.714 / 0.750).
 Test-strategy ratings unchanged on both repos (its classification-dependent metrics abstain on these
 packs for truncation/coverage, before and after).
@@ -180,29 +180,29 @@ before easy-verifier project  score wall_ms=1109
 before easy-verifier changes  requirement-fidelity  pack_json=131056B excerpt_bytes=118587 excerpts=55 truncated=True files_read=55 wall_ms=171
 before easy-verifier changes  blast-radius          pack_json=47795B excerpt_bytes=12261 excerpts=184 truncated=False files_read=103 wall_ms=306
 before easy-verifier changes  score wall_ms=800
-before kitchd        project  requirement-fidelity  pack_json=137240B excerpt_bytes=119724 excerpts=106 truncated=True files_read=34 wall_ms=347
-before kitchd        project  blast-radius          pack_json=3444B excerpt_bytes=56 excerpts=2 truncated=False files_read=6 wall_ms=312
-before kitchd        project  score wall_ms=1779
-before kitchd        changes  requirement-fidelity  pack_json=138906B excerpt_bytes=119724 excerpts=106 truncated=True files_read=53 wall_ms=231
-before kitchd        changes  blast-radius          pack_json=39471B excerpt_bytes=1051 excerpts=22 truncated=False files_read=312 wall_ms=504
-before kitchd        changes  score wall_ms=1131
+before fullstack-ts        project  requirement-fidelity  pack_json=137240B excerpt_bytes=119724 excerpts=106 truncated=True files_read=34 wall_ms=347
+before fullstack-ts        project  blast-radius          pack_json=3444B excerpt_bytes=56 excerpts=2 truncated=False files_read=6 wall_ms=312
+before fullstack-ts        project  score wall_ms=1779
+before fullstack-ts        changes  requirement-fidelity  pack_json=138906B excerpt_bytes=119724 excerpts=106 truncated=True files_read=53 wall_ms=231
+before fullstack-ts        changes  blast-radius          pack_json=39471B excerpt_bytes=1051 excerpts=22 truncated=False files_read=312 wall_ms=504
+before fullstack-ts        changes  score wall_ms=1131
 after  easy-verifier project  requirement-fidelity  pack_json=148443B excerpt_bytes=116506 excerpts=154 truncated=True files_read=140 wall_ms=331
 after  easy-verifier project  blast-radius          pack_json=3050B excerpt_bytes=17 excerpts=1 truncated=False files_read=1 wall_ms=160
 after  easy-verifier project  score wall_ms=1298
 after  easy-verifier changes  requirement-fidelity  pack_json=150177B excerpt_bytes=116506 excerpts=154 truncated=True files_read=140 wall_ms=324
 after  easy-verifier changes  blast-radius          pack_json=48677B excerpt_bytes=12261 excerpts=184 truncated=False files_read=103 wall_ms=340
 after  easy-verifier changes  score wall_ms=980
-after  kitchd        project  requirement-fidelity  pack_json=165858B excerpt_bytes=119834 excerpts=183 truncated=True files_read=304 wall_ms=526
-after  kitchd        project  blast-radius          pack_json=3455B excerpt_bytes=56 excerpts=2 truncated=False files_read=6 wall_ms=316
-after  kitchd        project  score wall_ms=2209
-after  kitchd        changes  requirement-fidelity  pack_json=167524B excerpt_bytes=119834 excerpts=183 truncated=True files_read=305 wall_ms=418
-after  kitchd        changes  blast-radius          pack_json=39743B excerpt_bytes=1051 excerpts=22 truncated=False files_read=312 wall_ms=520
-after  kitchd        changes  score wall_ms=1375
+after  fullstack-ts        project  requirement-fidelity  pack_json=165858B excerpt_bytes=119834 excerpts=183 truncated=True files_read=304 wall_ms=526
+after  fullstack-ts        project  blast-radius          pack_json=3455B excerpt_bytes=56 excerpts=2 truncated=False files_read=6 wall_ms=316
+after  fullstack-ts        project  score wall_ms=2209
+after  fullstack-ts        changes  requirement-fidelity  pack_json=167524B excerpt_bytes=119834 excerpts=183 truncated=True files_read=305 wall_ms=418
+after  fullstack-ts        changes  blast-radius          pack_json=39743B excerpt_bytes=1051 excerpts=22 truncated=False files_read=312 wall_ms=520
+after  fullstack-ts        changes  score wall_ms=1375
 ```
 
-requirement-fidelity pack JSON: this repo 129,322 → 148,443 B (+14.8%), kitchd 137,240 → 165,858 B (+20.9%).
+requirement-fidelity pack JSON: this repo 129,322 → 148,443 B (+14.8%), fullstack-ts 137,240 → 165,858 B (+20.9%).
 Breakdown of the remaining growth: `trace_search` ≈3.5 KB; ~100/77 more (small) excerpts; and `files_read`
-(+4.8 KB here, +13.9 KB on kitchd) — the honest list of code files the trace search opened.
+(+4.8 KB here, +13.9 KB on fullstack-ts) — the honest list of code files the trace search opened.
 
 Suite: 1236 passed, 2 skipped in 55.96s
 
@@ -270,4 +270,4 @@ over every criterion, a bounded cited sample in the pack), and blast-radius at c
 changed files' share of repository-wide churn hotspots, instead of both always abstaining; colocated
 test files (`*.spec.ts`, `*_test.go`, ...) are now tests wherever they sit.
 
-**WITNESS**: Supervisor re-ran suite, ruff and the real CLI on kitchd on 2026-09-28 (13:33 UTC), independent of the implementing agent.
+**WITNESS**: Supervisor re-ran suite, ruff and the real CLI on fullstack-ts on 2026-09-28 (13:33 UTC), independent of the implementing agent.

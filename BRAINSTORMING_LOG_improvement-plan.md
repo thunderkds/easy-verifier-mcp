@@ -120,4 +120,4 @@ Cut further if needed: P2 range → show "unknown (not measured)" instead of com
 1. Resolve the 3 open questions (grill-with-docs, `mode=requirement`).
 2. Write DDR-0009 + PRD amendment (FR-026 ordering; new FR for improvement plan).
 3. Two Kanban rows + TASK_GUIDEs: slice 1 (C2, Risk Low–Med, P1), slice 2 (C2, Risk Med — new agent-text egress, so `security-review`, P1).
-4. Done = verified on a real repo (bryony/kitchd/ai-training), not fixtures only.
+4. Done = verified on a real repo (node-monorepo/fullstack-ts/python-ml), not fixtures only.

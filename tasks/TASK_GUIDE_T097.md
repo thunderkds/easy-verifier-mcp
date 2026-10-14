@@ -9,7 +9,7 @@
 ## Bug Fix Task Guide — T097
 
 ### Mental Model (confirmed by user)
-- **Observed:** on scraping-devops, 50 of 371 tracked paths under `rancher2/`, `rancher/` and `elk/` are fingerprinted by `redact()`. For example, `rancher2/cb-ppl/gateway-prod-ingress.yml` becomes `ranc…****:bdeabc3ea4ad.yml`. Those citations in the T094 infrastructure card cannot resolve. This was found while reviewing T094.
+- **Observed:** on k8s-ops, 50 of 371 tracked paths under `rancher2/`, `rancher/` and `elk/` are fingerprinted by `redact()`. For example, `rancher2/cb-ppl/gateway-prod-ingress.yml` becomes `ranc…****:bdeabc3ea4ad.yml`. Those citations in the T094 infrastructure card cannot resolve. This was found while reviewing T094.
 - **Expected:** an ordinary path piece made of a letter run of any word length (up to 30, like `_WORD_PIECE`) followed by a digit run survives the entropy rules: `rancher2`, `backup2`, `python3`, `postgres16`, `elasticsearch7`, `KUBERNETES1`. Everything T091 and T095 still fingerprint is still fingerprinted:
   - random mixed-case tokens;
   - interleaved letters and digits;
@@ -22,7 +22,7 @@
 - **User confirmation:** "yes, fix it as T097" (2026-10-13), after being told it loosens masking slightly. False `redaction_hits_observed` hits can only go down.
 
 ### Intake
-- **Trigger:** `PYTHONPATH=src .venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('rancher2/cb-ppl/gateway-prod-ingress.yml'))"`. Also count the tracked paths that fail to survive: `git -C /home/hungnguyenhuu/workspace/project/bryony/scraping-devops ls-files`, where `redact(p) != p` gives 50 on develop `a245fb7`.
+- **Trigger:** `PYTHONPATH=src .venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('rancher2/cb-ppl/gateway-prod-ingress.yml'))"`. Also count the tracked paths that fail to survive: `git -C <real-repos>/k8s-ops ls-files`, where `redact(p) != p` gives 50 on develop `a245fb7`.
 - **Severity:** P1 (citations unresolvable on a real repo)
 - **Affected area:** `core/redact.py`, entropy exemptions only. The named detectors are untouched.
 
@@ -37,8 +37,8 @@
 | 2 | `rancher2`, `postgres16`, `elasticsearch7` and `KUBERNETES1` pieces are exempt before `.ext` and inside a URL path; a 31-letter run before digits is not exempt (bound test) |
 | 3 | Still fingerprinted: every T091/T095 negative, plus `aB3xK9mQzR7tWvY2pL8nC4dF`-style segments, `AKIA…`, a realistic Slack webhook `…/T024BE7LD/B01ABCD2EFG/<mixed-case token>`, userinfo, and a `?token=` query |
 | 4 | All existing T029/T051/T053/T091/T095 tests pass with expectations unedited |
-| 5 | scraping-devops: every tracked path survives `redact()`, or each one that doesn't is listed with the reason it legitimately should not |
-| 6 | Real repos (scraping-devops, bryony, kitchd, coffee-shop-api, ai-training, this repo): security `redaction_hits_observed` and every rating before → after are pasted. Hits may only go down, and each vanished hit is checked by hand as a path or name. Any rating change is reported with its cause |
+| 5 | k8s-ops: every tracked path survives `redact()`, or each one that doesn't is listed with the reason it legitimately should not |
+| 6 | Real repos (k8s-ops, node-monorepo, fullstack-ts, nest-api, python-ml, this repo): security `redaction_hits_observed` and every rating before → after are pasted. Hits may only go down, and each vanished hit is checked by hand as a path or name. Any rating change is reported with its cause |
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
 - [ ] Phase 1 feedback loop built and running (the trigger above)
@@ -74,12 +74,14 @@ The named detectors in `redact.py`, and everything outside `core/redact.py` and 
 
 ### Real repos
 
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
 All read-only:
-- scraping-devops `/home/hungnguyenhuu/workspace/project/bryony/scraping-devops`
-- bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`
-- kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`
-- coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`
-- ai-training `/home/hungnguyenhuu/workspace/training/hoang.hoan/ai-training`
+- k8s-ops `<real-repos>/k8s-ops`
+- node-monorepo `<real-repos>/node-monorepo`
+- fullstack-ts `<real-repos>/fullstack-ts`
+- nest-api `<real-repos>/nest-api`
+- python-ml `<real-repos>/python-ml`
 
 Run them in the background with `</dev/null`.
 

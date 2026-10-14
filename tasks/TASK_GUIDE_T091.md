@@ -39,7 +39,7 @@
 - [x] Fix applied; regression test passes
 - [x] Phase 1 loop no longer reproduces the bug
 - [x] Fix matches "Expected": the existing T029/T051/T053 secret-still-fingerprints tests pass unchanged, and new negatives show `main-3f9a2b1c.js`, `xQzRtWvB…`, a 40-char base64url and `a1b2c3d4…` interleaved tokens still fingerprint (both extremes)
-- [x] Real repos: the security dimension's `redaction_hits_observed` on bryony and kitchd, before → after, pasted. It may only go down. List any hit that disappeared and confirm by hand that it was a path or name, not a secret
+- [x] Real repos: the security dimension's `redaction_hits_observed` on node-monorepo and fullstack-ts, before → after, pasted. It may only go down. List any hit that disappeared and confirm by hand that it was a path or name, not a secret
 
 ### Cleanup Checklist (Pillar 3)
 - [x] All [DEBUG-...] instrumentation removed (grep verified)

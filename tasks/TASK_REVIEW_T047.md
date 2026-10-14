@@ -17,7 +17,7 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass (implementer; reviewer to confirm) | `tests/test_t047_packs.py` — 26 tests: AC1 config/agent pick/unknown name/nothing-else-activates; AC2 cited rules, registry patterns, SSN fixture fails + redacted, placeholders (000-00-0000, 123-45-6789, 111-11-1111, 666-, 9xx-) not counted, log PHI (incl. this.logger/self.logger), doc rules present/missing; AC3 inactive pack leaves no trace, areas stay unruled; AC4 areas + disclosure, HTML report card with and without pack; replay byte-equal; CLI. `pytest -q tests/test_t047_packs.py` → `26 passed in 2.79s` |
 | Verification command run | ☒ pass (implementer) | 2026-10-06T05:52:21Z `python -m pytest -q` → `2133 passed, 2 skipped in 234.98s` exit=0; `python -m ruff check src tests` → `All checks passed!` |
 | Negative cases hold | ☒ pass (implementer) | unknown pack → note, ignored; `packs = "healthcare"` / agent `packs: "healthcare"` → validation error naming `packs`; no config → no healthcare anywhere in payload or report; log rule abstains with no log statement; `--repo .` config path (t026) |
-| verify | ☒ pass | Supervisor 2026-10-06 on `bcc36b4`: scratch clone of nestjs-training, `score --repo <clone>/coffee-shop-api --scope project < /dev/null` → no pack: overall 72, 11 areas measured, 17 without rule (= develop); with `packs = ["healthcare"]`: overall 77, 13 measured, 15 without rule, healthcare 100, disclosure ends "packs active: healthcare" — pass |
+| verify | ☒ pass | Supervisor 2026-10-06 on `bcc36b4`: scratch clone of the repo containing nest-api, `score --repo <clone>/nest-api --scope project < /dev/null` → no pack: overall 72, 11 areas measured, 17 without rule (= develop); with `packs = ["healthcare"]`: overall 77, 13 measured, 15 without rule, healthcare 100, disclosure ends "packs active: healthcare" — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☒ pass | Supervisor code-review of `develop...feat/T047-packs-healthcare` (packs/, registry/packs/healthcare.toml, judge/score/roles/registry/metrics/report/gate wiring, tests) + adversarial PHI-masking probe. Found P1 `import easy_verifier.packs` circular import, P2 `DOB 1984-03-12` (space-only label) neither counted nor masked → could leak via a context line; both fixed test-first in `bcc36b4` and re-probed (`MRN [PHI ssn redacted] DOB [PHI dob redacted]`). Security: values never hashed (enumerable SSN space), excerpts masked, paths cited in redacted form — pass |
 | Full smoke suite still green (no regression) | ☒ pass | Supervisor rerun on `bcc36b4`: `2136 passed, 2 skipped in 250.70s`; `ruff check src tests` → All checks passed — pass |
 | **UI: Visual regression (diff or verdict pasted)** | ☒ N/A (pure backend; the report change adds no UI component, it renders the existing score card for one more slot) | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
@@ -68,7 +68,7 @@ SSN-shaped value present in payload: False
 
 **DELTA**: A repository can now enable the healthcare pack (`packs = ["healthcare"]` or `agent_input.packs`) and get a cited, redacted #9 PHI rating plus #28/#9 document checks in the score, the disclosure and the report; repositories that do not enable it are scored byte-for-byte as before.
 
-**WITNESS**: Supervisor, 2026-10-06 — Stage 4 review + masking probe (2 findings fixed), full suite rerun (2136 passed), live coffee-shop-api pack/no-pack runs (72 → 77, healthcare 100). Weights 50/50 and floor 0.25 user-approved.
+**WITNESS**: Supervisor, 2026-10-06 — Stage 4 review + masking probe (2 findings fixed), full suite rerun (2136 passed), live nest-api pack/no-pack runs (72 → 77, healthcare 100). Weights 50/50 and floor 0.25 user-approved.
 
 
 ## Implementer notes (backend-developer, 2026-10-06)
@@ -81,20 +81,20 @@ branch nopack exit=0
 develop nopack exit=0
 $ cmp develop(f7994d3) vs branch no-pack payload
 cmp: identical (1425093 bytes)
-bryony pack exit=0
-coffee nopack exit=0
-coffee pack exit=0
+node-monorepo pack exit=0
+nest-api nopack exit=0
+nest-api pack exit=0
 2026-10-06T05:36:41Z
 ```
 
 | Repo | No pack | With pack | healthcare rating | Metrics |
 |---|---|---|---|---|
-| bryony (`/tmp/claude-1000/t047-bry-clean`) | overall 67 (5 of 8), areas measured 12, without rule 17 | overall 73 (6 of 9), measured 14, without rule 15, disclosure "...; packs active: healthcare" | 100 (rules) | test data 0 in 40 test-data files; log statements 0 on 242 log lines of 200 source files (batch 1 of 6); all 4 documents missing |
-| coffee-shop-api (`/tmp/claude-1000/t047-coffee`) | overall 72 (5 of 8) | overall 77 (6 of 9) | 100 (rules) | test data 0 in 10 files; log statements 0 on 7 log lines of 85 source files; all 4 documents missing |
+| node-monorepo (`/tmp/claude-1000/t047-bry-clean`) | overall 67 (5 of 8), areas measured 12, without rule 17 | overall 73 (6 of 9), measured 14, without rule 15, disclosure "...; packs active: healthcare" | 100 (rules) | test data 0 in 40 test-data files; log statements 0 on 242 log lines of 200 source files (batch 1 of 6); all 4 documents missing |
+| nest-api (`/tmp/claude-1000/t047-nest-api`) | overall 72 (5 of 8) | overall 77 (6 of 9) | 100 (rules) | test data 0 in 10 files; log statements 0 on 7 log lines of 85 source files; all 4 documents missing |
 
-`cmp` develop f7994d3 `src` vs branch, both no-pack on the same clean bryony clone: **identical (1425093 bytes)**.
+`cmp` develop f7994d3 `src` vs branch, both no-pack on the same clean node-monorepo clone: **identical (1425093 bytes)**.
 
-**Defects found by the real-repo runs and fixed test-first:** (1) coffee-shop-api's log rule abstained although the repo logs via NestJS `this.logger.log(...)`; added a cited `this.logger` entry and `self.` prefix (test `test_class_held_logger_calls_count`). (2) coffee-shop-api with the pack exited 2: a migration file name redacts as a secret in `files_read`, so the metric cited a path the pack "never read"; pack citations and listed paths are now redacted like `files_read` (test `test_cited_paths_are_redacted_like_files_read`). Earlier: `compute_metrics` checked citations over a fixed-size slice (broke once a pack computes fewer metrics); `load_repo_packs` did not resolve `--repo .` (caught by t026).
+**Defects found by the real-repo runs and fixed test-first:** (1) nest-api's log rule abstained although the repo logs via NestJS `this.logger.log(...)`; added a cited `this.logger` entry and `self.` prefix (test `test_class_held_logger_calls_count`). (2) nest-api with the pack exited 2: a migration file name redacts as a secret in `files_read`, so the metric cited a path the pack "never read"; pack citations and listed paths are now redacted like `files_read` (test `test_cited_paths_are_redacted_like_files_read`). Earlier: `compute_metrics` checked citations over a fixed-size slice (broke once a pack computes fewer metrics); `load_repo_packs` did not resolve `--repo .` (caught by t026).
 
 **Design decision:** a pack's areas count as covered only in a run where the pack is active (`areas_without_rule(packs)`, derived from the run's own ratings). In other runs nothing measured #9/#28, and this is what keeps non-pack payloads byte-identical.
 

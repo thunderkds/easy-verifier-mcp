@@ -74,10 +74,10 @@ Wed Oct  7 03:37:51 PM UTC 2026
 | Repo | Roles found (of 4, floor 0.25) | wildcard IAM | open ingress | unencrypted | locked remote state | env separation | DB backup | DB HA | DR doc | infrastructure | Overall before → after |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | microservices-demo (shallow clone 38e7348, untrusted, only `--repo`) | terraform-file, k8s-manifest, container-config (3/4 = 0.75) | 0 | 0 | 0 | 0 (gcs backend, `.github/terraform/main.tf`) | 1 (no env folder/tfvars/workspace in 9 .tf files) | 1 (`terraform/memorystore.tf`, no persistence) | 1 (Basic tier) | missing | **70** | 59 → 60 |
-| coffee-shop-api | container-config (1/4 = 0.25) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 80 → 80 |
-| ai-training | container-config (1/4) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 62 → 62 |
-| kitchd | container-config (1/4) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 56 → 56 |
-| bryony | container-config (1/4) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 59 → 59 |
+| nest-api | container-config (1/4 = 0.25) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 80 → 80 |
+| python-ml | container-config (1/4) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 62 → 62 |
+| fullstack-ts | container-config (1/4) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 56 → 56 |
+| node-monorepo | container-config (1/4) | abstain | abstain | abstain | abstain | abstain | abstain | abstain | missing | abstains `all_metrics_abstained` | 59 → 59 |
 
 microservices-demo: 59 IaC files read (9 Terraform + 50 Kubernetes); the k8s-manifest role hit the resolver's 50-file cap (warned), so later `kustomize/components/**` files were not read. A grep of the whole clone shows no `0.0.0.0/0`, no RBAC wildcard and no IAM wildcard, so the zeros are not an artefact of the cap.
 

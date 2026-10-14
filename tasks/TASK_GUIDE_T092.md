@@ -20,7 +20,7 @@
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-Supervisor finding (2026-10-13): after T091, coffee-shop-api's security dropped from 59 to 18. The
+Supervisor finding (2026-10-13): after T091, nest-api's security dropped from 59 to 18. The
 pack now reads 143 files instead of 66 and finds one CWE-89 hit at `test/reset-test-db.ts:25`, a
 test helper building `truncate table ${names}`. `sink_hits_observed` (weight 35, pass when 0)
 already tags test-path hits `[test path]` but still counts them.
@@ -67,7 +67,7 @@ risky code in the real app? My suggestion: no — still show it, but don't count
 | 3 | If every scanned excerpt is a test file, the metric **abstains** with a reason ("only test files were scanned for sinks"), never 0 | abstention is a state, not a value (Constraint 1b) |
 | 4 | Citations (`computed_from`) still include the test-hit refs so the reader can open them | still shown |
 | 5 | Both extremes pinned: a fixture with one production hit and one test hit gives 1; a sabotage that counts test hits gives 2 and must fail the test | pinned |
-| 6 | **Real repo (paste)**: coffee-shop-api security before → after (expected: sink 1 → 0, security 18 → back toward its non-test value); bryony and kitchd security before → after, listing any test-path hits that stop counting, checked by hand | real-repo verified |
+| 6 | **Real repo (paste)**: nest-api security before → after (expected: sink 1 → 0, security 18 → back toward its non-test value); node-monorepo and fullstack-ts security before → after, listing any test-path hits that stop counting, checked by hand | real-repo verified |
 
 ---
 
@@ -78,7 +78,7 @@ risky code in the real app? My suggestion: no — still show it, but don't count
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest -q
 .venv/bin/python -m ruff check src tests
-.venv/bin/easy-verifier score --repo /home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api --scope project < /dev/null
+.venv/bin/easy-verifier score --repo <real-repos>/nest-api --scope project < /dev/null
 ```
 
 ### Evidence

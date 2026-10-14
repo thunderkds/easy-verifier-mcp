@@ -69,7 +69,7 @@ DDR-0007 requires every pattern a rule judges with to be cited registry data wit
 | 2 | Language-agnostic data (directory names, SQL DDL) in `registry/curated/conventions.toml`; ORM API names in the matching language toml (python, ruby, js-ts, php, csharp) | placement |
 | 3 | Matching semantics preserved: directory names any case; SQL DDL case-insensitive; API names as today (`drop_table`, `dropColumn`, `DropColumn`, `RemoveField`, `*_if_exists` variants). **First check whether the registry token syntax (`metric_tables.token_regex`) can express case-insensitive and `_?` variants; if not, STOP and report the options to the Supervisor before inventing a new pattern kind** | no behaviour change |
 | 4 | Every existing T055/T045 test passes unchanged (do not edit expected values) | no regression |
-| 5 | Real repos: `score` payload sha256 for coffee-shop-api and kitchd  identical BEFORE vs AFTER, plus one `--scope changes --ref <range>` run on a repo with a migration in the range | byte-identical |
+| 5 | Real repos: `score` payload sha256 for nest-api and fullstack-ts  identical BEFORE vs AFTER, plus one `--scope changes --ref <range>` run on a repo with a migration in the range | byte-identical |
 | 6 | The local layer can add a migration directory name (a test proves an added name makes a file a migration) | extendable (DDR-0007) |
 | 7 | The registry validator knows the new fields (shape checks, required-field counts updated; `required_fields()` result reported) | registry integrity |
 
@@ -83,7 +83,7 @@ DDR-0007 requires every pattern a rule judges with to be cited registry data wit
 |---|---------------------|--------------------------|------------------|
 | 1 | existing T055/T045 suites | green, no expectation edits | automated |
 | 2 | local-layer entry adds `dbchanges` dir | file under `dbchanges/` is a migration | automated |
-| 3 | coffee/kitchd payloads | sha256 equal before/after | real-repo run |
+| 3 | nest-api/fullstack-ts payloads | sha256 equal before/after | real-repo run |
 
 ### Verification Command (exact, runnable)
 
@@ -102,7 +102,7 @@ python -m ruff check src tests
 
 > **Moved.** See `tasks/TASK_REVIEW_T057.md`.
 
-BEFORE (before any code change, timestamped): `score --repo <coffee-shop-api> --scope project </dev/null | sha256sum` and the same for kitchd (run in background, `</dev/null`), plus the verbatim current `MIGRATION_DIRS` / `_DESTRUCTIVE` source quoted from `blast_radius.py`.
+BEFORE (before any code change, timestamped): `score --repo <nest-api> --scope project </dev/null | sha256sum` and the same for fullstack-ts (run in background, `</dev/null`), plus the verbatim current `MIGRATION_DIRS` / `_DESTRUCTIVE` source quoted from `blast_radius.py`.
 
 ---
 
@@ -114,7 +114,9 @@ BEFORE (before any code change, timestamped): `score --repo <coffee-shop-api> --
 
 ## Real repos
 
-real repos: coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`, kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`, bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony` (read-only, `--repo` only).
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
+real repos: nest-api `<real-repos>/nest-api`, fullstack-ts `<real-repos>/fullstack-ts`, node-monorepo `<real-repos>/node-monorepo` (read-only, `--repo` only).
 
 ---
 

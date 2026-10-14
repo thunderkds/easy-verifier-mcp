@@ -114,12 +114,12 @@ def test_linguist_patterns_cover_the_named_dependency_dirs(tmp_path, path):
 @pytest.mark.parametrize(
     "path",
     [
-        ".github/workflows/ci.yml",  # kitchd CI
-        "src/types/express.d.ts",  # coffee-shop-api hand-written types
-        "backend/scripts/companies/external/mark-public/a.js",  # bryony
-        "frontend/app/scripts/config/bootstrap.conf.js",  # bryony
-        "backend/utils/db-entity/prototype.js",  # bryony
-        "design/src/files/styles/base/__import.scss",  # bryony
+        ".github/workflows/ci.yml",  # fullstack-ts CI
+        "src/types/express.d.ts",  # nest-api hand-written types
+        "backend/scripts/companies/external/mark-public/a.js",  # node-monorepo
+        "frontend/app/scripts/config/bootstrap.conf.js",  # node-monorepo
+        "backend/utils/db-entity/prototype.js",  # node-monorepo
+        "design/src/files/styles/base/__import.scss",  # node-monorepo
         "backend/bin/fabric/fabfile.py",
         "tests/fixtures/data.json",
         "pkg/testdata/x.txt",

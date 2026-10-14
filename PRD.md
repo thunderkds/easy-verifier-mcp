@@ -1,7 +1,7 @@
 # PRD — easy-verifier-mcp
 **Last updated**: 2026-09-26 (source-discovery amendment — FR-031…FR-040, DDR-0006)
 **Status**: Approved
-**Owner**: thunderkds (hungnh1110@gmail.com)
+**Owner**: thunderkds
 
 > **Scope of this document**: *What* to build and *why* — product intent, user stories, requirements, success metrics.
 > Technical decisions, architecture, agent config, and task state live in `PROJECT_SPEC.md`.
@@ -320,7 +320,7 @@ Added during the Stage 2 pre-flight gap audit (2026-08-14).
 | 15 | FR-022 said adapters produce "identical" output while the KPI table said "byte-equal"; timestamps and host-vs-container absolute paths differ by construction, so neither was testable as written. | **Resolved 2026-09-16** (user decision, DDR-0005): parity is **byte-equality after a declared normalization** — paths repo-relative, timestamps a fixed token, report filename excluded; everything else byte-for-byte. The alternative ("semantically identical", compared field by field) was rejected because it hides which differences the comparator tolerates. FR-022 and the KPI row now agree. **T017 is unblocked.** | Supervisor |
 
 Added during Stage 0.5 requirement grilling for the source-discovery amendment (2026-09-26).
-Trigger: live runs against kitchd, bryony, and ai-training abstained on 2–5 of 7 dimensions
+Trigger: live runs against fullstack-ts, node-monorepo, and python-ml abstained on 2–5 of 7 dimensions
 because sought sources were fixed Python-/kit-specific filenames.
 
 | # | Question | Status | Owner |

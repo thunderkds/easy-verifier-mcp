@@ -265,12 +265,12 @@ def test_each_predicate_flips_exactly_its_metric(
 def test_a_logging_dependency_in_a_manifest_counts_without_an_import(
     tmp_path: Path,
 ) -> None:
-    # bryony (T046 real repo): winston declared, no sampled file imports it.
+    # node-monorepo (T046 real repo): winston declared, no sampled file imports it.
     service = SERVICE.replace("import pino from 'pino';", "").replace("pino()", "{}")
     files = {**GOOD, "src/rename.service.ts": service}
     values = _values(_result(_repo(tmp_path / "a", files)))
     assert values["logging_library_missing"] == 1
-    # Declared in a monorepo service's own manifest, as in bryony.
+    # Declared in a monorepo service's own manifest, as in node-monorepo.
     files["backend/package.json"] = '{"dependencies": {"winston": "^3"}}\n'
     values = _values(_result(_repo(tmp_path / "b", files)))
     assert values["logging_library_missing"] == 0

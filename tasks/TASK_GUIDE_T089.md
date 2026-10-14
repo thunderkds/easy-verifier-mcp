@@ -30,9 +30,9 @@ a way, not the way we can not do, we bypass it"*.
 Verified 2026-10-12: `_document_rule` (`core/metrics.py:918`) returns **1 = missing** whenever no
 file matches the role's name patterns. `GENERIC_PATTERNS` (`core/roles.py:103`) includes the kit
 names `PROJECT_SPEC.md` (architecture-doc) and `BRAINSTORMING_LOG*.md` (decision-record).
-- scraping-devops: README "Folder structures" (`- bin: helper scripts`, `- elk: …`) is reported
+- k8s-ops: README "Folder structures" (`- bin: helper scripts`, `- elk: …`) is reported
   missing. That is a **false negative**.
-- bryony passes on `backend/docs/event_design.md`, an event-payload document that matched
+- node-monorepo passes on `backend/docs/event_design.md`, an event-payload document that matched
   `*design*`. That is a **false positive**.
 
 **Restated intent**:
@@ -78,7 +78,7 @@ names `PROJECT_SPEC.md` (architecture-doc) and `BRAINSTORMING_LOG*.md` (decision
 | 5 | A `.easy-verifier.toml` role declaration or an MCP detect-gate pick still fills the role, cited as `declared`, without a content check | project authority |
 | 6 | When no document has the shape, the metric is `1` (missing) with a reason naming what was searched: *"N documents read; none describes ≥3 real repository paths"*. When the document scan was cut by batches or the cap, it abstains as today | missing is a measured fact |
 | 7 | The payload states which evidence filled a role: `content` (with the cited lines), `declared`, or `readme-heading`. The existing README "Architecture" heading path is kept only if the section also passes AC 1 | provenance |
-| 8 | **Real repos (paste, hand-checked)**: scraping-devops architecture-doc **filled** by README.md (cite the entries). bryony: `event_design.md` **no longer** fills it; report what does, if anything. kitchd and easy-verifier pass on content (their PROJECT_SPEC module tables), or the gap is reported. ai-training is filled by `travel_chatbot/README.md`. coffee-shop-api: report the result | real-repo verified |
+| 8 | **Real repos (paste, hand-checked)**: k8s-ops architecture-doc **filled** by README.md (cite the entries). node-monorepo: `event_design.md` **no longer** fills it; report what does, if anything. fullstack-ts and easy-verifier pass on content (their PROJECT_SPEC module tables), or the gap is reported. python-ml is filled by `travel_chatbot/README.md`. nest-api: report the result | real-repo verified |
 | 9 | Negative fixtures: a changelog listing files (`- src/a.ts: fix typo`) **does** match AC 1's shape. Decide and document whether `CHANGELOG*` / release notes are excluded from architecture-doc candidates. Supervisor default: exclude them | precision |
 
 
@@ -87,8 +87,8 @@ names `PROJECT_SPEC.md` (architecture-doc) and `BRAINSTORMING_LOG*.md` (decision
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
 | 10 | **Best document wins**: when several documents qualify for architecture-doc, the one with the **most described entries** fills it (tie: scan priority order). Cited lines come from that document | precision of the citation (finding 1) |
-| 11 | **decision-record needs an actual decision**: a decision field (heading or bold field whose name is one of *Decision*, *Decision Outcome*, *Recommended Path* / *Recommendation*, *Chosen* / *Chosen Option*, *Selected* / *Selected Option*, *Approved direction*) **plus** at least one of *Context*, *Consequences*, *Status*, *Alternatives* / *Considered Options* / *Options*. Covers Nygard ADRs, MADR and brainstorming logs by content. Context + Status alone never fills it. Supersedes AC 2's field rule; the dated-entry form of AC 2 stays | ai-training false positive (finding 2); kit brainstorming logs back for solution-fit by content, not name (finding 4) |
-| 12 | **requirements-doc by structure too**: also filled by a heading naming requirements (*Requirements*, *Functional Requirements*, *Non-functional Requirements*, *User Stories*, *Acceptance Criteria*, *Use Cases*), followed by 3 or more list items before the next heading of the same or higher level. Evidence kind `content`, lines cited. `requirement_items_traced_share` still uses only `requirement_item_patterns` (unchanged) | ai-training false negative (finding 3): "find a way" |
+| 11 | **decision-record needs an actual decision**: a decision field (heading or bold field whose name is one of *Decision*, *Decision Outcome*, *Recommended Path* / *Recommendation*, *Chosen* / *Chosen Option*, *Selected* / *Selected Option*, *Approved direction*) **plus** at least one of *Context*, *Consequences*, *Status*, *Alternatives* / *Considered Options* / *Options*. Covers Nygard ADRs, MADR and brainstorming logs by content. Context + Status alone never fills it. Supersedes AC 2's field rule; the dated-entry form of AC 2 stays | python-ml false positive (finding 2); kit brainstorming logs back for solution-fit by content, not name (finding 4) |
+| 12 | **requirements-doc by structure too**: also filled by a heading naming requirements (*Requirements*, *Functional Requirements*, *Non-functional Requirements*, *User Stories*, *Acceptance Criteria*, *Use Cases*), followed by 3 or more list items before the next heading of the same or higher level. Evidence kind `content`, lines cited. `requirement_items_traced_share` still uses only `requirement_item_patterns` (unchanged) | python-ml false negative (finding 3): "find a way" |
 | 13 | `tests/test_t001_pipeline.py::test_cited_line_numbers_are_1_indexed_and_match_the_file` passes (root-cause the failure; do not weaken the assertion) | suite green |
 | 14 | Real repos re-run after 10–12. This repo's own score is also run (finding 4): show solution-fit's evidence still includes the brainstorming log by content | real-repo verified |
 

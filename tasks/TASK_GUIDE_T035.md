@@ -68,7 +68,7 @@ User (2026-09-28): "which best practice did we refer to score … the source of 
 | 2 | Every `RatingInput` in `score` output carries `metric_citation`, `threshold_citation` (URL or `project-default`) and `source_tag` | cited + tagged |
 | 3 | solution-fit always returns a `RatingAbstention` with a new reason code (e.g. `no_static_rule`), which triggers the FR-036 evaluate gate | solution-fit by design |
 | 4 | CLI/MCP parity (DDR-0005) holds; report renders citations as links | surfaces |
-| 5 | HITL: run `score` on this repo and on kitchd/bryony/ai-training (as in T028) and paste before/after per-dimension numbers for Supervisor/user sign-off | user confirms real-repo behaviour |
+| 5 | HITL: run `score` on this repo and on fullstack-ts/node-monorepo/python-ml (as in T028) and paste before/after per-dimension numbers for Supervisor/user sign-off | user confirms real-repo behaviour |
 
 ---
 

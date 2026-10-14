@@ -23,13 +23,13 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-The KANBAN follow-up from T087 says the infrastructure dimension does not read a repo's own Rancher, ELK or Compose YAML. scraping-devops' old "infrastructure 100" came entirely from Harbor files. Once T087 excluded Harbor as third-party, every rating abstains.
+The KANBAN follow-up from T087 says the infrastructure dimension does not read a repo's own Rancher, ELK or Compose YAML. k8s-ops' old "infrastructure 100" came entirely from Harbor files. Once T087 excluded Harbor as third-party, every rating abstains.
 
 The cause is names. `core/roles.py` `GENERIC_PATTERNS`:
 - `k8s-manifest` matches YAML only under conventional folders (`k8s/`, `kubernetes/`, `manifests/`, `helm/`, `charts/` and so on) or with names such as `kustomization.yaml` and `Chart.yaml`.
 - `container-config` matches Compose only as `compose.y*ml` or `docker-compose*.y*ml`.
 
-So scraping-devops' files fill no role:
+So k8s-ops' files fill no role:
 - `rancher2/cb/nifi.yml` is a Kubernetes manifest (`apiVersion: apps/v1`, `kind: Deployment`).
 - `rancher/scraping.dev.stable.compose.yml` is a Compose v1 file (top-level service names, each with `image:`).
 
@@ -81,9 +81,9 @@ DDR-0012 says to recognise code by behaviour and documents by content, never by 
 | 3 | Temp repo: `deploy/stack.yml` with `services: {web: {image: nginx}}` fills `container-config`; a Compose v1 `stack.dev.yml` (`web: {image: nginx, ports: ["80:80"]}`) fills it too | compose by content |
 | 4 | Negative: a CI file, an OpenAPI YAML, a `.eslintrc.yml`, a Helm `values.yaml` without `apiVersion`/`kind`, and a GitHub Actions workflow fill none of these roles | precision |
 | 5 | `cloud-template` filled by `AWSTemplateFormatVersion:` or `Resources:` with `Type: AWS::…` content in an arbitrarily named YAML | cfn by content |
-| 6 | A name-matched file keeps its role and origin unchanged; payloads of coffee-shop-api, kitchd and ai-training are sha256-identical BEFORE/AFTER **unless** a newly placed file is listed and checked by hand as a real manifest/Compose file (paste the list) | no regression |
-| 7 | Files under a third-party exclusion (T087 `third_party_filter`) are never content-placed (scraping-devops Harbor stays excluded) | exclusion first |
-| 8 | scraping-devops: `infrastructure` no longer abstains; its derivation cites `rancher2/…` manifests and `rancher/…compose.yml` files; any rule metric it reports is cited by file:line. Paste the dimension card before/after | real-repo goal |
+| 6 | A name-matched file keeps its role and origin unchanged; payloads of nest-api, fullstack-ts and python-ml are sha256-identical BEFORE/AFTER **unless** a newly placed file is listed and checked by hand as a real manifest/Compose file (paste the list) | no regression |
+| 7 | Files under a third-party exclusion (T087 `third_party_filter`) are never content-placed (k8s-ops Harbor stays excluded) | exclusion first |
+| 8 | k8s-ops: `infrastructure` no longer abstains; its derivation cites `rancher2/…` manifests and `rancher/…compose.yml` files; any rule metric it reports is cited by file:line. Paste the dimension card before/after | real-repo goal |
 | 9 | Content placement adds no second walk and reads each candidate at most once (test: count reads via a context spy) | performance |
 
 ---
@@ -95,8 +95,8 @@ DDR-0012 says to recognise code by behaviour and documents by content, never by 
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | AC 1–5 temp repos | roles filled/not filled as stated | automated tests |
-| 2 | scraping-devops | infrastructure rated, cited | real-repo run (background) |
-| 3 | coffee/kitchd/ai-training | sha256 equal or justified list | real-repo run (background) |
+| 2 | k8s-ops | infrastructure rated, cited | real-repo run (background) |
+| 3 | nest-api/fullstack-ts/python-ml | sha256 equal or justified list | real-repo run (background) |
 
 ### Verification Command (exact, runnable)
 
@@ -116,8 +116,8 @@ DDR-0012 says to recognise code by behaviour and documents by content, never by 
 > **Moved.** See `tasks/TASK_REVIEW_T094.md`.
 
 BEFORE commands (before any code change; paste timestamped output):
-1. scraping-devops `score --scope project </dev/null`, showing the `infrastructure` card abstains;
-2. coffee-shop-api, kitchd and ai-training `--scope project </dev/null | sha256sum` baselines (background).
+1. k8s-ops `score --scope project </dev/null`, showing the `infrastructure` card abstains;
+2. nest-api, fullstack-ts and python-ml `--scope project </dev/null | sha256sum` baselines (background).
 
 ---
 
@@ -129,12 +129,14 @@ BEFORE commands (before any code change; paste timestamped output):
 
 ## Real repos
 
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
 Real repos (read-only, `--repo` only):
-- scraping-devops `/home/hungnguyenhuu/workspace/project/bryony/scraping-devops`
-- bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`
-- coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`
-- kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`
-- ai-training (path in `memory/learnings.md`)
+- k8s-ops `<real-repos>/k8s-ops`
+- node-monorepo `<real-repos>/node-monorepo`
+- nest-api `<real-repos>/nest-api`
+- fullstack-ts `<real-repos>/fullstack-ts`
+- python-ml (path in `memory/learnings.md`)
 
 Run real-repo scores with `run_in_background` and `</dev/null`, using worktree code via `PYTHONPATH=<worktree>/src`.
 
@@ -183,7 +185,7 @@ Bound reads by the existing per-file read limits. Candidates are walked `.yml`/`
 
 ## Test Plan
 
-Unit tests for each predicate (positive and negative, AC 1–5), role-resolution tests on temp repos (AC 6, 7, 9), and a real-repo run for scraping-devops plus sha256 checks on the other three repos.
+Unit tests for each predicate (positive and negative, AC 1–5), role-resolution tests on temp repos (AC 6, 7, 9), and a real-repo run for k8s-ops plus sha256 checks on the other three repos.
 
 ## Completion Checklist
 

@@ -223,7 +223,7 @@ def test_co_change_share_reads_the_targets_own_commits_with_relative_paths(
 
 
 def test_a_decorator_stack_longer_than_the_line_bound_still_names_the_handler():
-    # coffee-shop-api: @Post() then five decorators over 13 lines; the line
+    # nest-api: @Post() then five decorators over 13 lines; the line
     # bound applies between decorators, not to the whole stack
     stack = "".join(
         f"  @ApiErrorResponse(\n    HttpStatus.E{i},\n    MESSAGES.E{i},\n  )\n"

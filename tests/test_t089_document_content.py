@@ -386,7 +386,7 @@ def test_ac10_most_entries_wins_and_a_tie_goes_to_scan_priority(
 # --- AC 11: a decision record needs a decision ----------------------------------
 
 DECISION_CASES = [
-    # ai-training shape: a requirements doc with Status + Context, no decision
+    # python-ml shape: a requirements doc with Status + Context, no decision
     ("**Status**: Architecture approved\n\n## Context\nTravel search.\n", 1),
     ("## Decision\nUse Postgres.\n", 1),  # a decision with no context
     ("## Context\nStore.\n\n## Consequences\nCost.\n", 1),
@@ -420,7 +420,7 @@ def test_ac11_brainstorming_log_reaches_solution_fit_by_content(tmp_path):
 # --- AC 12: requirements by heading and list ------------------------------------
 
 REQUIREMENT_CASES = [
-    # ai-training shape: plain bullets under a requirements heading
+    # python-ml shape: plain bullets under a requirements heading
     ("## Functional Requirements\n- search flights\n- search hotels\n- book\n", 0),
     ("## User Stories\n1. a chef plans\n2. staff check off\n3. owner sees\n", 0),
     ("## Functional Requirements\n- search flights\n- search hotels\n", 1),

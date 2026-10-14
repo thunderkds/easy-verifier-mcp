@@ -68,7 +68,7 @@ adapter parity, agent text redacted + escaped.
 | 4 | Context warnings + evidence-lack warnings render in one section, one summary line per item, full text in `<details>` | FR-065 |
 | 5 | Quality score: one compact row/card per dimension (value or "no number" + reason code, rules met x/y, sample note); all rule inputs, citations and cited files inside a closed `<details>` | FR-065 |
 | 6 | Checklist coverage and raw dimension evidence each inside a closed `<details>` with a one-line summary (counts) | FR-065 |
-| 7 | Content preservation: for bryony and coffee-shop-api, the set of visible text tokens (tags stripped, whitespace normalized) of the AFTER report ⊇ the BEFORE report's tokens, excluding the new status line/section titles; every number and citation href present before is present after (automated check script + unit test on a synthetic score) | FR-065 |
+| 7 | Content preservation: for node-monorepo and nest-api, the set of visible text tokens (tags stripped, whitespace normalized) of the AFTER report ⊇ the BEFORE report's tokens, excluding the new status line/section titles; every number and citation href present before is present after (automated check script + unit test on a synthetic score) | FR-065 |
 | 8 | No `<script>`, no external `href`/`src` except existing citation links; parity tests and DDR-0005 replay unchanged | FR-018, FR-022 |
 | 9 | "No gaps" plan and all-abstained report render an intentional message block (styled), not empty sections | FR-065 |
 | 10 | At a true 400px viewport (iframe) no section causes horizontal page scroll (fixes the pre-existing Context-warnings overflow) | FR-065 |
@@ -91,8 +91,8 @@ adapter parity, agent text redacted + escaped.
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t070_report_readability.py -q
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t070_report_readability.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest -q
 ```
 
 ### Evidence
@@ -104,7 +104,7 @@ cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111
 ## Demonstration
 
 > See `tasks/TASK_REVIEW_T070.md`. BEFORE is captured by the Supervisor before spawn (real reports for
-> bryony and coffee-shop-api saved in the scratchpad `t070/`).
+> node-monorepo and nest-api saved in the scratchpad `t070/`).
 
 ---
 
@@ -173,7 +173,7 @@ Budget your tool calls: the `pre_agent_step_limit` hook stops a task at 90 calls
 
 ## Test Plan
 
-Unit tests on synthetic scores for each AC; existing report tests kept green; Supervisor Stage 5 on bryony + coffee-shop-api copies with preservation script and screenshots.
+Unit tests on synthetic scores for each AC; existing report tests kept green; Supervisor Stage 5 on node-monorepo + nest-api copies with preservation script and screenshots.
 
 ---
 

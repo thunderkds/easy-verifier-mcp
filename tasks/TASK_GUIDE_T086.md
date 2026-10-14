@@ -56,7 +56,7 @@ T057 moved migration knowledge into `conventions` fields (`migration_dirs`, `des
 | 1 | Temp repo with toml `[conventions] migration_dirs = ["dbchanges"]` and a destructive DDL line added under `dbchanges/` in a commit → blast-radius #5 and data #4 count it (`--scope changes --ref HEAD~1..HEAD`) | toml applies |
 | 2 | That value appears in the payload `registry_entries`; deleting the toml and replaying with `--agent-input` gives a byte-equal payload (DDR-0005 normalizations only) | FR-048 replay |
 | 3 | toml `destructive_migration_apis` value is refused with a warning, never used | curated-only |
-| 4 | No toml: coffee-shop-api and kitchd `--scope project` payload sha256 identical BEFORE vs AFTER | no regression |
+| 4 | No toml: nest-api and fullstack-ts `--scope project` payload sha256 identical BEFORE vs AFTER | no regression |
 | 5 | Existing T057/T055/T045 tests green, expectations unedited | no regression |
 | 6 | Two repos scored in one process (MCP server) do not leak migration dirs into each other (no cache keyed only globally) | isolation |
 
@@ -70,7 +70,7 @@ T057 moved migration knowledge into `conventions` fields (`migration_dirs`, `des
 |---|---------------------|--------------------------|------------------|
 | 1 | AC 1 temp repo | destructive op counted; entry embedded | automated test + CLI run |
 | 2 | AC 2 replay | byte-equal | automated test |
-| 3 | coffee/kitchd | sha256 equal | real-repo run (background) |
+| 3 | nest-api/fullstack-ts | sha256 equal | real-repo run (background) |
 
 ### Verification Command (exact, runnable)
 
@@ -89,7 +89,7 @@ T057 moved migration knowledge into `conventions` fields (`migration_dirs`, `des
 
 > **Moved.** See `tasks/TASK_REVIEW_T086.md`.
 
-BEFORE commands (before any code change; paste timestamped output): (1) the AC 1 temp repo — `score --scope changes --ref HEAD~1..HEAD </dev/null`: show blast-radius #5 / data #4 do not count the `dbchanges/` operation; (2) coffee-shop-api and kitchd `--scope project </dev/null | sha256sum` baselines (background).
+BEFORE commands (before any code change; paste timestamped output): (1) the AC 1 temp repo — `score --scope changes --ref HEAD~1..HEAD </dev/null`: show blast-radius #5 / data #4 do not count the `dbchanges/` operation; (2) nest-api and fullstack-ts `--scope project </dev/null | sha256sum` baselines (background).
 
 ---
 
@@ -101,7 +101,9 @@ BEFORE commands (before any code change; paste timestamped output): (1) the AC 1
 
 ## Real repos
 
-real repos (read-only, `--repo` only): coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`, kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`, bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`, tapchat-web (path in `memory/learnings.md`, T049 entry). Run real-repo scores with `run_in_background` and `</dev/null`; worktree code via `PYTHONPATH=<worktree>/src`. CLI: `.venv/bin/python -m easy_verifier.adapters.cli score --repo R --scope project|changes [--ref A..B] [--all] </dev/null`.
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
+real repos (read-only, `--repo` only): nest-api `<real-repos>/nest-api`, fullstack-ts `<real-repos>/fullstack-ts`, node-monorepo `<real-repos>/node-monorepo`, next-web (path in `memory/learnings.md`, T049 entry). Run real-repo scores with `run_in_background` and `</dev/null`; worktree code via `PYTHONPATH=<worktree>/src`. CLI: `.venv/bin/python -m easy_verifier.adapters.cli score --repo R --scope project|changes [--ref A..B] [--all] </dev/null`.
 
 ---
 

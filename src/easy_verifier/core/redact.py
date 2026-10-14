@@ -509,7 +509,7 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
 
     def in_hash_context(match: re.Match[str]) -> bool:
         # Computed on first need: most texts have no candidate that clears a
-        # bar, and the pass is a whole-text scan (a 27 MB JSON file in bryony).
+        # bar, and the pass is a whole-text scan (a 27 MB JSON file in node-monorepo).
         nonlocal hash_context
         if hash_context is None:
             hash_context = _hash_context_spans(text)

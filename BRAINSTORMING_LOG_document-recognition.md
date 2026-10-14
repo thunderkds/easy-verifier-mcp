@@ -1,6 +1,6 @@
 # BRAINSTORMING_LOG_document-recognition.md
 **Generated**: 2026-10-12
-**Task / Context**: Post-T048 real-repo retest (bryony/scraping-devops). The document rules mean a match against our kit's names, but they score the repo as if the document were absent.
+**Task / Context**: Post-T048 real-repo retest (node-monorepo/k8s-ops). The document rules mean a match against our kit's names, but they score the repo as if the document were absent.
 **Skill**: `Skill({ skill: "brainstorming" })`
 **Scope tier**: Deep. It decides what the engine may treat as absence, and that affects 2 dimensions and the overall.
 
@@ -8,7 +8,7 @@
 
 ## The Problem Space
 
-**Trigger.** In the scraping-devops scan (2026-10-12, `develop` c527e35), architecture scored **0**.
+**Trigger.** In the k8s-ops scan (2026-10-12, `develop` c527e35), architecture scored **0**.
 `architecture_description_missing` failed. The README does describe the structure, under the headings
 "Folder structures" and "Concepts", but the rule accepts only a heading containing the word
 *architecture* or a file on our pattern list.
@@ -61,11 +61,11 @@ followed by an explanation (two or more words). Results on real repos (2026-10-1
 
 | Repo | Today (name list) | Content shape | Ground truth (read by hand) |
 |---|---|---|---|
-| scraping-devops | **missing** (fail) | README.md: 5 described (`- bin: helper scripts`, `- elk: …`, `- vagrant: …`) | Has one, under "Folder structures". **The name list gives a false negative.** |
-| ai-training | (not re-run) | travel_chatbot/README.md: 4 described (`├── eval/  # Evaluation set…`) | Has a structure tree |
-| bryony | **pass**, through `backend/docs/event_design.md` (matches `*design*`) | at most 1 described entry in any document | README is product description plus deploy steps. `event_design.md` documents event payloads. **The name list gives a false positive.** |
-| coffee-shop-api | — | 1 described, a false hit (`- test → vitest run` is an npm script) | below any threshold of 3 or more |
-| kitchd, easy-verifier | pass through `PROJECT_SPEC.md` (kit name) | missed: module tables sit in code blocks and use file paths | Has one. The probe's parser needs code-block trees and file-path entries. |
+| k8s-ops | **missing** (fail) | README.md: 5 described (`- bin: helper scripts`, `- elk: …`, `- vagrant: …`) | Has one, under "Folder structures". **The name list gives a false negative.** |
+| python-ml | (not re-run) | travel_chatbot/README.md: 4 described (`├── eval/  # Evaluation set…`) | Has a structure tree |
+| node-monorepo | **pass**, through `backend/docs/event_design.md` (matches `*design*`) | at most 1 described entry in any document | README is product description plus deploy steps. `event_design.md` documents event payloads. **The name list gives a false positive.** |
+| nest-api | — | 1 described, a false hit (`- test → vitest run` is an npm script) | below any threshold of 3 or more |
+| fullstack-ts, easy-verifier | pass through `PROJECT_SPEC.md` (kit name) | missed: module tables sit in code blocks and use file paths | Has one. The probe's parser needs code-block trees and file-path entries. |
 
 **Finding:** name matching fails in **both** directions on real repos. Content shape anchored to the
 repo's actual directories recognizes descriptions under any name, and an entry has to point at
@@ -95,7 +95,7 @@ platform layer…" have no list shape. Mitigation: also count paragraphs that na
 components; measure the false-positive rate on all repos first. (b) Thresholds (3 or more) are a
 declared constant, so they need a cited rationale or user sign-off. (c) Generated or vendored docs
 (Harbor's own docs) can fill the role for the host project, so the vendored-code exclusion becomes a
-prerequisite. (d) Cost: reading every `.md` on large repos (kitchd has 90 docs, easy-verifier 180)
+prerequisite. (d) Cost: reading every `.md` on large repos (fullstack-ts has 90 docs, easy-verifier 180)
 must stay within the read cap and batches.
 
 ---
@@ -107,7 +107,7 @@ must stay within the read cap and batches.
 
 **The code rules have the same closed-list problem.** `layer_direction_violations` (40) assigns a
 file to a layer by **folder name**: `registry/curated/conventions.toml:19+` lists `controllers/`,
-`routes/`, `services/`, `repositories/`, `dao/` and similar. A project using its own layout (bryony:
+`routes/`, `services/`, `repositories/`, `dao/` and similar. A project using its own layout (node-monorepo:
 `backend/server/*/router.js`, `backend/platform/core/models/`) is mostly unclassified, so the rule
 measures our naming conventions rather than the code's architecture.
 
@@ -134,10 +134,10 @@ Metrics this enables, all citable by file:line:
 
 | Repo | Result | What it teaches |
 |---|---|---|
-| kitchd | 17 route files, 16 reach data | Most were flagged as "querying the DB directly" because the data regex matched `Array.find(`. **The data pattern must be ORM-specific, keyed to an imported model or client.** |
-| coffee-shop-api | 4 route files, 3 "direct" | Same false positive. Nest controllers inject services. |
-| bryony | only 1 route file found | Real routes use `webapp.get('/api/master/clients', …)` in `backend/server/*/routers/*.js`. **Entry detection must key on the call shape, not the receiver name.** |
-| ai-training | 0 entry, 0 data | Its framework (FastAPI / LangGraph) is not covered. Coverage per framework must be measured and disclosed. |
+| fullstack-ts | 17 route files, 16 reach data | Most were flagged as "querying the DB directly" because the data regex matched `Array.find(`. **The data pattern must be ORM-specific, keyed to an imported model or client.** |
+| nest-api | 4 route files, 3 "direct" | Same false positive. Nest controllers inject services. |
+| node-monorepo | only 1 route file found | Real routes use `webapp.get('/api/master/clients', …)` in `backend/server/*/routers/*.js`. **Entry detection must key on the call shape, not the receiver name.** |
+| python-ml | 0 entry, 0 data | Its framework (FastAPI / LangGraph) is not covered. Coverage per framework must be measured and disclosed. |
 
 **Verdict:** feasible and name-independent, but precision lives in per-framework patterns.
 Those belong in the cited registry (DDR-0007), scoped to the stacks already in use (Express, Nest,
@@ -163,9 +163,9 @@ scores. Everything else is decided here.
 | G2 | Behaviour patterns live in the cited registry (DDR-0007), per framework. First set: Express, NestJS, FastAPI, Django, matching the stacks of the real repos. | Supervisor | low (scope only) |
 | G3 | Entry detection keys on **call shape** (`<any>.get('/path', handler)`, decorators), never on receiver names. Data detection requires the receiver to be an **imported model or client symbol**, never bare method names like `.find(` (probe false positive). | Supervisor | precision |
 | G4 | Framework not recognised → the behaviour rules fall back to the declared path hints. With no hints either, they abstain with `framework_not_recognized`, which stays distinct from "no routes". Disclosed in the payload. | Supervisor | low |
-| G5 | Documents (Option D): a file-name match alone does **not** fill a document role. Content shape or a declaration is required. Conventional names only raise the scan priority. Kit names (`PROJECT_SPEC.md`, `BRAINSTORMING_LOG*.md`) leave `GENERIC_PATTERNS`, and kit repos pass on content or declare in `.easy-verifier.toml`. | Supervisor (round-2 Q2/Q3 closed) | bryony −10 on architecture docs (false pass removed) |
+| G5 | Documents (Option D): a file-name match alone does **not** fill a document role. Content shape or a declaration is required. Conventional names only raise the scan priority. Kit names (`PROJECT_SPEC.md`, `BRAINSTORMING_LOG*.md`) leave `GENERIC_PATTERNS`, and kit repos pass on content or declare in `.easy-verifier.toml`. | Supervisor (round-2 Q2/Q3 closed) | node-monorepo −10 on architecture docs (false pass removed) |
 | G6 | Content-shape threshold: 3 or more described entries that name real repo paths (list, table, tree, or code-block tree). A declared constant, documented in SCORING_RULES. | Supervisor | low |
-| G7 | Vendored or third-party code exclusion (Harbor in scraping-devops) is a **prerequisite** task, so third-party code never feeds layers, cycles or document recognition. | Supervisor | high on scraping-devops, but correctness, not policy |
+| G7 | Vendored or third-party code exclusion (Harbor in k8s-ops) is a **prerequisite** task, so third-party code never feeds layers, cycles or document recognition. | Supervisor | high on k8s-ops, but correctness, not policy |
 
 ---
 
@@ -174,7 +174,7 @@ scores. Everything else is decided here.
 1. ~~Which path, A / B / C?~~ Superseded by round 2. A and C are bypasses; D is recommended.
 2. Remove the kit-specific names (`PROJECT_SPEC.md`, `BRAINSTORMING_LOG*.md`) from
    `GENERIC_PATTERNS`? Under D, kit repos would pass on content.
-3. **Under D, does a name or heading match alone still fill the role?** If yes, bryony keeps passing
+3. **Under D, does a name or heading match alone still fill the role?** If yes, node-monorepo keeps passing
    through `event_design.md`. If no, a name match must be confirmed by content shape or a
    declaration.
 
@@ -202,10 +202,10 @@ returns a `MetricAbstention` instead. Reason: *"no file matched the recognized p
 **Cons**: A repo that really has no architecture document is never penalized, so these rules can
 only pass or stay silent. Kit names stay on the list and only grant credit.
 **Why it might fail**: (1) When the 20 document points abstain, architecture is rated on code rules
-alone. scraping-devops would go 0 → 0, since the code rules fail on the vendored Harbor (a separate
+alone. k8s-ops would go 0 → 0, since the code rules fail on the vendored Harbor (a separate
 issue). A repo with clean code and no documents goes up. That is the known "abstention can raise the
 overall" residue (T022 (a)), disclosed but not elevated. (2) requirement-fidelity is already near its
-floor on some repos (scraping-devops measured 40%), so more of them will abstain completely.
+floor on some repos (k8s-ops measured 40%), so more of them will abstain completely.
 
 ### Option B — Declare-or-abstain with a neutral list
 **Approach**: A, plus remove `PROJECT_SPEC.md` and `BRAINSTORMING_LOG*.md` from `GENERIC_PATTERNS`
@@ -242,8 +242,8 @@ abstention machinery, disclosure, warnings and improvement-plan "abstained" grou
 **Option E — Code-derived architecture** (round 3), with Option D as its documents component.
 Build order: (1) behaviour-based entry and data detection for Express, Nest, FastAPI and Django, in
 the registry; (2) a request-path metric plus the layer rule by behaviour, replacing folder-name
-classification; (3) Option D document recognition. Each step is verified on bryony, kitchd,
-ai-training and coffee-shop-api before the next.
+classification; (3) Option D document recognition. Each step is verified on node-monorepo, fullstack-ts,
+python-ml and nest-api before the next.
 
 **(Round 2) Option D — Evidence-based recognition** (see above). The original round-1 text follows
 for the record.
@@ -282,11 +282,11 @@ Files that **must not** be touched:
 - [ ] The abstention reason lists the patterns searched and how to declare. No repo text is echoed
       (redaction path unchanged).
 - [ ] An overall that rises because the document weight abstained is disclosed. Check the
-      `disclosure` string on scraping-devops and bryony.
+      `disclosure` string on k8s-ops and node-monorepo.
 - [ ] requirement-fidelity hitting `insufficient_measured_weight` because of this change is reported,
       not hidden.
 - [ ] CLI/MCP parity (DDR-0005) holds for the new abstention.
-- [ ] Real-repo before/after on bryony, scraping-devops, kitchd and ai-training is pasted into
+- [ ] Real-repo before/after on node-monorepo, k8s-ops, fullstack-ts and python-ml is pasted into
       Evidence (feedback: done means real-repo verified).
 
 ---
@@ -297,7 +297,7 @@ Files that **must not** be touched:
 2. Stage 2: TASK_GUIDE (C2 / Risk Med / P1; it touches rating semantics). Record a DDR that amends
    DDR-0011's "a missing document fails (1)" clause.
 3. Separately (not this task): exclude vendored or third-party code (the Harbor copy in
-   scraping-devops), which is what really drives the architecture 0 there.
+   k8s-ops), which is what really drives the architecture 0 there.
 
 ---
 

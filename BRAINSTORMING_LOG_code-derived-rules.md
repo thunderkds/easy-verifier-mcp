@@ -1,6 +1,6 @@
 # BRAINSTORMING_LOG.md — Code-derived rules: rate architecture and requirement-fidelity without kit-style docs
 **Generated**: 2026-10-04
-**Task / Context**: User observation after coffee-shop-api / area-coverage review — document rules "just stick on the personal" workflow; reference: Understand-Anything (github.com/Egonex-AI/Understand-Anything, MIT).
+**Task / Context**: User observation after nest-api / area-coverage review — document rules "just stick on the personal" workflow; reference: Understand-Anything (github.com/Egonex-AI/Understand-Anything, MIT).
 **Skill**: `Skill({ skill: "brainstorming" })` — tier **Deep** (changes user-signed weights DDR-0007/0008; new evidence class)
 **Branch**: `plan/code-derived-rules`
 
@@ -17,7 +17,7 @@ style (verified in `judge.RATING_RULES` / dimension `sources_sought`, 2026-10-04
 | requirement-fidelity | 100 of 100 (AC↔code 35, AC↔test 35, `requirements_docs_count` 15, `code_commits_with_docs_share` 15) | requirements-doc, spec-doc, **task-breakdown** (floor 0.50) | `below_coverage_floor` almost always |
 | solution-fit | no rule (agent-only) | requirements-doc, decision-record | agent-rated only |
 
-coffee-shop-api (a well-built NestJS repo with `specs/` phase plans) is rated on 2 of 7 dimensions;
+nest-api (a well-built NestJS repo with `specs/` phase plans) is rated on 2 of 7 dimensions;
 its plans do not even count as requirements docs.
 
 Understand-Anything shows the split we already use: deterministic structure (tree-sitter: files,
@@ -111,7 +111,7 @@ name patterns), `route_tokens` (`@Get(`, `app.get(`, `router.`, `@app.route`, `[
 **Cons**: textual matching is approximate (decorators split over lines, dynamic routes); weights re-signed.
 **Why it might fail**:
 - Layer classification by path is wrong for unconventional layouts → a false "violation". Mitigation: unclassified files never count; derivation lists the classified share; abstain when < N% of sources classify.
-- Route↔test matching by path string misses tests that call helpers (`api-path.util.ts` in coffee-shop-api builds paths). Mitigation: match on handler name **or** path segment; report matched-by; P2-like abstention when no route tokens match.
+- Route↔test matching by path string misses tests that call helpers (`api-path.util.ts` in nest-api builds paths). Mitigation: match on handler name **or** path segment; report matched-by; P2-like abstention when no route tokens match.
 - Commit-issue share is meaningless on squash-merged or solo repos → abstain below N commits.
 - Miss-list class (shipped 7×): every new metric must say what bounded it (budget, batch, unclassified files).
 
@@ -150,13 +150,13 @@ report structure (T070), other dimensions' weights.
 ## Edge Case Checklist
 
 - [ ] Unclassified files never count as violations; derivation reports classified share
-- [ ] Routes built from helpers/constants (coffee-shop-api `api-path.util.ts`)
+- [ ] Routes built from helpers/constants (nest-api `api-path.util.ts`)
 - [ ] Monorepos (several apps) — layers per top-level app, not across apps
 - [ ] Repos with no routes (CLI, library) → route metric abstains, never fails
 - [ ] Squash/solo history → commit-based metrics abstain below a declared minimum
 - [ ] Batches (T068): structure metrics over sampled files are labelled sample
 - [ ] Measured-weight floor (T067) still holds after reweighting
-- [ ] Real-repo verification: coffee-shop-api, bryony, kitchd before/after
+- [ ] Real-repo verification: nest-api, node-monorepo, fullstack-ts before/after
 
 ## Next Actions (Stage 2)
 

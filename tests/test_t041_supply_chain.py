@@ -226,7 +226,7 @@ def test_local_and_digest_references_are_not_unpinned(tmp_path: Path) -> None:
 def test_step_images_are_external_references_in_any_ci_system(
     tmp_path: Path,
 ) -> None:
-    # bryony (2026-10-07, user decision D1): a Drone pipeline references its
+    # node-monorepo (2026-10-07, user decision D1): a Drone pipeline references its
     # steps by container image, never `uses:`; the pin rule judges them.
     drone = (
         "kind: pipeline\nsteps:\n- name: lint\n"

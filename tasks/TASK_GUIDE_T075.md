@@ -16,7 +16,7 @@
 4. Read `.claude/agents/backend.md`
 5. Apply the C3 process from `.claude/agents/general-agent-template.md`
 6. Read `memory/codebase-map.md`, `BRAINSTORMING_LOG_code-derived-rules.md`, and
-   `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md`
+   `<repo>/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md`
    (docs/ddr is gitignored — main checkout only), plus DDR-0007 (registry citations)
 
 ---
@@ -82,12 +82,12 @@ code evidence; `task-breakdown` no longer sought.
 | 3 | 30 commits, 18 with refs | 0.6 → passes | automated |
 | 4 | 10 commits | issue-ref rule abstains | automated |
 | 5 | Spec with `Scenario:` × 4, 3 referenced in tests | 0.75 | automated |
-| 6 | coffee-shop-api (routes in NestJS controllers, e2e tests, specs/ plans) | requirement-fidelity rated (Supervisor before/after) | verify |
+| 6 | nest-api (routes in NestJS controllers, e2e tests, specs/ plans) | requirement-fidelity rated (Supervisor before/after) | verify |
 
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t075_requirement_fidelity_code_rules.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t075_requirement_fidelity_code_rules.py -q
 ```
 
 ### Evidence
@@ -98,7 +98,7 @@ cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111
 
 ## Demonstration
 
-> BEFORE (Supervisor, scratchpad `t073/before.txt`): coffee-shop-api `below_coverage_floor`; bryony `below_coverage_floor`; kitchd 15.
+> BEFORE (Supervisor, scratchpad `t073/before.txt`): nest-api `below_coverage_floor`; node-monorepo `below_coverage_floor`; fullstack-ts 15.
 
 ---
 
@@ -120,7 +120,7 @@ Environment notes for the implementer: worktrees have no .venv — `PYTHONPATH=s
 
 ## Edge Case Checklist
 
-- [ ] Paths built by helpers (coffee-shop-api `test/utils/api-path.util.ts`) — handler-name match as fallback, matched-by reported
+- [ ] Paths built by helpers (nest-api `test/utils/api-path.util.ts`) — handler-name match as fallback, matched-by reported
 - [ ] Parameterised paths (`/users/:id`) match `/users/` segments
 - [ ] Squash-merged history → abstain below minimum
 - [ ] Batches (T068): routes found in sampled files are labelled sample

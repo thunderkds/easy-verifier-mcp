@@ -71,7 +71,7 @@ A dimension number is as good as the evidence under it. Check these, in order:
    `74 = rules 68 + agent 88 (w 0.30)` (illustrative). An `agent-rated` number is the agent's alone:
    no rule supports it. Treat it as the agent's view, not a measurement.
 6. **Known false positives.** A rule counts what a scanner matched, not what a human confirmed. Read
-   the cited files before acting on a security count (see the coffee-shop-api example below).
+   the cited files before acting on a security count (see the nest-api example below).
 
 ## Warnings: what could not be measured
 
@@ -91,7 +91,7 @@ couldn't measure" section). The reasons are the evidence-lack set (`EVIDENCE_LAC
   `commits_with_issue_reference_share` below 20 commits, `requirement_items_traced_share` with no
   requirement item in the documents read (see [`SCORING_RULES.md`](SCORING_RULES.md)).
 - A route written in a form the registry's route tokens do not match is not found. Without routes
-  and requirement documents, requirement-fidelity can fall below its coverage floor (bryony below).
+  and requirement documents, requirement-fidelity can fall below its coverage floor (node-monorepo below).
 
 ## Large repositories: batches
 
@@ -171,7 +171,7 @@ From Supervisor runs on 2026-10-05 with the develop code (`7d64f08`), CLI `score
 These runs predate the reliability (T043) and supply-chain (T041) dimensions, so they rate out of 7;
 a run today rates out of 9 and its overall can differ.
 
-**coffee-shop-api**: overall 65; 4 of 7 dimensions rated: architecture 80, code-quality 71,
+**nest-api**: overall 65; 4 of 7 dimensions rated: architecture 80, code-quality 71,
 requirement-fidelity 50, security 59. Architecture loses 20 because there is no architecture
 description and no decision record; import cycles and layer direction pass. Requirement-fidelity:
 all 17 routes are tested (pass), but there is no requirements document, 9 of 42 code-changing
@@ -184,7 +184,7 @@ overall over different contributors is not the same result. The security number 
 scanner false positives (long spec filenames and `${VAR}` references matched as secrets): read the
 cited files before treating the +10 as a real finding.
 
-**bryony**: overall 69; 4 of 7 rated: architecture 83, code-quality 67, test-strategy 75, security
+**node-monorepo**: overall 69; 4 of 7 rated: architecture 83, code-quality 67, test-strategy 75, security
 50. Architecture, code-quality and test-strategy are a sample of 200 of 1,178 files (batch 1 of 6);
 reading more batches can change them. Requirement-fidelity is below its coverage floor: there is no
 requirements or spec document, and the routes (`webapp.get('/api/...')`) are written in a form the

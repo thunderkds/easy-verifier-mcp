@@ -77,7 +77,7 @@ amended for ordering; P2 shows a gain range; gated dimensions show rules-part ga
 | 10 | Every metric in `judge.RATING_RULES` has a `FIX_HINTS` entry; a test enumerates them (adding a rule without a hint fails) | FR-057 |
 | 11 | CLI and MCP `score` payloads stay byte-equal after DDR-0005 normalization with the new key | FR-022, DDR-0005 |
 | 12 | HTML report renders an "Improvement plan" section: P0 → P1 → P2, every item listed, fix labelled `engine` | FR-055 |
-| 13 | Real-repo run: `score` on bryony shows a non-empty plan whose top P0/P1 gain, applied by hand to the rating arithmetic, matches | done-means-real-repo-verified |
+| 13 | Real-repo run: `score` on node-monorepo shows a non-empty plan whose top P0/P1 gain, applied by hand to the rating arithmetic, matches | done-means-real-repo-verified |
 
 ---
 
@@ -95,14 +95,14 @@ amended for ordering; P2 shows a gain range; gated dimensions show rules-part ga
 | 6 | All met | empty groups; report contains "No gaps" | automated test + rendered HTML |
 | 7 | New rule added to `RATING_RULES` without hint | hint-coverage test fails | automated test |
 | 8 | Same repo via CLI and MCP | normalized payloads byte-equal | existing parity test extended |
-| 9 | bryony real repo | plan printed; one gain hand-verified | `verify` skill, pasted output |
+| 9 | node-monorepo real repo | plan printed; one gain hand-verified | `verify` skill, pasted output |
 
 ### Verification Command (exact, runnable)
 
 ```bash
 .venv/bin/pytest tests/test_t065_improvement_plan.py -q
 .venv/bin/pytest -q && .venv/bin/ruff check src tests
-.venv/bin/easy-verifier score --repo /home/hungnguyenhuu/workspace/project/bryony/bryony --scope project </dev/null \
+.venv/bin/easy-verifier score --repo <real-repos>/node-monorepo --scope project </dev/null \
   | python3 -c "import json,sys; p=json.load(sys.stdin)['improvement_plan']; print(json.dumps(p, indent=1)[:4000])"
 ```
 
@@ -204,8 +204,8 @@ existing table/card styles, no new design tokens.
 ## Test Plan
 
 Unit tests on synthetic `Rating`/`RatingAbstention`/`GatedRating` objects for every AC; extend the
-existing CLI/MCP parity test; render the report and screenshot it; Stage 5 real-repo run on bryony
-(plus kitchd as a second repo).
+existing CLI/MCP parity test; render the report and screenshot it; Stage 5 real-repo run on node-monorepo
+(plus fullstack-ts as a second repo).
 
 ---
 
@@ -216,6 +216,6 @@ existing CLI/MCP parity test; render the report and screenshot it; Stage 5 real-
 - [ ] Security review: `Skill({ skill: "security-review" })` run (Medium risk)
 - [ ] Lint passes
 - [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T065.md` (Hard-Stop Gate 5)
-- [ ] `Skill({ skill: "verify" })` run on bryony — real repo
+- [ ] `Skill({ skill: "verify" })` run on node-monorepo — real repo
 - [ ] `memory/MEMORY.md` updated (if new patterns learned)
 - [ ] Supervisor notified: task ready for Stage 4 review

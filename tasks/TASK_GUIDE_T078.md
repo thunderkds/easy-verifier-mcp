@@ -81,7 +81,7 @@ DDR-0011 made every convention a declared, extendable pattern list: `layer_paths
 |---|---------------------|--------------------------|------------------|
 | 1 | temp repo + toml `layer_paths` extra | architecture metric changes; entry embedded | automated test |
 | 2 | same repo, toml removed, replay with entries | byte-equal payload | automated test |
-| 3 | coffee-shop-api / kitchd (no toml) | sha256 of payload unchanged vs BEFORE | real-repo run |
+| 3 | nest-api / fullstack-ts (no toml) | sha256 of payload unchanged vs BEFORE | real-repo run |
 
 ### Verification Command (exact, runnable)
 
@@ -102,7 +102,7 @@ python -m ruff check src tests
 
 BEFORE commands (before any code change; paste timestamped output):
 1. A temp git repo with `.easy-verifier.toml` `[conventions] layer_paths = [...]` (and/or `route_tokens`) — `score --repo <r> --scope project </dev/null`: show the extras are ignored (metric/derivation unchanged vs without the toml; the "only the curated" disclosure present).
-2. A real repo without toml (coffee-shop-api or kitchd): `score ... </dev/null | sha256sum` — the no-regression baseline. Long runs in background.
+2. A real repo without toml (nest-api or fullstack-ts): `score ... </dev/null | sha256sum` — the no-regression baseline. Long runs in background.
 
 ---
 
@@ -114,7 +114,9 @@ BEFORE commands (before any code change; paste timestamped output):
 
 ## Real repos
 
-real repos: coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`, kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`, bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony` (read-only, `--repo` only).
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
+real repos: nest-api `<real-repos>/nest-api`, fullstack-ts `<real-repos>/fullstack-ts`, node-monorepo `<real-repos>/node-monorepo` (read-only, `--repo` only).
 
 ---
 

@@ -15,14 +15,14 @@
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t068_priority_batches.py` (43 tests: purpose → churn → path order, no-git fallback, batch slicing, oracle batches 1–2 == direct over 400 files, batches=N vs all byte-equal, under-cap snapshot `tests/snapshots/t068_under_cap_score.json` from pre-change `2bf07ff`, needs_input.continue_batches, out-of-range/malformed → error, truncation no longer abstains sampled metrics). Updated: test_t050, test_t031, test_t009 (old all-or-none cap reversed by DDR-0010), test_t055 legacy dict. Sabotage (agent): zero churn / drop sampled metrics turn tests red — pass |
-| Verification command run | ☑ pass | Supervisor 2026-10-04 03:03 UTC bryony CLI: `--batches 1` → samples 200/1178 (1 of 6) for architecture, code-quality, test-strategy; code-quality 67, architecture 70, test-strategy 75, overall 66; stderr "continue with --batches 2, or --all". `--batches 2` → 400/1178 (2 of 6), same ratings — pass |
-| Negative cases hold | ☑ pass | MCP (agent, in-process tool fn): `batches: 7` → "out of range; this scope has 6 batches"; malformed → validation error; kitchd (under cap) unchanged — pass |
-| verify | ☑ pass | Supervisor drove CLI on bryony batches 1 and 2 (above); agent drove MCP continue_batches round {1,6,200,1178} → batches 2 → {2,6,400,1178}; kitchd before/after identical (under cap) — feature confirmed working — pass |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed new core/batches.py (purpose classes as data, ordering, parse/resolve, churn via run_git_text), metrics.compute_sampled_metrics + EvidencePack.sample, _code_extract/code_quality/architecture/test_strategy batching, roles/score/adapters input + needs_input, report disclosure. Agent input carries only `batches` (no numbers) — FR-062 holds. code-review: P0 0, P1 0, P2 2 → follow-ups: (a) score payload grows ~550 KB per batch (476 KB → 1.08 MB → 1.64 MB) from existing per-file citation lists, against the token-saving goal; (b) under-cap repos still compute code metrics over budgeted excerpts and abstain on truncation (kitchd) while above-cap repos use whole files. Security (manual): git via hardened run_git_text; sample facts redacted like ReachFacts; secret-bearing files still refused — pass |
+| Verification command run | ☑ pass | Supervisor 2026-10-04 03:03 UTC node-monorepo CLI: `--batches 1` → samples 200/1178 (1 of 6) for architecture, code-quality, test-strategy; code-quality 67, architecture 70, test-strategy 75, overall 66; stderr "continue with --batches 2, or --all". `--batches 2` → 400/1178 (2 of 6), same ratings — pass |
+| Negative cases hold | ☑ pass | MCP (agent, in-process tool fn): `batches: 7` → "out of range; this scope has 6 batches"; malformed → validation error; fullstack-ts (under cap) unchanged — pass |
+| verify | ☑ pass | Supervisor drove CLI on node-monorepo batches 1 and 2 (above); agent drove MCP continue_batches round {1,6,200,1178} → batches 2 → {2,6,400,1178}; fullstack-ts before/after identical (under cap) — feature confirmed working — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed new core/batches.py (purpose classes as data, ordering, parse/resolve, churn via run_git_text), metrics.compute_sampled_metrics + EvidencePack.sample, _code_extract/code_quality/architecture/test_strategy batching, roles/score/adapters input + needs_input, report disclosure. Agent input carries only `batches` (no numbers) — FR-062 holds. code-review: P0 0, P1 0, P2 2 → follow-ups: (a) score payload grows ~550 KB per batch (476 KB → 1.08 MB → 1.64 MB) from existing per-file citation lists, against the token-saving goal; (b) under-cap repos still compute code metrics over budgeted excerpts and abstain on truncation (fullstack-ts) while above-cap repos use whole files. Security (manual): git via hardened run_git_text; sample facts redacted like ReachFacts; secret-bearing files still refused — pass |
 | Full smoke suite still green (no regression) | ☑ pass | Supervisor re-run: 1740 passed, 2 skipped, 2 failed (the 2 known stale-Docker container tests); ruff All checks passed — pass |
-| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t068_panel_1280.png` — LLM-vision verdict (Supervisor): sample disclosure line on each sampled dimension card — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `<scratchpad>/t068_panel_1280.png` — LLM-vision verdict (Supervisor): sample disclosure line on each sampled dimension card — pass |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | reuses existing `rating-method` class, no new CSS tokens — pass |
-| **UI: Responsiveness at target viewports** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t068_panel_400.png` true 400px iframe: disclosure wraps, no horizontal page scroll in the panel — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | `<scratchpad>/t068_panel_400.png` true 400px iframe: disclosure wraps, no horizontal page scroll in the panel — pass |
 
 ---
 
@@ -39,7 +39,7 @@ implementation commit. Pasted verbatim; the score run's stdout was saved to a sc
 ```
 $ date -u
 Sat Oct  3 03:11:31 PM UTC 2026
-$ PYTHONPATH=src .../.venv/bin/python -m easy_verifier.adapters.cli score --repo /home/hungnguyenhuu/workspace/project/bryony/bryony --scope project </dev/null | <ratings>
+$ PYTHONPATH=src .../.venv/bin/python -m easy_verifier.adapters.cli score --repo <real-repos>/node-monorepo --scope project </dev/null | <ratings>
 architecture 50
 blast-radius all_metrics_abstained
 code-quality insufficient_measured_weight 0.20
@@ -53,17 +53,17 @@ $ date -u
 Sat Oct  3 03:19:37 PM UTC 2026
 $ git log --oneline -1
 2bf07ff merge(T067): evidence floor — no number below 50% measured weight; evidence-lack is a warning
-$ for d in code-quality architecture test-strategy; do PYTHONPATH=src .../python -m easy_verifier.adapters.cli $d --repo .../bryony/bryony --scope project </dev/null 2>&1 >/dev/null | grep -i "cap\|were not read"; done
+$ for d in code-quality architecture test-strategy; do PYTHONPATH=src .../python -m easy_verifier.adapters.cli $d --repo <real-repos>/node-monorepo --scope project </dev/null 2>&1 >/dev/null | grep -i "cap\|were not read"; done
 warning [standalone]: 1178 in-scope source files exceed the cap of 200 for function excerpts; none were read, so metrics over function excerpts abstain rather than describe an arbitrary subset
 warning [standalone]: 1178 in-scope source files exceed the cap of 200 for import excerpts; none were read, so metrics over import excerpts abstain rather than describe an arbitrary subset
 warning [standalone]: 1178 source file(s) in the resolved scope were not read, because together with the test evidence they exceed the 200-file read cap. The pack therefore holds no source file, so source-to-test figures computed over it cannot describe this scope's sources.
 ```
 (The grep also matched a few excerpt-text JSON lines that happen to contain "Capital"/"cap"; omitted.)
 The score payload carries no pack warning, so the cap message is only visible per dimension: the
-code tiers read **zero** of bryony's 1,178 source files and code-quality abstains at 20% measured
+code tiers read **zero** of node-monorepo's 1,178 source files and code-quality abstains at 20% measured
 weight (lint + format config only).
 
-kitchd at the same commit (second real repo, `Sat Oct  3 03:19:27 PM UTC 2026`): overall 58;
+fullstack-ts at the same commit (second real repo, `Sat Oct  3 03:19:27 PM UTC 2026`): overall 58;
 architecture 100; code-quality insufficient_measured_weight 0.45; test-strategy
 insufficient_measured_weight 0.30; requirement-fidelity 15; security 59.
 
@@ -72,7 +72,7 @@ insufficient_measured_weight 0.30; requirement-fidelity 15; security 59.
 ```
 $ date -u
 Sun Oct  4 02:57:55 AM UTC 2026
-$ PYTHONPATH=src .../python -m easy_verifier.adapters.cli score --repo .../bryony/bryony --scope project --batches 1 </dev/null
+$ PYTHONPATH=src .../python -m easy_verifier.adapters.cli score --repo <real-repos>/node-monorepo --scope project --batches 1 </dev/null
 stderr: warning [batches]: read batches 1 of 6 (200 of 1178 in-scope source files, most important and most-changed first); continue with --batches 2, or --all
 overall 66
 architecture 70 | blast-radius all_metrics_abstained | code-quality 67 | requirement-fidelity below_coverage_floor
@@ -101,26 +101,26 @@ round1 continue_batches: {"batches_done": 1, "batches_total": 6, "files_read": 2
 round2 (agent_input {"batches": 2}) continue_batches: {'batches_done': 2, 'batches_total': 6, 'files_read': 400, 'files_in_scope': 1178}
 batches=7 -> BatchInputError batches: 7 is out of range; this scope has 6 batches of source files
 
-kitchd, Sun Oct  4 02:59:11 AM UTC 2026 (under the code cap, so unchanged by design): overall 58;
+fullstack-ts, Sun Oct  4 02:59:11 AM UTC 2026 (under the code cap, so unchanged by design): overall 58;
 architecture 100; code-quality insufficient_measured_weight 0.45; test-strategy
 insufficient_measured_weight 0.30; requirement-fidelity 15; security 59; no `samples` key.
 ```
 
-Report (bryony scratch clone, `write-report --batches 2`): each sampled card shows "Sample: batches
+Report (node-monorepo scratch clone, `write-report --batches 2`): each sampled card shows "Sample: batches
 2 of 6 — 400 of 1,178 in-scope source files read, ordered by …". Screenshots (score panel extracted
-with the report's own `<head>` styles): `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/t068_panel_1280.png`,
+with the report's own `<head>` styles): `<scratchpad>/t068_panel_1280.png`,
 `.../t068_panel_400.png` (400px iframe). The disclosure is visible and there is no horizontal page scroll; only the existing `rating-method` class is used.
 
-Payload size (bryony score JSON): 476 KB before → 1.08 MB at batch 1 → 1.64 MB at batch 2. The
+Payload size (node-monorepo score JSON): 476 KB before → 1.08 MB at batch 1 → 1.64 MB at batch 2. The
 growth is in metrics that already existed and already cite every file read
 (e.g. `source_files_without_covering_test` lists all 200/400 paths). Excerpts stay within the budget (AC9).
 
 **DELTA**: On a repository with more sources than the cap, code-quality, architecture and
-test-strategy now read the highest-priority, most-changed 200 files instead of none (bryony
+test-strategy now read the highest-priority, most-changed 200 files instead of none (node-monorepo
 code-quality goes from abstained at 20% weight to rated 67 over a disclosed sample), and the user can
 continue batch by batch (`--batches N`/`--all`, or MCP `continue_batches` → `agent_input.batches`) or stop.
 
-**WITNESS**: Supervisor (main session), 2026-10-04 03:03 UTC — independent bryony CLI runs (batches 1, 2) and full-suite re-run; not the implementing agent alone.
+**WITNESS**: Supervisor (main session), 2026-10-04 03:03 UTC — independent node-monorepo CLI runs (batches 1, 2) and full-suite re-run; not the implementing agent alone.
 
 ---
 
@@ -168,7 +168,7 @@ constructor survives `pipeline._redacting_exceptions` (so `combined_pack` re-rai
 turning it into a failed slot) → CLI exit 2 / MCP tool error. Never clamped.
 
 **5. How metrics merge across batches (the guide's "if merging requires counts beyond the excerpt
-budget" branch applies).** On bryony, 200 files of whole functions far exceed the 120 KB budget,
+budget" branch applies).** On node-monorepo, 200 files of whole functions far exceed the 120 KB budget,
 so a pack-only metric would always see a truncated pack and every whole-set metric would abstain
 (FR-027a) — AC3/AC8 could never hold. So, **only when batching is active**:
 
@@ -208,7 +208,7 @@ so a pack-only metric would always see a truncated pack and every whole-set metr
   **before** the ranked test sweep so a budget stop cannot silently skip them. When the old
   overflow fired but the candidates fit in one batch, they are now simply read (previously none).
 
-**Interaction with the kitchd byte-budget abstention (FYI in the spawn).** kitchd is under the
+**Interaction with the fullstack-ts byte-budget abstention (FYI in the spawn).** fullstack-ts is under the
 code cap, so batching never activates there and its whole-set code metrics still abstain on
 truncation — unchanged, as instructed (no budget change). The consequence is a deliberate
 discontinuity: a repository just above the cap gets whole-file sampled metrics, one just below

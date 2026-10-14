@@ -21,7 +21,7 @@
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-User (2026-10-03), after bryony scored code-quality 100 from 2 of 6 rules: "with LLM and we still do
+User (2026-10-03), after node-monorepo scored code-quality 100 from 2 of 6 rules: "with LLM and we still do
 not evaluate it. Looks not good at all … for the lack of files to evaluate, we do not hallucinate,
 just warning, or raise about the bugs." Supervisor proposal accepted ("yes"): 50% measured-weight
 floor; evidence-lack abstentions are not agent-rated at the gate; only solution-fit (`no_static_rule`)
@@ -70,8 +70,8 @@ stays agent-rated.
 | 5 | Score payload carries a `warnings` entry per evidence-lack abstention (dimension, reason, unmeasured rules); report shows them as a visible warning block | FR-059 |
 | 6 | Improvement plan's abstained line for `insufficient_measured_weight` lists the unmeasured rules with reasons (what to add to the repo) | FR-059 |
 | 7 | CLI and MCP payloads byte-equal after DDR-0005 normalization | FR-022 |
-| 8 | Real repo bryony: code-quality no longer 100 — abstains `insufficient_measured_weight` (20%), warning shown; MCP `score` with gates asks the agent only about solution-fit (+ any borderline) | user report |
-| 9 | Second real repo (kitchd or ai-training) re-run: before/after per-dimension table pasted; any dimension that newly abstains is explained | done-means-real-repo-verified |
+| 8 | Real repo node-monorepo: code-quality no longer 100 — abstains `insufficient_measured_weight` (20%), warning shown; MCP `score` with gates asks the agent only about solution-fit (+ any borderline) | user report |
+| 9 | Second real repo (fullstack-ts or python-ml) re-run: before/after per-dimension table pasted; any dimension that newly abstains is explained | done-means-real-repo-verified |
 
 ---
 
@@ -86,13 +86,13 @@ stays agent-rated.
 | 3 | Measured 49 of 100 (or 0.499 share) | abstains | automated |
 | 4 | Ratings with each evidence-lack reason + one `no_static_rule` + one borderline | gates = {solution-fit: abstained, X: borderline} only | automated |
 | 5 | gate_evaluations for `requirement-fidelity` (below_coverage_floor) | validation error naming it; no agent-rated result | automated |
-| 6 | bryony CLI + MCP | code-quality abstains with warning; overall from architecture/security/test-strategy; report warning visible | verify, pasted |
+| 6 | node-monorepo CLI + MCP | code-quality abstains with warning; overall from architecture/security/test-strategy; report warning visible | verify, pasted |
 
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t067_evidence_floor.py -q
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t067_evidence_floor.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest -q
 ```
 
 ### Evidence
@@ -176,7 +176,7 @@ Add the floor check in `rate()` after inputs/unavailable are partitioned (declar
 
 ## Test Plan
 
-Unit tests per AC; adjust gate tests; parity test; Stage 5 on bryony (CLI + MCP with gates) and a second real repo with a before/after table.
+Unit tests per AC; adjust gate tests; parity test; Stage 5 on node-monorepo (CLI + MCP with gates) and a second real repo with a before/after table.
 
 ---
 
@@ -187,5 +187,5 @@ Unit tests per AC; adjust gate tests; parity test; Stage 5 on bryony (CLI + MCP 
 - [ ] `Skill({ skill: "security-review" })` (Medium)
 - [ ] Lint passes
 - [ ] Tests written AND pass — pasted in `tasks/TASK_REVIEW_T067.md`
-- [ ] `Skill({ skill: "verify" })` on bryony + second repo
+- [ ] `Skill({ skill: "verify" })` on node-monorepo + second repo
 - [ ] Supervisor notified

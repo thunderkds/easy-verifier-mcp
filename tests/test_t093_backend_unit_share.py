@@ -180,7 +180,7 @@ def test_ac12_import_target_resolves_only_within_the_importers_unit(
 ) -> None:
     """A data file in apps/web naming the stem ``routes`` of an api file in
     apps/api is not a violation: targets resolve within the importer's own
-    manifest unit (kitchd: users.service.ts matched apps/web/.../auth.ts)."""
+    manifest unit (fullstack-ts: users.service.ts matched apps/web/.../auth.ts)."""
     metric = _layer(tmp_path, LEAK)
     assert not metric.abstained, metric.outcome
     assert metric.outcome == 0

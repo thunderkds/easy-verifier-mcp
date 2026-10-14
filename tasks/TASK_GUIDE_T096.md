@@ -23,11 +23,11 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-The KANBAN follow-up from T089 found that on kitchd, and on this repo, `architecture-doc` is filled by a task guide's **Files to Change** table. The kitchd citation is `tasks/TASK_GUIDE_T029.md`: `| apps/web/src/App.tsx | Mount <ErrorDialogProvider> |`.
+The KANBAN follow-up from T089 found that on fullstack-ts, and on this repo, `architecture-doc` is filled by a task guide's **Files to Change** table. The fullstack-ts citation is `tasks/TASK_GUIDE_T029.md`: `| apps/web/src/App.tsx | Mount <ErrorDialogProvider> |`.
 
 The table names real paths followed by ≥ `MIN_DESCRIPTION_WORDS` words. That makes it a "described entry" (`core/documents.py` `_table_entry`). It also lists many directories, so it wins the T089 "most distinct directories" ranking. But it is a **plan of edits**, not a description of the system.
 
-Meanwhile kitchd's real architecture description is prose: `PROJECT_SPEC.md` "## Architecture Summary" names `/apps/api`, `/apps/web` and `/packages/shared` inline. That prose never qualifies, because only list items, tree lines and table rows are entries.
+Meanwhile fullstack-ts's real architecture description is prose: `PROJECT_SPEC.md` "## Architecture Summary" names `/apps/api`, `/apps/web` and `/packages/shared` inline. That prose never qualifies, because only list items, tree lines and table rows are entries.
 
 **Restated intent** (Supervisor decision 2026-10-13; this changes citations only, see AC 6):
 > 1. **Change-list tables are not descriptions.** A table whose header row has a column titled as a change or plan column is not a source of described entries. The titles are `Change`, `Changes`, `Action`, `Edit`, `Modification`, `Status`, `Todo`, `Reason`, matched case-insensitively. `Reason` covers "Files Must NOT Touch". The list is a module constant with a one-line rationale. Tables without such a column behave as now.
@@ -66,8 +66,8 @@ Meanwhile kitchd's real architecture description is prose: `PROJECT_SPEC.md` "##
 | 2 | Header matching is case-insensitive and cell-trimmed (`\| **Change** \|`); a header row is the row directly above the `\|---\|` separator | change list |
 | 3 | A `## Architecture Summary` prose paragraph naming `` `/apps/api` ``, `` `/apps/web` ``, `` `/packages/shared` `` (all existing) in `PROJECT_SPEC.md` fills `architecture-doc`, citing the section's lines; the same paragraph under `## Notes` does not | prose section |
 | 4 | Prose naming only 2 real paths, or 3 paths of which one does not exist, does not qualify | threshold |
-| 5 | A README with an "Architecture" section keeps exactly today's kind string and cited lines (bryony and scraping-devops citations unchanged) | no regression |
-| 6 | kitchd: `architecture-doc` is filled by `PROJECT_SPEC.md` (or by another document whose cited lines are a real description, never a change list; paste the citation). kitchd architecture rating stays 100 and overall stays 56. bryony (59/83), scraping-devops, coffee-shop-api (81/90) and ai-training (60/83) keep their ratings. Paste before/after `architecture-doc` citations for all 5 repos and this repo | real-repo goal |
+| 5 | A README with an "Architecture" section keeps exactly today's kind string and cited lines (node-monorepo and k8s-ops citations unchanged) | no regression |
+| 6 | fullstack-ts: `architecture-doc` is filled by `PROJECT_SPEC.md` (or by another document whose cited lines are a real description, never a change list; paste the citation). fullstack-ts architecture rating stays 100 and overall stays 56. node-monorepo (59/83), k8s-ops, nest-api (81/90) and python-ml (60/83) keep their ratings. Paste before/after `architecture-doc` citations for all 5 repos and this repo | real-repo goal |
 | 7 | Existing T089 tests pass with expectations unedited, except any test that pinned a change-list table as an architecture doc, which is listed with its reason | no regression |
 
 ---
@@ -79,7 +79,7 @@ Meanwhile kitchd's real architecture description is prose: `PROJECT_SPEC.md` "##
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | AC 1–5 fixtures | as stated | automated tests |
-| 2 | kitchd | PROJECT_SPEC.md cited; ratings unchanged | real-repo run (background) |
+| 2 | fullstack-ts | PROJECT_SPEC.md cited; ratings unchanged | real-repo run (background) |
 | 3 | other repos | citations/ratings unchanged or justified | real-repo run (background) |
 
 ### Verification Command (exact, runnable)
@@ -110,6 +110,8 @@ BEFORE commands (before any code change; paste timestamped output): for the five
 ---
 
 ## Real repos
+
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
 
 Same as `tasks/TASK_GUIDE_T094.md` "Real repos".
 

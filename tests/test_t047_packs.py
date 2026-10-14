@@ -371,7 +371,7 @@ def test_report_without_the_pack_has_no_pack_card(tmp_path) -> None:
 
 
 def test_class_held_logger_calls_count(tmp_path) -> None:
-    # coffee-shop-api (2026-10-06): NestJS logs through this.logger.log(...);
+    # nest-api (2026-10-06): NestJS logs through this.logger.log(...);
     # missing it made the log rule abstain on a repository that has logging.
     repo = _repo(tmp_path, config='packs = ["healthcare"]\n')
     _write(
@@ -393,7 +393,7 @@ def test_class_held_logger_calls_count(tmp_path) -> None:
 
 
 def test_cited_paths_are_redacted_like_files_read(tmp_path) -> None:
-    # coffee-shop-api (2026-10-06): a migration name whose digits redact as a
+    # nest-api (2026-10-06): a migration name whose digits redact as a
     # secret made the metric cite a path the pack's files_read never held.
     repo = _repo(tmp_path, config='packs = ["healthcare"]\n')
     _write(

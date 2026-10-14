@@ -69,7 +69,7 @@ Decided E1/G8: frontend a11y is an optional pack for area #19. **Activation foll
 | 3 | JSX/TSX/Vue/Svelte syntax patterns come from registry framework entries | on-demand frameworks |
 | 4 | Pack inactive unless configured (`packs=["frontend-a11y"]` / `agent_input.packs`); inactive → payload byte-identical to today (same check as T047) | optional, never guessed |
 | 5 | `PACK_FLOORS["frontend-a11y"]` = 0.25 inclusive; weights cited, sum 100, admit an exact 50; area #19 leaves `areas_without_rule` when the pack is active | decided values |
-| 6 | Real repo: one frontend repo (kitchd or another local repo with JSX/Vue/HTML) scored with the pack on and off — before/after pasted; off = unchanged overall | real-repo verified |
+| 6 | Real repo: one frontend repo (fullstack-ts or another local repo with JSX/Vue/HTML) scored with the pack on and off — before/after pasted; off = unchanged overall | real-repo verified |
 
 ---
 

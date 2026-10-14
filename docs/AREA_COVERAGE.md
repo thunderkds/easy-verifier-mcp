@@ -28,7 +28,7 @@ that enable them (`.easy-verifier.toml` `packs = ["healthcare"]` / `["finance"]`
 `["frontend-a11y"]` or an agent pick). All planned dimensions and optional packs exist.
 
 **What this means for a score.** A repository's overall can rest on only a few areas. For example,
-coffee-shop-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
+nest-api (2026-10-04) scored 65 from code-quality and security alone, which together cover
 areas 8, 10, 17, 18, 20 and 31; of those, its run measured 10, 17, 18 and 20. The other areas were
 either not rated for lack of evidence or have no rule at all.
 

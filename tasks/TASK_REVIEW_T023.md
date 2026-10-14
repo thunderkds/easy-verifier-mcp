@@ -22,12 +22,12 @@ the Docker-capable final run returned zero with every KPI row marked `PASS`.
 | Host integration | pass | `19 passed, 1 skipped in 13.54s`. |
 | Docker integration | pass | `2 passed, 18 deselected in 7.60s`; container verifier reported `uid=10001, tools=11, root=read-only, reports=writable, network=none, ports=none, caps=none`. |
 | MCP stdio boundary | pass | The container verifier and final release wrapper completed the required MCP tool checks without failure. |
-| Full regression | pass | `PYTHONPATH=src /home/hungnguyenhuu/workspace/training/phuongbui/ai-training/travel_chatbot/.venv/bin/python -m pytest -q --tb=short` -> `586 passed, 4 skipped, 1 warning in 40.96s` |
+| Full regression | pass | `PYTHONPATH=src <external-venv>/bin/python -m pytest -q --tb=short` -> `586 passed, 4 skipped, 1 warning in 40.96s` |
 | Ruff | pass | `ruff check src tests` -> `All checks passed!` |
 | Formatting | pass | `ruff format --check src tests` -> `58 files already formatted` |
 | Shell syntax | pass | `bash -n scripts/verify_release_gate.sh` -> exit `0` |
 | Compose configuration | pass | `docker compose config --quiet` -> exit `0` |
-| README/documentation tests | pass | `PYTHONPATH=src /home/hungnguyenhuu/workspace/training/phuongbui/ai-training/travel_chatbot/.venv/bin/python -m pytest tests/test_t018_readme.py -q` -> `6 passed, 1 skipped in 5.23s` |
+| README/documentation tests | pass | `PYTHONPATH=src <external-venv>/bin/python -m pytest tests/test_t018_readme.py -q` -> `6 passed, 1 skipped in 5.23s` |
 | Diff check | pass | `git diff --check` -> exit `0` |
 
 ## Documentation truth pass
