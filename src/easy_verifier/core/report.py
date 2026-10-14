@@ -74,6 +74,12 @@ from easy_verifier.dimensions import dimension_names
 
 REPORTS_DIRNAME = "reports"
 
+REPORTS_DIR_ENV = "EASY_VERIFIER_REPORTS_DIR"
+"""DDR-0013: when set (an absolute path), reports go to
+``$EASY_VERIFIER_REPORTS_DIR/<repo directory name>/`` instead of
+``<repo>/reports/``, so one shared scoring container never writes into the
+repositories it reads. Unset or empty keeps today's behaviour exactly."""
+
 SENSITIVITY_ADVISORY = (
     "Sensitivity notice: this report is written inside the evaluated repository, "
     "so it can be committed to version control, attached to a ticket, or pasted "
@@ -113,7 +119,7 @@ def write_report(
     agent_input: object | None = None,
 ) -> ReportResult:
     """Validate `findings` against `packs`, then render one HTML report into
-    ``<target_repo>/reports/``.
+    ``<target_repo>/reports/`` (or the directory :data:`REPORTS_DIR_ENV` names).
 
     `packs` is the combined multi-dimension pack (DDR-0004): its slots supply
     the per-dimension evidence that validation resolves citations against, and
@@ -139,7 +145,7 @@ def write_report(
         parse_agent_input(agent_input) if agent_input is not None else {}
     )
 
-    reports_dir = repo / REPORTS_DIRNAME
+    reports_dir = _reports_dir(repo)
     first_write = not _has_existing_reports(reports_dir)
 
     ctx = _Ctx(repo=repo)
@@ -181,7 +187,11 @@ def write_report(
     written = _write_new_file(reports_dir, _filename(packs), document)
 
     return ReportResult(
-        path=written.relative_to(repo).as_posix(),
+        path=(
+            written.relative_to(repo).as_posix()
+            if written.is_relative_to(repo)
+            else str(written)
+        ),
         absolute_path=str(written),
         advisory=SENSITIVITY_ADVISORY if first_write else None,
     )
@@ -291,6 +301,20 @@ def _filename(packs: CombinedPack) -> str:
 def _slug(value: str) -> str:
     safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in value)
     return safe.strip("-") or "unknown"
+
+
+def _reports_dir(repo: Path) -> Path:
+    """``<repo>/reports/``, or the per-repo directory under
+    :data:`REPORTS_DIR_ENV` when that is set."""
+    configured = os.environ.get(REPORTS_DIR_ENV, "")
+    if not configured:
+        return repo / REPORTS_DIRNAME
+    base = Path(configured)
+    if not base.is_absolute():
+        raise ReportWriteError(
+            f"{REPORTS_DIR_ENV} must be an absolute path, got a relative one"
+        )
+    return base / (repo.name or "root")
 
 
 def _has_existing_reports(reports_dir: Path) -> bool:
@@ -1836,6 +1860,7 @@ pre { overflow-x: auto; }
 
 __all__ = [
     "REPORTS_DIRNAME",
+    "REPORTS_DIR_ENV",
     "SENSITIVITY_ADVISORY",
     "RepoPathError",
     "ReportWriteError",

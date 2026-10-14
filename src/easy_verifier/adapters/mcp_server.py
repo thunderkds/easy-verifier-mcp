@@ -1,18 +1,23 @@
 """Thin local FastMCP adapter for the easy-verifier core.
 
-The default transport is stdio. Legacy HTTP/SSE exists only behind an explicit
-opt-in and is always loopback-bound; callers cannot configure a host address.
+The default transport is stdio. Streamable HTTP (one shared server for every
+repository, DDR-0013) and legacy HTTP/SSE exist only behind an explicit opt-in
+and are always loopback-bound; callers cannot configure a host address.
 """
 
 from __future__ import annotations
 
 import argparse
 import dataclasses
+import functools
 import logging
+import os
 import sys
-from collections.abc import Sequence
+import threading
+from collections.abc import Callable, Sequence
 from typing import Any
 
+import anyio.to_thread
 from mcp.server.fastmcp import FastMCP
 
 from ..core.models import to_json_dict
@@ -23,12 +28,49 @@ from ..core.synthesis import combined_pack
 from ..dimensions import DIMENSIONS, list_dimensions
 
 LOOPBACK_HOST = "127.0.0.1"
+DEFAULT_HTTP_PORT = 8766
+PORT_ENV = "EASY_VERIFIER_PORT"
+
+_CORE_LOCK = threading.Lock()
+"""One process serves many sessions over streamable HTTP. The core is not
+made thread-safe; instead every tool call holds this lock (DDR-0013)."""
+
 mcp = FastMCP(
     "easy-verifier",
     instructions="Gather citable repository evidence without making judgments.",
     host=LOOPBACK_HOST,
     log_level="WARNING",
 )
+
+
+def _serialised(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Run ``fn`` in a worker thread while holding the process-wide lock.
+
+    The worker thread keeps the event loop free for other sessions (a second
+    client can connect and list tools while a long ``score`` runs); the lock
+    keeps two core calls from ever running at once.
+    """
+
+    def locked(kwargs: dict[str, Any]) -> Any:
+        with _CORE_LOCK:
+            return fn(**kwargs)
+
+    @functools.wraps(fn)
+    async def call(**kwargs: Any) -> Any:
+        return await anyio.to_thread.run_sync(locked, kwargs)
+
+    return call
+
+
+def _tool(**options: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Register ``fn`` as a serialised tool; the module keeps the plain
+    function so in-process callers are unaffected."""
+
+    def register(fn: Callable[..., Any]) -> Callable[..., Any]:
+        mcp.tool(**options)(_serialised(fn))
+        return fn
+
+    return register
 
 
 def _dimension_handler(descriptor):
@@ -53,12 +95,12 @@ def _dimension_handler(descriptor):
 
 
 for _item in list_dimensions():
-    mcp.tool(name=_item.name, description=_item.purpose, structured_output=True)(
+    _tool(name=_item.name, description=_item.purpose, structured_output=True)(
         _dimension_handler(DIMENSIONS[_item.name])
     )
 
 
-@mcp.tool(
+@_tool(
     name="list_dimensions",
     description="List every evidence dimension, its purpose, and declared sources.",
     structured_output=True,
@@ -68,7 +110,7 @@ def discover_dimensions() -> list[dict[str, Any]]:
     return [dataclasses.asdict(item) for item in list_dimensions()]
 
 
-@mcp.tool(
+@_tool(
     name="combined",
     description="Gather several evidence dimensions into one combined pack.",
     structured_output=True,
@@ -94,7 +136,7 @@ def gather_combined(
     )
 
 
-@mcp.tool(
+@_tool(
     name="score",
     description=(
         "Rate all seven dimensions and optionally assess findings. If the "
@@ -185,7 +227,7 @@ def score(
     return payload
 
 
-@mcp.tool(
+@_tool(
     name="write_report",
     description=(
         "Validate findings and write a self-contained evidence report. To "
@@ -229,20 +271,46 @@ def render_report(
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="easy-verifier-mcp")
-    parser.add_argument(
+    transport = parser.add_mutually_exclusive_group()
+    transport.add_argument(
         "--http",
         action="store_true",
         help="opt in to legacy HTTP/SSE on 127.0.0.1; default is stdio",
     )
+    transport.add_argument(
+        "--transport",
+        choices=("stdio", "streamable-http"),
+        default="stdio",
+        help=(
+            "streamable-http serves /mcp on 127.0.0.1:$EASY_VERIFIER_PORT "
+            f"(default {DEFAULT_HTTP_PORT}) for many sessions; default is stdio"
+        ),
+    )
     return parser
 
 
+def _http_port(parser: argparse.ArgumentParser) -> int:
+    raw = os.environ.get(PORT_ENV, "").strip()
+    if not raw:
+        return DEFAULT_HTTP_PORT
+    if not (raw.isdigit() and 1 <= int(raw) <= 65535):
+        parser.error(f"{PORT_ENV} must be a port number from 1 to 65535, got {raw!r}")
+    return int(raw)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run stdio by default, or loopback-only SSE after explicit opt-in."""
-    args = _build_parser().parse_args(argv)
+    """Run stdio by default, or a loopback-only HTTP transport after opt-in."""
+    parser = _build_parser()
+    args = parser.parse_args(argv)
     logging.basicConfig(stream=sys.stderr)
+    # Reasserted at run time: FastMCP's own FASTMCP_* settings never move the
+    # bind address off loopback (FR-019b, NFR-012).
+    mcp.settings.host = LOOPBACK_HOST
     if args.http:
         mcp.run(transport="sse")
+    elif args.transport == "streamable-http":
+        mcp.settings.port = _http_port(parser)
+        mcp.run(transport="streamable-http")
     else:
         mcp.run()
     return 0

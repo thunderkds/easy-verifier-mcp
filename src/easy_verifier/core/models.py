@@ -641,7 +641,10 @@ class ReportResult:
     """Repository-relative POSIX path of the written report, e.g.
     ``reports/evidence-report-project-20260825T095341-123456Z.html``.
     Relative on purpose: an absolute path here is the container-internal leak
-    FR-021c forbids, and the caller already knows the target repo."""
+    FR-021c forbids, and the caller already knows the target repo. The one
+    exception is ``EASY_VERIFIER_REPORTS_DIR`` (DDR-0013): the report lies
+    outside the repo, so this is its absolute path, which the shared container
+    mounts at the identical host path."""
 
     absolute_path: str
     """The resolved path on the machine that ran the write. Returned to the

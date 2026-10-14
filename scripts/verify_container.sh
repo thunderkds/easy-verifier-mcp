@@ -54,6 +54,13 @@ if docker exec "$container_id" touch /workspace/NOPE >/dev/null 2>&1; then
 fi
 docker exec "$container_id" touch /workspace/reports/ok
 docker exec "$container_id" git -C /workspace status --short >/dev/null
+# The engine runs git with GIT_CONFIG_NOSYSTEM=1 and no HOME (core/git.py), so
+# the system safe.directory above does not reach it. A target owned by the host
+# user, not UID 10001, must still be readable by the engine's own git (T101).
+engine_git=$(docker exec "$container_id" python -c \
+  'from easy_verifier.core.git import run_git; ok, _, err = run_git("/workspace", ["rev-parse", "--git-dir"]); print("ok" if ok else err)') ||
+  fail "could not run the engine's git check"
+[[ "$engine_git" == "ok" ]] || fail "engine git cannot read the mounted repository: $engine_git"
 
 [[ "$(docker inspect --format '{{.HostConfig.NetworkMode}}' "$container_id")" == "none" ]] ||
   fail "runtime network is not disabled"

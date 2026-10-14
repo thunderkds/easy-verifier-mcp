@@ -1,13 +1,99 @@
 # Running the Docker container as an MCP server
 
+There are two ways to run easy-verifier in Docker:
+
+- **One shared scoring container (recommended).** Start it once with `docker compose up -d scorer`;
+  it keeps running, and every repository's MCP client points at it over streamable HTTP on
+  `127.0.0.1:8766`. No container starts or stops with your sessions.
+- **One container per session** (stdio). Your MCP client runs `docker run -i` on demand; the
+  container has no network at all and exits when the session ends. See the alternative section
+  below.
+
+## Shared scoring container (recommended)
+
+The `scorer` service in `compose.yaml` runs `easy-verifier-mcp --transport streamable-http`. It
+mounts a workspace directory (the parent of the repositories you score) **read-only at the same
+path** inside the container, so a tool's `repo` argument is simply the repository's absolute host
+path, and every path in a response or report is a host path. Reports go to a separate reports
+directory, never into the repository.
+
+### 1. Build and start it (once)
+
+From this repository:
+
+```console
+docker compose build scorer
+mkdir -p ~/.easy-verifier-reports ~/.easy-verifier-sot
+sudo chown 10001:10001 ~/.easy-verifier-reports ~/.easy-verifier-sot
+EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer
+```
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `EASY_VERIFIER_WORKSPACE` | Absolute host path holding the repositories to score; mounted read-only at the same path. **Required.** | none: `up` fails with a mount error naming `/EASY_VERIFIER_WORKSPACE-is-not-set` |
+| `EASY_VERIFIER_REPORTS` | Absolute host path for reports, mounted read-write at the same path. A report for `/home/you/code/my-service` lands in `<this>/my-service/`. Must be writable by UID `10001`. | `~/.easy-verifier-reports` |
+| `EASY_VERIFIER_SOT` | Local reference registry, mounted at `/sot` (see below). | `~/.easy-verifier-sot` |
+| `EASY_VERIFIER_PORT` | Loopback port of the server. | `8766` |
+
+Set the same variables again on later `docker compose` commands for this service (for example
+export them in your shell profile), because Compose reads them on every command. The container has
+`restart: unless-stopped`, so it comes back after a reboot until you stop it.
+
+### 2. Register it, from any repository
+
+```console
+claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp
+```
+
+Add `--scope user` to register it once for every repository (once per Claude config directory, as
+the warning in the per-session section explains). JSON-configured clients use
+`"type": "http", "url": "http://127.0.0.1:8766/mcp"` for the `easy-verifier` server.
+
+### 3. Pass the absolute repository path
+
+Ask the agent to score a repository and pass its absolute path as `repo`, for example
+`/home/you/code/my-service`. The path must be inside `EASY_VERIFIER_WORKSPACE`; anything else does
+not exist inside the container. Do not leave `repo` unset: the default `.` is an empty directory in
+this container.
+
+One process serves every session. Tool calls are taken one at a time, so a second session's
+`score` waits until the first one finishes.
+
+### Stop, restart and upgrade
+
+```console
+docker compose down scorer
+docker compose build scorer
+EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer
+```
+
+`docker compose down scorer` stops and removes it. To upgrade after pulling new code, rebuild with
+`docker compose build scorer` and run the same `up -d scorer` command: Compose recreates the
+container on the new image. `docker compose logs scorer` shows the server log.
+
+### Exposure
+
+> **Read this before you start it.** The server binds `127.0.0.1` only and nothing can change
+> that; the service uses `network_mode: host`, so the container's loopback is the host's loopback
+> and nothing is reachable from another machine. It has **no authentication**: while it runs,
+> **any local process** on this machine (any user, any program) can call it and read, read-only,
+> every repository under `EASY_VERIFIER_WORKSPACE`, and can write reports into the reports
+> directory. Secret values are still redacted, and secret-bearing files are still never read. If
+> that is not acceptable on this machine, use one container per session instead.
+
+The rest of the hardening matches the per-session container: read-only root filesystem, all
+capabilities dropped, `no-new-privileges`, non-root UID `10001`, a `noexec` tmpfs at `/tmp`, and
+an init process.
+
+## Alternative: one container per session (stdio)
+
 easy-verifier speaks MCP over **stdio**. You do not start the container yourself and leave it
 running: your MCP client launches `docker run -i` on demand, talks to it through stdin/stdout, and
 the container exits (`--rm`) when the session ends. No port is published and the container has no
 network.
 
 The container lives exactly as long as the client session: it starts when the session starts (not
-per tool call), and each open session gets its own container, scoped to its own repository. There is
-no shared, always-on server for other services to point at.
+per tool call), and each open session gets its own container, scoped to its own repository.
 
 > **Warning — always pass `--init`.** Without it the server runs as PID 1 inside the container, and
 > PID 1 ignores `SIGTERM`. When the client exits it signals `docker run`, the signal is forwarded,
@@ -221,9 +307,9 @@ generic patterns only. The CLI never shows `reference`.
   docker compose run --rm --no-tty verifier
   ```
 
-Inside the container, tools evaluate `/workspace`, which is the default `repo`. Leave that argument
-unset. Compose deliberately doesn't publish the loopback-only HTTP/SSE opt-in, so use stdio across
-the container boundary.
+Inside the per-session container, tools evaluate `/workspace`, which is the default `repo`. Leave
+that argument unset. The per-session `verifier` service has no network, so it uses stdio across the
+container boundary; the shared `scorer` service above is the HTTP way.
 
 ## 5. Check a feature or bugfix
 
@@ -250,6 +336,10 @@ number.
 | `/mcp` does not list `easy-verifier` | Registered under a different Claude config directory or scope — see the warning in section 3. Restart the session after registering. |
 | `docker compose up` sits at `Attaching to verifier-1` | Expected: the server is waiting for an MCP client on stdin. Don't run it with `up`; let the client launch it, or use the `docker compose run` check in section 4. |
 | Changes on your branch don't show up | The image is a snapshot. Rerun `docker compose build` after changing `src/`. |
+| Shared: `up -d scorer` fails with `bind source path does not exist: /EASY_VERIFIER_WORKSPACE-is-not-set` | Set `EASY_VERIFIER_WORKSPACE` to the absolute parent of your repositories. |
+| Shared: `claude mcp list` shows `easy-verifier` failed to connect | The container is not running (`docker compose ps scorer`), or another program holds port `8766`; set `EASY_VERIFIER_PORT` and register that port instead. |
+| Shared: a tool says the repository does not exist | The `repo` path is relative or outside `EASY_VERIFIER_WORKSPACE`. Pass the absolute host path of a repository inside it. |
+| Shared: `write_report` fails with permission denied | The reports directory is not writable by UID `10001`; rerun the `chown` in step 1 of the shared section. |
 
 To verify the image end-to-end (handshake, non-root UID, read-only root, network isolation,
 capabilities, path scrubbing), run `docker compose build && bash scripts/verify_container.sh`.

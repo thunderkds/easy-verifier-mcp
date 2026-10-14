@@ -33,3 +33,48 @@ services:
         target: /sot
         bind:
           create_host_path: true
+
+  # T101 / DDR-0013: one shared scoring container for every repository.
+  #   EASY_VERIFIER_WORKSPACE=/abs/parent/of/repos docker compose up -d scorer
+  #   claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp
+  # The workspace is mounted read-only at the identical host path, so a tool's
+  # `repo` argument is the absolute host path and every output path is a host
+  # path. network_mode: host makes the server's 127.0.0.1 the host's loopback;
+  # it never binds anything else. No auth: any local process can read, read-
+  # only, the repositories under the workspace root while it runs.
+  scorer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: easy-verifier-mcp:0.1.0
+    command: ["--transport", "streamable-http"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    network_mode: host
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    environment:
+      PYTHONUNBUFFERED: "1"
+      EASY_VERIFIER_SOT: /sot
+      EASY_VERIFIER_PORT: ${EASY_VERIFIER_PORT:-8766}
+      EASY_VERIFIER_REPORTS_DIR: ${EASY_VERIFIER_REPORTS:-${HOME}/.easy-verifier-reports}
+    volumes:
+      # Unset EASY_VERIFIER_WORKSPACE fails `up` with a mount error naming it,
+      # without breaking `docker compose run verifier`.
+      - type: bind
+        source: ${EASY_VERIFIER_WORKSPACE:-/EASY_VERIFIER_WORKSPACE-is-not-set}
+        target: ${EASY_VERIFIER_WORKSPACE:-/EASY_VERIFIER_WORKSPACE-is-not-set}
+        read_only: true
+      - type: bind
+        source: ${EASY_VERIFIER_REPORTS:-${HOME}/.easy-verifier-reports}
+        target: ${EASY_VERIFIER_REPORTS:-${HOME}/.easy-verifier-reports}
+      - type: bind
+        source: ${EASY_VERIFIER_SOT:-~/.easy-verifier-sot}
+        target: /sot
+        bind:
+          create_host_path: true
