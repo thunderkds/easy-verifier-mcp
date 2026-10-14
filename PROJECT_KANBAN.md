@@ -14,7 +14,7 @@
 
 **Wave 20 — Follow-ups from T094/T097 (added 2026-10-14, user "continue your work"; T098 and T099 independent, merged one at a time)**
 - [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped (optional `capped: [{dimension, role, matched, read}]`; scraping-devops infrastructure 100 from 50 of 197 manifests, undisclosed) | backend-developer | C2 | Risk: Med | P1 | 🔄 In Progress 2026-10-14 (worktree .claude/worktrees/t098)
-- [ ] **T099** — Bugfix: redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`, the last scraping-devops path changed by redact) | backend-developer | C1 | Risk: Med | P2 | Todo
+- [ ] **T099** — Bugfix: redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`, the last scraping-devops path changed by redact) | backend-developer | C1 | Risk: Med | P2 | 🔄 In Progress 2026-10-14 (worktree .claude/worktrees/t099)
 - [ ] **T099** — Redaction masks extensionless lower-case word paths (`bin/build-push-kibana-docker-image`) | backend-developer | C1 | Risk: Medium | P2
 - [ ] **T098** — The score payload discloses when a rated dimension's inputs were capped | backend-developer | C2 | Risk: Medium | P1
 - [x] **T097** — Redaction masks paths whose name pieces have more than 6 letters before digits (`rancher2`) | backend-developer | C1 | Risk: Medium | P1 | ✅ Done 2026-10-13 (`_LETTER_DIGIT_PIECE` letter run 6 → 30, both cases; scraping-devops paths changed by redact 51 → 1; all ratings and hits unchanged on 6 repos)
