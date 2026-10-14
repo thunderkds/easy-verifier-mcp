@@ -167,7 +167,7 @@ def test_tool_error_is_structured_and_server_survives() -> None:
         else:  # pragma: no cover - required assertion branch
             raise AssertionError("invalid repository should produce an MCP tool error")
 
-        assert len(await _server_module().mcp.list_tools()) == 12
+        assert len(await _server_module().mcp.list_tools()) == 17
 
     asyncio.run(exercise())
 

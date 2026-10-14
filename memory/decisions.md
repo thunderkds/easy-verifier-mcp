@@ -965,3 +965,112 @@ so the gain is exactly computable without inference; weight-share would be wrong
 
 **Rejected**: gain = weight; agent-written plan (unreproducible numbers); report-only (agent cannot
 name items it never sees). Source: `BRAINSTORMING_LOG_improvement-plan.md`.
+
+---
+
+## 2026-10-03 — DDR-0010: no number without evidence; priority batches (user)
+
+**Decision**: (1) `MEASURED_WEIGHT_FLOOR` 0.50 — below it a dimension abstains `insufficient_measured_weight`. (2) Evidence-lack abstentions (that, below_coverage_floor, coverage_not_applicable, all_metrics_abstained, dimension_failed) are warnings + improvement-plan lines, **never gated / agent-rated**; only `no_static_rule` (solution-fit) and borderline inputs are gated — partially supersedes DDR-0006. (3) Above the 200-file cap, code tiers read priority batches (purpose class → churn → path), sample disclosed; MCP `needs_input.continue_batches`, CLI `--batches N`/`--all` default 1; stateless — engine recomputes batches 1..N, the agent never carries a number. Reverses T031/T050 all-or-none. Tasks T067 (floor) → T068 (batches).
+
+**Why**: bryony code-quality showed 100 from 20/100 weight because the cap read zero code; user: "we do not hallucinate, just warning".
+
+---
+
+## 2026-10-04 — Code-derived rules and flexible conventions (user) → see DDR-0011
+
+architecture and requirement-fidelity: documents 20 / code 80, a missing document is a failed rule.
+Every convention is a declared, extendable pattern list (registry / local layer / .easy-verifier.toml);
+rules abstain without that kind of evidence. architecture: description 10, ADR 10, cycles 40, layer
+direction 40. requirement-fidelity: requirements docs 10, docs co-change 10, routes↔tests 40, commit
+issue refs 20, requirement items traced 20 (replaces AC tracing). Floors count code evidence;
+task-breakdown dropped. Registry tokens, no tree-sitter. Reference: Understand-Anything (deterministic
+structure vs LLM meaning split — meaning stays agent-side).
+
+## 2026-10-06 — Coverage floors for reliability (T043) and opt-in packs (T047/T048): 0.25 inclusive
+
+**Decision (user, AskUserQuestion 2026-10-06):** `reliability` floor 0.25 inclusive — source code alone rates it, so a library without DB/HTTP config still gets a number. Healthcare and finance packs floor 0.25 inclusive — same as security; a pack the user switched on rates whenever source exists.
+**Why:** user investigated the 21 uncovered areas (business-domain #3, #6, #9, #28, #32) and asked to run T082 → T043 → T047 → T048 automatically; floors are user decisions (2026-09-26), asked upfront so the run does not stop at the HITL step.
+
+## 2026-10-06 — T043 reliability weights 35/35/10/20; #6 stays evidence-only (user sign-off)
+
+**Decision (user, AskUserQuestion):** `swallowed_errors_observed` 35, `outbound_calls_without_timeout_observed` 35, `retries_without_backoff_observed` 10, `queries_in_loops_observed` 20, all `at_most 0`. Area #6 (transactions/idempotency) gets no rule; its code is quoted in the pack as evidence, and the evaluate gate is NOT widened (DDR-0010 stands: gate only for no_static_rule / borderline).
+**Why:** outage-causing failures (hidden errors, unbounded waits) weigh most; retry backoff is rarely measurable. Widening the gate would cost tokens on every score.
+**Real repos at sign-off:** coffee 100 (overall 65→72), bryony batch-1 61 (69→67), kitchd 0 (72→58; 20/20 calls no deadline, 4 empty catches, real N+1 at alerts.service.ts:71).
+
+## 2026-10-06 — T047 healthcare pack weights 50/50 (user sign-off)
+
+`phi_values_in_test_data_observed` 50, `phi_values_in_log_statements_observed` 50 (both at_most 0, #9, HIPAA §164.514(b)(2)). Pack floor 0.25. Inactive pack = byte-identical payload; its areas count as uncovered when inactive. Open at pause: T047 Stage 4/5 by Supervisor not yet run (branch `feat/T047-packs-healthcare` @ `b7a36a5`, implementer: 2133 passed); weights still marked "pending" in judge.py on that branch; T048 not started.
+
+## 2026-10-06 — T048 finance pack: weights 50/25/25; TS `number` counts only in the persistence layer (user)
+
+`float_money_observed` 50, `ledger_tables_without_audit_columns_observed` 25, `ledger_rows_mutated_observed` 25 (area #3, at_most 0; ledger rules abstain without a declared ledger). JS/TS has no decimal type, so `number` counts as float money only in entity/schema/model/migration files; DTOs and view types are skipped (before this: coffee 72→60 from one response-DTO `price`). Explicit float types in other languages are unchanged. Bare `total` is not a money name (pagination counts).
+
+## 2026-10-07 — T041 supply-chain floor 0.40 inclusive; weights 20/15/20/20/25 (user sign-off)
+
+**Decision (user, AskUserQuestion 2026-10-07):** `supply-chain` coverage floor 0.40 inclusive (2 of 5 roles: package-manifest, lockfile, ci-workflow, licence-file, release-config — a repo with only manifest + lockfile still rates). Weights: `lockfile_missing` 20, `licence_file_missing` 15, `ci_actions_unpinned_share` 20, `ci_lockfile_install_missing` 20, `ci_provenance_step_missing` 25, all `at_most 0`.
+**Why:** the T041 worktree held an uncommitted diff claiming "user sign-off 2026-10-01" with no record here; the Supervisor re-asked rather than trust it. User confirmed the draft values unchanged. Code comments must cite 2026-10-07.
+**State at sign-off:** branch `feat/t041-supply-chain` (db36b89) is 145 commits behind `feat/wave16-business-domain-coverage` — needs rebase before Stage 4.
+
+## 2026-10-07 — T041 D1: CI `image:` references count for `ci_actions_unpinned_share` (user)
+
+**Decision (user, AskUserQuestion 2026-10-07):** add `image:` as a second action-reference token in `GENERIC_CI_FACTS["action_reference"]` (roles.py); pinned only with `@sha256:` digest (OpenSSF Scorecard Pinned-Dependencies). Metric name and weights unchanged.
+**Why:** bryony's `.drone.yml` pulls `bryony/li-tool-backend-base:master` but the rule abstained (only `uses:` was read) — an abstention on a repo that clearly has the evidence is a defect.
+**Expected:** bryony supply-chain 44 → 35; kitchd share stays 1.0 over 13 refs (postgres service image); templated `${{ matrix.x }}` image may count as unpinned (accepted, note as known limitation).
+
+## 2026-10-07 — Remaining dimensions run in order; floors 0.25; cited weight proposals accepted (user)
+
+**Decision (user, AskUserQuestion 2026-10-07, "just do by order"):** run T044 api → T045 data → T046 operations → T042 infrastructure → T049 accessibility pack sequentially, autonomously (Stage 3→5 + local merge each). Coverage floor 0.25 inclusive for every new dimension and for the T049 pack. Rule weights: the implementing agent proposes cited weights summing to 100; the Supervisor checks them at Stage 4 and lists every task's weights in the final report for after-the-fact change — no per-task HITL stop.
+**Why:** same reasoning as Wave 16 — ask HITL values upfront so the run does not stall; DDR-0010 measured-weight floor still prevents numbers on thin evidence.
+
+## 2026-10-07 — T046 operations: agent instructions = documentation result; secrets rule counts exact-credential detectors only
+
+**Decision (user, AskUserQuestion 2026-10-07):** `agent_instructions_missing` becomes a #29 documentation rule (present/missing, no weight) — repos that do not use coding agents are not penalised; its 10 points are redistributed over the remaining weighted rules (must still sum to 100 and admit an exact 50).
+**Decision (Supervisor, correcting its own spawn instruction):** `agent_config_secrets_observed` counts only the exact-pattern redaction detectors (`private_key_pem`, `aws_access_key_id`, `aws_secret_access_key`, `jwt`, `credential_assignment`), not the heuristic `high_entropy_string` / `key_material_segment`. **Why:** on real repos all 5 hits were CLAUDE.md template prose (100% false positives); `core/redact.py` exemptions stay untouched (T029/T051 sign-off, hub file).
+
+## 2026-10-12 — PROPOSED: recognize architecture by behaviour and content, not names → see DDR-0012
+
+Retest showed the name-based rules fail both ways: scraping-devops' "Folder structures" README was
+reported missing, and bryony passed on `event_design.md` (event payloads). User: we cover only A,
+risk is B and C; "find a way", not abstain. Layers are assigned by behaviour (route registration /
+DB-ORM call / import path between), with folder names only a hint. Request path is reported, not
+scored: the DB is another service, so only in-repo code is scored. Document roles are filled by
+content shape or declaration, never by a name alone; kit names leave GENERIC_PATTERNS. Vendored-code
+exclusion is a prerequisite. DDR-0011 weights are unchanged. Log:
+`BRAINSTORMING_LOG_document-recognition.md`.
+
+## 2026-10-12 — T087: Linguist vendor.yml is a language-stats list; use only its third-party categories
+
+The implementer found the guide's premise wrong: Linguist `vendor.yml` excludes files from
+*language statistics* (CI configs, `.d.ts`, `dist/`, fixtures, `Vagrantfile`, `[Ee]xtern(als?)?/`),
+and `generated.rb` is Ruby code that counts lockfiles. Used verbatim, it would exclude team code on
+kitchd, bryony and coffee-shop-api. Decision (Supervisor, Option A): vendor a filtered, pinned
+snapshot of the third-party categories only; drop `extern/` (bryony team scripts); "generated"
+comes only from `.gitattributes`. A single path predicate is shared by both walkers
+(`scope._walk_files`, `context._walk`), whose `_EXCLUDED_DIRS` sets disagreed (context had
+`vendor`/`target`). → see DDR-0012 §5
+
+## 2026-10-13 — T089 content-shape precision (Supervisor, implementer findings 1–4)
+
+- architecture-doc: the document with the most described entries wins. "First that qualifies"
+  cited kitchd's BRAINSTORMING_LOG planned-file list over PROJECT_SPEC.
+- decision-record needs a decision field (Decision / Decision Outcome / Recommended Path / Chosen /
+  Selected / Approved direction) plus context-or-alternatives. Context + Status alone made
+  ai-training's requirements doc count as an ADR (architecture 83→100, a false pass). This also
+  brings kit brainstorming logs back for solution-fit by content, after the name pattern was
+  removed.
+- requirements-doc: a requirements-named heading followed by ≥3 list items also fills it. "Find a
+  way": ai-training's "## Functional Requirements" bullets have no FR/US ids.
+  `requirement_items_traced_share` is unchanged. → see DDR-0012 §3
+
+## 2026-10-13 — User: test-path sink hits are shown but not scored (T092); backend-only layer share (T093)
+
+The user agreed to both suggestions ("yes, agree"). (1) `sink_hits_observed` counts only non-test
+hits; test hits are listed and tagged `[test path]`; only test files scanned → abstain. coffee
+security 18→59. (2) The layer classified-share floor counts only backend units (nearest manifest
+above api files). Planned as T093.
+
+## 2026-10-13 — T096: architecture-doc shape (Supervisor decision, citation-only)
+- A table whose header has a change or plan column (`CHANGE_COLUMNS`: Change, Changes, Action, Edit, Modification, Status, Todo, Reason) is not a source of described entries.
+- A `##`+ architecture-headed section naming ≥3 real paths in prose qualifies in any document. Kind: `architecture-heading`; READMEs keep `readme-heading`. A level-1 heading is a title and never opens a section.
+- In prose, a bare token counts as a path only if it contains `/`.
+- kitchd now cites `memory/decisions.md` ## Architecture, chosen over PROJECT_SPEC.md by the unchanged T089 ranking (most directories), and accepted. No rating changed on 6 repos.

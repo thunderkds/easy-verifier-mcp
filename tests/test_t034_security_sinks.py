@@ -420,9 +420,9 @@ def test_metric_is_zero_on_the_safe_twin_and_cites_what_it_scanned():
     assert found.computed_from == ("app/db.py:1-2",)
 
 
-def test_metric_tags_test_path_hits_and_still_counts_them():
+def test_metric_tags_test_path_hits_and_does_not_count_them():
     found = sink_metric(pack({"app/db.py": UNSAFE, "tests/test_db.py": UNSAFE}))
-    assert found.outcome == 2
+    assert found.outcome == 1
     assert "tests/test_db.py:2 CWE-89" in found.derivation
     assert (
         "tests/test_db.py:2 CWE-89 (https://cwe.mitre.org/data/definitions/89.html)"

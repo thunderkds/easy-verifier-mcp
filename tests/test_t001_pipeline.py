@@ -311,16 +311,17 @@ def test_found_and_missing_partition_sources_sought_exactly(tmp_path):
 def test_sources_cut_off_by_the_budget_are_reported_as_not_examined(tmp_path):
     """Laziness means later declared sources are never probed. Reporting them as
     absent would be a claim the engine did not check."""
-    for name in ("PROJECT_SPEC.md", "BRAINSTORMING_LOG.md", "README.md"):
+    # T089: conventional names (not kit names) still order the reads
+    for name in ("ARCHITECTURE.md", "DECISIONS.md", "README.md"):
         (tmp_path / name).write_text("x" * 50 + "\n", encoding="utf-8")
 
     pack = run_dimension(architecture.DESCRIPTOR, tmp_path, budget_bytes=50)
 
     assert pack.truncated is True
     reasons = {miss.source: miss.reason for miss in pack.sources_missing}
-    # T026: the checklist is source roles; README.md fills the `readme` role.
-    assert "readme" in reasons
-    assert "byte budget" in reasons["readme"]
+    # T026: the checklist is source roles. T089: which role the budget cuts
+    # depends on read order; one cut role must say the budget stopped it.
+    assert any("byte budget" in reason for reason in reasons.values())
     assert set(pack.sources_found) | set(reasons) == set(pack.sources_sought)
 
 
@@ -529,7 +530,7 @@ def test_cli_runs_against_this_repo_and_emits_json():
     payload = json.loads(result.stdout)
     assert payload["dimension"] == "architecture"
     assert payload["mode"] == "kit-aware"
-    assert "PROJECT_SPEC.md" in payload["files_read"]
+    assert "README.md" in payload["files_read"]
 
 
 def test_cli_reports_a_bad_repo_path_without_a_traceback(tmp_path):
@@ -562,19 +563,38 @@ def test_architecture_pack_against_this_repo():
     assert pack.dimension == "architecture"
     assert pack.mode == "kit-aware"
     assert pack.scope == "project"
-    assert "PROJECT_SPEC.md" in pack.files_read
+    # T089: PROJECT_SPEC.md is no longer an architecture-doc name; the role
+    # is filled by a document's content, and that document is read.
+    # T096: the content may be a prose architecture section, not only entries.
+    filled = {item.role: item for item in pack.documents}["architecture-doc"]
+    assert filled.kind in ("content", "architecture-heading")
+    assert filled.path in pack.files_read
     assert 0.0 <= pack.coverage_score <= 1.0
 
-    cited = [excerpt for excerpt in pack.excerpts if excerpt.path == "PROJECT_SPEC.md"]
+    # the document that fills the role is quoted, as PROJECT_SPEC.md was
+    cited = [excerpt for excerpt in pack.excerpts if excerpt.path == filled.path]
     assert cited
 
 
 def test_cited_line_numbers_are_1_indexed_and_match_the_file():
     """An off-by-one here poisons every citation downstream."""
     pack = run_dimension(architecture.DESCRIPTOR, REPO_ROOT)
-    excerpt = next(e for e in pack.excerpts if e.path == "PROJECT_SPEC.md")
+    # T089 (AC 13): PROJECT_SPEC.md is no longer an architecture-doc name, so
+    # the excerpt is chosen by property, not by name: a whole document whose
+    # text is the file's own. README.md is not one -- the evidence layer
+    # redacts a WCAG URL path in it (high_entropy_string), and lines over
+    # MAX_LINE_CHARS carry a truncation mark; both differ from disk by design.
+    # (A clipped excerpt is fine: its mark comes after end_line.)
+    redacted = {hit.path for hit in pack.redactions}
+    excerpt = next(
+        e
+        for e in pack.excerpts
+        if e.start_line == 1
+        and e.path not in redacted
+        and "…[line truncated]" not in e.text
+    )
 
-    on_disk = (REPO_ROOT / "PROJECT_SPEC.md").read_text(encoding="utf-8").splitlines()
+    on_disk = (REPO_ROOT / excerpt.path).read_text(encoding="utf-8").splitlines()
     quoted = excerpt.text.splitlines()[: excerpt.end_line]
 
     assert excerpt.start_line == 1
@@ -589,7 +609,8 @@ def test_registry_is_a_plain_dict_of_descriptors():
     T001 shipped with only `architecture` registered; T007 adds the other
     three document-shaped dimensions (`solution-fit`, `requirement-fidelity`,
     `code-quality`), T008 adds bespoke `security`, T009 `test-strategy` and
-    T010 `blast-radius` — all seven of FR-010's dimensions. The registry stays
+    T010 `blast-radius` — all seven of FR-010's dimensions — and T041
+    `supply-chain`, the eighth. The registry stays
     a plain dict either way — that is what this test actually pins.
     """
     assert isinstance(DIMENSIONS, dict)
@@ -602,6 +623,11 @@ def test_registry_is_a_plain_dict_of_descriptors():
         "test-strategy",
         "blast-radius",
         "reliability",  # T043
+        "supply-chain",
+        "api",
+        "data",
+        "operations",
+        "infrastructure",
     }
     descriptor = DIMENSIONS["architecture"]
     assert type(descriptor) is DimensionDescriptor

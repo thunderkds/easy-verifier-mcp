@@ -239,6 +239,7 @@ def test_optional_fields_are_never_required():
         "test_candidates",
         "colocated_test_name_patterns",
         "type_stub_names",  # T040: only TypeScript generates code-suffix stubs
+        "data_tokens",  # T088: only the first framework set (JS/TS, Python)
         # T056 (user 2026-09-29): cookie flags refine the cookie metric, and
         # only languages with a type checker have its configuration.
         "cookie_secure",
@@ -258,6 +259,18 @@ def test_optional_fields_are_never_required():
         "query_calls",
         "loop_keywords",
         "transaction_markers",
+        # T041: only languages whose package tool has a frozen-lockfile install.
+        "lockfile_install",
+        # T044: only languages with a validation, spec or versioning library.
+        "request_validation",
+        "api_spec_generators",
+        "api_version_markers",
+        # T045: only languages with an ORM or migration library.
+        "orm_model_markers",
+        "schema_constraint_markers",
+        "migration_rollback_markers",
+        # T046: only languages with a logging or tracing library.
+        "logging_markers",
     }
     assert not set(gate.OPTIONAL_FIELDS) & set(gate.required_fields())
 
@@ -479,7 +492,8 @@ def test_mcp_payload_carries_reference_and_cli_never_does(express_repo):
     cli_payload = json.loads(completed.stdout)
     assert "needs_input" not in cli_payload
     assert '"reference"' not in completed.stdout
-    assert "instructions" not in completed.stdout
+    # The MCP-only key; T046 role patterns name copilot-instructions.md.
+    assert '"instructions"' not in completed.stdout
     assert cli_payload["detected_stack"] == payload["detected_stack"]
 
 

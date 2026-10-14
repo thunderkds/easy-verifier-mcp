@@ -91,9 +91,12 @@ def test_rules_and_weights_are_ddr_0011() -> None:
     assert "layer_direction_violations" in SAMPLED_METRICS["architecture"]
 
 
-def test_a_repository_importing_a_service_is_one_cited_violation(
+def test_a_hint_only_repository_importing_a_service_is_no_violation(
     tmp_path: Path,
 ) -> None:
+    """T093 AC 11: every file here is classified by layer_paths hints only (no
+    route, no DB call), so none is a violation end; they still count in the
+    share. The behaviour case is T088 sc2."""
     files = dict(LAYERED)
     files["src/app/repositories/user_repository.py"] = (
         "import os\nfrom app.services import user_service\n\n\ndef load():\n"
@@ -101,11 +104,11 @@ def test_a_repository_importing_a_service_is_one_cited_violation(
     )
     _pack, metrics = _metrics(_repo(tmp_path, {"README.md": "# r\n", **files}))
     metric = metrics["layer_direction_violations"]
-    assert metric.outcome == 1
-    assert "src/app/repositories/user_repository.py:2" in metric.derivation
-    assert "data -> service" in metric.derivation
+    assert metric.outcome == 0
     assert "3 of 3" in metric.derivation  # classified share
-    assert any("user_repository.py" in ref for ref in metric.computed_from)
+    assert "the 3 file(s) classified by the layer_paths hints only" in (
+        metric.derivation
+    )
 
 
 def test_no_docs_no_cycles_no_violations_rates_80(tmp_path: Path) -> None:
@@ -147,12 +150,18 @@ def test_shared_files_leave_the_denominator_and_never_violate(tmp_path: Path) ->
 
 
 def test_readme_architecture_section_is_a_description(tmp_path: Path) -> None:
-    readme = "# r\n\nIntro.\n\n## Architecture\n\nControllers call services.\n"
+    # T089 (AC 7): the heading counts only when its section has the shape
+    readme = (
+        "# r\n\nIntro.\n\n## Architecture\n\n"
+        "- src/app/controllers: HTTP entry points\n"
+        "- src/app/services: business rules here\n"
+        "- src/app/repositories: data access code\n"
+    )
     _pack, metrics = _metrics(_repo(tmp_path, {"README.md": readme, **LAYERED}))
     assert _pack.coverage_score == 0.75
     metric = metrics["architecture_description_missing"]
     assert metric.outcome == 0
-    assert "README.md" in metric.derivation and "Architecture" in metric.derivation
+    assert "README.md (readme-heading" in metric.derivation
     assert any(ref.startswith("README.md") for ref in metric.computed_from)
     # Supervisor review: the section also fills the role for coverage.
     assert "architecture-doc" in _pack.sources_found
@@ -160,9 +169,10 @@ def test_readme_architecture_section_is_a_description(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("name", ["ARCHITECTURE.md", "docs/architecture/overview.txt"])
 def test_architecture_doc_conventions(tmp_path: Path, name: str) -> None:
+    # T089 (AC 4): a conventional name alone no longer fills the role
     root = _repo(tmp_path, {"README.md": "# r\n", name: "Layers.\n", **LAYERED})
     _pack, metrics = _metrics(root)
-    assert metrics["architecture_description_missing"].outcome == 0
+    assert metrics["architecture_description_missing"].outcome == 1
 
 
 def test_missing_documents_fail_even_when_the_budget_truncates(tmp_path: Path) -> None:
@@ -229,4 +239,4 @@ def test_a_repository_importing_a_dto_is_not_a_violation(tmp_path: Path) -> None
     metric = metrics["layer_direction_violations"]
     assert metric.outcome == 0
     assert "3 of 3" in metric.derivation
-    assert "only the curated layer_paths apply" in metric.derivation
+    assert "curated layer_paths only" in metric.derivation  # T078 note

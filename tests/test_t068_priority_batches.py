@@ -102,14 +102,18 @@ HOT = ("app/m249.py", "app/m248.py", "app/m247.py")
 
 @pytest.fixture(scope="module")
 def big_repo(tmp_path_factory) -> Path:
-    """450 sources across app/, scripts/, vendor/ with git history: the last
-    three app files by path are the most churned, so churn -- not path --
-    must put them first."""
+    """450 sources across app/, scripts/, generated/ with git history: the
+    last three app files by path are the most churned, so churn -- not path --
+    must put them first. (`generated/`, not `vendor/`: since T087 a vendor
+    directory is third-party and leaves the scope, while a generated one is
+    still evaluated, last.)"""
     repo = tmp_path_factory.mktemp("t068") / "big"
     files = {"README.md": "# Big\n\nA large fixture.\n"}
     files |= {f"app/m{i:03}.py": _module(f"a{i}", "scripts", i) for i in range(APP)}
     files |= {f"scripts/s{i:03}.py": _module(f"s{i}", "app", i) for i in range(SCRIPTS)}
-    files |= {f"vendor/v{i:03}.py": _module(f"v{i}", "app", i) for i in range(VENDOR)}
+    files |= {
+        f"generated/v{i:03}.py": _module(f"v{i}", "app", i) for i in range(VENDOR)
+    }
     files |= {
         f"tests/test_m{i:03}.py": f"def test_m{i}():\n    assert True\n"
         for i in range(5)
@@ -241,9 +245,12 @@ def test_no_git_history_falls_back_to_class_then_path_and_says_so(tmp_path) -> N
 
 
 def test_generated_and_vendored_files_are_last_never_dropped(small: Path) -> None:
+    # T087: third-party files (a vendor dir, a minified bundle) are excluded
+    # and disclosed before batching, so they never count toward a batch.
     pack = run_dimension(code_quality.DESCRIPTOR, small, scope="project", batches="all")
-    assert pack.sample.files_read == pack.sample.files_in_scope == 10
-    assert {"vendor/lib.py", "web/bundle.min.js"} <= set(pack.files_read)
+    assert pack.sample.files_read == pack.sample.files_in_scope == 8
+    assert not {"vendor/lib.py", "web/bundle.min.js"} & set(pack.files_read)
+    assert {item.path for item in pack.excluded} == {"vendor/", "web/bundle.min.js"}
 
 
 # ---------------------------------------------------------------------------
@@ -510,12 +517,55 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T082 (FR-073): no rating or overall changed; the payload
     # gained areas_measured and areas_without_rule, and the overall disclosure
     # gained "measured 3 of 32 evaluation areas". Nothing else differs.
+    # Regenerated for T088 (behaviour layers): only the layer rule's abstention
+    # text changed (framework_not_recognized: no route or DB/ORM call in the
+    # fixture); every rating, value and the overall are byte-identical.
+    # Merged T082 + T043 (2026-10-06): both additions above, regenerated together.
+    # Regenerated for T078: only the layer_paths disclosure text changed
+    # ("curated layer_paths only: ..."); every other byte is identical.
     # Regenerated for T043 (reliability dimension): every existing rating,
     # metric and the overall (61) are byte-identical; added are the
     # reliability rating (insufficient_measured_weight: no outbound call,
     # retry or query in the fixture), its pack's metrics, the four
     # reliability metrics in every pack, and reliability's warning,
     # provenance and abstained plan line.
+    # Regenerated for T041 (supply-chain dimension): every existing rating,
+    # metric and the overall (61) are byte-identical; added are the
+    # supply-chain rating (below_coverage_floor), its four new metrics in
+    # every pack, its rollback documentation result (area #22 now counts as
+    # measured), and its warning, provenance and abstained plan line.
+    # Regenerated for T044 (api dimension): every existing rating and the
+    # overall (61) are unchanged; added are the api rating
+    # (below_coverage_floor: no route, validation or spec in the fixture), its
+    # four metrics in every pack, its warning, provenance and plan line, and
+    # area #7 leaves areas_without_rule; the disclosure counts 10 dimensions.
+    # Regenerated for T045 (data dimension): every existing rating and the
+    # overall (61) are unchanged; added are the data rating
+    # (below_coverage_floor: no migration, schema or data model in the
+    # fixture), its four metrics in every pack, its warning, provenance and
+    # plan line, and area #4 leaves areas_without_rule; 11 dimensions.
+    # Regenerated for T046 (operations dimension): every existing rating and
+    # the overall are unchanged; added are the operations rating, its eight
+    # metrics in every pack, its documentation results, warning, provenance and
+    # plan line, and areas #14/#26/#29/#30 leave areas_without_rule; 12
+    # dimensions.
+    # Regenerated for T042 (infrastructure dimension): every existing rating
+    # and the overall (61) are unchanged; added are the infrastructure rating
+    # (below_coverage_floor: no IaC in the fixture), its seven metrics in every
+    # pack, its documentation result, warning, provenance and plan line, and
+    # areas #11/#23/#24 leave areas_without_rule; 13 dimensions.
+    # Regenerated for T089 (document roles by content): every rating, value
+    # and the overall (61) are unchanged; only the three document rules'
+    # derivation text changed ("N documents read; none ...").
+    # Regenerated for T089 AC 10-12: every rating, value and the overall (61)
+    # are unchanged; only the decision/requirements shape text changed.
+    # Regenerated for T090 (request_paths): every rating, value and the overall
+    # are unchanged; only the unrated request_paths metric was added, in every
+    # pack like its layer sibling (no route in the fixture, so it abstains).
+    # Regenerated for T092 (test-path sinks): every rating and the overall
+    # are unchanged; only unrated sink_hits_observed text changed, and the
+    # test-strategy pack (which holds only the one test file) now abstains
+    # instead of reporting 0 (only test files were scanned).
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

@@ -1,4 +1,4 @@
-This directory contains pinned, filtered snapshots of three external
+This directory contains pinned, filtered snapshots of external
 reference sources, vendored offline (no runtime network access — DDR-0007
 item 9). Refresh via `python scripts/vendor_sources.py`.
 
@@ -7,6 +7,118 @@ Source:  https://raw.githubusercontent.com/github-linguist/linguist/d0921d10bb68
 Pinned:  commit d0921d10bb68a1249fc9eac64e472759f36e2fd8
 License: MIT
 Attribution: GitHub Linguist contributors (github-linguist/linguist)
+
+## linguist_vendor.json
+Source:  https://raw.githubusercontent.com/github-linguist/linguist/d0921d10bb68a1249fc9eac64e472759f36e2fd8/lib/linguist/vendor.yml
+Pinned:  commit d0921d10bb68a1249fc9eac64e472759f36e2fd8
+License: MIT
+Attribution: GitHub Linguist contributors (github-linguist/linguist)
+Filtered: only third-party categories are kept (T087, DDR-0012 §5). vendor.yml
+lists what Linguist leaves out of language statistics, which also includes
+files a team writes itself. Every upstream category, kept or dropped:
+  kept    Vendor Conventions / Dependencies -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / Linters -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Node dependencies -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / Yarn 2 -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / esy.sh dependencies -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / Bower Components -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / Erlang bundles -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Go dependencies -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / Minified JavaScript and CSS -- a minified bundle, not hand-written source
+  kept    Vendor Conventions / Font Awesome -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Foundation css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Normalize.css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Skeleton.css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Bourbon css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Animate.css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Materialize.css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Select2 -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Bulma css -- a bundled third-party library, matched by its own file or directory name
+  kept    Vendor Conventions / Vendored dependencies -- a copy of third-party code by its dependency directory or library name
+  kept    Vendor Conventions / Bootstrap Datepicker -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / jQuery -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / jQuery UI -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / jQuery Gantt -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / jQuery fancyBox -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Fuel UX -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / jQuery File Upload -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / jQuery dataTables -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / bootboxjs -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / pdf-worker -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Slick -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Leaflet plugins -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / MooTools -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Dojo -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / MochiKit -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / YUI -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / WYS editors -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Ace Editor -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Fontello CSS files -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / MathJax -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Chart.js -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / CodeMirror -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / SyntaxHighlighter - http://alexgorbatchev.com/ -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / AngularJS -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / D3.js -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / React -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / flow-typed -- a copy of third-party code by its dependency directory or library name
+  kept    Commonly Bundled JavaScript frameworks / Modernizr -- a bundled third-party library, matched by its own file or directory name
+  kept    Commonly Bundled JavaScript frameworks / Knockout -- a bundled third-party library, matched by its own file or directory name
+  kept    Obj-C / Carthage -- a copy of third-party code by its dependency directory or library name
+  kept    Obj-C / Sparkle -- a bundled third-party library, matched by its own file or directory name
+  kept    Obj-C / Crashlytics -- a bundled third-party library, matched by its own file or directory name
+  kept    Obj-C / Fabric -- a bundled third-party library, matched by its own file or directory name
+  kept    Obj-C / BuddyBuild -- a bundled third-party library, matched by its own file or directory name
+  kept    Obj-C / Realm -- a bundled third-party library, matched by its own file or directory name
+  kept    Obj-C / RealmSwift -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / Visual Studio IntelliSense -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / jQuery validation plugin (MS bundles this with asp.net mvc) -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / Microsoft Ajax -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / NuGet -- a copy of third-party code by its dependency directory or library name
+  kept    .NET / ExtJS -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / Html5shiv -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / PhoneGap/Cordova -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / Foundation js -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / Octicons -- a bundled third-party library, matched by its own file or directory name
+  kept    .NET / Android Google APIs -- a copy of third-party code by its dependency directory or library name
+  kept    .NET / XVBA dependencies -- a copy of third-party code by its dependency directory or library name
+  dropped Vendor Conventions / Caches -- cache/ is build output or the team's own module name
+  dropped Vendor Conventions / Distributions -- dist/ is the team's own build output
+  dropped Vendor Conventions / C deps -- generated autoconf scripts and a generic deps/ name; generated files are excluded only by .gitattributes
+  dropped Vendor Conventions / stuff autogenerated by autoconf - still C deps -- generated, not third-party; generated files are excluded only by .gitattributes
+  dropped Vendor Conventions / .NET Core Install Scripts -- install/wrapper script the team commits
+  dropped Vendor Conventions / Go fixtures -- testdata/ is the team's own test data
+  dropped Vendor Conventions / GNU indent profiles -- the team's own formatter config
+  dropped Vendor Conventions / Stylesheets imported from packages -- matches the team's own *import.scss partials (bryony)
+  dropped Vendor Conventions / Bootstrap css and js -- bootstrap* is a common app entry-point name (bryony bootstrap.conf.js)
+  dropped Vendor Conventions / Vendored dependencies (^|/)[Ee]xtern(als?)?/ -- external/ is a common team directory name (bryony backend/scripts/companies/external)
+  dropped Vendor Conventions / Debian packaging -- the team's own packaging
+  dropped Vendor Conventions / Haxelib projects often contain a neko bytecode file named run.n -- generated bytecode; generated files are excluded only by .gitattributes
+  dropped Commonly Bundled JavaScript frameworks / Sublime Text workspace files -- editor config
+  dropped Commonly Bundled JavaScript frameworks / VS Code workspace files -- editor config
+  dropped Commonly Bundled JavaScript frameworks / Prototype -- prototype.js, effects.js, controls.js are common team file names (bryony prototype.js)
+  dropped Commonly Bundled JavaScript frameworks / Typescript definition files -- the team writes its own .d.ts types (kitchd, coffee-shop-api)
+  dropped Python / Sphinx -- the team's own docs build/theme directories
+  dropped Python / django -- env/ and admin_media/ are generic names
+  dropped Python / Fabric -- fabfile.py is the team's own deploy script (bryony)
+  dropped Python / WAF -- build-tool wrapper script
+  dropped Python / .osx -- the team's own machine setup script
+  dropped Obj-C / Xcode -- the team's own templates and image assets
+  dropped Obj-C / git config files -- the team's own git config
+  dropped Groovy / Gradle -- wrapper script
+  dropped Java / Maven -- wrapper script
+  dropped .NET / Test fixtures -- the team's own test fixtures
+  dropped .NET / Vagrant -- the team's own environment config
+  dropped .NET / .DS_Stores -- OS metadata, not code
+  dropped .NET / R packages -- the team's own package data
+  dropped .NET / Typesafe Activator -- wrapper script
+  dropped .NET / ProGuard -- the team's own build config
+  dropped .NET / PuPHPet -- the team's own environment config
+  dropped .NET / Jenkins Pipeline -- the team's own CI config
+  dropped .NET / Gitpod -- the team's own environment config
+  dropped .NET / GitHub.com -- the team's own CI and repository config (kitchd .github/workflows)
+  dropped .NET / obsidian.md settings -- editor config
+  dropped .NET / teamcity CI configuration -- the team's own CI config
 
 ## asvs.json
 Source:  https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0_release/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.flat.json

@@ -60,6 +60,21 @@ class SourceMiss:
 
 
 @dataclass(frozen=True)
+class ThirdPartyExclusion:
+    """One excluded third-party root (T087, FR-074): a directory (``path``
+    ending in ``/``) or a single file the evaluation never reads.
+
+    ``reason`` is one of ``linguist-pattern``, ``gitattributes``, ``declared``
+    or ``nested-project``; ``rule`` is the exact pattern or files that
+    matched. Disclosed so nothing leaves the evaluation silently."""
+
+    path: str
+    reason: str
+    rule: str
+    excluded: str = "third-party"
+
+
+@dataclass(frozen=True)
 class TruncationRecord:
     """The structured truncation report FR-011b requires: whether the byte
     budget rejected anything, and how many excerpts it rejected.
@@ -163,6 +178,16 @@ class ApprovalRequest:
 
 
 @dataclass(frozen=True)
+class CapHit:
+    """One bound a pack's inputs hit (T098, NFR-009): ``matched`` files fit
+    ``role``, only ``read`` of them were used."""
+
+    role: str
+    matched: int
+    read: int
+
+
+@dataclass(frozen=True)
 class EvidencePack:
     """The structured result of one dimension. Evidence only, never a verdict."""
 
@@ -258,10 +283,27 @@ class EvidencePack:
     than its cap and read batches 1…N of them. ``None`` otherwise, and then
     left out of the serialized pack."""
 
+    excluded: tuple[ThirdPartyExclusion, ...] | None = field(default=None)
+    """Third-party roots the scope left out (T087, FR-074), one entry per
+    root. ``None`` when nothing was excluded, and then left out of the
+    serialized pack."""
+
     whole_file: tuple[SampledMetric, ...] | None = field(default=None)
     """Structure metrics a code tier computed over the whole text of every
     source file when it had no more sources than its cap (T076, FR-072): one
     full batch, so no sample. ``None`` otherwise, and then left out of the
+    serialized pack."""
+
+    documents: tuple[DocumentEvidence, ...] | None = field(default=None)
+    """What filled each document role this pack scores (T089, FR-076): a
+    document's content shape, a declaration, or nothing after a scan of the
+    repository's documents. ``None`` for a pack that scores no document
+    role, and then left out of the serialized pack."""
+
+    capped: tuple[CapHit, ...] | None = field(default=None)
+    """Every role whose matched files exceeded a cap (T098): the resolution's
+    role cap and the dimension's own per-role cap, one entry per role, sorted
+    by role. ``None`` when no cap was hit, and then left out of the
     serialized pack."""
 
 
@@ -378,6 +420,30 @@ class CompatFacts:
 
 
 @dataclass(frozen=True)
+class DocumentEvidence:
+    """Which evidence filled one document role (T089, FR-076, DDR-0012 §3).
+
+    ``kind`` is ``content`` (the document has the role's shape),
+    ``readme-heading`` (a README section headed "Architecture" that has the
+    shape), ``declared`` (``.easy-verifier.toml`` or an MCP pick, taken
+    without a content check), or ``None``: no scanned document has the shape.
+    A file name alone never fills a role.
+    """
+
+    role: str
+    kind: str | None
+    path: str | None
+    cited: tuple[str, ...] = ()
+    """``line N: text`` of the lines that show the shape (redacted)."""
+
+    scanned: int = 0
+    """Documents whose content was examined."""
+
+    bounded: str | None = None
+    """Why the scan stopped before every candidate document, else ``None``."""
+
+
+@dataclass(frozen=True)
 class DocHistory:
     """#27 facts of one requirement-fidelity pack (T055)."""
 
@@ -433,7 +499,17 @@ class SampleFacts:
     metrics: tuple[SampledMetric, ...] = ()
 
 
-_OMITTED_WHEN_ABSENT = frozenset({"compat", "doc_history", "sample", "whole_file"})
+_OMITTED_WHEN_ABSENT = frozenset(
+    {
+        "compat",
+        "doc_history",
+        "sample",
+        "whole_file",
+        "excluded",
+        "documents",
+        "capped",
+    }
+)
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
 of the serialized pack while unset, so every pack that does not use them
 serializes byte-for-byte as before."""

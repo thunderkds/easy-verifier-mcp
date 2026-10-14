@@ -46,6 +46,21 @@ COVERAGE_FLOORS: dict[str, CoverageFloor] = {
     # User-approved 2026-10-06 (T043): one of four roles, so source code alone
     # reaches it; a repository with none of them abstains with named misses.
     "reliability": CoverageFloor(0.25, "inclusive"),
+    # User-approved 2026-10-07 (T041): two of five roles.
+    "supply-chain": CoverageFloor(0.40, "inclusive"),
+    # User-approved 2026-10-07 (T044): one of three roles (specification
+    # file, route definitions, request validation).
+    "api": CoverageFloor(0.25, "inclusive"),
+    # User decision 2026-10-07 (T045): one of three roles (migration files,
+    # schema files, data models in source files).
+    "data": CoverageFloor(0.25, "inclusive"),
+    # User decision 2026-10-07 (T046): two of seven roles (CODEOWNERS,
+    # operations documents, observability config, logging in source, agent
+    # configuration, tool-version pin, development environment).
+    "operations": CoverageFloor(0.25, "inclusive"),
+    # User decision 2026-10-07 (T042): one of four roles (Terraform files,
+    # Kubernetes manifests, CloudFormation/Pulumi templates, container config).
+    "infrastructure": CoverageFloor(0.25, "inclusive"),
 }
 
 # Optional packs (T047, DDR-0008 §4, FR-053): rule groups a repository opts
@@ -57,6 +72,9 @@ PACK_FLOORS: dict[str, CoverageFloor] = {
     "healthcare": CoverageFloor(0.25, "inclusive"),
     # T048: one of two pseudo-roles (a money field, a ledger) reaches it.
     "finance": CoverageFloor(0.25, "inclusive"),
+    # T049: one of three pseudo-roles (markup, an HTML entry, a browser-support
+    # declaration) reaches it; user decision 2026-10-07.
+    "frontend-a11y": CoverageFloor(0.25, "inclusive"),
 }
 
 
@@ -302,6 +320,49 @@ _FOWLER_REVERSAL = Citation(
     "reversing entry, not edited)",
     "https://martinfowler.com/eaaDev/ReversalAdjustment.html",
 )
+# Frontend accessibility pack (T049): #19. WCAG 2.2 is one W3C
+# Recommendation; each citation names its success criterion and links the
+# criterion's Understanding page.
+_WCAG_111 = Citation(
+    "WCAG 2.2 SC 1.1.1 Non-text Content (Level A)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html",
+)
+_WCAG_131 = Citation(
+    "WCAG 2.2 SC 1.3.1 Info and Relationships (Level A)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html",
+)
+_WCAG_412 = Citation(
+    "WCAG 2.2 SC 4.1.2 Name, Role, Value (Level A)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html",
+)
+_USING_ARIA_4 = Citation(
+    "W3C Using ARIA, fourth rule (do not use aria-hidden=\"true\" on a "
+    "focusable element)",
+    "https://www.w3.org/TR/using-aria/#4thrule",
+)
+_WCAG_144 = Citation(
+    "WCAG 2.2 SC 1.4.4 Resize Text (Level AA)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html",
+)
+_WCAG_1410 = Citation(
+    "WCAG 2.2 SC 1.4.10 Reflow (Level AA)",
+    "https://www.w3.org/WAI/WCAG22/Understanding/reflow.html",
+)
+_WCAG_CONFORMANCE = Citation(
+    "WCAG 2.2 Conformance Requirement 1 (every success criterion of the "
+    "level is satisfied: one failure fails conformance)",
+    "https://www.w3.org/TR/WCAG22/#conformance-reqs",
+)
+_ISO_25010_COMPATIBILITY = Citation(
+    "ISO/IEC 25010:2023 (compatibility; flexibility: adaptability to "
+    "operational environments)",
+    "https://www.iso.org/standard/78176.html",
+)
+_BROWSERSLIST = Citation(
+    "Browserslist (shared browser-target configuration read by Babel, "
+    "Autoprefixer, ESLint and bundlers)",
+    "https://github.com/browserslist/browserslist",
+)
 # Healthcare pack (T047): #9 and #28.
 _HIPAA_514 = Citation(
     "HIPAA Privacy Rule 45 CFR §164.514(b)(2) de-identification (safe harbor: "
@@ -328,6 +389,174 @@ _NIST_800_144 = Citation(
     "NIST SP 800-144 §4.2 data location (guidelines on security and privacy "
     "in public cloud computing)",
     "https://csrc.nist.gov/pubs/sp/800/144/final",
+)
+_SCORECARD_PINNED = Citation(
+    "OpenSSF Scorecard, Pinned-Dependencies check",
+    "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+)
+_SCORECARD_LICENSE = Citation(
+    "OpenSSF Scorecard, License check; SPDX license identifiers",
+    "https://github.com/ossf/scorecard/blob/main/docs/checks.md#license",
+)
+_SLSA = Citation(
+    "SLSA v1.0 (build track: provenance)", "https://slsa.dev/spec/v1.0/levels"
+)
+_SBOM = Citation(
+    "CycloneDX specification overview; SPDX specification",
+    "https://cyclonedx.org/specification/overview/",
+)
+_SRE_RELEASE = Citation(
+    "Google SRE Workbook, Canarying Releases",
+    "https://sre.google/workbook/canarying-releases/",
+)
+_OPENAPI = Citation(
+    "OpenAPI Specification 3.1.0; GraphQL specification; Protocol Buffers "
+    "language guide (proto3)",
+    "https://spec.openapis.org/oas/v3.1.0",
+)
+_AIP_185 = Citation(
+    "Google AIP-185 (API versioning)", "https://google.aip.dev/185"
+)
+_ASVS_V5 = Citation(
+    "OWASP ASVS 4.0.3, V5 Validation, Sanitization and Encoding (V5.1 input "
+    "validation)",
+    "https://github.com/OWASP/ASVS/blob/v4.0.3/4.0/en/0x13-V5-Validation-Sanitization-Encoding.md",
+)
+_OWASP_INPUT_VALIDATION = Citation(
+    "OWASP Input Validation Cheat Sheet",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html",
+)
+_AIP_180 = Citation(
+    "Google AIP-180 (backwards compatibility)", "https://google.aip.dev/180"
+)
+_EVODB = Citation(
+    "Fowler & Sadalage, Evolutionary Database Design (every database change "
+    "is a migration)",
+    "https://martinfowler.com/articles/evodb.html",
+)
+_RAILS_MIGRATIONS = Citation(
+    "Rails Guides, Active Record Migrations (reversible change; up/down "
+    "methods)",
+    "https://guides.rubyonrails.org/active_record_migrations.html",
+)
+_LIQUIBASE_ROLLBACK = Citation(
+    "Liquibase, Rollback (a rollback for every changeset)",
+    "https://docs.liquibase.com/workflows/liquibase-community/using-rollback.html",
+)
+_PG_CONSTRAINTS = Citation(
+    "PostgreSQL documentation, 5.5 Constraints (NOT NULL, unique, foreign key)",
+    "https://www.postgresql.org/docs/current/ddl-constraints.html",
+)
+_OTEL = Citation(
+    "OpenTelemetry, Observability primer (logs, metrics and traces emitted by "
+    "instrumented code)",
+    "https://opentelemetry.io/docs/concepts/observability-primer/",
+)
+_SRE_MONITORING = Citation(
+    "Google SRE book, Monitoring Distributed Systems",
+    "https://sre.google/sre-book/monitoring-distributed-systems/",
+)
+_NIST_800_53_AU2 = Citation(
+    "NIST SP 800-53 Rev. 5 AU-2 Event Logging (identify the events the system "
+    "logs for audit)",
+    "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+)
+_OWASP_LOGGING = Citation(
+    "OWASP Logging Cheat Sheet (which events to record; audit trails)",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+)
+_CODEOWNERS = Citation(
+    "GitHub Docs, About code owners",
+    "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+)
+_SRE_PRR = Citation(
+    "Google SRE book, The Evolving SRE Engagement Model (production readiness "
+    "review: a named owner for each service)",
+    "https://sre.google/sre-book/evolving-sre-engagement-model/",
+)
+_OWASP_LLM_AGENCY = Citation(
+    "OWASP Top 10 for LLM Applications 2025, LLM06 Excessive Agency "
+    "(constrain what an agent may do; human approval for high-impact actions)",
+    "https://genai.owasp.org/llmrisk/llm062025-excessive-agency/",
+)
+_OWASP_LLM_DISCLOSURE = Citation(
+    "OWASP Top 10 for LLM Applications 2025, LLM02 Sensitive Information "
+    "Disclosure",
+    "https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/",
+)
+_TWELVE_FACTOR_PARITY = Citation(
+    "The Twelve-Factor App, X. Dev/prod parity",
+    "https://12factor.net/dev-prod-parity",
+)
+_DEVCONTAINER = Citation(
+    "Development Containers specification (devcontainer.json)",
+    "https://containers.dev/implementors/spec/",
+)
+_NIST_800_61 = Citation(
+    "NIST SP 800-61 Rev. 3, Incident Response Recommendations and "
+    "Considerations for Cybersecurity Risk Management",
+    "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
+)
+_SRE_SLO = Citation(
+    "Google SRE book, Service Level Objectives",
+    "https://sre.google/sre-book/service-level-objectives/",
+)
+_CIS_AWS = Citation(
+    "CIS Amazon Web Services Foundations Benchmark (IAM: no full '*' "
+    "administrative policies; networking: no 0.0.0.0/0 ingress; storage: "
+    "encryption at rest)",
+    "https://www.cisecurity.org/benchmark/amazon_web_services",
+)
+_CIS_K8S = Citation(
+    "CIS Kubernetes Benchmark 5.1.3 (minimize wildcard use in Roles and "
+    "ClusterRoles)",
+    "https://www.cisecurity.org/benchmark/kubernetes",
+)
+_AWS_IAM_LEAST = Citation(
+    "AWS IAM User Guide, Security best practices (apply least-privilege "
+    "permissions)",
+    "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+)
+_K8S_RBAC = Citation(
+    "Kubernetes documentation, Role Based Access Control practices (avoid "
+    "wildcards)",
+    "https://kubernetes.io/docs/concepts/security/rbac-good-practices/",
+)
+_AWS_SG = Citation(
+    "Amazon VPC User Guide, Security group rules",
+    "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-group-rules.html",
+)
+_AWS_RDS_ENCRYPTION = Citation(
+    "Amazon RDS User Guide, Encrypting Amazon RDS resources",
+    "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Overview.Encryption.html",
+)
+_TF_BACKEND = Citation(
+    "HashiCorp Terraform documentation, Backend block configuration",
+    "https://developer.hashicorp.com/terraform/language/backend",
+)
+_TF_LOCKING = Citation(
+    "HashiCorp Terraform documentation, State locking",
+    "https://developer.hashicorp.com/terraform/language/state/locking",
+)
+_TF_WORKSPACES = Citation(
+    "HashiCorp Terraform documentation, Workspaces (separate state per "
+    "environment)",
+    "https://developer.hashicorp.com/terraform/language/state/workspaces",
+)
+_WA_REL09 = Citation(
+    "AWS Well-Architected Reliability Pillar REL09-BP01/BP03 (identify and "
+    "back up all data; perform data backup automatically)",
+    "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_backing_up_data_identified_backups_data.html",
+)
+_WA_REL10 = Citation(
+    "AWS Well-Architected Reliability Pillar REL10-BP01 (deploy the workload "
+    "to multiple locations)",
+    "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_fault_isolation_multiaz_region_system.html",
+)
+_WA_REL13 = Citation(
+    "AWS Well-Architected Reliability Pillar REL13 (plan for disaster "
+    "recovery)",
+    "https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/plan-for-disaster-recovery-dr.html",
 )
 SOLUTION_FIT_CITATION = Citation(
     "ISO/IEC 25010:2023 (functional suitability)",
@@ -548,6 +777,217 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[14],
         ),
     ),
+    # T041: the supply-chain dimension (areas #20-#22). Weights: user
+    # sign-off 2026-10-07 (T041). Live vulnerability status is not verifiable
+    # offline and has no rule.
+    "supply-chain": _rules(
+        RatingRule(
+            "lockfile_missing", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[19],
+        ),
+        RatingRule(
+            "licence_file_missing", 15, 0, "at_most",
+            (_SCORECARD_LICENSE,), _SCORECARD_LICENSE,
+            area=AREAS[19],
+        ),
+        RatingRule(
+            "ci_actions_unpinned_share", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[20],
+        ),
+        RatingRule(
+            "ci_lockfile_install_missing", 20, 0, "at_most",
+            (_SCORECARD_PINNED,), _SCORECARD_PINNED,
+            area=AREAS[20],
+        ),
+        RatingRule(
+            "ci_provenance_step_missing", 25, 0, "at_most",
+            (_SLSA, _SBOM), _SLSA,
+            area=AREAS[21],
+        ),
+    ),
+    # T044: the api dimension (area #7). Weights: proposed by T044, accepted
+    # under user policy 2026-10-07 (Supervisor reviews at Stage 4).
+    #   api_spec_missing 30 -- a machine-readable contract is the core of #7,
+    #     measurable in every scope.
+    #   request_validation_missing 30 -- the other half of "contract and
+    #     validation": unvalidated input at an entry point (ASVS V5).
+    #   api_version_missing 20 -- an evolution control; an internal API may
+    #     legitimately ship one version, so it weighs less.
+    #   breaking_api_changes_observed 20 -- an evolution control measurable
+    #     only on a changes-scope diff; it abstains elsewhere, leaving 80%
+    #     measured (DDR-0010 floor 50%).
+    "api": _rules(
+        RatingRule(
+            "api_spec_missing", 30, 0, "at_most",
+            (_OPENAPI,), _OPENAPI,
+            area=AREAS[6],
+        ),
+        RatingRule(
+            "api_version_missing", 20, 0, "at_most",
+            (_AIP_185,), _AIP_185,
+            area=AREAS[6],
+        ),
+        RatingRule(
+            "request_validation_missing", 30, 0, "at_most",
+            (_ASVS_V5,), _OWASP_INPUT_VALIDATION,
+            area=AREAS[6],
+        ),
+        RatingRule(
+            "breaking_api_changes_observed", 20, 0, "at_most",
+            (_AIP_180,), _AIP_180,
+            area=AREAS[6],
+        ),
+    ),
+    # T045: the data dimension (area #4). Weights: proposed by T045, accepted
+    # under user policy 2026-10-07 (Supervisor reviews at Stage 4).
+    #   migrations_missing 30 -- a schema changed without versioned migrations
+    #     cannot be reproduced or reviewed; the core of #4's "migrations".
+    #   migrations_without_rollback_share 30 -- the migration-safety
+    #     checklist's down/rollback item; without it a bad deploy has no exit.
+    #   schema_constraints_missing 20 -- integrity declared in the schema (ISO
+    #     5055), but measured coarsely (any constraint at all), so it weighs less.
+    #   destructive_migration_ops_observed 20 -- DROP/RENAME in an up migration;
+    #     some are deliberate (expand/contract), so the lines are quoted for the
+    #     calling agent and the rule weighs less. 30 + 20 rates exactly 50.
+    "data": _rules(
+        RatingRule(
+            "migrations_missing", 30, 0, "at_most",
+            (_EVODB,), _EVODB,
+            area=AREAS[3],
+        ),
+        RatingRule(
+            "migrations_without_rollback_share", 30, 0, "at_most",
+            (_RAILS_MIGRATIONS, _LIQUIBASE_ROLLBACK), _LIQUIBASE_ROLLBACK,
+            area=AREAS[3],
+        ),
+        RatingRule(
+            "schema_constraints_missing", 20, 0, "at_most",
+            (_ISO_5055, _PG_CONSTRAINTS), _ISO_5055,
+            area=AREAS[3],
+        ),
+        RatingRule(
+            "destructive_migration_ops_observed", 20, 0, "at_most",
+            (_PARALLEL_CHANGE, _EVODB), _PARALLEL_CHANGE,
+            area=AREAS[3],
+        ),
+    ),
+    # T046: the operations dimension (areas #14, #26, #29, #30); #25 and the
+    # SLO and runbook parts are documentation rules. Weights: proposed by T046,
+    # accepted under user policy 2026-10-07 (Supervisor reviews at Stage 4).
+    # The lockfile part of #30 is supply-chain's lockfile_missing (one rule).
+    #   logging_library_missing 20 -- without logs or traces nothing else in
+    #     #14 (alerts, SLOs, audits) can be observed; the core of the area, and
+    #     it applies to every repository with code.
+    #   audit_log_writes_missing 10 -- measured textually (a call naming
+    #     "audit"), and not every repository needs an audit trail, so less.
+    #   codeowners_missing 20 -- a named owner is the first production-
+    #     readiness item (#26), exact to measure and applies to every repository.
+    #   (Agent instruction files are a #29 documentation rule, user decision
+    #   2026-10-07: a repository that uses no coding agent is not penalised.
+    #   Its 10 points went to the two rules that apply to every repository.)
+    #   agent_guardrails_missing 10 -- #29; abstains with no agent files.
+    #   agent_config_secrets_observed 20 -- a credential in agent config is
+    #     exposed to every model and tool the agent calls; the most severe
+    #     failure here. Abstains with no agent files.
+    #   tool_version_pin_missing 10 / dev_environment_missing 10 -- #30;
+    #     convenience for reproducibility, weighed equally.
+    # 20 + 20 + 10 rates exactly 50.
+    "operations": _rules(
+        RatingRule(
+            "logging_library_missing", 20, 0, "at_most",
+            (_OTEL, _SRE_MONITORING), _SRE_MONITORING,
+            area=AREAS[13],
+        ),
+        RatingRule(
+            "audit_log_writes_missing", 10, 0, "at_most",
+            (_NIST_800_53_AU2, _OWASP_LOGGING), _NIST_800_53_AU2,
+            area=AREAS[13],
+        ),
+        RatingRule(
+            "codeowners_missing", 20, 0, "at_most",
+            (_CODEOWNERS, _SRE_PRR), _SRE_PRR,
+            area=AREAS[25],
+        ),
+        RatingRule(
+            "agent_guardrails_missing", 10, 0, "at_most",
+            (_OWASP_LLM_AGENCY,), _OWASP_LLM_AGENCY,
+            area=AREAS[28],
+        ),
+        RatingRule(
+            "agent_config_secrets_observed", 20, 0, "at_most",
+            (_OWASP_LLM_DISCLOSURE, _ASVS_SECRETS), _ASVS_SECRETS,
+            area=AREAS[28],
+        ),
+        RatingRule(
+            "tool_version_pin_missing", 10, 0, "at_most",
+            (_TWELVE_FACTOR_PARITY,), _TWELVE_FACTOR_PARITY,
+            area=AREAS[29],
+        ),
+        RatingRule(
+            "dev_environment_missing", 10, 0, "at_most",
+            (_TWELVE_FACTOR_PARITY, _DEVCONTAINER), _TWELVE_FACTOR_PARITY,
+            area=AREAS[29],
+        ),
+    ),
+    # T042: the infrastructure dimension (areas #11, #23, #24), over
+    # Terraform, Kubernetes and CloudFormation files; live drift and restore
+    # drills are not verifiable offline and have no rule; the DR runbook is a
+    # documentation rule. Weights: proposed by T042, accepted under user
+    # policy 2026-10-07 (Supervisor reviews at Stage 4).
+    #   iac_wildcard_iam_observed 20 -- a "*" action or resource grants
+    #     everything; the most direct breach path in #11, exact to count.
+    #   iac_open_ingress_observed 20 -- a whole-internet ingress source
+    #     exposes the service to every attacker; equally direct.
+    #   iac_unencrypted_storage_observed 15 -- encryption at rest limits a
+    #     leak's impact rather than preventing access, so less.
+    #   terraform_locked_remote_state_missing 15 -- local or unlocked state is
+    #     lost or corrupted by concurrent applies; the core of #23.
+    #   terraform_environment_separation_missing 5 -- a layout convention,
+    #     read from paths and one token, so the weakest evidence.
+    #   database_backup_unconfigured 15 -- data with no stated backup cannot
+    #     be restored; the core of #24.
+    #   database_ha_unconfigured 10 -- availability, not data loss, so less
+    #     than backups.
+    # 20 + 15 + 15 rates exactly 50.
+    "infrastructure": _rules(
+        RatingRule(
+            "iac_wildcard_iam_observed", 20, 0, "at_most",
+            (_AWS_IAM_LEAST, _K8S_RBAC, _CIS_K8S), _CIS_AWS,
+            area=AREAS[10],
+        ),
+        RatingRule(
+            "iac_open_ingress_observed", 20, 0, "at_most",
+            (_AWS_SG,), _CIS_AWS,
+            area=AREAS[10],
+        ),
+        RatingRule(
+            "iac_unencrypted_storage_observed", 15, 0, "at_most",
+            (_AWS_RDS_ENCRYPTION,), _CIS_AWS,
+            area=AREAS[10],
+        ),
+        RatingRule(
+            "terraform_locked_remote_state_missing", 15, 0, "at_most",
+            (_TF_BACKEND, _TF_LOCKING), _TF_LOCKING,
+            area=AREAS[22],
+        ),
+        RatingRule(
+            "terraform_environment_separation_missing", 5, 0, "at_most",
+            (_TF_WORKSPACES,), _TF_WORKSPACES,
+            area=AREAS[22],
+        ),
+        RatingRule(
+            "database_backup_unconfigured", 15, 0, "at_most",
+            (_WA_REL09,), _WA_REL09,
+            area=AREAS[23],
+        ),
+        RatingRule(
+            "database_ha_unconfigured", 10, 0, "at_most",
+            (_WA_REL10,), _WA_REL10,
+            area=AREAS[23],
+        ),
+    ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
     # PHI-shaped value fails safe-harbor de-identification, hence at most 0.
     # Weights 50/50 user-approved 2026-10-06 (T047 review).
@@ -583,6 +1023,39 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             "ledger_rows_mutated_observed", 25, 0, "at_most",
             (_SEC_17A4, _FOWLER_REVERSAL), PROJECT_DEFAULT,
             area=AREAS[2],
+        ),
+    ),
+    # T049 frontend accessibility pack (PACK_FLOORS): #19. One WCAG failure
+    # fails conformance, hence at most 0 for the four markup rules; a rule
+    # with nothing to judge (no image, no form control, no aria-hidden, no
+    # HTML entry, no markup) abstains. Weights 25/25/20/15/15 proposed by the
+    # implementer (Level A text alternatives and form names first; 25+25 and
+    # 20+15+15 each make an exact 50), checked by the Supervisor at Stage 4.
+    "frontend-a11y": _rules(
+        RatingRule(
+            "images_without_alt_observed", 25, 0, "at_most",
+            (_WCAG_111,), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "form_controls_without_label_observed", 25, 0, "at_most",
+            (_WCAG_131, _WCAG_412), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "aria_hidden_focusable_observed", 20, 0, "at_most",
+            (_WCAG_412, _USING_ARIA_4), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "viewport_missing_or_zoom_disabled_observed", 15, 0, "at_most",
+            (_WCAG_144, _WCAG_1410), _WCAG_CONFORMANCE,
+            area=AREAS[18],
+        ),
+        RatingRule(
+            "browser_support_declaration_missing", 15, 0, "at_most",
+            (_ISO_25010_COMPATIBILITY, _BROWSERSLIST), PROJECT_DEFAULT,
+            area=AREAS[18],
         ),
     ),
 }
@@ -2106,5 +2579,94 @@ DOCUMENTATION_RULES["healthcare"] = (
     ),
     DocumentationRule(
         AREAS[27], _keyword_docs("residency", "data-location"), (_NIST_800_144,)
+    ),
+)
+
+
+# #22 rollback (T041): whether a release can be rolled back is a process no
+# repository can show, so only its document is checked.
+_ROLLBACK_PATTERNS = tuple(
+    f"**/*{variant}*{suffix}"
+    for keyword in ("rollback", "roll-back", "roll_back")
+    for variant in (keyword, keyword.capitalize(), keyword.upper())
+    for suffix in (".md", ".rst", ".adoc")
+)
+DOCUMENTATION_RULES["supply-chain"] = (
+    DocumentationRule(AREAS[21], _ROLLBACK_PATTERNS, (_SRE_RELEASE,)),
+)
+
+
+# Operations (T046): agent instruction files (#29) are a documentation rule,
+# user decision 2026-10-07: a repository that uses no coding agent is not
+# penalised. The files are the instruction subset of the ``agent-config`` role
+# (``core/roles.py`` re-exports this tuple; same sources as the role).
+AGENT_INSTRUCTION_PATTERNS: tuple[str, ...] = (
+    "**/CLAUDE.md",
+    "**/AGENTS.md",
+    "**/GEMINI.md",
+    ".github/copilot-instructions.md",
+    ".cursorrules",
+    ".windsurfrules",
+    ".cursor/rules/*",
+    ".claude/agents/*.md",
+    ".claude/commands/*.md",
+)
+
+# Operations (T046): incident response and change management (#25), the SLO
+# (#14) and the runbook (#26) are processes no repository can show, so only
+# their documents are checked; the operations dimension reads a matching
+# document for each. Document suffixes only: ``src/runbook/Runbook.java`` is
+# source, never a runbook.
+_DOC_SUFFIXES = (".md", ".rst", ".adoc")
+DOCUMENTATION_RULES["operations"] = (
+    DocumentationRule(
+        AREAS[24],
+        _keyword_docs(
+            "incident", "postmortem", "post-mortem", "on-call", "oncall",
+            "change-management", "change_management",
+        ),
+        (_NIST_800_61,),
+    ),
+    DocumentationRule(
+        AREAS[13],
+        _keyword_docs(
+            "service-level", "service_level", "error-budget", "error_budget"
+        )
+        + tuple(
+            f"**/{stem}{suffix}"
+            for stem in (
+                "SLO", "SLOs", "slo", "slos", "*-slo", "*_slo", "*-SLO",
+                "*_SLO", "slo-*", "slo_*", "SLO-*", "SLO_*",
+            )
+            for suffix in _DOC_SUFFIXES
+        ),
+        (_SRE_SLO,),
+    ),
+    DocumentationRule(
+        AREAS[25],
+        _keyword_docs("runbook", "playbook")
+        + tuple(
+            f"**/{folder}/**/*{suffix}"
+            for folder in ("runbooks", "runbook", "playbooks")
+            for suffix in _DOC_SUFFIXES
+        ),
+        (_SRE_PRR,),
+    ),
+    DocumentationRule(AREAS[28], AGENT_INSTRUCTION_PATTERNS, (_OWASP_LLM_AGENCY,)),
+)
+
+
+# Infrastructure (T042): whether backups restore and DR works is a drill no
+# repository can show, so only the disaster-recovery document is checked; the
+# infrastructure dimension reads the first match. Document suffixes only.
+DOCUMENTATION_RULES["infrastructure"] = (
+    DocumentationRule(
+        AREAS[23],
+        _keyword_docs(
+            "disaster-recovery", "disaster_recovery", "dr-plan", "dr_plan",
+            "dr-runbook", "restore",
+        )
+        + tuple(f"**/DR{suffix}" for suffix in _DOC_SUFFIXES),
+        (_WA_REL13,),
     ),
 )

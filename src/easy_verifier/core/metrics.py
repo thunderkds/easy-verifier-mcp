@@ -234,6 +234,13 @@ def _serializable(metric: Metric) -> dict:
     }
 
 
+LAYER_PATHS_CURATED_NOTE = (
+    "curated layer_paths only: no local-layer or .easy-verifier.toml layer "
+    "paths were declared"
+)
+"""T078: the layer rule's source note when no repository extra applies."""
+
+
 @dataclass(frozen=True)
 class LanguageTables:
     """The registry's language knowledge, as plain compiled data (T031).
@@ -294,9 +301,20 @@ class LanguageTables:
     language declares, the tokens that set it inside that statement."""
 
     layer_of: Callable[[str], str | None] | None = field(default=None, compare=False)
+    layer_evidence: Callable[..., object] | None = field(default=None, compare=False)
+    """``(path, text, imported names) -> structure.LayerEvidence`` (T088,
+    DDR-0012): what a file's code does (route, DB/ORM call), bound by the
+    builder; ``None`` observes nothing, so only the path hints classify."""
+    layer_paths_note: str = field(default=LAYER_PATHS_CURATED_NOTE, compare=False)
+    """Which layer_paths sources ``layer_of`` applies (T078), for the
+    derivation: curated only, or plus the local layer / .easy-verifier.toml."""
     """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
     declared ``layer_paths`` conventions, bound by the builder
     (``metric_tables``); ``None`` classifies nothing."""
+    package_manifests: tuple[str, ...] = field(default=(), compare=False)
+    """Repository paths of the ``package-manifest`` role (T093), from the role
+    resolution's whole-repository walk, bound by the dimension: where the layer
+    rule's backend units are. Empty: every file sits in the root's unit."""
 
     auth_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
     """Source suffix -> the language's authentication/session tokens (T056):
@@ -321,6 +339,44 @@ class LanguageTables:
     """Source suffix -> the language's T043 reliability tokens (areas #6, #12,
     #13, #15), present only where ``syntax`` is and the language declares the
     field; read through :func:`reliability_findings`."""
+    request_validation: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    api_spec_generators: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    api_version_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T044 api tokens (area #7); read by the
+    ``api`` dimension over whole files."""
+    orm_model_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    logging_markers: Mapping[str, re.Pattern[str]] = field(default_factory=dict)
+    """Source suffix -> the language's T046 logging/tracing tokens (area #14);
+    read by the ``operations`` dimension over whole files."""
+    schema_constraint_markers: Mapping[str, re.Pattern[str]] = field(
+        default_factory=dict
+    )
+    migration_rollback_markers: Mapping[str, re.Pattern[str]] = field(
+        default_factory=dict
+    )
+    """Source suffix -> the language's T045 data tokens (area #4); read by the
+    ``data`` dimension over whole files."""
+    ci_files: Callable[[str], bool] | None = None
+    release_files: Callable[[str], bool] | None = None
+    """Path matchers for the ``ci-workflow`` and ``release-config`` roles
+    (T041): which excerpts of a supply-chain pack are CI or release files."""
+
+    lockfile_install: re.Pattern[str] | None = None
+    """The registry's ``lockfile_install`` tokens, all languages, as one
+    alternation; ``None`` when no language declares any."""
+
+    action_reference: re.Pattern[str] | None = None
+    """Generic layer: an external step reference, group 1 being the reference
+    (``uses: actions/checkout@v4`` -> ``actions/checkout@v4``)."""
+
+    pinned_reference: tuple[re.Pattern[str], ...] = ()
+    local_reference: tuple[str, ...] = ()
+    """Generic layer: a reference is pinned when a pattern matches it, and is
+    not an external dependency when it starts with a local prefix."""
+
+    provenance_steps: re.Pattern[str] | None = None
+    """Generic layer: tokens showing an SBOM, signing or provenance step,
+    matched case-insensitively."""
 
 
 @dataclass(frozen=True)
@@ -823,8 +879,9 @@ _SINK_METHOD = (
     "its CWE page), matched textually after the registry's comment and string "
     "delimiters are blanked (a string that interpolates keeps one mark at its "
     "start) -- no data flow is traced, so a hit is a place to "
-    "look, not a proven vulnerability; test-path hits are counted and tagged; "
-    "a lower bound on the repository, since only these excerpts were read"
+    "look, not a proven vulnerability; test-path hits are listed, cited and "
+    "tagged but not counted; a lower bound on the repository, since only "
+    "these excerpts were read"
 )
 
 
@@ -843,25 +900,41 @@ def _sink_hits_observed(view: _PackView) -> _Computed:
                 "without sinks. " + _SINK_METHOD
             )
         )
+    if all(_is_test_file(excerpt.path, view.tables) for excerpt in scanned):
+        return MetricAbstention(
+            reason=(
+                "only test files were scanned for sinks, so no production code "
+                "was observed; that is not the same as production code without "
+                "sinks. " + _SINK_METHOD
+            )
+        )
     hits: dict[tuple[str, int, str], tuple[str, str]] = {}
     for excerpt in scanned:
         for hit in sink_hits(excerpt.path, excerpt.text, view.tables):
             line = excerpt.start_line + hit.line - 1
             key = (excerpt.path, line, hit.cwe)
             hits.setdefault(key, (excerpt.ref, hit.citation_url))
+    test_hits = {key for key in hits if _is_test_file(key[0], view.tables)}
+    counted = len(hits) - len(test_hits)
     cited = sorted({ref for ref, _url in hits.values()}) or sorted(
         {e.ref for e in scanned}
     )
     listed = ", ".join(
         f"{path}:{line} {cwe} ({url})"
-        + (" [test path]" if _is_test_file(path, view.tables) else "")
+        + (" [test path]" if (path, line, cwe) in test_hits else "")
         for (path, line, cwe), (_ref, url) in sorted(hits.items())
     )
     return (
-        len(hits),
+        counted,
         tuple(cited),
-        f"{len(hits)} dangerous-sink hit(s) in {len(scanned)} excerpt(s): "
+        f"{counted} dangerous-sink hit(s) in non-test files, from "
+        f"{len(scanned)} excerpt(s): "
         + (listed or "none")
+        + (
+            f"; {len(test_hits)} test-path hit(s) are listed and not counted"
+            if test_hits
+            else ""
+        )
         + "; "
         + _SINK_METHOD,
     )
@@ -899,57 +972,95 @@ def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
 # ---------------------------------------------------------------------------
 
 
-_NOT_FOUND = "not found: no file in the repository matched"
-"""Start of the miss reason role resolution gives when its walk was complete
-and nothing matched (``roles.unfilled_reason``): the search ran."""
-
 ARCHITECTURE_HEADING = re.compile(r"^\s{0,3}#{1,6}[^\n]*\barchitecture\b", re.I | re.M)
 """A Markdown heading naming the architecture (T074, FR-068)."""
 
 
-def _readme_section(view: _PackView, pattern: re.Pattern[str]) -> Excerpt | None:
-    for excerpt in view.pack.excerpts:
-        name = PurePosixPath(excerpt.path).name.lower()
-        if name.startswith("readme") and pattern.search(excerpt.text):
-            return excerpt
-    return None
+MIN_DESCRIBED_ENTRIES = 3
+"""An architecture description names at least this many real repository
+paths, each followed by at least :data:`MIN_DESCRIPTION_WORDS` words of
+description (user sign-off 2026-10-12, G5). Two entries read as an aside
+("see ``src/`` and ``tests/``"); three is the smallest map of a structure."""
+
+MIN_DESCRIPTION_WORDS = 2
+
+MIN_REQUIREMENT_LIST_ITEMS = 3
+"""List items a heading naming requirements must head (T089 AC 12)."""
 
 
-def _document_rule(
-    role: str, section: re.Pattern[str] | None = None
-) -> Callable[[_PackView], _Computed]:
-    """Role presence for architecture's document rules (T074, DDR-0011): a
-    missing document fails (1) whenever the role search ran to completion,
-    even if the byte budget later truncated the pack; ``section`` also fills
-    the role with a README heading, cited."""
+DOCUMENT_SHAPES = {
+    "architecture-doc": (
+        f"describes at least {MIN_DESCRIBED_ENTRIES} real repository paths "
+        f"(a list item, table row or tree line naming a path that exists, "
+        f"followed by at least {MIN_DESCRIPTION_WORDS} words)"
+    ),
+    "decision-record": (
+        "has a decision structure (a Decision / Decision Outcome / Recommended "
+        "Path / Recommendation / Chosen / Selected / Approved direction heading "
+        "or field plus a Context, Consequences, Status, Alternatives or Options "
+        "one; or a dated entry with a decision verb and a rationale)"
+    ),
+    "requirements-doc": (
+        "has a requirement item under the declared requirement_item_patterns, "
+        "or a heading naming requirements (Requirements, User Stories, "
+        f"Acceptance Criteria, Use Cases) over at least "
+        f"{MIN_REQUIREMENT_LIST_ITEMS} list items"
+    ),
+}
+"""What content fills each document role (T089); the miss reason names it."""
+
+
+def _document_rule(role: str) -> Callable[[_PackView], _Computed]:
+    """Document role by content or declaration (T089, FR-076, DDR-0012 §3):
+    0 when ``pack.documents`` records a document with the role's shape (or a
+    declaration) for ``role``, 1 when every candidate document was scanned
+    and none has it, an abstention when the scan was cut short. A file name
+    alone never fills the role (``core/documents.py``)."""
     presence = _role_presence(role)
 
     def compute(view: _PackView) -> _Computed:
-        if section is not None:
-            excerpt = _readme_section(view, section)
-            if excerpt is not None:
-                heading = section.search(excerpt.text).group(0).strip()
-                return (
-                    0,
-                    (excerpt.ref,),
-                    f"source role {role!r} is filled by the README section "
-                    f"{heading!r} in {excerpt.ref}: 0 when a role file or a "
-                    "README heading naming the architecture was read, else 1",
-                )
-        computed = presence(view)
-        searched = any(
-            miss.source == role and miss.reason.startswith(_NOT_FOUND)
-            for miss in view.pack.sources_missing
+        if role not in view.pack.sources_sought:
+            return presence(view)
+        evidence = next(
+            (item for item in view.pack.documents or () if item.role == role), None
         )
-        if isinstance(computed, MetricAbstention) and searched and view.files:
-            return (
-                1,
-                tuple(sorted(view.files)),
-                f"source role {role!r} is not filled: no file in the repository "
-                "matched its patterns (the search ran to completion), so the "
-                "document is missing (1), whatever else the byte budget cut",
+        if evidence is None:
+            return MetricAbstention(
+                reason=(
+                    f"no document scan was recorded for the {role!r} role in this "
+                    f"{view.pack.dimension!r} pack, so its content was never checked"
+                )
             )
-        return computed
+        if evidence.kind is not None:
+            cited = "; ".join(evidence.cited)
+            return (
+                0,
+                (evidence.path,),
+                f"source role {role!r} is filled by {evidence.path} "
+                f"({evidence.kind}"
+                + (f": {cited}" if cited else ": named by the project")
+                + "); 0 when a document "
+                + DOCUMENT_SHAPES[role]
+                + " or the project declares one, else 1; a file name alone "
+                "never fills the role",
+            )
+        if evidence.bounded is not None:
+            return MetricAbstention(
+                reason=(
+                    f"no document read for the {role!r} role "
+                    f"{DOCUMENT_SHAPES[role]}, but {evidence.bounded}; that is "
+                    "not the same as absent"
+                )
+            )
+        if not view.files:
+            return _no_files()
+        return (
+            1,
+            tuple(sorted(view.files)),
+            f"source role {role!r} is not filled: {evidence.scanned} documents "
+            f"read; none {DOCUMENT_SHAPES[role]}, and none is declared, so the "
+            "document is missing (1)",
+        )
 
     return compute
 
@@ -1389,17 +1500,14 @@ MIN_CLASSIFIED_SHARE = 0.50
 """Below this share of non-shared source files in a layer, the layer rule
 abstains (user, DDR-0011)."""
 
-_LAYER_PATHS_NOTE = (
-    "only the curated layer_paths apply: local-layer and .easy-verifier.toml "
-    "layer paths are not used in scoring until conventions are embedded for "
-    "replay (T075)"
-)
 
 MAX_LAYER_EXAMPLES = 5
 """Violating import statements quoted by file:line in the derivation."""
 
 
-def _layer_direction_violations(view: _PackView) -> _Computed:
+def _source_statements(view: _PackView):
+    """The quoted source files, and each of their import statements as
+    ``(excerpt, line, text)``: the edges both layer metrics walk."""
     files = sorted(
         {
             e.path
@@ -1415,47 +1523,158 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
             continue
         for line, text in import_statements(excerpt.text, syntax):
             statements.append((excerpt, excerpt.start_line + line - 1, text))
+    return files, statements
+
+
+_ROOT = "the repository root"
+
+
+def _unit_of(path: str, homes: Sequence[str]) -> str:
+    """The deepest of ``homes`` (manifest directories, ``""`` = the root) at or
+    above ``path``; the root when none is."""
+    return max(
+        (home for home in homes if not home or path.startswith(home + "/")),
+        key=len,
+        default="",
+    )
+
+
+def _backend_units(
+    manifests: Sequence[str], behaviour: Mapping[str, str]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """``(manifest directories, backend units)`` (T093): a backend unit is the
+    deepest manifest directory at or above an api file (by behaviour). No api
+    file, no unit: the share then stays over the whole repository."""
+    parents = {str(PurePosixPath(manifest).parent) for manifest in manifests}
+    homes = tuple(sorted("" if d == "." else d for d in parents))
+    units = sorted(
+        {_unit_of(path, homes) for path, layer in behaviour.items() if layer == "api"}
+    )
+    return homes, tuple(units)
+
+
+def _in_backend_unit(path: str, homes: Sequence[str], units: Sequence[str]) -> bool:
+    """Whether ``path`` counts in the classified share: no unit counts every
+    file; else the file's own (deepest) manifest directory must be a unit."""
+    return not units or _unit_of(path, homes) in units
+
+
+def _import_unit(path: str, homes: Sequence[str]) -> str:
+    """The manifest unit an import's target must share with its importer
+    (T093, AC 12); with no manifests, the whole repository."""
+    return _unit_of(path, homes)
+
+
+def _is_violation_end(path: str, behaviour: Mapping[str, str]) -> bool:
+    """Whether ``path`` may be either end of a violation (T093, AC 11): only
+    a layer from behaviour evidence; a hint-only layer never decides one."""
+    return path in behaviour
+
+
+def _layer_direction_violations(view: _PackView) -> _Computed:
+    files, statements = _source_statements(view)
     if not statements:
         return _no_imports("source-file")
     layer_of = view.tables.layer_of or (lambda _path: None)
-    layers = {path: layer_of(path) for path in files}
+    hints = {path: layer_of(path) for path in files}
+    behaviour, cited, linked, _graph = _behaviour_layers(view, files, statements)
+    layers = {path: behaviour.get(path) or hints[path] for path in files}
     considered = [path for path in files if layers[path] != "shared"]
     classified = {p: layers[p] for p in considered if layers[p] in LAYER_RANK}
-    share = (
-        f"{len(classified)} of {len(considered)} non-shared source file(s) quoted "
-        "here classify into a layer (api, service, data) by the declared "
-        "layer_paths conventions"
+    homes, units = _backend_units(view.tables.package_manifests, behaviour)
+    counted = [p for p in considered if _in_backend_unit(p, homes, units)]
+    outside = [p for p in considered if p not in set(counted)]
+    in_share = [p for p in counted if p in classified]
+    by_behaviour = sum(1 for p in in_share if p in behaviour)
+    disagreements = [
+        f"{path} (hint {hints[path]}, behaviour {behaviour[path]} at {cited[path]})"
+        for path in files
+        if path in behaviour and hints[path] and hints[path] != behaviour[path]
+    ]
+    where = (
+        "in backend unit(s) (" + ", ".join(u or _ROOT for u in units) + ")"
+        if units
+        else "quoted here"
     )
-    if not considered or len(classified) / len(considered) < MIN_CLASSIFIED_SHARE:
+    share = (
+        f"{len(in_share)} of {len(counted)} non-shared source file(s) {where} "
+        f"classify into a layer (api, service, data): {by_behaviour} by "
+        "behaviour ("
+        + _behaviour_counts({p: behaviour[p] for p in in_share if p in behaviour})
+        + f"), {len(in_share) - by_behaviour} by the layer_paths hints only"
+    )
+    if outside:
+        groups = sorted({_unit_of(p, homes) or _ROOT for p in outside})
+        share += (
+            f"; {len(outside)} non-shared source file(s) outside backend units ("
+            + ", ".join(groups[:MAX_LAYER_EXAMPLES])
+            + (", ..." if len(groups) > MAX_LAYER_EXAMPLES else "")
+            + ") are not counted in this share: a backend unit is the deepest "
+            "directory holding a package manifest at or above a file that "
+            "registers a route, and a file belongs to the deepest such directory "
+            "above it; violations are not limited to backend units"
+        )
+    disagreed = (
+        f"; {len(disagreements)} disagreement(s) with the layer_paths hints, "
+        "behaviour wins"
+        + (": " if disagreements else "")
+        + "; ".join(disagreements[:MAX_LAYER_EXAMPLES])
+    )
+    if linked:
+        disagreed += (
+            f"; {len(linked)} prefix edge(s) from dynamic imports with a literal "
+            "directory prefix, each linking every source file directly in that "
+            "directory: " + "; ".join(linked[:MAX_LAYER_EXAMPLES])
+        )
+    if not counted or len(in_share) / len(counted) < MIN_CLASSIFIED_SHARE:
+        if not any(layer in ("api", "data") for layer in behaviour.values()):
+            return MetricAbstention(
+                reason=(
+                    "framework_not_recognized: no source file quoted here "
+                    "registers a route or calls a recognised DB/ORM API (the "
+                    "registry's route_tokens and data_tokens), and the "
+                    f"layer_paths hints classify {len(classified)} of "
+                    f"{len(considered)} non-shared source file(s), below the "
+                    f"declared minimum share of {MIN_CLASSIFIED_SHARE:.2f}; "
+                    + view.tables.layer_paths_note
+                )
+            )
         return MetricAbstention(
             reason=(
                 f"{share}, below the declared minimum share of "
                 f"{MIN_CLASSIFIED_SHARE:.2f}, so the layer direction of this "
-                "code is not measurable; " + _LAYER_PATHS_NOTE
+                "code is not measurable"
+                + ("" if "api" in behaviour.values() else
+                   "; no route registration was found here")
+                + disagreed + "; " + view.tables.layer_paths_note
             )
         )
+    # Only files classified by behaviour are violation ends (T093, AC 11).
+    ends = {p: lay for p, lay in classified.items() if _is_violation_end(p, behaviour)}
     # A stem shared by files of different layers names no layer: skipped.
-    by_name: dict[str, set[str]] = {}
-    for path, layer in classified.items():
-        by_name.setdefault(_file_name(path), set()).add(layer)
+    # A target resolves only within the importer's own unit (T093, AC 12).
+    by_name: dict[tuple[str, str], set[str]] = {}
+    for path, layer in ends.items():
+        key = (_import_unit(path, homes), _file_name(path))
+        by_name.setdefault(key, set()).add(layer)
     targets = {
-        name: found.pop()
-        for name, found in by_name.items()
-        if len(found) == 1 and name
+        key: found.pop() for key, found in by_name.items() if len(found) == 1 and key[1]
     }
-    patterns = {name: _names_pattern([name]) for name in targets}
+    patterns = {key: _names_pattern([key[1]]) for key in targets}
     violations: list[tuple[Excerpt, int, str, str]] = []
     for excerpt, line, text in statements:
-        source = classified.get(excerpt.path)
+        source = ends.get(excerpt.path)
         if source is None:
             continue
+        unit = _import_unit(excerpt.path, homes)
         higher = sorted(
             {
                 target
-                for name, target in targets.items()
-                if LAYER_RANK[target] > LAYER_RANK[source]
+                for (in_unit, name), target in targets.items()
+                if in_unit == unit
+                and LAYER_RANK[target] > LAYER_RANK[source]
                 and name != _file_name(excerpt.path)
-                and patterns[name].search(text)
+                and patterns[(in_unit, name)].search(text)
             },
             key=LAYER_RANK.get,
         )
@@ -1472,11 +1691,316 @@ def _layer_direction_violations(view: _PackView) -> _Computed:
         f"{len(violations)} import statement(s) from a lower to a higher layer "
         "(data -> service, service -> api, data -> api)"
         + (f", e.g. {examples}" if examples else "")
-        + f". {share} ({_LAYER_PATHS_NOTE}); shared and unclassified files "
+        + f". {share} ({view.tables.layer_paths_note}){disagreed}. "
+        + _BEHAVIOUR_METHOD
+        + "; a violation needs a layer from behaviour at both ends: the "
+        f"{len(classified) - len(ends)} file(s) classified by the layer_paths "
+        "hints only count in the share but are never a violation end; an "
+        "import's target is matched only among files of the importer's own "
+        "manifest unit (the deepest directory holding a package manifest "
+        "above it); "
+        "shared and unclassified files "
         "never count, and a file "
         "stem shared by files of different layers names none; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
     )
+
+
+MAX_REQUEST_PATHS_LISTED = 20
+"""Routes quoted in the ``request_paths`` derivation (T090); the rest are
+counted and the cap is stated, since every cited hop adds payload."""
+
+
+def _request_paths(view: _PackView) -> _Computed:
+    """Per route, the shortest in-repo import path from its file to a file
+    that calls a DB/ORM API (T090). Reported, never scored: no rating rule
+    reads it. Walks the edges T088's behaviour layers already built."""
+    files, statements = _source_statements(view)
+    behaviour, _cited, linked, graph = _behaviour_layers(view, files, statements)
+    if graph is None:
+        return MetricAbstention(
+            reason="no behaviour evidence is registered for this language set, so "
+            "no route can be recognised"
+        )
+    found, edges, lines = graph
+    api = {}
+    for path in sorted(found):
+        for excerpt, ev in found[path]:
+            if ev.routes:
+                api.setdefault(path, []).append((excerpt, ev))
+    if not api:
+        return MetricAbstention(
+            reason="no source file quoted here registers a route (the registry's "
+            "route_tokens), so there is no request path to report"
+        )
+
+    def boundary(path: str):
+        for excerpt, ev in found.get(path, ()):
+            if ev.data_line:
+                return excerpt, ev.data_line
+        return None
+
+    def hops(start: str) -> list[str] | None:
+        previous = {start: None}
+        queue = [start]
+        for node in queue:
+            if node != start and boundary(node):
+                chain = [node]
+                while previous[chain[-1]] is not None:
+                    chain.append(previous[chain[-1]])
+                return chain[::-1]
+            for target in sorted(edges.get(node, ())):
+                if target not in previous:
+                    previous[target] = node
+                    queue.append(target)
+        return None
+
+    routes = []
+    for path, items in api.items():
+        chain = [path] if boundary(path) else hops(path)
+        for excerpt, ev in items:
+            for route in ev.routes:
+                routes.append((path, excerpt.start_line + route.line - 1, route, chain))
+    direct = sum(1 for _p, _l, _r, chain in routes if chain and len(chain) == 1)
+    via = sum(1 for _p, _l, _r, chain in routes if chain and len(chain) > 1)
+    none = len(routes) - direct - via
+    ranked = sorted(
+        routes,
+        key=lambda r: (
+            0 if r[3] and len(r[3]) > 1 else 1 if r[3] else 2,
+            r[0],
+            r[1],
+        ),
+    )
+    shown = ranked[:MAX_REQUEST_PATHS_LISTED]
+    refs: set[str] = set()
+    out = []
+    for path, line, route, chain in shown:
+        where = route.path or "(path is not a literal)"
+        head = f"{route.method} {where}: {path}:{line}"
+        if chain is None:
+            out.append(head + " -> reaches no file that calls a DB/ORM API")
+            refs.update(e.ref for e, _ev in api[path])
+            continue
+        parts = [head]
+        for node, nxt in zip(chain, chain[1:], strict=False):
+            if node != path:
+                parts.append(f"{node}:{lines[(node, nxt)]}")
+        hit = boundary(chain[-1])
+        excerpt, at = hit
+        call = excerpt.text.split("\n")[at - 1].strip()[:60]
+        end = excerpt.start_line + at - 1
+        parts.append(
+            f"{chain[-1]}:{end} ({call})" if chain[-1] != path
+            else f"DB/ORM call at line {end} ({call})"
+        )
+        out.append(" -> ".join(parts))
+        for node in chain:
+            refs.update(e.ref for e, _ev in found.get(node, ()))
+    cap = (
+        f"; the first {MAX_REQUEST_PATHS_LISTED} of {len(routes)} routes are "
+        "listed (cap), ordered by paths through modules, then direct, then none"
+        if len(routes) > MAX_REQUEST_PATHS_LISTED
+        else ""
+    )
+    summary = (
+        f"{len(routes)} route(s) found in {len(api)} file(s): {direct} reach a "
+        f"DB/ORM call in their own file, {via} through at least one other "
+        f"in-repo module, {none} reach none by the import edges seen{cap}. "
+        "Reported only: no rule, rating or overall reads it; the database "
+        "belongs to another service (user). "
+        + (
+            f"{len(linked)} dynamic import(s) with a literal directory prefix "
+            "link every file directly in that directory, so a path through one "
+            "names the first such file, not necessarily the one called. "
+            if linked
+            else ""
+        )
+        + _BEHAVIOUR_METHOD
+        + "; only the import statements quoted in this pack are seen; "
+        + _IMPORT_METHOD
+    )
+    return (
+        len(routes),
+        tuple(sorted(refs or {e.ref for _p, items in api.items() for e, _v in items})),
+        # The summary is the last line: a whole-file note is appended to the end.
+        "\n".join([*out, summary]),
+    )
+
+
+_BEHAVIOUR_METHOD = (
+    "A file's layer is what its code does (DDR-0012): api registers a route "
+    "(route_tokens) or is the module of a dotted route handler; data calls a "
+    "data_tokens DB/ORM method on a client or model name it imports from a "
+    "DB/ORM package or an in-repo file binding one; service is a file on an "
+    "import path from an api file to a data file; a file with route and DB "
+    "calls is api, and its DB access is never scored; a file the behaviour "
+    "does not classify takes its layer_paths hint"
+)
+
+
+def _behaviour_counts(behaviour: Mapping[str, str]) -> str:
+    return ", ".join(
+        f"{sum(1 for v in behaviour.values() if v == layer)} {layer}"
+        for layer in ("api", "service", "data")
+    )
+
+
+def _behaviour_layers(
+    view: _PackView, files: Sequence[str], statements
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Behaviour layers over the layer rule's own import edges (T088): an
+    import statement names a file when it holds the file's stem (an ``index``
+    file: also its directory) and no other file quoted here has that name."""
+    evidence_of = view.tables.layer_evidence
+    if evidence_of is None:
+        return {}, {}, [], None
+    texts: dict[str, list[Excerpt]] = {}
+    for excerpt in view.pack.excerpts:
+        if excerpt.path in files:
+            texts.setdefault(excerpt.path, []).append(excerpt)
+    owners: dict[str, set[str]] = {}
+    for path in files:
+        pure = PurePosixPath(path)
+        barrel = {pure.parent.name} if pure.stem == "index" else set()
+        for name in {_file_name(path)} | barrel:
+            if name:
+                owners.setdefault(name, set()).add(path)
+    unique = {name: found.pop() for name, found in owners.items() if len(found) == 1}
+    patterns = {name: _names_pattern([name]) for name in unique}
+    targets: dict[tuple[str, int], set[str]] = {}
+    for excerpt, line, text in statements:
+        targets[(excerpt.path, line)] = {
+            unique[name]
+            for name in unique
+            if unique[name] != excerpt.path and patterns[name].search(text)
+        }
+
+    def observe(imported: Mapping[str, frozenset[str]], previous=None, before=None):
+        found = {}
+        for path, excerpts in texts.items():
+            if previous is not None and imported.get(path) == before.get(path):
+                found[path] = previous[path]
+                continue
+            for excerpt in excerpts:
+                ev = evidence_of(path, excerpt.text, imported.get(path, frozenset()))
+                found.setdefault(path, []).append((excerpt, ev))
+        return found
+
+    def bound(found) -> dict[str, frozenset[str]]:
+        imported: dict[str, set[str]] = {}
+        for path, items in found.items():
+            for excerpt, ev in items:
+                for line, names in ev.imports:
+                    at = (path, excerpt.start_line + line - 1)
+                    for target in targets.get(at, ()):
+                        for _e, tev in found.get(target, ()):
+                            exported = "exports" in tev.defines
+                            take = names if exported else names & tev.defines
+                            imported.setdefault(path, set()).update(take)
+        return {path: frozenset(names) for path, names in imported.items()}
+
+    found = observe({})
+    linked: list[str] = []
+    for path, items in found.items():
+        for excerpt, ev in items:
+            for line, prefix in ev.prefixes:
+                at = excerpt.start_line + line - 1
+                loaded = _prefix_targets(path, prefix, files)
+                if loaded:
+                    targets.setdefault((path, at), set()).update(loaded)
+                    linked.append(
+                        f"{path}:{at} -> {prefix!r} ({len(loaded)} file(s))"
+                    )
+    imported: dict[str, frozenset[str]] = {}
+    for _round in range(3):
+        again = bound(found)
+        if again == imported:
+            break
+        found = observe(again, found, imported)
+        imported = again
+    behaviour: dict[str, str] = {}
+    cited: dict[str, str] = {}
+    handled: dict[str, str] = {}
+    for path, items in found.items():
+        for excerpt, ev in items:
+            if ev.layer is None or behaviour.get(path) == "api":
+                continue
+            if ev.layer == "api" or path not in behaviour:
+                behaviour[path] = ev.layer
+                cited[path] = f"{path}:{excerpt.start_line + ev.line - 1}"
+            if ev.layer == "api":
+                for line, names in ev.imports:
+                    at = (path, excerpt.start_line + line - 1)
+                    if names & ev.handlers:
+                        for target in targets.get(at, ()):
+                            handled.setdefault(target, cited[path])
+    for target, at in handled.items():
+        if behaviour.get(target) != "api":
+            behaviour[target] = "api"
+            cited[target] = f"route handler module, routed at {at}"
+    edges: dict[str, set[str]] = {}
+    lines: dict[tuple[str, str], int] = {}
+    for (path, line), found_targets in targets.items():
+        for target in found_targets:
+            edges.setdefault(path, set()).add(target)
+            lines.setdefault((path, target), line)
+    reverse: dict[str, set[str]] = {}
+    for path, found_targets in edges.items():
+        for target in found_targets:
+            reverse.setdefault(target, set()).add(path)
+
+    def reach(start: str, graph) -> set[str]:
+        seen: set[str] = set()
+        roots = [path for path, layer in behaviour.items() if layer == start]
+        queue = [node for root in roots for node in graph.get(root, ())]
+        while queue:
+            node = queue.pop()
+            if node in seen or node in behaviour:
+                continue
+            seen.add(node)
+            queue.extend(graph.get(node, ()))
+        return seen
+
+    below = reach("data", reverse)
+    for path in sorted(reach("api", edges) & below):
+        behaviour[path] = "service"
+        toward = sorted(
+            lines[(path, t)]
+            for t in edges.get(path, ())
+            if t in below or behaviour.get(t) == "data"
+        )
+        cited[path] = f"{path}:{toward[0]}" if toward else path
+    return behaviour, cited, linked, (found, edges, lines)
+
+
+def _prefix_targets(path: str, prefix: str, files: Sequence[str]) -> set[str]:
+    """The in-scope files directly in the directory a literal dynamic-import
+    prefix names (T088 AC 11), non-recursive: ``./controllers/`` relative to
+    ``path``'s directory, or dotted ``pkg.mod.`` as a directory ``pkg/mod``
+    at any depth."""
+    if prefix.startswith("."):
+        parts: list[str] = []
+        for part in (*PurePosixPath(path).parent.parts, *prefix.split("/")):
+            if part == "..":
+                if parts:
+                    parts.pop()
+            elif part not in (".", ""):
+                parts.append(part)
+        base = "/".join(parts)
+        return {f for f in files if f != path and _parent(f) == base}
+    folder = prefix.rstrip(".").replace(".", "/")
+    return {
+        f
+        for f in files
+        if f != path
+        and (_parent(f) == folder or _parent(f).endswith("/" + folder))
+    }
+
+
+def _parent(path: str) -> str:
+    parent = str(PurePosixPath(path).parent)
+    return "" if parent == "." else parent
 
 
 def _common_directory(files: Sequence[str]) -> tuple[str, ...]:
@@ -2683,6 +3207,335 @@ def _strict_type_config_missing(view: _PackView) -> _Computed:
     )
 
 
+# ---------------------------------------------------------------------------
+# Supply-chain CI evidence (T041, areas #20-#22). Computed only over the
+# supply-chain pack; every token and pattern is the registry's or the generic
+# layer's (core/roles.py GENERIC_CI_FACTS), never this module's.
+# ---------------------------------------------------------------------------
+
+SUPPLY_CHAIN = "supply-chain"
+
+_SUPPLY_CHAIN_ONLY = (
+    "only the supply-chain pack quotes CI and release configuration, and this "
+    "is the {dimension!r} pack"
+)
+
+
+def _ci_lines(
+    view: _PackView, match: Callable[[str], bool] | None
+) -> tuple[list[tuple[str, int, str]], list[str], list[str]]:
+    """``(lines, files, clipped)`` over the excerpts whose path ``match``
+    accepts: each non-comment line with its path and line number (a trailing
+    `` #`` comment removed), the distinct paths, and the paths whose excerpt
+    ends in the line-cap clip marker."""
+    lines: list[tuple[str, int, str]] = []
+    files: dict[str, None] = {}
+    clipped: dict[str, None] = {}
+    for excerpt in view.pack.excerpts if match is not None else ():
+        if not match(excerpt.path):
+            continue
+        files.setdefault(excerpt.path)
+        if excerpt_clipped(excerpt.text):
+            clipped.setdefault(excerpt.path)
+        for offset, line in enumerate(excerpt.text.splitlines()):
+            code = line.split(" #", 1)[0]
+            if code.lstrip().startswith("#"):
+                continue
+            lines.append((excerpt.path, excerpt.start_line + offset, code))
+    return lines, list(files), list(clipped)
+
+
+def _ci_abstention(view: _PackView) -> MetricAbstention | None:
+    if view.pack.dimension != SUPPLY_CHAIN:
+        return MetricAbstention(
+            reason=_SUPPLY_CHAIN_ONLY.format(dimension=view.pack.dimension)
+        )
+    return None
+
+
+def _no_ci_file(what: str) -> MetricAbstention:
+    return MetricAbstention(
+        reason=(
+            f"no CI workflow file was quoted in this pack, so there is no {what} "
+            "to examine; that is not the same as a pipeline without one "
+            "(the ci-workflow role's miss is in sources_missing)"
+        )
+    )
+
+
+def _ci_actions_unpinned_share(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    lines, files, clipped = _ci_lines(view, tables.ci_files)
+    if not files:
+        return _no_ci_file("action reference")
+    if clipped:
+        return MetricAbstention(
+            reason=(
+                "a CI workflow excerpt was clipped at the line cap ("
+                + ", ".join(clipped)
+                + "), so references beyond it were never read"
+            )
+        )
+    if tables.action_reference is None:
+        return MetricAbstention(reason="no action-reference token is declared")
+    external: list[tuple[str, int, str]] = []
+    for path, number, line in lines:
+        found = tables.action_reference.search(line)
+        if found and not found[1].startswith(tables.local_reference):
+            external.append((path, number, found[1]))
+    if not external:
+        return MetricAbstention(
+            reason=(
+                "no external action reference (uses: owner/repo@ref, or a step "
+                "or service image:) appears in "
+                "the quoted CI workflows, so there is nothing to pin; that is a "
+                "zero denominator, not a share of 0"
+            )
+        )
+    unpinned = [
+        item
+        for item in external
+        if not any(pattern.search(item[2]) for pattern in tables.pinned_reference)
+    ]
+    return (
+        len(unpinned) / len(external),
+        tuple(sorted({path for path, _n, _r in external})),
+        f"{len(unpinned)} of {len(external)} external action reference(s) in "
+        f"{len(files)} CI workflow file(s) are not pinned to a full commit SHA "
+        "or image digest: "
+        + (", ".join(f"{p}:{n} {r}" for p, n, r in unpinned[:5]) or "none")
+        + (f", and {len(unpinned) - 5} more" if len(unpinned) > 5 else "")
+        + "; a reference is any `uses:` or `image:` value outside the "
+        "repository (not starting ./), pinned when it matches the generic "
+        "layer's pinned-reference patterns (a full commit SHA, or an image "
+        "@sha256 digest)",
+    )
+
+
+def _ci_lockfile_install_missing(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    lines, files, clipped = _ci_lines(view, tables.ci_files)
+    if not files:
+        return _no_ci_file("install command")
+    if tables.lockfile_install is None:
+        return MetricAbstention(reason="no lockfile-install token is declared")
+    hits = [
+        (path, number)
+        for path, number, line in lines
+        if tables.lockfile_install.search(line)
+    ]
+    if not hits and clipped:
+        return MetricAbstention(
+            reason=(
+                "no lockfile-faithful install command was found, but a CI "
+                "workflow excerpt was clipped at the line cap ("
+                + ", ".join(clipped)
+                + "), so it may sit beyond what was read"
+            )
+        )
+    cited = sorted({path for path, _n in hits}) or sorted(files)
+    return (
+        0 if hits else 1,
+        tuple(cited),
+        (
+            f"{len(hits)} CI line(s) run a lockfile-faithful install: "
+            + ", ".join(f"{p}:{n}" for p, n in hits[:5])
+            if hits
+            else f"no line of {len(files)} quoted CI workflow file(s) runs a "
+            "lockfile-faithful install"
+        )
+        + "; 0 when any does, else 1 (missing); the commands are the "
+        "registry's lockfile_install tokens (per language) matched in "
+        "non-comment CI lines",
+    )
+
+
+def _ci_provenance_step_missing(view: _PackView) -> _Computed:
+    absent = _ci_abstention(view)
+    if absent is not None:
+        return absent
+    tables = view.tables
+    ci_lines, ci_files, ci_clipped = _ci_lines(view, tables.ci_files)
+    rel_lines, rel_files, rel_clipped = _ci_lines(view, tables.release_files)
+    files = [*ci_files, *(f for f in rel_files if f not in ci_files)]
+    if not files:
+        return MetricAbstention(
+            reason=(
+                "no CI workflow or release configuration file was quoted in "
+                "this pack, so there is nothing to look for an SBOM, signing or "
+                "provenance step in (the roles' misses are in sources_missing)"
+            )
+        )
+    if tables.provenance_steps is None:
+        return MetricAbstention(reason="no provenance-step token is declared")
+    hits = [
+        (path, number)
+        for path, number, line in (*ci_lines, *rel_lines)
+        if tables.provenance_steps.search(line)
+    ]
+    clipped = [*ci_clipped, *rel_clipped]
+    if not hits and clipped:
+        return MetricAbstention(
+            reason=(
+                "no SBOM, signing or provenance step was found, but an excerpt "
+                "was clipped at the line cap (" + ", ".join(clipped) + "), so "
+                "it may sit beyond what was read"
+            )
+        )
+    cited = sorted({path for path, _n in hits}) or sorted(files)
+    return (
+        0 if hits else 1,
+        tuple(cited),
+        (
+            f"{len(hits)} line(s) show an SBOM, signing or provenance step: "
+            + ", ".join(f"{p}:{n}" for p, n in hits[:5])
+            if hits
+            else f"no line of {len(files)} quoted CI or release file(s) shows one"
+        )
+        + "; 0 when any does, else 1 (missing); the tokens are the generic "
+        "layer's (slsa, provenance, attest, sbom, cyclonedx, spdx, cosign, "
+        "sigstore, syft), matched case-insensitively in non-comment lines",
+    )
+
+
+API = "api"
+
+API_METRICS = (
+    "api_spec_missing",
+    "api_version_missing",
+    "request_validation_missing",
+    "breaking_api_changes_observed",
+)
+"""The T044 api rule metrics (area #7), computed by the ``api`` dimension over
+whole files and the changes-scope diff and stored on ``pack.whole_file``."""
+
+
+def _api_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the api dimension did not store the
+    metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != API:
+        return MetricAbstention(
+            reason=(
+                "only the api pack records API specification, route, validation "
+                f"and versioning facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no API facts "
+            "were gathered"
+        )
+    )
+
+
+DATA = "data"
+
+DATA_METRICS = (
+    "migrations_missing",
+    "migrations_without_rollback_share",
+    "schema_constraints_missing",
+    "destructive_migration_ops_observed",
+)
+"""The T045 data rule metrics (area #4), computed by the ``data`` dimension
+over whole files and stored on ``pack.whole_file``."""
+
+
+def _data_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the data dimension did not store the
+    metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != DATA:
+        return MetricAbstention(
+            reason=(
+                "only the data pack records migration, schema and constraint "
+                f"facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no data facts "
+            "were gathered"
+        )
+    )
+
+
+OPERATIONS = "operations"
+
+OPERATIONS_METRICS = (
+    "logging_library_missing",
+    "audit_log_writes_missing",
+    "codeowners_missing",
+    "agent_guardrails_missing",
+    "agent_config_secrets_observed",
+    "tool_version_pin_missing",
+    "dev_environment_missing",
+)
+"""The T046 operations rule metrics (areas #14, #26, #29, #30), computed by
+the ``operations`` dimension over whole files and stored on
+``pack.whole_file``."""
+
+
+def _operations_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the operations dimension did not store
+    the metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != OPERATIONS:
+        return MetricAbstention(
+            reason=(
+                "only the operations pack records ownership, observability, "
+                f"agent and setup facts, and this is the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no operations "
+            "facts were gathered"
+        )
+    )
+
+
+INFRASTRUCTURE = "infrastructure"
+
+INFRASTRUCTURE_METRICS = (
+    "iac_wildcard_iam_observed",
+    "iac_open_ingress_observed",
+    "iac_unencrypted_storage_observed",
+    "terraform_locked_remote_state_missing",
+    "terraform_environment_separation_missing",
+    "database_backup_unconfigured",
+    "database_ha_unconfigured",
+)
+"""The T042 infrastructure rule metrics (areas #11, #23, #24), computed by
+the ``infrastructure`` dimension over whole files and stored on
+``pack.whole_file``."""
+
+
+def _infrastructure_fact(view: _PackView) -> MetricAbstention:
+    """Reaching this function means the infrastructure dimension did not store
+    the metric: another pack, or an unresolved scope."""
+    pack = view.pack
+    if pack.dimension != INFRASTRUCTURE:
+        return MetricAbstention(
+            reason=(
+                "only the infrastructure pack records IaC facts, and this is "
+                f"the {pack.dimension!r} pack"
+            )
+        )
+    return MetricAbstention(
+        reason=(
+            f"the {pack.scope} scope could not be resolved, so no "
+            "infrastructure facts were gathered"
+        )
+    )
+
+
 @dataclass(frozen=True)
 class MetricDefinition:
     """Declared data, so T020's rules can name a metric without importing its
@@ -2703,6 +3556,13 @@ PACK_METRICS: dict[str, tuple[str, ...]] = {
         "float_money_observed",
         "ledger_tables_without_audit_columns_observed",
         "ledger_rows_mutated_observed",
+    ),
+    "frontend-a11y": (
+        "images_without_alt_observed",
+        "form_controls_without_label_observed",
+        "aria_hidden_focusable_observed",
+        "viewport_missing_or_zoom_disabled_observed",
+        "browser_support_declaration_missing",
     ),
 }
 """Metrics of an optional pack (T047). A pack's evidence computes only these, and
@@ -2802,6 +3662,9 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         _layer_direction_violations,
     ),
     MetricDefinition(
+        "request_paths", FAMILY_CODE_SHAPE, WHOLE_SET, _request_paths
+    ),
+    MetricDefinition(
         "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
     ),
     MetricDefinition(
@@ -2844,7 +3707,7 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         "architecture_description_missing",
         FAMILY_EVIDENCE_COVERAGE,
         EVIDENCE_LOCAL,
-        _document_rule("architecture-doc", ARCHITECTURE_HEADING),
+        _document_rule("architecture-doc"),
     ),
     MetricDefinition(
         "decision_records_missing",
@@ -2972,6 +3835,54 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
         for names in PACK_METRICS.values()
         for name in names
     ),
+    MetricDefinition(
+        "licence_file_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        EVIDENCE_LOCAL,
+        _role_presence("licence-file"),
+    ),
+    MetricDefinition(
+        "ci_actions_unpinned_share",
+        FAMILY_SECURITY_SURFACE,
+        WHOLE_SET,
+        _ci_actions_unpinned_share,
+    ),
+    MetricDefinition(
+        "ci_lockfile_install_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        WHOLE_SET,
+        _ci_lockfile_install_missing,
+    ),
+    MetricDefinition(
+        "ci_provenance_step_missing",
+        FAMILY_EVIDENCE_COVERAGE,
+        WHOLE_SET,
+        _ci_provenance_step_missing,
+    ),
+    # T044: api; computed over whole files by the api pack itself
+    *(
+        MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _api_fact)
+        for name in API_METRICS
+    ),
+    # T045: data; computed over whole files by the data pack itself
+    *(
+        MetricDefinition(name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _data_fact)
+        for name in DATA_METRICS
+    ),
+    # T046: operations; computed over whole files by the operations pack itself
+    *(
+        MetricDefinition(
+            name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _operations_fact
+        )
+        for name in OPERATIONS_METRICS
+    ),
+    # T042: infrastructure; computed over whole files by its own pack
+    *(
+        MetricDefinition(
+            name, FAMILY_EVIDENCE_COVERAGE, EVIDENCE_LOCAL, _infrastructure_fact
+        )
+        for name in INFRASTRUCTURE_METRICS
+    ),
 )
 
 METRIC_NAMES: tuple[str, ...] = tuple(d.name for d in METRIC_DEFINITIONS)
@@ -3064,7 +3975,11 @@ SAMPLED_METRICS: dict[str, tuple[str, ...]] = {
         "type_escapes_per_kloc",
         "todo_without_ticket_share",
     ),
-    "architecture": ("top_level_import_cycles", "layer_direction_violations"),
+    "architecture": (
+        "top_level_import_cycles",
+        "layer_direction_violations",
+        "request_paths",
+    ),
     "reliability": tuple(_RELIABILITY_RULES),
 }
 """Metrics a code tier computes over the whole text of its priority-batch

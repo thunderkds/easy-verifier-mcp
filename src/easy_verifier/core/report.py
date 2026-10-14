@@ -69,6 +69,7 @@ from easy_verifier.core.models import (
 from easy_verifier.core.redact import redact
 from easy_verifier.core.roles import parse_agent_input
 from easy_verifier.core.score import ScoreResult, score_packs
+from easy_verifier.core.structure import repo_conventions
 from easy_verifier.dimensions import dimension_names
 
 REPORTS_DIRNAME = "reports"
@@ -144,7 +145,10 @@ def write_report(
     ctx = _Ctx(repo=repo)
     score = (
         score_packs(
-            packs, validated.by_dimension, document_input.get("gate_evaluations")
+            packs,
+            validated.by_dimension,
+            document_input.get("gate_evaluations"),
+            conventions=repo_conventions(repo, document_input),
         )
         if _scoreable(tuple(slot.dimension for slot in packs.slots))
         else None
@@ -527,6 +531,45 @@ _METRIC_TEXT: dict[str, str] = {
         "ledger tables with no audit column"
     ),
     "ledger_rows_mutated_observed": "updates or deletes of ledger rows",
+    # frontend-a11y pack (T049)
+    "images_without_alt_observed": "images without alt text",
+    "form_controls_without_label_observed": "form controls without a label",
+    "aria_hidden_focusable_observed": "focusable elements hidden with aria-hidden",
+    "viewport_missing_or_zoom_disabled_observed": (
+        "entry pages with no viewport or with zoom disabled"
+    ),
+    "browser_support_declaration_missing": "no declared browser support",
+    # infrastructure (T042)
+    "iac_wildcard_iam_observed": "wildcard IAM or RBAC permissions",
+    "iac_open_ingress_observed": "ingress open to the whole internet",
+    "iac_unencrypted_storage_observed": "storage without encryption at rest",
+    "terraform_locked_remote_state_missing": "no locked remote Terraform state",
+    "terraform_environment_separation_missing": "no per-environment separation",
+    "database_backup_unconfigured": "databases with no backup setting",
+    "database_ha_unconfigured": "databases with no high-availability setting",
+    # operations (T046)
+    "logging_library_missing": "no logging or tracing library",
+    "audit_log_writes_missing": "no audit log writes",
+    "codeowners_missing": "no CODEOWNERS file",
+    "agent_guardrails_missing": "no coding-agent guardrails",
+    "agent_config_secrets_observed": "secret-shaped values in agent configuration",
+    "tool_version_pin_missing": "no tool-version pin",
+    "dev_environment_missing": "no devcontainer or one-command setup",
+    # data (T045)
+    "migrations_missing": "no migrations beside a schema",
+    "migrations_without_rollback_share": "share of migrations with no rollback",
+    "schema_constraints_missing": "no NOT NULL, unique or foreign-key constraint",
+    "destructive_migration_ops_observed": "DROP or RENAME operations in migrations",
+    # api (T044)
+    "api_spec_missing": "no API specification",
+    "api_version_missing": "no API versioning",
+    "request_validation_missing": "no request validation at entry points",
+    "breaking_api_changes_observed": "endpoints or fields removed in the change",
+    # supply-chain (T041)
+    "licence_file_missing": "no licence file",
+    "ci_actions_unpinned_share": "share of CI actions not pinned to a SHA",
+    "ci_lockfile_install_missing": "no lockfile-faithful install in CI",
+    "ci_provenance_step_missing": "no SBOM, signing or provenance step in CI",
 }
 """One plain description per declared rule metric, for the summary (FR-063).
 Presentation only."""
@@ -543,8 +586,26 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "package-manifest": "package manifest",
     "lockfile": "lockfile",
     "auth-code": "auth code",
-    "container-config": "container config",
     "ci-workflow": "CI workflow",
+    "licence-file": "licence file",
+    "release-config": "release config",
+    "api-spec": "API specification",
+    "route definitions in source files": None,
+    "migration files": "migration files",
+    "schema-file": "schema file",
+    "data models in source files": None,
+    "terraform-file": "Terraform files",
+    "k8s-manifest": "Kubernetes manifests",
+    "cloud-template": "CloudFormation or Pulumi templates",
+    "container-config": "container config",
+    "codeowners": "CODEOWNERS",
+    "observability-config": "observability config",
+    "agent-config": "coding-agent config",
+    "tool-version-pin": "tool-version pin",
+    "dev-environment": "dev environment",
+    "runbook, incident or SLO documents": "runbook, incident or SLO docs",
+    "logging or tracing in source files": None,
+    "request validation in source files": None,
     "credential-file": "credential file",
     "test-config": "test config",
     "test-file": "test files",
@@ -565,6 +626,11 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "log statements in source files (the pack's log_calls)": None,
     "money-named field declarations (the pack's money_declarations)": None,
     "ledger, transaction or payment tables (the pack's ledger_declarations)": None,
+    "markup files (the pack's markup_files)": "markup files",
+    "HTML entry documents (the pack's viewport_entries)": "HTML entry pages",
+    "browser-support declarations (the pack's browser_support)": (
+        "a browser-support declaration"
+    ),
 }
 """Plain name per declared sought source (every dimension's
 ``sources_sought``), for the could-not-evaluate lines (FR-063). ``None`` marks
@@ -910,6 +976,13 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         else {}
     )
     samples = {item["dimension"]: item for item in score.samples}
+    request_paths = {
+        item.dimension: item
+        for item in score.metrics
+        if item.name == "request_paths"
+        and item.dimension == "architecture"
+        and not item.abstained
+    }
     cards = "".join(
         _render_score_card(
             ctx,
@@ -917,6 +990,7 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
             assessments.get(rating.dimension),
             divergences.get(rating.dimension),
             samples.get(rating.dimension),
+            request_paths.get(rating.dimension),
         )
         for rating in score.ratings
     )
@@ -928,6 +1002,7 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
         "An assessment appears only when caller findings were submitted; divergence "
         "is shown separately and never blended.</p>"
         f"{overall_html}{_render_area_coverage(ctx, score)}"
+        f"{_render_excluded(ctx, score.excluded)}"
         f'<div class="score-grid">{cards}</div>'
         f"{_render_registry_entries(ctx, score.registry_entries)}</section>"
     )
@@ -950,6 +1025,22 @@ def _render_area_coverage(ctx: _Ctx, score: ScoreResult) -> str:
         else ""
     )
     return f'<div class="area-coverage"><p>{ctx.esc(text)}</p>{folded}</div>'
+
+
+def _render_excluded(ctx: _Ctx, excluded) -> str:
+    """FR-074: a folded count plus list of the third-party roots the score
+    left out, each with its reason and matched rule (T087)."""
+    if not excluded:
+        return ""
+    rows = "".join(
+        f"<li><code>{ctx.esc(item['path'])}</code> ({ctx.esc(item['reason'])}: "
+        f"{ctx.esc(item['rule'])})</li>"
+        for item in excluded
+    )
+    return (
+        '<details class="third-party-excluded"><summary>Excluded as third-party '
+        f'({len(excluded)})</summary><ul class="miss-list">{rows}</ul></details>'
+    )
 
 
 _GROUP_TITLES = {
@@ -1150,6 +1241,7 @@ def _render_score_card(
     assessment: Assessment | AssessmentAbsence | None,
     divergence: Divergence | DivergenceAbsence | None,
     sample: dict[str, Any] | None = None,
+    request_paths: Any = None,
 ) -> str:
     gated = ""
     row = ""
@@ -1223,9 +1315,26 @@ def _render_score_card(
         f'<article class="{css}"><h3>{ctx.esc(rating.dimension)}</h3>'
         f'<p class="score-row">{ctx.esc(row)}</p>'
         f"{_render_sample(ctx, sample)}"
+        f"{_render_request_paths(ctx, request_paths)}"
         "<details><summary>Rule inputs, citations and cited files</summary>"
         f"{gated}{rating_html}{_render_assessment(ctx, assessment)}"
         f"{_render_divergence(ctx, divergence)}</details></article>"
+    )
+
+
+def _render_request_paths(ctx: _Ctx, metric: Any) -> str:
+    """T090: each route's in-repo request path, a folded list in the
+    architecture card; reported only, no rule reads it. The derivation holds
+    the listed routes one per line and the summary (with the cap) last."""
+    if metric is None:
+        return ""
+    *routes, summary = metric.derivation.split("\n")
+    items = "".join(f"<li><code>{ctx.esc(line)}</code></li>" for line in routes)
+    return (
+        f'<details class="request-paths"><summary>Request paths: '
+        f"{ctx.esc(metric.outcome)} route(s), reported only, not scored"
+        f"</summary><p class=\"rating-method\">{ctx.esc(summary)}</p>"
+        f"<ul>{items}</ul></details>"
     )
 
 

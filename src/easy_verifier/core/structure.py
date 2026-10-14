@@ -15,17 +15,31 @@ textual, never parsed: a derivation built on these says so.
 
 from __future__ import annotations
 
+import dataclasses
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from .metric_tables import curated_metric_tables, token_regex
 from .metrics import LanguageTables, _is_test_file
-from .registry import Registry, RegistryEntry, load_conventions
-from .roles import _config_matcher
-from .tokens import LanguageSyntax, strip
+from .redact import redact
+from .registry import (
+    CURATED,
+    RECEIVER_ASSIGN_KIND,
+    RECEIVER_KIND,
+    RECEIVER_PARAM_KIND,
+    Registry,
+    RegistryEntry,
+    is_config_convention,
+    layered_conventions,
+    load_conventions,
+    parse_local_entries,
+    with_config_conventions,
+)
+from .roles import GENERIC_PATTERNS, _config_matcher, _registry, load_repo_conventions
+from .tokens import LanguageSyntax, import_statements, strip
 
 MAX_HANDLER_LINES = 10
 """Blank lines allowed between one decorator and the next, or the handler's
@@ -56,6 +70,9 @@ class Route:
     path: str | None
     """The string literal right after the token, if there is one."""
     handler: str | None
+    module: str | None = dataclasses.field(default=None, compare=False)
+    """The first name of a dotted call handler (``views`` of ``views.index``):
+    the module the handler lives in (T088)."""
 
 
 @dataclass(frozen=True)
@@ -81,6 +98,80 @@ def convention_values(entry: RegistryEntry | None, field: str) -> tuple[str, ...
 @lru_cache(maxsize=1)
 def _curated() -> RegistryEntry:
     return load_conventions()[0]
+
+
+def repo_conventions(
+    repo: str | Path, document: Mapping | None = None
+) -> RegistryEntry:
+    """The conventions one scoring call uses (T078): curated, plus the local
+    layer, plus ``repo``'s ``.easy-verifier.toml`` ``[conventions]``, plus the
+    ``.easy-verifier.toml`` items replayed in ``document``'s
+    ``registry_entries`` (that call only, never saved). Add-only, curated
+    always wins. Never cached: one repository's extras never reach another's
+    score in a long-running server. A non-curated value that redaction would
+    alter is dropped (:func:`repo_convention_notes` says so)."""
+    return _resolved_conventions(repo, document)[0]
+
+
+def repo_convention_notes(
+    repo: str | Path, document: Mapping | None = None
+) -> tuple[str, ...]:
+    """Why values of :func:`repo_conventions` were ignored: one note per
+    field and source whose values look like a secret (never quoted)."""
+    return _resolved_conventions(repo, document)[1]
+
+
+def _resolved_conventions(
+    repo: str | Path, document: Mapping | None
+) -> tuple[RegistryEntry, tuple[str, ...]]:
+    entry, _ = layered_conventions()
+    entry = with_config_conventions(entry, load_repo_conventions(Path(repo).resolve()))
+    raw = document.get("registry_entries") if document is not None else None
+    replayed: dict[str, list[str]] = {}
+    for item in parse_local_entries(raw, GENERIC_PATTERNS)[0]:
+        if is_config_convention(item):
+            replayed.setdefault(item.field, []).extend(item.cited.value)
+    entry = with_config_conventions(entry, replayed) if replayed else entry
+    return _without_secrets(entry)
+
+
+def _without_secrets(entry: RegistryEntry) -> tuple[RegistryEntry, tuple[str, ...]]:
+    """``entry`` without the non-curated values redaction would alter: such a
+    value is never used, embedded in ``registry_entries`` or quoted (T078
+    Stage 4), so the score stays replayable and the value stays home."""
+    notes: list[str] = []
+    fields = {}
+    for field, cited_values in entry.fields.items():
+        kept = []
+        for cited in cited_values:
+            clean = tuple(
+                v for v in cited.value if cited.source_tag == CURATED or redact(v) == v
+            )
+            if len(clean) < len(cited.value):
+                notes.append(
+                    f"conventions.{field}: {len(cited.value) - len(clean)} value(s) "
+                    f"from {redact(cited.citation_url)} ignored: looks like a secret"
+                )
+            if clean:
+                kept.append(dataclasses.replace(cited, value=clean))
+        fields[field] = tuple(kept)
+    if not notes:
+        return entry, ()
+    return dataclasses.replace(entry, fields=fields), tuple(notes)
+
+
+def context_conventions(context: object) -> RegistryEntry:
+    """The conventions a dimension reads: the call's resolved entry
+    (``run_dimension``), else the context repository's, else curated."""
+    found = getattr(context, "conventions", None)
+    if found is None:
+        repo = getattr(context, "repo_path", None)
+        found = _curated() if repo is None else repo_conventions(repo)
+        try:
+            context.conventions = found
+        except AttributeError:
+            pass
+    return found
 
 
 def route_tokens_for(
@@ -109,7 +200,8 @@ def layer_of(
     ``layer_paths`` are ``<layer>=<glob>`` values (default: curated). ``\\``
     separators are normalised. A file that is not source, is a test (the
     metrics rule over ``tables``, default curated), or matches globs of two
-    different layers is unclassified: a layer is never guessed.
+    different layers is unclassified (unless one is ``shared``, which wins,
+    T093): a layer is never guessed.
     """
     patterns = (
         convention_values(_curated(), "layer_paths")
@@ -123,6 +215,15 @@ def layer_of(
     if _is_test_file(path, tables):
         return None
     layers = {layer for layer, matches in _layer_matchers(patterns) if matches(path)}
+    return _resolve_hints(layers)
+
+
+def _resolve_hints(layers: set[str]) -> str | None:
+    """The one layer the hints name; ``shared`` wins a conflict (T093: a
+    ``*.module.*`` file under an ``apps/api`` folder is shared, since a folder
+    name must not decide). Any other conflict stays unclassified."""
+    if "shared" in layers:
+        return "shared"
     return layers.pop() if len(layers) == 1 else None
 
 
@@ -161,9 +262,10 @@ def find_routes(
     if not route_tokens or syntax is None:
         return ()
     code = strip(text, syntax)
+    bound, weak = _bound_tokens(code, route_tokens)
     found = [
         (match.start(), match.end(), method, token)
-        for method, token, regex in _route_patterns(tuple(route_tokens))
+        for method, token, regex in _route_patterns(bound)
         for match in regex.finditer(code)
     ]
     routes: list[Route] = []
@@ -176,6 +278,8 @@ def find_routes(
             # one argument is no route: Express app.get(name) reads a setting
             # (T075, carried from the T073 review)
             continue
+        if token in weak and not _router_call(code, text, end):
+            continue
         taken = end
         literal = _PATH_LITERAL.match(text, end)
         routes.append(
@@ -184,9 +288,117 @@ def find_routes(
                 method=method,
                 path=literal[2] if literal else None,
                 handler=(_decorated_name if decorator else _call_handler)(code, end),
+                module=None if decorator else _handler_module(code, end),
             )
         )
     return tuple(routes)
+
+
+_NAME = r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*"
+_RECEIVER_MARK = "<receiver>"
+
+
+def _bound_tokens(
+    code: str, route_tokens: Sequence[str]
+) -> tuple[tuple[str, ...], frozenset[str]]:
+    """``route_tokens`` with each ``<receiver>`` token expanded to the names
+    ``code`` binds to a receiver (T079), and the expanded tokens that are
+    *weak* (router-module bindings, see :func:`_weak_names`). Ordinary tokens
+    pass through. ``x = y = ctor(`` binds both ``x`` and ``y``."""
+    values: dict[str, list[str]] = {}
+    for value in route_tokens:
+        kind, _, rest = value.partition("=")
+        values.setdefault(kind, []).append(rest)
+    templates = [
+        v for v in route_tokens if v.partition("=")[2].startswith(_RECEIVER_MARK)
+    ]
+    plain = tuple(
+        v
+        for v in route_tokens
+        if v not in templates and v.partition("=")[0] not in _RECEIVER_KINDS
+    )
+    strong: dict[str, None] = {}
+    constructors = values.get(RECEIVER_KIND)
+    if constructors and templates:
+        ctor = "|".join(token_regex(c) for c in constructors)
+        binding = re.compile(
+            rf"((?:{_NAME}(?:\s*:\s*[\w.<>]+)?\s*=\s*)+)(?:new\s+)?(?:{ctor})"
+        )
+        for match in binding.finditer(code):
+            for target in match[1].split("="):
+                name = target.split(":")[0].strip()
+                if name:
+                    strong[name] = None
+    weak = (
+        {n: None for n in _weak_names(code, values, strong) if n not in strong}
+        if templates
+        else {}
+    )
+
+    def expand(names):
+        return tuple(
+            f"{method}={name}{token[len(_RECEIVER_MARK) :]}"
+            for template in templates
+            for method, _, token in [template.partition("=")]
+            for name in names
+        )
+
+    weak_tokens = expand(weak)
+    return plain + expand(strong) + weak_tokens, frozenset(
+        t.partition("=")[2] for t in weak_tokens
+    )
+
+
+_RECEIVER_KINDS = (RECEIVER_KIND, RECEIVER_PARAM_KIND, RECEIVER_ASSIGN_KIND)
+_IDENT = r"[A-Za-z_$][\w$]*"
+_PROPERTY_ASSIGN = re.compile(
+    rf"(?<![\w$.=!<>])({_IDENT})\s*=\s*({_IDENT})(?:\.{_IDENT})+\s*(?=[;,\n)]|$)"
+)
+
+
+def _weak_names(
+    code: str, values: dict[str, list[str]], strong: dict[str, None]
+) -> list[str]:
+    """Names a router module binds without constructing an app: the
+    parameters of the function a file exports (``RECEIVER_PARAM`` prefixes)
+    and names assigned from a property of one of those parameters or of a
+    constructor-bound name (``RECEIVER_ASSIGN=property``): ``var $ =
+    window.jQuery`` reads from nothing the file exports, so it binds nothing."""
+    names: list[str] = []
+    for prefix in values.get(RECEIVER_PARAM_KIND, ()):
+        head = token_regex(prefix).removeprefix(r"\b")
+        for match in re.finditer(
+            rf"{head}\s*(?:async\s+)?(?:"
+            rf"(?:function\b\s*(?:{_IDENT})?\s*)?\(([^)]*)\)|({_IDENT})\s*=>)",
+            code,
+        ):
+            params = match[1] if match[1] is not None else match[2]
+            for param in params.split(","):
+                found = re.match(rf"\s*({_IDENT})", param)
+                if found:
+                    names.append(found[1])
+    if "property" in values.get(RECEIVER_ASSIGN_KIND, ()):
+        sources = {*names, *strong}
+        names += [m[1] for m in _PROPERTY_ASSIGN.finditer(code) if m[2] in sources]
+    return names
+
+
+def _router_call(code: str, text: str, end: int) -> bool:
+    """Whether the call opened at ``end`` looks like a route registration
+    rather than an HTTP client call: a ``/`` path literal, and a function
+    handler or a middleware chain (3 or more arguments)."""
+    literal = _PATH_LITERAL.match(text, end)
+    if not literal or not literal[2].startswith("/"):
+        return False
+    parts = _split_arguments(_arguments(code, end)[0])
+    if len(parts) < 2:
+        return False
+    return len(parts) >= 3 or bool(_FUNCTION_ARGUMENT.match(parts[-1]))
+
+
+_FUNCTION_ARGUMENT = re.compile(
+    rf"(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|{_IDENT}\s*=>)"
+)
 
 
 @lru_cache(maxsize=64)
@@ -246,6 +458,14 @@ def _call_handler(code: str, position: int) -> str | None:
     positional = [p for p in parts if p and not _KEYWORD_ARGUMENT.match(p)]
     if positional and _IDENTIFIER.fullmatch(positional[-1]):
         return positional[-1].rsplit(".", 1)[-1]
+    return None
+
+
+def _handler_module(code: str, position: int) -> str | None:
+    parts = _split_arguments(_arguments(code, position)[0])
+    positional = [p for p in parts if p and not _KEYWORD_ARGUMENT.match(p)]
+    if positional and _IDENTIFIER.fullmatch(positional[-1]) and "." in positional[-1]:
+        return positional[-1].split(".", 1)[0]
     return None
 
 
@@ -393,6 +613,265 @@ def _reference_patterns(values: tuple[str, ...]):
     return tuple(re.compile(r"(?<!\w)" + token_regex(token)) for token in values)
 
 
+# ---------------------------------------------------------------------------
+# behaviour layers (T088, DDR-0012)
+# ---------------------------------------------------------------------------
+
+
+def suffix_route_tokens(conventions) -> dict[str, list[tuple[object, tuple[str, ...]]]]:
+    """Source suffix -> ``(route-file matcher or None, route tokens)`` per
+    language: its tokens plus repository-wide ones. A language named in the
+    ``route_files`` convention (bare routing DSL, e.g. Ruby) has its tokens
+    applied only in files matching those globs (T075)."""
+    registry = _registry()
+    globs: dict[str, list[str]] = {}
+    for value in convention_values(conventions, "route_files"):
+        language, _, glob = value.partition("=")
+        globs.setdefault(language, []).append(glob)
+    tokens: dict[str, list[tuple[object, tuple[str, ...]]]] = {}
+    for name, entry in sorted(registry.languages.items()):
+        found = route_tokens_for(registry, name, conventions)
+        matcher = _config_matcher(tuple(globs[name])) if name in globs else None
+        for suffix in convention_values(entry, "source_extensions"):
+            tokens.setdefault(suffix, []).append((matcher, found))
+    return tokens
+
+
+def route_tokens_at(by_suffix, path: str) -> tuple[str, ...]:
+    """The route tokens :func:`suffix_route_tokens` applies to ``path``."""
+    found: tuple[str, ...] = ()
+    for matcher, tokens in by_suffix.get(PurePosixPath(path).suffix, ()):
+        if matcher is None or matcher(path):
+            found += tokens
+    return tuple(dict.fromkeys(found))
+
+
+@dataclass(frozen=True)
+class LayerEvidence:
+    """What one source file's code does, by the registry's tokens (T088)."""
+
+    layer: str | None
+    """``api`` (registers a route), ``data`` (calls a DB/ORM API on a client
+    or model name) or ``None``. A file doing both is ``api``: the route is
+    the entry, and its direct DB access is never scored (user, DDR-0012)."""
+    line: int = 0
+    """1-indexed line of the first route (api) or DB/ORM call (data)."""
+    defines: frozenset[str] = frozenset()
+    """Client or model names the file binds by assignment or class base;
+    ``exports`` when its export is one (``module.exports = mongoose.model(``)."""
+    handlers: frozenset[str] = frozenset()
+    """Roots of dotted route handler names (``views`` of ``views.index``)."""
+    imports: tuple[tuple[int, frozenset[str]], ...] = ()
+    """``(line, names)`` per import statement: the names it binds."""
+    prefixes: tuple[tuple[int, str], ...] = ()
+    """``(line, prefix)`` per dynamic import whose directory part is a string
+    literal (T088 AC 11): ``./controllers/`` of ``require('./controllers/' +
+    name)``, ``pkg.mod.`` of ``importlib.import_module('pkg.mod.' + name)``."""
+    routes: tuple[Route, ...] = ()
+    """Every route the file registers (T090: reported, never scored)."""
+    data_line: int = 0
+    """1-indexed line of the first DB/ORM call, also in a file that registers
+    routes (its layer stays ``api``); 0 when there is none (T090)."""
+
+
+MAX_BINDING_ROUNDS = 4
+"""Rounds of in-file client binding (``db = SessionLocal()`` after
+``SessionLocal = sessionmaker(``): a bound, never a fixpoint search."""
+
+_ID = r"[A-Za-z_$][\w$]*"
+_ASSIGN = re.compile(
+    rf"(?<![\w$])({_ID})\s*(?<![=!<>+\-*/%&|^~?:])=(?![=>])\s*(?:await\s+)?(?:new\s+)?({_ID})"
+)
+_CLASS = re.compile(
+    rf"\bclass\s+({_ID})(?:\s*<[^>{{]*>)?\s*(?:extends\s+|\(\s*)({_ID})"
+)
+_ANNOTATED = re.compile(rf"(?<![\w$])({_ID})\s*\??\s*:\s*({_ID})")
+_WITH_AS = re.compile(rf"\bwith\s+({_ID})[^\n]*?\bas\s+({_ID})")
+_EXPORT_DEFAULT = re.compile(rf"\bexport\s+default\s+(?:await\s+)?(?:new\s+)?({_ID})")
+_RECEIVER_CHAIN = re.compile(
+    rf"(?<![\w$.])(?:(?:this|self)\s*\.\s*)?({_ID})"
+    rf"((?:\s*\.\s*{_ID}|\s*\([^()]*\))*)"
+)
+_CHAIN_CALL = re.compile(rf"\.\s*({_ID})\s*\(")
+_JS_IMPORT_WORDS = frozenset(
+    {
+        "import",
+        "from",
+        "require",
+        "const",
+        "let",
+        "var",
+        "as",
+        "type",
+        "default",
+        "export",
+        "await",
+        "typeof",
+        "module",
+        "exports",
+    }
+)
+
+
+_DYNAMIC_IMPORTS = (
+    # require('./dir/' + x), import('./dir/' + x)
+    re.compile(r"\b(?:require|import)\s*\(\s*(['\"])(\.{1,2}/[^'\"\n]*/)\1\s*\+"),
+    # require(`./dir/${x}`), import(`./dir/${x}`)
+    re.compile(r"\b(?:require|import)\s*\(\s*()`(\.{1,2}/[^`$\n]*/)\$\{"),
+    # importlib.import_module('pkg.mod.' + x)
+    re.compile(r"\bimport_module\s*\(\s*(['\"])([A-Za-z_][\w.]*\.)\1\s*\+"),
+    # importlib.import_module(f'pkg.mod.{x}')
+    re.compile(r"\bimport_module\s*\(\s*f(['\"])([A-Za-z_][\w.]*\.)\{"),
+)
+"""Dynamic imports with a literal directory prefix (T088 AC 11). A fully
+dynamic import (``require(name)``, ``require(base + name)``) has no literal
+prefix and matches none."""
+
+
+def _dynamic_prefixes(lines: list[str]) -> tuple[tuple[int, str], ...]:
+    """``(line, prefix)`` over code lines with strings kept, comments blanked."""
+    return tuple(
+        (number, match[2])
+        for number, line in enumerate(lines, 1)
+        for regex in _DYNAMIC_IMPORTS
+        for match in regex.finditer(line)
+    )
+
+
+def _data_tables(registry: Registry):
+    """Suffix -> (DB/ORM module regex or None, query method names)."""
+    tables: dict[str, tuple[re.Pattern[str] | None, frozenset[str]]] = {}
+    for _name, entry in sorted(registry.languages.items()):
+        values = convention_values(entry, "data_tokens")
+        modules = [v.partition("=")[2] for v in values if v.startswith("MODULE=")]
+        calls = frozenset(v.partition("=")[2] for v in values if v.startswith("CALL="))
+        if not modules or not calls:
+            continue
+        names = "|".join(re.escape(m) for m in sorted(modules, key=len, reverse=True))
+        regex = re.compile(
+            rf"(?:(['\"`])(?:{names})(?:/[^'\"`\s]*)?\1)"
+            rf"|(?:\b(?:from|import)\s+(?:{names})(?![\w]))"
+        )
+        for suffix in convention_values(entry, "source_extensions"):
+            tables[suffix] = (regex, calls)
+    return tables
+
+
+def _bound_names(statement: str) -> frozenset[str]:
+    """The names an import statement (its whole line) binds."""
+    if not re.search(r"['\"`]", statement):
+        head, sep, tail = statement.partition(" import ")
+        names = (
+            tail
+            if sep and head.split() and head.split()[0] == "from"
+            else (statement.split("import", 1)[-1])
+        )
+        found = set()
+        for part in re.sub(r"[()\\\n]", " ", names).split(","):
+            words = part.split()
+            if "as" in words[:-1]:
+                found.add(words[words.index("as") + 1])
+            elif words:
+                found.add(words[0].split(".")[0])
+        return frozenset(n for n in found if n.isidentifier())
+    code = re.sub(r"(['\"`])(?:(?!\1)[^\n])*\1", " ", statement)
+    return frozenset(re.findall(_ID, code)) - _JS_IMPORT_WORDS
+
+
+def layer_evidence(
+    text: str,
+    syntax: LanguageSyntax | None,
+    route_tokens: Sequence[str],
+    data: tuple[re.Pattern[str] | None, frozenset[str]] | None,
+    imported: frozenset[str] = frozenset(),
+) -> LayerEvidence:
+    """``text``'s observed layer behaviour (T088, DDR-0012).
+
+    api: a route by :func:`find_routes` (T079 receivers included). data: a
+    ``CALL`` method of ``data_tokens`` invoked on a client or model name,
+    which is a name imported from a ``MODULE`` package, a name in
+    ``imported`` (bound from an in-repo file defining one), or a name bound
+    in this file from one of those (assignment, class base, annotation,
+    ``with ... as``). ``[].find(`` or ``items.find(`` is never data.
+    """
+    if syntax is None:
+        return LayerEvidence(None)
+    kept = strip(text, syntax, keep_strings=True).split("\n")
+    imports: list[tuple[int, frozenset[str]]] = []
+    clients = set(imported)
+    module, calls = data if data is not None else (None, frozenset())
+    for line, statement in import_statements(text, syntax):
+        first = statement.split("\n", 1)[0]
+        whole = kept[line - 1][: len(kept[line - 1]) - len(first)] + statement
+        names = _bound_names(whole)
+        imports.append((line, names))
+        if module is not None and module.search(statement):
+            clients |= names
+    code = strip(text, syntax)
+    defines: set[str] = set()
+    for _round in range(MAX_BINDING_ROUNDS if clients else 0):
+        before = len(clients)
+        for regex in (_ASSIGN, _CLASS, _ANNOTATED, _WITH_AS):
+            for match in regex.finditer(code):
+                if match[2] in clients:
+                    clients.add(match[1])
+                    if regex is _ASSIGN or regex is _CLASS:
+                        defines.add(match[1])
+        if len(clients) == before:
+            break
+    if any(m[1] in clients for m in _EXPORT_DEFAULT.finditer(code)):
+        defines.add("exports")
+    routes = find_routes(text, route_tokens, syntax)
+    handlers = frozenset(r.module for r in routes if r.module)
+    data_line = 0
+    for match in _RECEIVER_CHAIN.finditer(code) if calls and clients else ():
+        if match[1] not in clients:
+            continue
+        for call in _CHAIN_CALL.finditer(match[2]):
+            if call[1] in calls:
+                data_line = code.count("\n", 0, match.start(2) + call.start()) + 1
+                break
+        if data_line:
+            break
+    common = {
+        "defines": frozenset(defines),
+        "handlers": handlers,
+        "imports": tuple(imports),
+        "prefixes": _dynamic_prefixes(kept),
+        "routes": routes,
+        "data_line": data_line,
+    }
+    if routes:
+        return LayerEvidence("api", routes[0].line, **common)
+    if data_line:
+        return LayerEvidence("data", data_line, **common)
+    return LayerEvidence(None, **common)
+
+
+def behaviour_evidence(conventions: RegistryEntry | None, tables: LanguageTables):
+    """``(path, text, imported) -> LayerEvidence`` over the registry's route
+    and data tokens and ``conventions``' route tokens (T088); the per-suffix
+    tables are built on first use."""
+    built: dict[str, object] = {}
+
+    def evidence(path: str, text: str, imported: frozenset[str] = frozenset()):
+        if not built:
+            built["routes"] = suffix_route_tokens(
+                _curated() if conventions is None else conventions
+            )
+            built["data"] = _data_tables(_registry())
+        suffix = PurePosixPath(path).suffix
+        return layer_evidence(
+            text,
+            tables.syntax.get(suffix),
+            route_tokens_at(built["routes"], path),
+            built["data"].get(suffix),
+            imported,
+        )
+
+    return evidence
+
+
 __all__ = [
     "RequirementItem",
     "Route",
@@ -400,6 +879,12 @@ __all__ = [
     "find_issue_references",
     "find_requirement_items",
     "find_routes",
+    "LayerEvidence",
+    "behaviour_evidence",
+    "layer_evidence",
     "layer_of",
     "route_tokens_for",
+    "context_conventions",
+    "repo_conventions",
+    "repo_convention_notes",
 ]

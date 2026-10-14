@@ -41,10 +41,12 @@ User (2026-09-28) 32-area list; decided E2: add the `supply-chain` dimension hol
 
 ### Requirement Fidelity Gate (sign off BEFORE implementation)
 
-- [ ] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent)
-- [ ] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy)
-- [ ] Every Acceptance Criterion below traces to a line in the Requirement
-- [ ] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above
+- [x] Restated intent confirmed to match the user's request (by Supervisor / user — not the implementing agent) — user reviewed the area/rule summary and said "start it" (2026-10-01)
+- [x] Domain terms align with `PROJECT_SPEC.md` glossary (`grill-with-docs` run if terminology was fuzzy) — `supply-chain`, rule group, documentation rule as defined in DDR-0008
+- [x] Every Acceptance Criterion below traces to a line in the Requirement
+- [x] All Requirement Refs exist in `PRD.md` and are fully covered by the Acceptance Criteria above — FR-050 (PRD:167), FR-051 (:168), FR-052 (:169), NFR-009 (:203)
+
+> Signed by Supervisor 2026-10-01.
 
 > An agent must NOT start implementing until this gate is checked. If anything here is unclear,
 > STOP and ask the Supervisor (Karpathy: Think Before Coding).

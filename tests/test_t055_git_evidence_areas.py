@@ -505,6 +505,9 @@ def test_unused_facts_leave_the_pack_json_byte_identical(tmp_path: Path, capsys)
     assert list(emitted) == [*PRE_T055_PACK_KEYS, "whole_file"]
     legacy = dataclasses.asdict(pack)
     del legacy["compat"], legacy["doc_history"], legacy["sample"]  # T068 too
+    del legacy["excluded"]  # T087: unset third-party disclosure is omitted too
+    del legacy["documents"]  # T089: so is unset document-role evidence
+    del legacy["capped"]  # T098: and an unset cap disclosure
     assert json.dumps(emitted) == json.dumps(legacy)
 
     assert cli.main(["code-quality", "--repo", str(root), "--scope", "project"]) == 0

@@ -245,3 +245,46 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["--locked", "--frozen"]
+citation_url = "https://doc.rust-lang.org/cargo/commands/cargo-build.html#manifest-options"
+source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["#[validate (", "validator::Validate"]
+citation_url = "https://docs.rs/validator/latest/validator/"
+source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["DeriveEntityModel"]
+citation_url = "https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/"
+source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/rust-toolchain", "**/rust-toolchain.toml"]
+citation_url = "https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["tracing::"]
+citation_url = "https://docs.rs/tracing/latest/tracing/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["log::"]
+citation_url = "https://docs.rs/log/latest/log/"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["opentelemetry::"]
+citation_url = "https://opentelemetry.io/docs/languages/rust/"
+source_tag = "curated"

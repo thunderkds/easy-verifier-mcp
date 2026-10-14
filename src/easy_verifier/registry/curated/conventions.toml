@@ -4,8 +4,13 @@
 # conventions.toml or .easy-verifier.toml [conventions]; nothing here is the
 # only accepted form.
 #
+# layer_paths are HINTS (T088, DDR-0012): a file's layer comes from what its code
+# does (route -> api, DB/ORM call -> data, on the import path between -> service);
+# a path hint classifies only a file behaviour does not, and a disagreement is
+# reported, behaviour winning.
 # layer_paths: "<api|service|data|shared>=<repository glob>"; a file matching
-# two layers stays unclassified. "shared" marks cross-cutting files (modules,
+# two layers stays unclassified, unless one is shared, which wins (T093).
+# "shared" marks cross-cutting files (modules,
 # config, utils, constants, enums, types): they are left out of the layer
 # rule's classified share and never take part in a violation (T074). DTOs and
 # schemas are boundary contracts every layer uses, so they are shared. requirement_item_patterns: "id=<token>" matches
@@ -157,4 +162,126 @@ source_tag = "curated"
 [[route_files]]
 value = ["ruby=config/routes.rb", "ruby=config/routes/**/*.rb", "ruby=**/config/routes.rb"]
 citation_url = "https://guides.rubyonrails.org/routing.html"
+source_tag = "curated"
+
+# --- schema migrations (T057, DDR-0007; read by blast-radius #5 and data #4) ---
+# migration_dirs: lowercase directory names (matched in any case) that make a
+# file under them a schema migration; the local layer may add names.
+# destructive_migration_ddl: SQL DDL tokens (registry token syntax), matched
+# case-insensitively. destructive_migration_apis: the migration-API names of
+# the ORMs below as cited regular expressions (one alternation covering every
+# framework's drop/remove/delete/rename table/column/field/model form, with
+# optional "_", plural "s" and "_if_exists"), matched case-insensitively.
+# It is curated-only: the local layer and .easy-verifier.toml may not add to it.
+# Down files (".down.", Flyway "U<n>") and down/comment sections stay engine
+# rules in dimensions/blast_radius.py.
+
+[[migration_dirs]]
+value = ["migrations"]
+citation_url = "https://docs.djangoproject.com/en/5.1/topics/migrations/"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["migrations"]
+citation_url = "https://laravel.com/docs/11.x/migrations"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["migrations"]
+citation_url = "https://www.prisma.io/docs/orm/prisma-migrate/understanding-prisma-migrate/migration-histories"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["migrations"]
+citation_url = "https://knexjs.org/guide/migrations.html"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["migrations"]
+citation_url = "https://github.com/golang-migrate/migrate/blob/master/MIGRATIONS.md"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["migration"]
+citation_url = "https://documentation.red-gate.com/flyway/flyway-concepts/migrations"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["migrate"]
+citation_url = "https://guides.rubyonrails.org/active_record_migrations.html"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["alembic"]
+citation_url = "https://alembic.sqlalchemy.org/en/latest/tutorial.html"
+source_tag = "curated"
+
+[[migration_dirs]]
+value = ["changelog"]
+citation_url = "https://docs.liquibase.com/concepts/changelogs/home.html"
+source_tag = "curated"
+
+[[destructive_migration_ddl]]
+value = ["drop table"]
+citation_url = "https://www.postgresql.org/docs/current/sql-droptable.html"
+source_tag = "curated"
+
+[[destructive_migration_ddl]]
+value = ["drop column"]
+citation_url = "https://www.postgresql.org/docs/current/sql-altertable.html"
+source_tag = "curated"
+
+[[destructive_migration_ddl]]
+value = ["drop schema"]
+citation_url = "https://www.postgresql.org/docs/current/sql-dropschema.html"
+source_tag = "curated"
+
+[[destructive_migration_ddl]]
+value = ["drop database"]
+citation_url = "https://www.postgresql.org/docs/current/sql-dropdatabase.html"
+source_tag = "curated"
+
+[[destructive_migration_ddl]]
+value = ["rename column", "rename to"]
+citation_url = "https://www.postgresql.org/docs/current/sql-altertable.html"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/SchemaStatements.html"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://alembic.sqlalchemy.org/en/latest/ops.html"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://docs.djangoproject.com/en/5.1/ref/migration-operations/"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://knexjs.org/guide/schema-builder.html"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://laravel.com/docs/11.x/migrations#dropping-columns"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://sequelize.org/docs/v6/other-topics/query-interface/"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/operations"
+source_tag = "curated"
+
+[[destructive_migration_apis]]
+value = ['\b(?:drop|remove|delete|rename)_?(?:table|column|field|model)s?(?:_?if_?exists)?\b', '\bdrop_?if_?exists\b']
+citation_url = "https://docs.liquibase.com/change-types/drop-table.html"
 source_tag = "curated"

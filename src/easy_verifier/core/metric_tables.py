@@ -25,6 +25,7 @@ from pathlib import PurePosixPath
 from .judge import Citation
 from .metrics import (
     COOKIE_FLAGS,
+    LAYER_PATHS_CURATED_NOTE,
     LanguageTables,
     Metric,
     MetricAbstention,
@@ -35,13 +36,20 @@ from .metrics import (
 from .models import CombinedPack
 from .registry import (
     AGENT_RESEARCHED,
+    CONFIG_SOURCE,
     CURATED,
     LOCAL_TAGS,
     Registry,
     RegistryEntry,
     _manifest_matches,
 )
-from .roles import GENERIC_PATTERNS, _config_matcher, _registry
+from .roles import (
+    GENERIC_CI_FACTS,
+    GENERIC_PATTERNS,
+    _config_matcher,
+    _matcher,
+    _registry,
+)
 from .tokens import INTERPOLATION_MARK, LanguageSyntax, language_syntax
 
 _NEVER = re.compile(r"(?!)")
@@ -71,7 +79,7 @@ def metric_tables(
     type_configs: list[TypeConfigFile] = []
     type_tokens: dict[str, dict[str, re.Pattern[str]]] = {f: {} for f in _TYPE_FIELDS}
     reliability: dict[str, dict[str, re.Pattern[str]]] = {
-        f: {} for f in RELIABILITY_FIELDS
+        f: {} for f in _TOKEN_TABLE_FIELDS
     }
     for entry in entries:
         extensions = _values(entry, "source_extensions")
@@ -96,7 +104,7 @@ def metric_tables(
                 )
             if _values(entry, "auth_markers"):
                 auth.setdefault(extension, _guarded(_values(entry, "auth_markers")))
-            for name in RELIABILITY_FIELDS:
+            for name in _TOKEN_TABLE_FIELDS:
                 if _values(entry, name):
                     reliability[name].setdefault(
                         extension, _guarded(_values(entry, name))
@@ -119,6 +127,8 @@ def metric_tables(
             )
 
     assertions = _union(entries, "assertions")
+    install = _union(entries, "lockfile_install")
+    ci = _generic_ci(registry)
     tables = LanguageTables(
         source_suffixes=frozenset(suffixes),
         test_name_patterns=tuple(
@@ -163,15 +173,91 @@ def metric_tables(
         type_strict_off=type_tokens["type_strict_off"],
         type_config_extends=type_tokens["type_config_extends"],
         **reliability,
+        lockfile_install=_alternation(install) if install else None,
+        **ci,
     )
     # The curated layer_paths (T074); structure imports this module, hence
-    # the late import. Local / .easy-verifier.toml layer paths are not bound
-    # here until conventions are embedded for replay (FR-048).
-    from .structure import layer_of
+    # the late import. A scoring call binds its resolved conventions (local
+    # layer, .easy-verifier.toml) through with_conventions (T078).
+    from .structure import behaviour_evidence, layer_of
 
     return dataclasses.replace(
-        tables, layer_of=lambda path: layer_of(path, tables=tables)
+        tables,
+        layer_of=lambda path: layer_of(path, tables=tables),
+        layer_evidence=behaviour_evidence(None, tables),
     )
+
+
+def with_conventions(
+    tables: LanguageTables, conventions: RegistryEntry
+) -> LanguageTables:
+    """``tables`` classifying layers by ``conventions``' ``layer_paths``
+    (T078), with a note naming the sources that applied."""
+    from .structure import behaviour_evidence, convention_values, layer_of
+
+    paths = convention_values(conventions, "layer_paths")
+    extra = [
+        cited
+        for cited in conventions.fields.get("layer_paths", ())
+        if cited.source_tag != CURATED
+    ]
+    sources = sorted(
+        {
+            "the repository's .easy-verifier.toml"
+            if cited.citation_url == CONFIG_SOURCE
+            else "the local registry layer"
+            for cited in extra
+        }
+    )
+    count = sum(len(cited.value) for cited in extra)
+    note = (
+        f"curated layer_paths plus {count} from {' and '.join(sources)}, "
+        "listed in registry_entries"
+        if extra
+        else LAYER_PATHS_CURATED_NOTE
+    )
+    return dataclasses.replace(
+        tables,
+        layer_of=lambda path: layer_of(path, paths, tables=tables),
+        layer_evidence=behaviour_evidence(conventions, tables),
+        layer_paths_note=note,
+    )
+
+
+def _generic_ci(registry: Registry) -> dict[str, object]:
+    """The supply-chain tables (T041): the generic layer's language-neutral
+    CI facts compiled, and the path matchers of the CI and release roles."""
+
+    def facts(name: str) -> list[str]:
+        return [v for item in GENERIC_CI_FACTS[name] for v in item.value]
+
+    def matcher(role: str):
+        languages = tuple(registry.languages)
+        return _matcher(
+            GENERIC_PATTERNS[role] + registry.patterns_for(role, languages)
+        )
+
+    references = facts("action_reference")
+    return {
+        "ci_files": matcher("ci-workflow"),
+        "release_files": matcher("release-config"),
+        # A key is whole only when no word or dash precedes it, so
+        # ``base-image:`` is not ``image:`` while ``- image:`` still is.
+        "action_reference": re.compile(
+            "(?:"
+            + "|".join(
+                r"(?<![\w-])" + token_regex(token).removeprefix(r"\b")
+                for token in references
+            )
+            + r")\s*['\"]?([^\s'\"#]+)"
+        ),
+        "pinned_reference": tuple(re.compile(p) for p in facts("pinned_reference")),
+        "local_reference": tuple(facts("local_reference")),
+        "provenance_steps": re.compile(
+            "|".join(token_regex(token) for token in facts("provenance_steps")),
+            re.IGNORECASE,
+        ),
+    }
 
 
 _AREA_FIELDS = ("skip_markers", "network_calls", "type_escapes")
@@ -188,6 +274,21 @@ RELIABILITY_FIELDS = (
     "transaction_markers",
 )
 """The T043 reliability token fields; each compiles like a sink token."""
+
+API_FIELDS = ("request_validation", "api_spec_generators", "api_version_markers")
+"""The T044 api token fields (area #7); each compiles like a sink token."""
+
+DATA_FIELDS = (
+    "orm_model_markers",
+    "schema_constraint_markers",
+    "migration_rollback_markers",
+)
+"""The T045 data token fields (area #4); each compiles like a sink token."""
+
+OPERATIONS_FIELDS = ("logging_markers",)
+"""The T046 operations token field (area #14); compiles like a sink token."""
+
+_TOKEN_TABLE_FIELDS = RELIABILITY_FIELDS + API_FIELDS + DATA_FIELDS + OPERATIONS_FIELDS
 
 
 def _guarded(tokens: list[str]) -> re.Pattern[str]:
@@ -306,6 +407,7 @@ _TIMEOUTS = ("outbound_calls_without_timeout_observed",)
 _RETRIES = ("retries_without_backoff_observed",)
 _LOOPS = ("queries_in_loops_observed",)
 _RELIABILITY = _SWALLOWED + _TIMEOUTS + _RETRIES + _LOOPS
+_CI_INSTALL = ("ci_lockfile_install_missing",)
 
 FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "source_extensions": _TEST_MATCH + _CCN + _IMPORTS + _SINKS + _AC_TRACE
@@ -341,6 +443,7 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "type_strict_off": _STRICT,
     "type_config_extends": _STRICT,
     "route_tokens": (),  # T073: read by core/structure.py; its rule lands in T075
+    "data_tokens": ("layer_direction_violations",),  # T088: behaviour layers
     "swallowed_errors": _SWALLOWED,
     "outbound_calls": _TIMEOUTS,
     "call_timeouts": _TIMEOUTS,
@@ -350,6 +453,14 @@ FIELD_METRICS: Mapping[str, tuple[str, ...]] = {
     "query_calls": _LOOPS,
     "loop_keywords": _LOOPS,
     "transaction_markers": (),  # T043: quoted evidence for #6, no rule
+    "lockfile_install": _CI_INSTALL,
+    "request_validation": ("request_validation_missing",),
+    "api_spec_generators": ("api_spec_missing",),
+    "api_version_markers": ("api_version_missing",),
+    "orm_model_markers": ("migrations_missing", "schema_constraints_missing"),
+    "schema_constraint_markers": ("schema_constraints_missing",),
+    "migration_rollback_markers": ("migrations_without_rollback_share",),
+    "logging_markers": ("logging_library_missing",),
 }
 """Which metrics each registry field feeds (T036, FR-048): a metric computed
 over a pack holding a language whose field has local-layer values carries
@@ -375,6 +486,28 @@ OPTIONAL_FIELDS: Mapping[str, str] = {
         "2026-09-29)",
     ),
     **dict.fromkeys(
+        DATA_FIELDS,
+        "only languages with an ORM or a migration library declare it; a "
+        "language without the field is not credited with that evidence, and the "
+        "data rule abstains where nothing else shows it (T045)",
+    ),
+    "data_tokens": "only the first set of frameworks declares it (T088: "
+    "JS/TS and Python); a language without it observes no data layer, and the "
+    "layer rule falls back to the layer_paths hints or abstains "
+    "framework_not_recognized",
+    "logging_markers": "only languages with a logging or tracing library "
+    "declare it; a language without the field is not credited with that "
+    "evidence (T046)",
+    **dict.fromkeys(
+        API_FIELDS,
+        "only languages with a validation, specification or versioning library "
+        "declare it; the api rule abstains or is not credited where none does "
+        "(T044)",
+    ),
+    "lockfile_install": "only languages whose package tool has a frozen-"
+    "lockfile install mode declare it; the CI-install rule abstains where no "
+    "language does (T041)",
+    **dict.fromkeys(
         ("type_config_files", "type_strict", "type_strict_off", "type_config_extends"),
         "only languages with a type checker have a type-checker configuration; "
         "for the rest the strict-config rule abstains (user 2026-09-29)",
@@ -394,6 +527,32 @@ ROLE_METRICS: Mapping[str, tuple[str, ...]] = {
     "lint-config": ("lint_config_missing",),
     "format-config": ("format_config_missing",),
     "lockfile": ("lockfile_missing",),
+    "licence-file": ("licence_file_missing",),
+    "api-spec": ("api_spec_missing",),
+    "schema-file": ("migrations_missing", "schema_constraints_missing"),
+    "codeowners": ("codeowners_missing",),
+    "observability-config": ("logging_library_missing",),
+    "agent-config": (
+        "agent_guardrails_missing",
+        "agent_config_secrets_observed",
+    ),
+    "tool-version-pin": ("tool_version_pin_missing",),
+    "dev-environment": ("dev_environment_missing",),
+    "terraform-file": (
+        "iac_wildcard_iam_observed",
+        "iac_open_ingress_observed",
+        "iac_unencrypted_storage_observed",
+        "terraform_locked_remote_state_missing",
+        "terraform_environment_separation_missing",
+        "database_backup_unconfigured",
+        "database_ha_unconfigured",
+    ),
+    "k8s-manifest": ("iac_wildcard_iam_observed", "iac_open_ingress_observed"),
+    "cloud-template": (
+        "iac_wildcard_iam_observed",
+        "iac_open_ingress_observed",
+        "iac_unencrypted_storage_observed",
+    ),
     "test-config": ("test_config_and_ci_missing",),
     "ci-workflow": ("test_config_and_ci_missing",),
     "architecture-doc": ("architecture_description_missing",),
@@ -598,6 +757,7 @@ __all__ = [
     "ROLE_METRICS",
     "curated_metric_tables",
     "metric_tables",
+    "with_conventions",
     "registry_sources",
     "token_regex",
 ]

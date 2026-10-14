@@ -142,6 +142,53 @@ comments are blanked too unless stated:
   starting with ``.`` comes before it on its own line;
 * ``transaction_markers`` — transaction, lock or idempotency tokens. Quoted as
   evidence for the calling agent (#6 needs judgment); they feed no rule.
+The CI field (T041, area #21) is read by the ``supply-chain`` dimension through
+``core/metric_tables.py``. It is optional: a language whose package tool has no
+frozen-lockfile install mode declares none:
+
+* ``lockfile_install`` — tokens of a command or flag that installs exactly what
+  the lockfile records and fails when it is out of date (``"npm ci"``,
+  ``"--frozen-lockfile"``, ``"--locked"``), matched in CI workflow lines that
+  are not comments.
+
+The API fields (T044, area #7) are read by the ``api`` dimension through
+``core/metric_tables.py``. All are optional: a language that declares none is
+not credited with that evidence, and the rule abstains where no route-bearing
+language declares the field. Every token is matched in source (not test) files
+after comments and strings are blanked:
+
+* ``request_validation`` — a schema or validation call, decorator or base
+  class that checks request input at an entry point (``"z.object ("``,
+  ``"@IsString ("``, ``"BaseModel"``, ``"@Valid"``);
+* ``api_spec_generators`` — code that generates a machine-readable API
+  specification at build or run time (``"SwaggerModule.createDocument ("``,
+  ``"FastAPI ("``), credited when no specification file is committed;
+* ``api_version_markers`` — framework-level API versioning switched on in code
+  (``"enableVersioning ("``, ``"AddApiVersioning ("``).
+
+The data fields (T045, area #4) are read by the ``data`` dimension through
+``core/metric_tables.py``. All are optional: a language that declares none is
+not credited with that evidence. Tokens are matched in the raw lines of the
+files the dimension reads:
+
+* ``orm_model_markers`` — code that declares a persistent data model in source
+  (``"@Entity ("``, ``"models.Model"``, ``"ActiveRecord::Base"``); such a file
+  is schema evidence even where no schema file is committed;
+* ``schema_constraint_markers`` — a NOT NULL, unique or foreign-key constraint
+  declared through the language's ORM or migration API (``"nullable: false"``,
+  ``".notNullable ("``, ``"ForeignKey ("``);
+* ``migration_rollback_markers`` — a migration form its framework reverses
+  automatically (``"def change"`` in Rails, ``"migrations.Migration"`` in
+  Django), credited as a rollback path.
+
+The operations field (T046, area #14) is read by the ``operations`` dimension
+through ``core/metric_tables.py``. It is optional: a language that declares
+none is not credited with that evidence. Tokens are matched in the raw lines of
+the source files the dimension reads, so an import path in a string literal
+counts:
+
+* ``logging_markers`` — a logging or tracing library in use (``"import
+  logging"``, ``"winston"``, ``"org.slf4j"``, ``"go.opentelemetry.io/otel"``).
 
 The detection field (T037) is read by ``core/gate.py``'s ``detect_stack``:
 
@@ -155,14 +202,27 @@ The convention fields (T073, DDR-0011, FR-068) are read by
 
 * ``route_tokens`` — per language: ``"<METHOD>=<token>"``, a code token that
   declares a route handler (``"GET=@Get("``), ``ANY`` when the token does not
-  fix the method;
+  fix the method. A token starting ``<receiver>`` (``"GET=<receiver>.get("``)
+  matches on each name bound, in the same file, to the result of a
+  ``"RECEIVER=<constructor>"`` call (``"RECEIVER=express("``);
+  ``RECEIVER_PARAM=<export prefix>`` and ``RECEIVER_ASSIGN=property``
+  bind weaker router-module names: T079;
+* ``data_tokens`` — per language (T088, DDR-0012): ``"MODULE=<module>"`` a
+  DB/ORM package and ``"CALL=<method>"`` its query methods, read by the
+  behaviour layer rule (:data:`DATA_TOKEN_KINDS`);
 * the reserved ``conventions.toml`` entry (:data:`CONVENTIONS_ENTRY`, curated
   and local layer, never a language) holds the language-agnostic
   :data:`CONVENTION_FIELDS`: ``layer_paths`` (``"<api|service|data|shared>=<glob>"``),
   ``requirement_item_patterns`` (``"id=<token>"`` anywhere or ``"line=<token>"``
   at a line start) and ``issue_reference_patterns`` (tokens), plus optional
   repository-wide ``route_tokens``. A repository's ``.easy-verifier.toml``
-  ``[conventions]`` adds to them (:func:`with_config_conventions`).
+  ``[conventions]`` adds to them (:func:`with_config_conventions`);
+* the schema-migration fields there (T057), read by the blast-radius and data
+  dimensions: ``migration_dirs`` (lowercase directory names, matched in any
+  case), ``destructive_migration_ddl`` (SQL DDL tokens) and
+  ``destructive_migration_apis`` (cited regular expressions of ORM migration
+  APIs), both matched case-insensitively. The regular-expression field is
+  curated-only (:data:`_CURATED_ONLY_FIELDS`).
 
 A malformed entry is dropped with a warning naming the file and field; it never
 raises. Nothing here reads a target repository.
@@ -295,6 +355,15 @@ _TOKEN_FIELDS = frozenset(
         "query_calls",
         "loop_keywords",
         "transaction_markers",
+        "lockfile_install",
+        "request_validation",
+        "api_spec_generators",
+        "api_version_markers",
+        "orm_model_markers",
+        "schema_constraint_markers",
+        "migration_rollback_markers",
+        "logging_markers",
+        "destructive_migration_ddl",
     }
 )
 
@@ -338,6 +407,15 @@ ENTRY_FIELDS = (
     "query_calls",
     "loop_keywords",
     "transaction_markers",
+    "lockfile_install",
+    "request_validation",
+    "api_spec_generators",
+    "api_version_markers",
+    "orm_model_markers",
+    "schema_constraint_markers",
+    "migration_rollback_markers",
+    "logging_markers",
+    "data_tokens",
 )
 """Top-level cited fields besides ``roles``. Later tasks extend this tuple."""
 
@@ -353,6 +431,9 @@ CONVENTION_FIELDS = (
     "route_tokens",
     "issue_reference_exclusions",
     "route_files",
+    "migration_dirs",
+    "destructive_migration_ddl",
+    "destructive_migration_apis",
 )
 """Fields of the ``conventions`` entry. ``route_tokens`` there applies to every
 language (a repository's own framework); per language it is an
@@ -361,6 +442,26 @@ language (a repository's own framework); per language it is an
 LAYERS = ("api", "service", "data", "shared")
 """``shared`` is cross-cutting (T074): never part of a layer-direction
 violation and left out of the classified share."""
+RECEIVER_KIND = "RECEIVER"
+RECEIVER_PARAM_KIND = "RECEIVER_PARAM"
+RECEIVER_ASSIGN_KIND = "RECEIVER_ASSIGN"
+"""``route_tokens`` kind (T079): ``RECEIVER=<constructor>`` names a call whose
+result is an application or router; a ``<METHOD>=<receiver>.get(`` token then
+matches on every name bound to one in the same file. Router modules (T079
+amendment) bind weaker: ``RECEIVER_PARAM=<export prefix>`` names the parameters
+of the function a file exports (``module.exports =``), and
+``RECEIVER_ASSIGN=property`` the names assigned from a property of such a
+parameter or of a constructor-bound name (``let webapp = app.webapp``);
+such a name counts only for a call with a ``/`` path literal and a
+function handler or a middleware chain."""
+
+DATA_TOKEN_KINDS = ("MODULE", "CALL")
+"""``data_tokens`` kinds (T088, DDR-0012): ``MODULE=<module>`` names a DB/ORM
+package whose imported names are clients or models; ``CALL=<method>`` a method
+that, called on such a name (or on a name bound from one in the same file, or
+imported from an in-repo file that binds one), is a DB/ORM call. A method on
+any other receiver (``[].find(``) is never evidence."""
+
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY")
 REQUIREMENT_ITEM_KINDS = ("id", "line")
 
@@ -410,9 +511,16 @@ _VALUE_SHAPES = {
         "<layer>=<glob> with layer api, service or data, e.g. api=**/controllers/**",
     ),
     "route_tokens": (
-        re.compile(rf"^({'|'.join(HTTP_METHODS)})=\S.*$"),
-        "<METHOD>=<token> with METHOD one of " + ", ".join(HTTP_METHODS)
-        + ", e.g. GET=@Get(",
+        re.compile(
+            rf"^({'|'.join(HTTP_METHODS)}|{RECEIVER_KIND}|{RECEIVER_PARAM_KIND}|{RECEIVER_ASSIGN_KIND})=\S.*$"
+        ),
+        "<METHOD>=<token> with METHOD one of "
+        + ", ".join(HTTP_METHODS)
+        + ", e.g. GET=@Get(; or RECEIVER=<constructor>, e.g. RECEIVER=express(",
+    ),
+    "data_tokens": (
+        re.compile(rf"^({'|'.join(DATA_TOKEN_KINDS)})=[A-Za-z0-9_$@][A-Za-z0-9_$@/.-]*$"),
+        "MODULE=<module> or CALL=<method>, e.g. MODULE=mongoose, CALL=find (T088)",
     ),
     "route_files": (
         re.compile(r"^[a-z0-9][a-z0-9-]*=\S+$"),
@@ -421,6 +529,14 @@ _VALUE_SHAPES = {
     "requirement_item_patterns": (
         re.compile(r"^(id|line)=\S.*$"),
         "id=<token> (an identifier anywhere) or line=<token> (at a line start)",
+    ),
+    "migration_dirs": (
+        re.compile(r"^[a-z0-9][a-z0-9._-]*$"),
+        "a lowercase directory name such as migrations (T057)",
+    ),
+    "browser_support_default_entries": (
+        re.compile(r"^[A-Za-z][A-Za-z0-9.]*=\S+$"),
+        "<framework>=<glob>, e.g. Next.js=**/next.config.js (T085)",
     ),
     "phi_values": (
         re.compile(r"^[a-z]+=\S.*$"),
@@ -433,9 +549,12 @@ _PREFIXED_FIELDS = frozenset(
     {
         "layer_paths",
         "route_tokens",
+        "data_tokens",
         "requirement_item_patterns",
         "route_files",
         "phi_values",
+        "browser_support",
+        "browser_support_default_entries",
     }
 )
 """Fields whose values are ``<kind>=<pattern>``: path and local-shape checks
@@ -852,7 +971,7 @@ def _review_status(item: Mapping) -> str:
 
 
 def _cited_value_problem(
-    item: object, field: str, *, local: bool = False
+    item: object, field: str, *, local: bool = False, config_source: bool = False
 ) -> str | None:
     if not isinstance(item, dict):
         return "must be a table of value, citation_url, source_tag"
@@ -883,7 +1002,9 @@ def _cited_value_problem(
             return f"value: {problem}"
 
     url = item["citation_url"]
-    if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not _is_https(url):
+    if not isinstance(url, str) or len(url) > MAX_URL_CHARS or not (
+        _is_https(url) or (config_source and url == CONFIG_SOURCE)
+    ):
         return "citation_url: must be an https:// link to the source"
     if local and item["source_tag"] not in LOCAL_TAGS:
         return f"source_tag: must be one of {', '.join(LOCAL_TAGS)}"
@@ -894,6 +1015,8 @@ def _cited_value_problem(
 
 def _value_problem(field: str, value: object, *, local: bool) -> str | None:
     """Why one value of ``field`` is malformed, or ``None``."""
+    if local and field in _CURATED_ONLY_FIELDS:
+        return "curated-only field: the local layer may not add to it"
     problem = _pattern_problem(value, path=False)
     if problem:
         return problem
@@ -1072,7 +1195,16 @@ def _local_entry(
         return None, "extends: only a framework entry extends a language"
     field = item.get("field")
     role = field.removeprefix("roles.") if isinstance(field, str) else None
-    if not (field in ENTRY_FIELDS or (field != role and role in known)):
+    conventions = kind == "language" and name == CONVENTIONS_ENTRY
+    if kind == "framework" and name == CONVENTIONS_ENTRY:
+        return None, f"framework: {CONVENTIONS_ENTRY!r} is a reserved entry name"
+    if conventions and field not in CONVENTION_FIELDS:
+        return None, (
+            f"field {redact(str(field))!r}: unknown field; known for "
+            f"{CONVENTIONS_ENTRY}: {', '.join(CONVENTION_FIELDS)}"
+        )
+    known_field = field in ENTRY_FIELDS or (field != role and role in known)
+    if not conventions and not known_field:
         return None, (
             f"field {redact(str(field))!r}: unknown field; known: "
             f"{', '.join(ENTRY_FIELDS)}, roles.<role>"
@@ -1096,7 +1228,14 @@ def _local_entry(
         return None, f"review_status: an item tagged {USER_APPROVED!r} is approved"
     cited = {key: item[key] for key in ("value", "citation_url", "cwe") if key in item}
     cited["source_tag"] = _INPUT_TAGS[tag]
-    problem = _cited_value_problem(cited, field, local=True)
+    # T078 (user, option B): a repository's .easy-verifier.toml convention
+    # replays with that file as its source; nothing else may name it.
+    problem = _cited_value_problem(
+        cited,
+        field,
+        local=True,
+        config_source=conventions and cited["source_tag"] == USER_SUPPLIED,
+    )
     if problem:
         return None, problem
     texts = [*cited["value"], cited["citation_url"]]
@@ -1299,6 +1438,29 @@ PACK_FIELDS: dict[str, tuple[str, ...]] = {
         "audit_columns",
         "ledger_mutations",
     ),
+    "frontend-a11y": (
+        "markup_files",
+        "markup_excluded",
+        "comments",
+        "attribute_bindings",
+        "dynamic_attributes",
+        "image_tags",
+        "alt_attributes",
+        "form_controls",
+        "unnamed_input_types",
+        "name_attributes",
+        "label_tags",
+        "label_for_attributes",
+        "focusable_tags",
+        "focusable_with_href",
+        "aria_hidden_attributes",
+        "viewport_entries",
+        "viewport_default_entries",
+        "viewport_declarations",
+        "zoom_disabled",
+        "browser_support",
+        "browser_support_default_entries",
+    ),
 }
 """Optional packs (T047, DDR-0008 §4): ``registry/packs/<pack>.toml`` holds a
 pack's cited patterns, read by :func:`load_pack` and never as a language.
@@ -1318,6 +1480,16 @@ word lists (``money_names``, ``money_excluded_words``, ``ledger_names``,
 ``non_ledger_heads``, ``name_suffixes``), globs (``schema_paths``,
 ``persistence_paths``) and
 regular expressions (the rest).
+
+The frontend-a11y fields (area #19) are described in
+``registry/packs/frontend-a11y.toml``: globs (``markup_files``,
+``markup_excluded``, ``viewport_entries``, ``viewport_default_entries``),
+element and attribute names, regular expressions (``comments``,
+``attribute_bindings``, ``dynamic_attributes``, ``viewport_declarations``,
+``zoom_disabled``) and ``browser_support`` ``<file glob>=<regular
+expression>`` pairs; ``browser_support_default_entries`` holds
+``<framework>=<glob>`` pairs for configs whose framework documents a default
+browser target (T085).
 """
 
 _REGEX_FIELDS = frozenset(
@@ -1333,10 +1505,23 @@ _REGEX_FIELDS = frozenset(
         "entity_markers",
         "audit_columns",
         "ledger_mutations",
+        "comments",
+        "attribute_bindings",
+        "dynamic_attributes",
+        "viewport_declarations",
+        "zoom_disabled",
+        "browser_support",
+        "destructive_migration_apis",
     }
 )
-"""Pack fields whose values are Python regular expressions (compiled on load),
+"""Pack fields, and the curated-only ``destructive_migration_apis`` convention
+field (T057), whose values are Python regular expressions (compiled on load),
 not globs or tokens."""
+
+_CURATED_ONLY_FIELDS = frozenset({"destructive_migration_apis"})
+"""Regular-expression fields a core dimension reads: the local layer and a
+repository's ``.easy-verifier.toml`` may not add to them (T057), so no
+unbounded regex from outside the package reaches a core dimension."""
 
 
 def packs_root() -> Traversable:
@@ -1403,6 +1588,33 @@ def with_config_conventions(
     return _add_entry(entry, extra, [])
 
 
+def convention_entries(entry: RegistryEntry) -> tuple[dict[str, object], ...]:
+    """The non-curated values of a resolved ``conventions`` entry (local
+    layer, ``.easy-verifier.toml``) as agent-input ``registry_entries`` items,
+    sorted like :meth:`Registry.local_entries`: embedded in the score so
+    replay reproduces it without that layer or file (T078, FR-048)."""
+    found = [
+        {
+            "language": CONVENTIONS_ENTRY,
+            "field": field,
+            "value": list(cited.value),
+            "citation_url": cited.citation_url,
+            "source_tag": cited.source_tag,
+        }
+        for field, cited_values in entry.fields.items()
+        for cited in cited_values
+        if cited.source_tag != CURATED
+    ]
+    return tuple(sorted(found, key=lambda item: json.dumps(item, sort_keys=True)))
+
+
+def is_config_convention(entry: LocalEntry) -> bool:
+    """Whether an agent-input entry replays a repository's
+    ``.easy-verifier.toml`` convention: applied to that call only, never
+    saved to the local layer (T078, user option B)."""
+    return entry.name == CONVENTIONS_ENTRY and entry.cited.citation_url == CONFIG_SOURCE
+
+
 def save_local_entries(
     entries: Sequence[LocalEntry], root: Path, *, known_roles: Collection[str]
 ) -> None:
@@ -1458,7 +1670,8 @@ def save_local_entries(
 
 
 def _read_local(path: Path, known: frozenset[str]) -> RegistryEntry:
-    current, errors = _load_entry(path, known, local=True)
+    allowed = CONVENTION_FIELDS if path.stem == CONVENTIONS_ENTRY else ENTRY_FIELDS
+    current, errors = _load_entry(path, known, local=True, allowed=allowed)
     if errors:
         raise OSError(f"{path.name} exists but is invalid; not modified")
     return current
@@ -1764,6 +1977,8 @@ __all__ = [
     "merge",
     "overlay",
     "parse_local_entries",
+    "convention_entries",
+    "is_config_convention",
     "save_local_entries",
     "sot_root",
 ]

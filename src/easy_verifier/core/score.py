@@ -9,7 +9,7 @@ from __future__ import annotations
 import dataclasses
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -45,11 +45,12 @@ from .metric_tables import (
     metric_tables,
     registry_sources,
     rejected_abstentions,
+    with_conventions,
 )
 from .metrics import MetricSet, compute_metrics
 from .models import CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
-from .registry import sot_root
+from .registry import RegistryEntry, convention_entries, sot_root
 from .roles import (
     GENERIC_PATTERNS,
     _registry,
@@ -60,6 +61,7 @@ from .roles import (
     registry_notes,
     review_notes,
 )
+from .structure import repo_convention_notes, repo_conventions
 from .synthesis import combined_pack
 
 
@@ -111,6 +113,16 @@ class ScoreResult:
     priority batches of its sources were read. In :meth:`to_dict` for both
     adapters, only when non-empty, so a repository at or under the cap
     serialises exactly as before."""
+    excluded: tuple[dict[str, str], ...] = ()
+    """Third-party roots the evaluation left out (T087, FR-074): ``{path,
+    excluded: "third-party", reason, rule}``, one per root. In
+    :meth:`to_dict` for both adapters, only when non-empty, so a repository
+    with nothing excluded serialises exactly as before."""
+    capped: tuple[dict[str, Any], ...] = ()
+    """Every per-role cap a dimension's inputs hit (T098, NFR-009):
+    ``{dimension, role, matched, read}``, in canonical dimension order and then
+    role name. In :meth:`to_dict` for both adapters, only when non-empty, so a
+    repository with no cap hit serialises exactly as before."""
     continue_batches: dict[str, Any] | None = None
     """MCP-only (T068, FR-061): ``{batches_done, batches_total, files_read,
     files_in_scope, question}`` while batches remain. Like ``needs_input``,
@@ -157,6 +169,10 @@ class ScoreResult:
         }
         if self.samples:
             payload["samples"] = [dict(item) for item in self.samples]
+        if self.excluded:
+            payload["excluded"] = [dict(item) for item in self.excluded]
+        if self.capped:
+            payload["capped"] = [dict(item) for item in self.capped]
         payload |= {
             "metrics": json.loads(self.metrics.serialize()),
             "provenance": [
@@ -243,13 +259,20 @@ def score_repository(
         by_dimension = validate_findings(findings, _pack_map(packs)).by_dimension
     stack = detect_stack(repo_path, _registry())
     frameworks = tuple((item["name"], item["language"]) for item in stack["frameworks"])
-    result = score_packs(packs, by_dimension, evaluations, frameworks=frameworks)
+    result = score_packs(
+        packs,
+        by_dimension,
+        evaluations,
+        frameworks=frameworks,
+        conventions=repo_conventions(repo_path, document),
+    )
     result = dataclasses.replace(
         result,
         stack=stack,
         registry_notes=registry_notes(document, repo_path)
         + ignored_reviews
-        + pack_notes,
+        + pack_notes
+        + repo_convention_notes(repo_path, document),
     )
 
     # One round each: a caller that already supplied agent input gets no
@@ -294,6 +317,7 @@ def score_packs(
     gate_evaluations: object | None = None,
     *,
     frameworks: Sequence[tuple[str, str]] = (),
+    conventions: RegistryEntry | None = None,
 ) -> ScoreResult:
     """Score one complete combined pack without gathering more evidence.
 
@@ -306,6 +330,10 @@ def score_packs(
     ``frameworks`` are the detected ``(framework, language)`` pairs (T037):
     each one's registry entry is merged into its language before the metric
     tables are compiled, so framework fields reach the rules.
+
+    ``conventions`` is the call's resolved entry (T078,
+    ``structure.repo_conventions``): its layer_paths classify layers, and its
+    non-curated values are embedded in ``registry_entries`` for replay.
     """
     actual = tuple(slot.dimension for slot in packs.slots)
     # Every dimension in canonical order, then any active optional packs
@@ -323,6 +351,8 @@ def score_packs(
     registry = _registry()
     applied = registry.applied(frameworks)
     tables = curated_metric_tables() if applied is registry else metric_tables(applied)
+    if conventions is not None:
+        tables = with_conventions(tables, conventions)
     metrics = rejected_abstentions(compute_metrics(packs, tables), packs, applied)
     sources = registry_sources(packs, applied)
     pack_map = _pack_map(packs)
@@ -383,6 +413,21 @@ def score_packs(
         for slot in packs.slots
         if slot.pack is not None and slot.pack.sample is not None
     )
+    # Every pack resolved the same scope, so any pack carries the same list.
+    excluded = next(
+        (
+            tuple(asdict(item) for item in slot.pack.excluded)
+            for slot in packs.slots
+            if slot.pack is not None and slot.pack.excluded
+        ),
+        (),
+    )
+    capped = tuple(
+        {"dimension": slot.dimension, **asdict(item)}
+        for slot in packs.slots
+        if slot.pack is not None and slot.pack.capped
+        for item in slot.pack.capped
+    )
     return ScoreResult(
         ratings,
         overall,
@@ -390,8 +435,18 @@ def score_packs(
         assessments,
         comparisons,
         provenance,
-        registry_entries=registry.local_entries(name for name, _ in frameworks),
+        registry_entries=tuple(
+            sorted(
+                (
+                    *registry.local_entries(name for name, _ in frameworks),
+                    *(convention_entries(conventions) if conventions else ()),
+                ),
+                key=lambda item: json.dumps(item, sort_keys=True),
+            )
+        ),
         samples=samples,
+        excluded=excluded,
+        capped=capped,
     )
 
 

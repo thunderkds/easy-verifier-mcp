@@ -20,12 +20,17 @@ from .budget import DEFAULT_BUDGET_BYTES
 from .budget import budget as _run_budget
 from .context import DEFAULT_SCOPE, RepoPathError, detect_context
 from .models import (
+    CapHit,
     DimensionDescriptor,
+    DocumentEvidence,
     EvidencePack,
     RedactionHit,
     SourceMiss,
+    ThirdPartyExclusion,
 )
+from .registry import RegistryEntry
 from .roles import (
+    MAX_ROLE_FILES,
     load_repo_config,
     resolution_warnings,
     resolve,
@@ -55,6 +60,7 @@ def run_dimension(
     task_id: str | None = None,
     picks: Mapping[str, Sequence[str]] | None = None,
     batches: int | str = 1,
+    conventions: RegistryEntry | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
@@ -71,6 +77,10 @@ def run_dimension(
     # of the leak paths NFR-010 names.
     context = detect_context(repo_path, scope=scope)
     context.batches = parse_batches(batches)
+    # T078: the call's resolved conventions (structure.repo_conventions);
+    # without them a dimension resolves the repository's own on first use.
+    if conventions is not None:
+        context.conventions = conventions
 
     # Source roles resolve once, before `collect`, so every dimension -- the
     # bespoke three included -- reads from the same role -> files map, and the
@@ -85,6 +95,7 @@ def run_dimension(
             picks=picks,
         )
         context.role_files = dict(resolution.files)
+        context.role_resolution = resolution
 
     # Scope resolution remains centralized; narrow scopes receive only the
     # explicit selector their resolver requires and never widen on failure.
@@ -184,9 +195,57 @@ def run_dimension(
         doc_history=getattr(context, "doc_history", None),
         sample=getattr(context, "sample", None),
         whole_file=getattr(context, "whole_file", None),
+        documents=_redacted_documents(getattr(context, "documents", None)),
+        capped=_capped(resolution, getattr(context, "capped", {})),
+        excluded=_redacted_exclusions(resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
+    )
+
+
+def _capped(resolution, dimension_caps) -> tuple[CapHit, ...] | None:
+    """Every per-role cap this pack's inputs hit (T098): the resolution's role
+    cap and the dimension's own, merged per role (the most matched, the
+    fewest read), sorted by role; ``None`` when no cap was hit."""
+    caps = dict(dimension_caps)
+    if resolution is not None:
+        for name, matched in resolution.truncated_matched.items():
+            own = caps.get(name, (matched, MAX_ROLE_FILES))
+            caps[name] = (max(matched, own[0]), min(MAX_ROLE_FILES, own[1]))
+    if not caps:
+        return None
+    return tuple(CapHit(name, *caps[name]) for name in sorted(caps))
+
+
+def _redacted_documents(documents) -> tuple[DocumentEvidence, ...] | None:
+    """The document-role evidence (T089) with its path and cited lines
+    redacted like every other path and quote that leaves the engine."""
+    if not documents:
+        return None
+    return tuple(
+        replace(
+            item,
+            path=None if item.path is None else redact_module.scan(item.path).text,
+            cited=tuple(redact_module.scan(line).text for line in item.cited),
+        )
+        for item in documents
+    )
+
+
+def _redacted_exclusions(scope) -> tuple[ThirdPartyExclusion, ...] | None:
+    """The scope's third-party roots (T087), path and rule redacted like every
+    other path that leaves the engine; ``None`` when nothing was excluded."""
+    excluded = getattr(scope, "excluded", ())
+    if not excluded:
+        return None
+    return tuple(
+        replace(
+            item,
+            path=redact_module.scan(item.path).text,
+            rule=redact_module.scan(item.rule).text,
+        )
+        for item in excluded
     )
 
 

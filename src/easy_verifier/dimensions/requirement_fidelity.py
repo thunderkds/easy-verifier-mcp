@@ -27,6 +27,7 @@ import re
 from collections.abc import Iterator
 from pathlib import PurePosixPath
 
+from ..core.documents import scan_document_roles
 from ..core.git import run_git_text
 from ..core.metric_tables import curated_metric_tables
 from ..core.metrics import code_kind, trace_key_pattern
@@ -42,16 +43,15 @@ from ..core.models import (
     TraceSearch,
 )
 from ..core.redact import redact
-from ..core.roles import _config_matcher, _registry, role
+from ..core.roles import role
 from ..core.structure import (
-    _curated as _curated_conventions,
-)
-from ..core.structure import (
+    context_conventions,
     convention_values,
     find_issue_references,
     find_requirement_items,
     find_routes,
-    route_tokens_for,
+    route_tokens_at,
+    suffix_route_tokens,
 )
 from . import _code_extract, _doc_extract
 
@@ -133,6 +133,7 @@ _Found = tuple[str, tuple[str, ...], Excerpt]
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
     """Yield AC trace evidence (kit-aware), then bounded requirement excerpts."""
+    scan_document_roles(context, ("requirements-doc",))
     if context.resolved_scope is not None or context.scope == "project":
         _doc_history(context)
         _code_facts(context)
@@ -523,7 +524,7 @@ def _code_facts(context: DimensionContext) -> None:
     test_texts = _read_all(context, tests)
     _found(context, TESTS_SOURCE, bool(test_texts), "not found: no in-scope test file")
 
-    conventions = _curated_conventions()
+    conventions = context_conventions(context)
     routes = _routes_fact(context, source_texts, test_texts, conventions, tables)
     if plan is not None:
         routes = _with_note(
@@ -584,31 +585,8 @@ def _with_note(metric: SampledMetric, note: str) -> SampledMetric:
     )
 
 
-def _suffix_tokens(conventions) -> dict[str, list[tuple[object, tuple[str, ...]]]]:
-    """Source suffix -> ``(route-file matcher or None, route tokens)`` per
-    language: its tokens plus repository-wide ones. A language named in the
-    ``route_files`` convention (bare routing DSL, e.g. Ruby) has its tokens
-    applied only in files matching those globs (T075)."""
-    registry = _registry()
-    globs: dict[str, list[str]] = {}
-    for value in convention_values(conventions, "route_files"):
-        language, _, glob = value.partition("=")
-        globs.setdefault(language, []).append(glob)
-    tokens: dict[str, list[tuple[object, tuple[str, ...]]]] = {}
-    for name, entry in sorted(registry.languages.items()):
-        found = route_tokens_for(registry, name, conventions)
-        matcher = _config_matcher(tuple(globs[name])) if name in globs else None
-        for suffix in convention_values(entry, "source_extensions"):
-            tokens.setdefault(suffix, []).append((matcher, found))
-    return tokens
-
-
-def _tokens_for(by_suffix, path: str) -> tuple[str, ...]:
-    found: tuple[str, ...] = ()
-    for matcher, tokens in by_suffix.get(PurePosixPath(path).suffix, ()):
-        if matcher is None or matcher(path):
-            found += tokens
-    return tuple(dict.fromkeys(found))
+_suffix_tokens = suffix_route_tokens  # moved to core/structure.py (T088)
+_tokens_for = route_tokens_at
 
 
 def _static_prefix(path: str | None) -> str:
@@ -722,11 +700,12 @@ def _issue_fact(context: DimensionContext, conventions) -> SampledMetric:
             ),
         )
     patterns = convention_values(conventions, "issue_reference_patterns")
+    exclusions = convention_values(conventions, "issue_reference_exclusions")
     read = set(context.files_read)
     referencing = []
     refs: dict[str, None] = {}
     for sha, body, names in commits:
-        found = find_issue_references(body, patterns)
+        found = find_issue_references(body, patterns, exclusions)
         if found:
             referencing.append(f"{sha[:8]} {found[0]}")
         refs.update(dict.fromkeys(n for n in names if n in read))

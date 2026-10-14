@@ -69,6 +69,23 @@ or in a ``/blob/``/``/tree/`` path; a 64/128-hex secret at line start followed b
 two spaces and a word; an upper-case ``_``-joined random value under a
 non-secret key; a word-shaped value under a ``license`` key.
 
+T095 widens :data:`_LETTER_DIGIT_PIECE` to an upper-case letter run then a digit run
+(``WCAG22``, ``HTTP2``, ``ES2015``, ``UTF8``, ``ISO27001``), so a W3C link is not
+fingerprinted. Mixed-case prefixes and digits-before-letters still fail the shape.
+Residue, stated plainly: a secret shaped only as upper-case-run + digit-run pieces
+joined by ``_``, ``-`` or ``/`` and written inside a URL path or before ``.ext``
+(``ABC123-DEF456.txt``) is no longer caught by this rule. Credentials are not
+issued in this shape.
+
+T097 lifts the letter-run cap of :data:`_LETTER_DIGIT_PIECE` from 6 to 30 (the
+:data:`_WORD_PIECE` bound), for both cases, so ``rancher2``, ``postgres16``,
+``elasticsearch7`` and ``KUBERNETES1`` are ordinary name pieces and
+``rancher2/cb-ppl/gateway-prod-ingress.yml`` is not fingerprinted. Residue,
+stated plainly: a secret shaped only as single-case letter runs of up to 30
+letters, each followed by a digit run, joined by ``_``, ``-`` or ``/`` inside a
+URL path or before ``.ext``, is no longer caught by this rule. Generated
+credentials are mixed-case alphanumerics, so this is not their shape.
+
 Every pattern below is linear — no nested or adjacent unbounded quantifiers, and
 every ``{n,m}`` is bounded — so no input can trigger catastrophic backtracking
 (ReDoS). This module reads attacker-influenceable content.
@@ -191,7 +208,8 @@ the token in a webhook URL path, and the password inside a
 """
 
 _WORD_PIECE = r"(?:[A-Z]{1,30}|[A-Z]?[a-z]{1,30})"
-_NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}})"
+_LETTER_DIGIT_PIECE = r"(?:[a-z]{1,30}|[A-Z]{1,30})[0-9]{1,8}"
+_NAME_PIECE = rf"(?:{_WORD_PIECE}|[0-9]{{1,8}}|{_LETTER_DIGIT_PIECE})"
 _WORD_JOINED_NAME = re.compile(rf"{_NAME_PIECE}(?:[/_-]{_NAME_PIECE}){{1,30}}")
 _FILE_SUFFIX = re.compile(r"\.[A-Za-z0-9]{1,10}(?![A-Za-z0-9+/=_-])")
 """A long token that is plainly an ordinary file name — `LOG_source-discovery.md`.
@@ -218,11 +236,39 @@ A bare identifier with no suffix (`BRAINSTORMING_LOG_source-discovery` in prose)
 is judged as before — over-redaction stays the direction outside the one shape
 that breaks citations.
 
+T091 admits a third shape — up to 6 lower-case letters then a run of at most 8 digits
+(`t087`, `v2`, `utf8`, `py3`) — so `test_t087_third_party_exclusion.py` reads as a name.
+Digits *before* letters (`3f9a2b1c`), interleaved runs (`a1b2c3d4`) and mixed case
+still disqualify the piece. Residue added by T091: a secret shaped only as lower-case
+letter-run + digit-run pieces before a `.ext` (`abc123_def456.txt`) is no longer
+caught by this rule; a hash-named artefact written letters-then-digits
+(`main-deadbe12.js`) is likewise exempt.
+
 Residue, stated plainly: a secret made only of single-case letter runs and short
 digit runs joined by `_`/`-`/`/` and written directly before a `.ext` suffix
 (`kqzvxm-4821-hjtybn.txt`, `summer-2024-pw.txt` in any case) is no longer caught by this
 rule or by the per-segment rule. Generated keys are alphanumeric and mixed case, so
 this is not the shape credentials take; it is the price of readable paths.
+"""
+
+_LOWER_NAME_PIECE = r"(?:[a-z]{1,30}[0-9]{0,8}|[0-9]{1,8})"
+_LOWER_WORD_PATH = re.compile(
+    rf"{_LOWER_NAME_PIECE}(?:[/_-]{_LOWER_NAME_PIECE}){{1,30}}"
+)
+"""T099: an extensionless lower-case word path — `bin/build-push-kibana-docker-image`.
+
+It has one relative slash, so :data:`_PATHISH` misses it, and no suffix, so the name
+exemption above misses it; at 34 characters it scores 4.04 bits and was fingerprinted,
+so a citation to it could not resolve. The long-token rule now skips a token that
+contains a `/` and whose every piece is lower case (letters, up to 30, optionally
+followed by up to 8 digits, or a digit run) joined by `/`, `-` or `_`. A bare identifier
+with no `/`, mixed or upper-case pieces with no suffix, and random mixed-case tokens
+after `bin/` are judged as before.
+
+Residue, stated plainly: a secret made only of lower-case letter words (with optional
+short digit runs) joined by `-`/`_` and containing a `/` is no longer caught by the
+long-token rule. Generated credentials are mixed-case alphanumerics, so this is not
+their shape. The per-segment rule (:data:`_KEY_MATERIAL_CANDIDATE`) is unchanged.
 """
 
 _UNDERSCORE_IDENTIFIER = re.compile(rf"{_WORD_PIECE}(?:_{_WORD_PIECE}){{1,30}}")
@@ -497,6 +543,8 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
         if _PATHISH.search(match.group()):
             continue
         if is_version_labelled_name(match):
+            continue
+        if "/" in match.group() and _LOWER_WORD_PATH.fullmatch(match.group()):
             continue
         if _UNDERSCORE_IDENTIFIER.fullmatch(match.group()):
             continue

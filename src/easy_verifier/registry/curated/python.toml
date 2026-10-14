@@ -431,3 +431,122 @@ source_tag = "curated"
 value = ["*dempoten*", "*DEMPOTEN*"]
 citation_url = "https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/"
 source_tag = "curated"
+
+# CI field (T041): lockfile-faithful install commands.
+
+[[lockfile_install]]
+value = ["--require-hashes"]
+citation_url = "https://pip.pypa.io/en/stable/topics/secure-installs/#hash-checking-mode"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["--locked", "--frozen"]
+citation_url = "https://docs.astral.sh/uv/concepts/projects/sync/#checking-if-the-lockfile-is-up-to-date"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["poetry install"]
+citation_url = "https://python-poetry.org/docs/cli/#install"
+source_tag = "curated"
+
+[[lockfile_install]]
+value = ["--deploy"]
+citation_url = "https://pipenv.pypa.io/en/latest/commands.html#pipenv-install"
+source_tag = "curated"
+
+# API fields (T044, area #7).
+
+[[request_validation]]
+value = ["BaseModel"]
+citation_url = "https://fastapi.tiangolo.com/tutorial/body/"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["serializers.Serializer", "serializers.ModelSerializer", "forms.Form", "forms.ModelForm"]
+citation_url = "https://www.django-rest-framework.org/api-guide/serializers/#validation"
+source_tag = "curated"
+
+[[request_validation]]
+value = ["marshmallow.Schema", "jsonschema.validate ("]
+citation_url = "https://marshmallow.readthedocs.io/en/stable/quickstart.html#validation"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["FastAPI ("]
+citation_url = "https://fastapi.tiangolo.com/tutorial/first-steps/#openapi"
+source_tag = "curated"
+
+[[api_spec_generators]]
+value = ["SpectacularAPIView", "get_schema_view ("]
+citation_url = "https://drf-spectacular.readthedocs.io/en/latest/readme.html"
+source_tag = "curated"
+
+[[api_version_markers]]
+value = ["URLPathVersioning", "NamespaceVersioning", "AcceptHeaderVersioning"]
+citation_url = "https://www.django-rest-framework.org/api-guide/versioning/"
+source_tag = "curated"
+
+# Data fields (T045, area #4).
+
+[[orm_model_markers]]
+value = ["models.Model"]
+citation_url = "https://docs.djangoproject.com/en/5.0/topics/db/models/"
+source_tag = "curated"
+
+[[orm_model_markers]]
+value = ["DeclarativeBase", "declarative_base (", "__tablename__"]
+citation_url = "https://docs.sqlalchemy.org/en/20/orm/quickstart.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["nullable=False", "unique=True", "ForeignKey (", "UniqueConstraint (", "ForeignKeyConstraint ("]
+citation_url = "https://docs.sqlalchemy.org/en/20/core/constraints.html"
+source_tag = "curated"
+
+[[schema_constraint_markers]]
+value = ["models.ForeignKey (", "models.OneToOneField (", "on_delete="]
+citation_url = "https://docs.djangoproject.com/en/5.0/ref/models/fields/#foreignkey"
+source_tag = "curated"
+
+[[migration_rollback_markers]]
+value = ["migrations.Migration"]
+citation_url = "https://docs.djangoproject.com/en/5.0/topics/migrations/#reversing-migrations"
+source_tag = "curated"
+
+# Operations fields (T046, areas #14 and #30).
+
+[[roles.tool-version-pin]]
+value = ["**/.python-version"]
+citation_url = "https://github.com/pyenv/pyenv#choosing-the-python-version"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["import logging", "from logging import"]
+citation_url = "https://docs.python.org/3/library/logging.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["import structlog", "from structlog"]
+citation_url = "https://www.structlog.org/en/stable/getting-started.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["from loguru import"]
+citation_url = "https://loguru.readthedocs.io/en/stable/overview.html"
+source_tag = "curated"
+
+[[logging_markers]]
+value = ["from opentelemetry", "import opentelemetry"]
+citation_url = "https://opentelemetry.io/docs/languages/python/instrumentation/"
+source_tag = "curated"
+# Data evidence (T088, DDR-0012): see js-ts.toml. SQLAlchemy Session calls
+# (a parameter annotated `db: Session` binds db) and Django QuerySet calls on a
+# model class (`class Order(models.Model)`, models from django.db).
+[[data_tokens]]
+value = ["MODULE=sqlalchemy", "CALL=query", "CALL=execute", "CALL=scalars", "CALL=scalar", "CALL=add", "CALL=add_all", "CALL=delete", "CALL=commit", "CALL=flush", "CALL=merge", "CALL=refresh"]
+citation_url = "https://docs.sqlalchemy.org/en/20/orm/session_api.html"
+source_tag = "curated"
+[[data_tokens]]
+value = ["MODULE=django.db", "CALL=all", "CALL=filter", "CALL=exclude", "CALL=get", "CALL=create", "CALL=get_or_create", "CALL=update_or_create", "CALL=bulk_create", "CALL=update", "CALL=delete", "CALL=count", "CALL=aggregate", "CALL=annotate", "CALL=values", "CALL=values_list", "CALL=order_by", "CALL=first", "CALL=last", "CALL=exists", "CALL=raw"]
+citation_url = "https://docs.djangoproject.com/en/5.1/ref/models/querysets/"
+source_tag = "curated"
