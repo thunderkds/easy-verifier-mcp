@@ -74,7 +74,7 @@ asks continue/stop; CLI `--batches N` / `--all` (default 1); stateless resume.
 | 5 | CLI `--batches N` / `--all`; default 1; output discloses remaining batches and the flag to continue | FR-061 |
 | 6 | The agent input never carries a count or metric; the engine recomputes batches 1…N; same input → byte-equal payload (DDR-0005); `batches` out of range → validation error | FR-062 |
 | 7 | Repos at or under the cap behave exactly as before (no new keys except disclosure, parity unchanged) | regression |
-| 8 | bryony: batch 1 reads 200 of 1,178 files; code-quality function metrics now computed (sample) — with T067 the dimension is rated or abstains honestly; continuing to batch 2 changes the sample size shown | user report |
+| 8 | node-monorepo: batch 1 reads 200 of 1,178 files; code-quality function metrics now computed (sample) — with T067 the dimension is rated or abstains honestly; continuing to batch 2 changes the sample size shown | user report |
 | 9 | Token bound: each continued call's pack carries only excerpts within the existing byte budget (NFR-009 unchanged) | FR-060 |
 
 ---
@@ -91,13 +91,13 @@ asks continue/stop; CLI `--batches N` / `--all` (default 1); stateless resume.
 | 4 | MCP first call | `needs_input.continue_batches` present with correct counts | automated |
 | 5 | `batches=0`, `batches=99`, `batches="x"` | validation error | automated |
 | 6 | Repo with 50 sources | payload identical to develop | automated (snapshot) |
-| 7 | bryony CLI `--batches 1` then `--batches 2` | sample size 200 → 400; ratings disclosed as sample | verify, pasted |
+| 7 | node-monorepo CLI `--batches 1` then `--batches 2` | sample size 200 → 400; ratings disclosed as sample | verify, pasted |
 
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t068_priority_batches.py -q
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t068_priority_batches.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest -q
 ```
 
 ### Evidence
@@ -180,7 +180,7 @@ Replace the all-or-none branch with: classify → order → slice batches 1…N 
 
 ## Test Plan
 
-Fixture repo with git history for ordering/merge oracles; parity; Stage 5 on bryony (batches 1, 2) and a second real repo.
+Fixture repo with git history for ordering/merge oracles; parity; Stage 5 on node-monorepo (batches 1, 2) and a second real repo.
 
 ---
 
@@ -192,5 +192,5 @@ Fixture repo with git history for ordering/merge oracles; parity; Stage 5 on bry
 - [ ] `Skill({ skill: "security-review" })` (Medium)
 - [ ] Lint passes
 - [ ] Tests written AND pass — pasted in `tasks/TASK_REVIEW_T068.md`
-- [ ] `Skill({ skill: "verify" })` on bryony + second repo
+- [ ] `Skill({ skill: "verify" })` on node-monorepo + second repo
 - [ ] Supervisor notified

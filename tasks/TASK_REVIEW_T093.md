@@ -15,10 +15,10 @@
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☒ pass (implementer) | `tests/test_t093_backend_unit_share.py`, 7 tests: AC1/2/4 monorepo `apps/api`+`apps/web` measured ("3 of 3 ... in backend unit(s) (apps/api)", "10 ... outside backend units (apps/web) are not counted"); AC6 sabotage `_in_backend_unit -> True` abstains "3 of 13"; AC3 no api file keeps whole repo ("of 12 ... quoted here", no unit wording); root-only manifest; api under root with nested `web/` package; two services = union; a classified file outside every unit still counts as a violation. Pre-change: 6 failed, 1 passed (AC3 passes before, by design). Post-change: `7 passed in 0.96s`; with T088: `35 passed in 3.41s`. Amendment (`9acb04a`): +4 tests: AC 8 `layer_of("apps/api/src/x/x.module.ts") == "shared"` (a non-shared conflict stays None); behaviour still overrides a shared hint (`routes.module.js` is api, listed as a disagreement); AC 9 monorepo with 4 `apps/api/**/*.module.js` is measured 3 of 3, and the sabotage `_resolve_hints` = conflict → None abstains 3 of 7. Before the fix: 4 failed, 7 passed. After: `11 passed in 1.82s`; with the T073/T074/T078/T088 layer tests: `131 passed`. |
-| Verification command run | ☒ pass (implementer) | `ruff check src tests` -> `All checks passed!`; kitchd/bryony/coffee/ai-training score runs pasted under Demonstration AFTER. |
-| Negative cases hold | ☒ pass (implementer) | no api file -> whole repository (AC3 test + ai-training byte-identical derivation); single manifest -> same value (coffee 0, 35/35); outside-unit violation still counted. |
-| verify | ☑ pass | Supervisor 2026-10-13 drove the CLI from the branch on kitchd: overall 56, architecture 100; `layer_direction_violations` measured, value 0: "43 of 45 non-shared source file(s) in backend unit(s) (apps/api) classify … 37 by behaviour … 89 non-shared source file(s) outside backend units (apps/mobile, apps/web, packages/shared, the repository root) are not counted". Layer test files t093/t088/t074/t078: 97 passed — pass. |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review across 3 rounds: backend-unit share (`walked_role_paths`, `package_manifests`, `_unit_of`/`_backend_units`), AC 8 shared-wins in `structure._resolve_hints`, AC 11 `_is_violation_end` (behaviour at both ends), AC 12 `_import_unit` (same-unit targets). The round-1 merge was held because kitchd showed 4 cited violations that were all false (3 hint-only ends, 1 cross-package name match). They are fixed by AC 11/12 and now 0. Earlier tests changed by design: T074 hint-only fixture expects 0; T078 shows declared layer_paths through the share. P0 0 · P1 0. MIN_CLASSIFIED_SHARE and weights untouched. |
+| Verification command run | ☒ pass (implementer) | `ruff check src tests` -> `All checks passed!`; fullstack-ts/node-monorepo/nest-api/python-ml score runs pasted under Demonstration AFTER. |
+| Negative cases hold | ☒ pass (implementer) | no api file -> whole repository (AC3 test + python-ml byte-identical derivation); single manifest -> same value (nest-api 0, 35/35); outside-unit violation still counted. |
+| verify | ☑ pass | Supervisor 2026-10-13 drove the CLI from the branch on fullstack-ts: overall 56, architecture 100; `layer_direction_violations` measured, value 0: "43 of 45 non-shared source file(s) in backend unit(s) (apps/api) classify … 37 by behaviour … 89 non-shared source file(s) outside backend units (apps/mobile, apps/web, packages/shared, the repository root) are not counted". Layer test files t093/t088/t074/t078: 97 passed — pass. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Supervisor review across 3 rounds: backend-unit share (`walked_role_paths`, `package_manifests`, `_unit_of`/`_backend_units`), AC 8 shared-wins in `structure._resolve_hints`, AC 11 `_is_violation_end` (behaviour at both ends), AC 12 `_import_unit` (same-unit targets). The round-1 merge was held because fullstack-ts showed 4 cited violations that were all false (3 hint-only ends, 1 cross-package name match). They are fixed by AC 11/12 and now 0. Earlier tests changed by design: T074 hint-only fixture expects 0; T078 shows declared layer_paths through the share. P0 0 · P1 0. MIN_CLASSIFIED_SHARE and weights untouched. |
 | Full smoke suite still green (no regression) | ☒ pass (implementer) | full suite on `3abe66d`: `2 failed, 2720 passed, 2 skipped in 621.71s`; the 2 failures are the known stale-image container tests (`test_container_parity_is_explicitly_verified`, `test_container_redaction_proof_is_not_silent_when_docker_is_missing`). After the amendment, on `9acb04a`: `2 failed, 2724 passed, 2 skipped in 586.28s`, with the same 2 container tests failing. After amendment 2, on `1a472bb`: `3 failed, 2727 passed, 2 skipped in 526.75s`, with the 2 known container tests plus `test_score_with_the_same_picks_matches_across_adapters`. That third test passes when re-run alone on the same commit (`1 passed, 5 deselected in 13.00s`), so it is a load flake, not a regression. |
 | **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Backend only. |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Backend only. |
@@ -39,7 +39,7 @@ the architecture `layer_direction_violations` metric, the architecture rating an
 extracted from the JSON payload (`[...]` marks elided T088 method boilerplate only).
 
 ```
-# kitchd  started 2026-10-13T08:18:12Z  exit 0 finished 2026-10-13T08:18:29Z
+# fullstack-ts  started 2026-10-13T08:18:12Z  exit 0 finished 2026-10-13T08:18:29Z
 layer_direction_violations: abstained: "49 of 177 non-shared source file(s) quoted here classify into
   a layer (api, service, data): 37 by behaviour (17 api, 0 service, 20 data), 12 by the layer_paths
   hints only, below the declared minimum share of 0.50, so the layer direction of this code is not
@@ -52,7 +52,7 @@ layer_direction_violations: abstained: "49 of 177 non-shared source file(s) quot
 architecture rating: 100
 overall: 56
 
-# bryony --all  started 2026-10-13T08:18:39Z  exit 0 finished 2026-10-13T08:19:59Z
+# node-monorepo --all  started 2026-10-13T08:18:39Z  exit 0 finished 2026-10-13T08:19:59Z
 layer_direction_violations: abstained: "450 of 1063 non-shared source file(s) quoted here classify
   into a layer (api, service, data): 58 by behaviour (4 api, 30 service, 24 data), 392 by the
   layer_paths hints only, below the declared minimum share of 0.50, so the layer direction of this
@@ -64,7 +64,7 @@ layer_direction_violations: abstained: "450 of 1063 non-shared source file(s) qu
 architecture rating: 83
 overall: 42
 
-# coffee-shop-api  started 2026-10-13T08:20:15Z  exit 0 finished 2026-10-13T08:20:20Z
+# nest-api  started 2026-10-13T08:20:15Z  exit 0 finished 2026-10-13T08:20:20Z
 layer_direction_violations: value 0: "0 import statement(s) from a lower to a higher layer (data ->
   service, service -> api, data -> api). 35 of 35 non-shared source file(s) quoted here classify into
   a layer (api, service, data): 4 by behaviour (4 api, 0 service, 0 data), 31 by the layer_paths
@@ -73,7 +73,7 @@ layer_direction_violations: value 0: "0 import statement(s) from a lower to a hi
 architecture rating: 90
 overall: 81
 
-# ai-training  started 2026-10-13T08:20:43Z  exit 0 finished 2026-10-13T08:20:48Z
+# python-ml  started 2026-10-13T08:20:43Z  exit 0 finished 2026-10-13T08:20:48Z
 layer_direction_violations: abstained: "framework_not_recognized: no source file quoted here
   registers a route or calls a recognised DB/ORM API (the registry's route_tokens and data_tokens),
   and the layer_paths hints classify 2 of 79 non-shared source file(s), below the declared minimum
@@ -85,7 +85,7 @@ overall: 60
 **AFTER**: same command on `3abe66d`, one run at a time (`[...]` as above).
 
 ```
-# kitchd  started 2026-10-13T08:25:25Z  exit 0 finished 2026-10-13T08:25:44Z
+# fullstack-ts  started 2026-10-13T08:25:25Z  exit 0 finished 2026-10-13T08:25:44Z
 layer_direction_violations: abstained: "43 of 88 non-shared source file(s) in backend unit(s)
   (apps/api) classify into a layer (api, service, data): 37 by behaviour (17 api, 0 service, 20
   data), 6 by the layer_paths hints only; 89 non-shared source file(s) outside backend units
@@ -97,7 +97,7 @@ layer_direction_violations: abstained: "43 of 88 non-shared source file(s) in ba
 architecture rating: 100
 overall: 56
 
-# bryony --all  started 2026-10-13T08:26:06Z  exit 0 finished 2026-10-13T08:27:47Z
+# node-monorepo --all  started 2026-10-13T08:26:06Z  exit 0 finished 2026-10-13T08:27:47Z
 layer_direction_violations: abstained: "148 of 515 non-shared source file(s) in backend unit(s)
   (backend) classify into a layer (api, service, data): 47 by behaviour (4 api, 19 service, 24
   data), 101 by the layer_paths hints only; 548 non-shared source file(s) outside backend units
@@ -108,14 +108,14 @@ layer_direction_violations: abstained: "148 of 515 non-shared source file(s) in 
 architecture rating: 83
 overall: 42
 
-# coffee-shop-api  started 2026-10-13T08:28:01Z  exit 0 finished 2026-10-13T08:28:06Z
+# nest-api  started 2026-10-13T08:28:01Z  exit 0 finished 2026-10-13T08:28:06Z
 layer_direction_violations: value 0: "0 import statement(s) from a lower to a higher layer [...]. 35 of
   35 non-shared source file(s) in backend unit(s) (the repository root) classify into a layer (api,
   service, data): 4 by behaviour (4 api, 0 service, 0 data), 31 by the layer_paths hints only [...]"
 architecture rating: 90
 overall: 81
 
-# ai-training  started 2026-10-13T08:28:06Z  exit 0 finished 2026-10-13T08:28:14Z
+# python-ml  started 2026-10-13T08:28:06Z  exit 0 finished 2026-10-13T08:28:14Z
 layer_direction_violations: abstained, derivation byte-identical to BEFORE ("framework_not_recognized
   [...] classify 2 of 79 non-shared source file(s) [...]")
 architecture rating: 83
@@ -124,21 +124,21 @@ overall: 60
 
 | Repo | Share BEFORE | Share AFTER | Measured | Violations | Architecture | Overall |
 |---|---|---|---|---|---|---|
-| kitchd | 49/177 (27.7%) | 43/88 (48.9%) | no -> no | - | 100 -> 100 | 56 -> 56 |
-| bryony `--all` | 450/1063 (42.3%) | 148/515 (28.7%) | no -> no | - | 83 -> 83 | 42 -> 42 |
-| coffee-shop-api | 35/35 | 35/35 (root unit) | yes -> yes | 0 -> 0 | 90 -> 90 | 81 -> 81 |
-| ai-training | 2/79, no api | unchanged (no api file) | no -> no | - | 83 -> 83 | 60 -> 60 |
+| fullstack-ts | 49/177 (27.7%) | 43/88 (48.9%) | no -> no | - | 100 -> 100 | 56 -> 56 |
+| node-monorepo `--all` | 450/1063 (42.3%) | 148/515 (28.7%) | no -> no | - | 83 -> 83 | 42 -> 42 |
+| nest-api | 35/35 | 35/35 (root unit) | yes -> yes | 0 -> 0 | 90 -> 90 | 81 -> 81 |
+| python-ml | 2/79, no api | unchanged (no api file) | no -> no | - | 83 -> 83 | 60 -> 60 |
 
 AC7 hand-check: no repository became measured, so there are no new violations to check by hand.
 Why the two monorepos still abstain (diagnosed against the source, not fixed: outside T093's scope):
-- kitchd: all 45 unclassified `apps/api` files are `*.module.ts`, `dto/*.dto.ts`, `main.ts`,
+- fullstack-ts: all 45 unclassified `apps/api` files are `*.module.ts`, `dto/*.dto.ts`, `main.ts`,
   `prisma.service.ts`, `types/prisma-client.d.ts`. They match the curated `shared=` globs, but they
   also match `api=**/api/**` because the app's directory is literally `apps/api`. `layer_of` leaves a
   two-layer match unclassified, so they are counted in the denominator instead of being dropped as
   shared. Checked: `layer_of("src/notes/notes.module.ts") == "shared"`, while
   `layer_of("apps/api/src/notes/notes.module.ts") is None`. The guide's "about 49/87" assumed all 49
   classified files are in `apps/api`; 6 are outside it.
-- bryony: the premise does not hold. Inside `backend/`, 148 of 515 files classify, and
+- node-monorepo: the premise does not hold. Inside `backend/`, 148 of 515 files classify, and
   `frontend/`/`design/` were contributing hint-classified files (450 - 148 = 302 of the 548 outside).
 
 **DELTA**: The layer rule's classified share is now taken over backend units only, and the derivation
@@ -148,13 +148,13 @@ no measured/abstained outcome, rating or overall changed (see table).
 **AFTER (amendment, AC 8–10; `9acb04a`, shared wins a layer_paths hint conflict)**
 
 Files whose hint flipped from unclassified to shared (a `shared=` glob plus another layer's glob,
-counted over every registry source file of each repository): kitchd **43**, all in `apps/api` and
-all `api+shared` (`*.module.ts`, `dto/**`, `main.ts`, `types/*.d.ts`); bryony 0; coffee-shop-api 0;
-ai-training 0. Of kitchd's 45 previously unclassified `apps/api` files, the other 2 (`app.service.ts`,
+counted over every registry source file of each repository): fullstack-ts **43**, all in `apps/api` and
+all `api+shared` (`*.module.ts`, `dto/**`, `main.ts`, `types/*.d.ts`); node-monorepo 0; nest-api 0;
+python-ml 0. Of fullstack-ts's 45 previously unclassified `apps/api` files, the other 2 (`app.service.ts`,
 `prisma/prisma.service.ts`) match no shared glob and stay unclassified.
 
 ```
-# kitchd  started 2026-10-13T08:41:20Z  exit 0 finished 2026-10-13T08:41:32Z
+# fullstack-ts  started 2026-10-13T08:41:20Z  exit 0 finished 2026-10-13T08:41:32Z
 layer_direction_violations: value 4: "4 import statement(s) from a lower to a higher layer [...], e.g.
   apps/api/src/auth/guards/roles.guard.ts:11 (data -> api); apps/api/src/comments/comments.service.ts:12
   (data -> api); apps/api/src/notes/notes.service.ts:11 (data -> api); apps/api/src/users/users.service.ts:13
@@ -166,18 +166,18 @@ layer_direction_violations: value 4: "4 import statement(s) from a lower to a hi
 architecture rating: 60  (inputs: description 10/10, decision records 10/10, cycles 40/40, layer 0/40)
 overall: 51
 
-# coffee-shop-api  started 2026-10-13T08:42:11Z  exit 0 finished 2026-10-13T08:42:15Z
+# nest-api  started 2026-10-13T08:42:11Z  exit 0 finished 2026-10-13T08:42:15Z
 metrics and ratings byte-identical to the first AFTER: value 0, 35 of 35 (root unit); architecture 90; overall 81
 ```
 
 | Repo | Share | Measured | Violations | Architecture | Overall |
 |---|---|---|---|---|---|
-| kitchd | 49/177 → 43/45 (95.6%) | no → **yes** | 4 | 100 → 60 | 56 → 51 |
-| bryony `--all` | 450/1063 → 148/515 | no → no (0 flips) | – | 83 → 83 | 42 → 42 |
-| coffee-shop-api | 35/35 → 35/35 | yes → yes (0 flips) | 0 → 0 | 90 → 90 | 81 → 81 |
-| ai-training | 2/79 → unchanged | no → no (0 flips) | – | 83 → 83 | 60 → 60 |
+| fullstack-ts | 49/177 → 43/45 (95.6%) | no → **yes** | 4 | 100 → 60 | 56 → 51 |
+| node-monorepo `--all` | 450/1063 → 148/515 | no → no (0 flips) | – | 83 → 83 | 42 → 42 |
+| nest-api | 35/35 → 35/35 | yes → yes (0 flips) | 0 → 0 | 90 → 90 | 81 → 81 |
+| python-ml | 2/79 → unchanged | no → no (0 flips) | – | 83 → 83 | 60 → 60 |
 
-**AC 10 hand-check of kitchd's 4 cited violations: all 4 are false positives.**
+**AC 10 hand-check of fullstack-ts's 4 cited violations: all 4 are false positives.**
 1. `auth/guards/roles.guard.ts:11` `import { ROLES_KEY } from '../decorators/roles.decorator'`: the
    guard is data by behaviour (a Prisma call at :48). The target is `api` only by the
    `api=**/*.decorator.*` hint, and it is a `SetMetadata` key constant. This is the guard reading
@@ -193,7 +193,7 @@ metrics and ratings byte-identical to the first AFTER: value 0, 35 of 35 (root u
    frontend file in another package, `api` by the `routes/**` hint. This is a cross-unit textual
    stem match. False positive.
 
-So kitchd is now measured, but its 4 violations, and so architecture 100 → 60 and overall
+So fullstack-ts is now measured, but its 4 violations, and so architecture 100 → 60 and overall
 56 → 51, come from the hints and from textual stem matching, not from real lower → higher imports.
 Not fixed here, because each fix is outside AC 8–10. Candidate follow-ups: (a) a folder-name hint
 (`**/api/**`) should not classify a file that a file-name hint or behaviour does not; (b) violation
@@ -203,7 +203,7 @@ stem match; (c) `*.decorator.*` as api.
 **AFTER (amendment 2, AC 11–13; `7200d07` AC 11, `5eb89f3` T078 tests, `1a472bb` AC 12)**
 
 ```
-# kitchd  started 2026-10-13T08:57:13Z  exit 0 finished 2026-10-13T08:57:27Z
+# fullstack-ts  started 2026-10-13T08:57:13Z  exit 0 finished 2026-10-13T08:57:27Z
 layer_direction_violations: value 0: "0 import statement(s) from a lower to a higher layer [...]. 43 of
   45 non-shared source file(s) in backend unit(s) (apps/api) classify [...]; 89 non-shared source
   file(s) outside backend units (apps/mobile, apps/web, packages/shared, the repository root) are not
@@ -214,7 +214,7 @@ layer_direction_violations: value 0: "0 import statement(s) from a lower to a hi
 architecture rating: 100
 overall: 56
 
-# coffee-shop-api  started 2026-10-13T08:57:27Z  exit 0 finished 2026-10-13T08:57:31Z
+# nest-api  started 2026-10-13T08:57:27Z  exit 0 finished 2026-10-13T08:57:31Z
 layer_direction_violations: value 0, 35 of 35 (root unit); derivation adds only the AC 11/12 sentence
   ("the 31 file(s) classified by the layer_paths hints only [...]")
 architecture rating: 90
@@ -223,19 +223,19 @@ overall: 81
 
 | Repo | Share | Measured | Violations | Architecture | Overall |
 |---|---|---|---|---|---|
-| kitchd | 43/45 | yes | 4 → **0** | 60 → 100 | 51 → 56 |
-| coffee-shop-api | 35/35 | yes | 0 → 0 | 90 | 81 |
-| bryony `--all` | 148/515 | no | – | 83 (not re-run) | 42 |
-| ai-training | 2/79 | no | – | 83 (not re-run) | 60 |
+| fullstack-ts | 43/45 | yes | 4 → **0** | 60 → 100 | 51 → 56 |
+| nest-api | 35/35 | yes | 0 → 0 | 90 | 81 |
+| node-monorepo `--all` | 148/515 | no | – | 83 (not re-run) | 42 |
+| python-ml | 2/79 | no | – | 83 (not re-run) | 60 |
 
-AC 13 hand-check: kitchd cites 0 violations, so there is nothing to check. The 4 earlier false positives
+AC 13 hand-check: fullstack-ts cites 0 violations, so there is nothing to check. The 4 earlier false positives
 are gone: cases 1–3 had a hint-only api end (AC 11), and case 4 was a cross-unit stem match (AC 12).
-coffee's 0 is now structural, because only its 4 api files are behaviour-classified (no data by
+nest-api's 0 is now structural, because only its 4 api files are behaviour-classified (no data by
 behaviour), so no violation end pair exists.
-bryony and ai-training were not re-run because AC 11/12 cannot change them. Both rules act only in
-the violation loop, which runs after the share check, and both repos abstain before it: bryony at
-148/515 (the share computation is untouched), and ai-training via `framework_not_recognized` (no api
-file). The only possible difference is bryony's abstention text, where "violations are still counted
+node-monorepo and python-ml were not re-run because AC 11/12 cannot change them. Both rules act only in
+the violation loop, which runs after the share check, and both repos abstain before it: node-monorepo at
+148/515 (the share computation is untouched), and python-ml via `framework_not_recognized` (no api
+file). The only possible difference is node-monorepo's abstention text, where "violations are still counted
 over all N classified file(s)" became "violations are not limited to backend units".
 
 Tests (AC 13, both rules pinned at both extremes): `test_ac11_hint_only_ends_are_never_violations`
@@ -249,4 +249,4 @@ hint-only fixture now asserts 0 and the hint-only count (the behaviour case is T
 in `tests/test_t078_repo_conventions.py`. A declared `layer_paths` now shows in the share
 (2 of 3 bare → 3 of 3), not as a hint-only violation. Layer test files: `135 passed`.
 
-**WITNESS**: Supervisor, 2026-10-13. Re-ran the layer test files (97 passed) and drove `score` on kitchd from the branch (measured, 0 violations, architecture 100, overall 56).
+**WITNESS**: Supervisor, 2026-10-13. Re-ran the layer test files (97 passed) and drove `score` on fullstack-ts from the branch (measured, 0 violations, architecture 100, overall 56).

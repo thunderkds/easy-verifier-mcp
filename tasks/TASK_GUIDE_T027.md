@@ -88,7 +88,7 @@ we need LLM to think, not for all steps, so we can save a lot of token/cost". Th
 | 1 | Fixture with `notes/product-brief.md` and no requirements-doc match | `needs_input.picks["requirements-doc"]` contains that path + its heading | automated test |
 | 2 | Fully-resolved fixture | no `needs_input` key | automated test |
 | 3 | 30 candidate files for one role | 20 listed, `omitted: 10` | automated test |
-| 4 | Real MCP stdio session against the Docker image on `bryony` | `needs_input` present; second call with picks raises coverage | `verify` run, transcript pasted |
+| 4 | Real MCP stdio session against the Docker image on `node-monorepo` | `needs_input` present; second call with picks raises coverage | `verify` run, transcript pasted |
 
 ### Verification Command (exact, runnable)
 
@@ -157,7 +157,7 @@ Stateless: "round" is decided solely by whether `agent_input.picks` was supplied
 
 Unit: candidate builder (filters, cap, ordering, redaction, heading extraction). Integration: MCP
 `score` two-call round trip over stdio; CLI never emits the key; parity. Live: Docker image on
-`bryony` via MCP stdio.
+`node-monorepo` via MCP stdio.
 
 ---
 

@@ -221,7 +221,7 @@ def test_numeric_examples_are_sourced_or_illustrative() -> None:
     guide = _text(GUIDE)
     examples = _section(guide, "Worked examples")
     assert "2026-10-05" in examples and "`score`" in examples
-    assert "coffee-shop-api" in examples and "bryony" in examples
+    assert "nest-api" in examples and "node-monorepo" in examples
     assert "false positives" in examples
     assert "74 = rules 68 + agent 88 (w 0.30)` (illustrative)" in guide
 

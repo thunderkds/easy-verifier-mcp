@@ -80,7 +80,7 @@ score, all four sharing one extraction helper (`dimensions/_doc_extract.py`) tha
 content nor bypassed secret exclusion (DDR-0002) or redaction (NFR-010) to produce them.
 
 **WITNESS**: Backend-Implementer (`backend-developer`), 2026-08-17, ran both captures directly in
-`/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-t007` as part of this task.
+`<repo>-t007` as part of this task.
 
 ---
 

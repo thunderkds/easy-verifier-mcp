@@ -36,7 +36,7 @@
 **BEFORE**: captured by backend-developer on pre-fix commit `4750b37`, before any implementation commit:
 
 ```
-$ cd /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T029 && date -u && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('BRAINSTORMING_LOG_source-discovery.md'))"
+$ cd <repo>-T029 && date -u && PYTHONPATH=src <repo>/.venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('BRAINSTORMING_LOG_source-discovery.md'))"
 Mon Sep 28 04:56:31 AM UTC 2026
 BRAI…****:54e5675171d4.md
 ```
@@ -44,7 +44,7 @@ BRAI…****:54e5675171d4.md
 **AFTER**: captured by backend-developer on fix commit `e4f2537`:
 
 ```
-$ cd /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp-T029 && date -u && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('BRAINSTORMING_LOG_source-discovery.md'))"
+$ cd <repo>-T029 && date -u && PYTHONPATH=src <repo>/.venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('BRAINSTORMING_LOG_source-discovery.md'))"
 Mon Sep 28 05:00:40 AM UTC 2026
 BRAINSTORMING_LOG_source-discovery.md
 ```

@@ -16,7 +16,7 @@
 4. Read `.claude/agents/backend.md`
 5. Apply the C2 process from `.claude/agents/general-agent-template.md`
 6. Read `memory/codebase-map.md`, `BRAINSTORMING_LOG_code-derived-rules.md`, and
-   `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md`
+   `<repo>/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md`
    (docs/ddr is gitignored — main checkout only), plus DDR-0007 (registry citations)
 
 ---
@@ -64,7 +64,7 @@ evidence; document roles accept common conventions (e.g. a README "Architecture"
 | 6 | Batches (T068) and measured-weight floor (T067) still apply; sampled metrics labelled | DDR-0010 |
 | 7 | `docs/SCORING_RULES.md` and `docs/AREA_COVERAGE.md` updated (T072 sync test passes) | FR-066 |
 | 8 | CLI/MCP parity and replay unchanged in form | FR-022 |
-| 9 | **Real-repo layer coverage (Supervisor finding after T073):** on coffee-shop-api only 22 of 83 non-test sources classify. Extend `conventions.toml` `layer_paths` with cited NestJS/common forms — api: `*.dto.*`, `*.schema.*` (request/response schemas), `*.guard.*`, `*.middleware.*`, `*.filter.*`, `*.interceptor.*`, `*.decorator.*`, `**/middlewares/**`; data: `**/migrations/**` — and add a declared **`shared`** class (cross-cutting: `*.module.*`, `**/config*/**`, `*.config.*`, `**/utils/**`, `*.util.*`, `**/constants/**`, `*.constant.*`, `**/enums/**`, `*.enum.*`, `**/types/**`, `*.d.ts`, `*.interface.*`, `main.*`). `shared` files are excluded from the classified-share denominator and never take part in a violation. Glossary *Layer* gains the `shared` note | FR-069, FR-068 |
+| 9 | **Real-repo layer coverage (Supervisor finding after T073):** on nest-api only 22 of 83 non-test sources classify. Extend `conventions.toml` `layer_paths` with cited NestJS/common forms — api: `*.dto.*`, `*.schema.*` (request/response schemas), `*.guard.*`, `*.middleware.*`, `*.filter.*`, `*.interceptor.*`, `*.decorator.*`, `**/middlewares/**`; data: `**/migrations/**` — and add a declared **`shared`** class (cross-cutting: `*.module.*`, `**/config*/**`, `*.config.*`, `**/utils/**`, `*.util.*`, `**/constants/**`, `*.constant.*`, `**/enums/**`, `*.enum.*`, `**/types/**`, `*.d.ts`, `*.interface.*`, `main.*`). `shared` files are excluded from the classified-share denominator and never take part in a violation. Glossary *Layer* gains the `shared` note | FR-069, FR-068 |
 
 ---
 
@@ -78,12 +78,12 @@ evidence; document roles accept common conventions (e.g. a README "Architecture"
 | 2 | Fixture with no docs, no cycles, no violations | architecture 80 (documents fail) | automated |
 | 3 | Fixture where < 50% files classify | layer rule abstains; rated on cycles + docs (60% measured) | automated |
 | 4 | README with `## Architecture` | description rule passes | automated |
-| 5 | coffee-shop-api, bryony, kitchd | before/after table (Supervisor) | verify |
+| 5 | nest-api, node-monorepo, fullstack-ts | before/after table (Supervisor) | verify |
 
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t074_architecture_code_rules.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t074_architecture_code_rules.py -q
 ```
 
 ### Evidence
@@ -94,7 +94,7 @@ cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111
 
 ## Demonstration
 
-> BEFORE (Supervisor, scratchpad `t073/before.txt`): coffee-shop-api architecture `below_coverage_floor`; bryony 70; kitchd 100.
+> BEFORE (Supervisor, scratchpad `t073/before.txt`): nest-api architecture `below_coverage_floor`; node-monorepo 70; fullstack-ts 100.
 
 ---
 

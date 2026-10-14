@@ -67,7 +67,7 @@ agent may replace it with a repo-specific one; the report shows which.
 | 5 | A secret-shaped token in a suggestion is redacted in the HTML (`_Ctx.agent_text()`), and HTML is escaped | FR-057, DDR-0001 |
 | 6 | Items without an agent suggestion render the engine line labelled `engine` (T065 behaviour unchanged) | FR-057 |
 | 7 | MCP tool schema / CLI `--agent-input` both accept `improvements`; parity holds | FR-022 |
-| 8 | Real-repo: agent run on bryony writes a report with at least one `agent`-labelled fix | done-means-real-repo-verified |
+| 8 | Real-repo: agent run on node-monorepo writes a report with at least one `agent`-labelled fix | done-means-real-repo-verified |
 
 ---
 
@@ -81,7 +81,7 @@ agent may replace it with a repo-specific one; the report shows which.
 | 2 | Override for `security/no_such_metric` | `ValidationError`, `reports/` unchanged | automated test |
 | 3 | Suggestion containing `FAKEfake…` secret-shaped value and `<script>` | redacted + escaped in HTML | automated test |
 | 4 | Duplicate override for same item | `ValidationError` | automated test |
-| 5 | bryony, MCP `write_report` with overrides | report shows agent-labelled fixes | `verify` skill, screenshot |
+| 5 | node-monorepo, MCP `write_report` with overrides | report shows agent-labelled fixes | `verify` skill, screenshot |
 
 ### Verification Command (exact, runnable)
 
@@ -169,7 +169,7 @@ fail closed before any disk write, render beside T065's engine line.
 ## Test Plan
 
 Unit tests for each AC on a synthetic plan; rendered-HTML assertions; security-review on the new
-agent-text egress; Stage 5 real-repo run on bryony through MCP.
+agent-text egress; Stage 5 real-repo run on node-monorepo through MCP.
 
 ---
 
@@ -180,6 +180,6 @@ agent-text egress; Stage 5 real-repo run on bryony through MCP.
 - [ ] Security review: `Skill({ skill: "security-review" })` run (Medium risk, new agent-text egress)
 - [ ] Lint passes
 - [ ] Tests written AND pass — output pasted into `tasks/TASK_REVIEW_T066.md` (Hard-Stop Gate 5)
-- [ ] `Skill({ skill: "verify" })` run on bryony — real repo
+- [ ] `Skill({ skill: "verify" })` run on node-monorepo — real repo
 - [ ] `memory/MEMORY.md` updated (if new patterns learned)
 - [ ] Supervisor notified: task ready for Stage 4 review

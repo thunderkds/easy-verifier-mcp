@@ -685,7 +685,7 @@ Full text: `docs/ddr/0005-adapter-parity-is-byte-equality-after-declared-normali
 ## DDR-0006 — Any-language discovery by role; calling agent contributes only at hard gates (2026-09-26)
 
 **Decided by the user** during Stage 0.5 requirement grilling for T026/T027, after v0.1.0 runs
-against kitchd / bryony / ai-training abstained on 2–5 of 7 dimensions because sought sources were
+against fullstack-ts / node-monorepo / python-ml abstained on 2–5 of 7 dimensions because sought sources were
 fixed Python-/kit-specific filenames. User direction: "evaluate any language with no boundary, and
 ask the agent LLM at hard gates to detect and evaluate", agent as a contributor to score correctness.
 
@@ -887,7 +887,7 @@ an official source before the user review gate; its calibrated confidence maps t
 
 **Revisit trigger (user, 2026-09-28): after all current tasks (T029–T049) are done.** Plan then: with
 early access, run a small agent-side experiment comparing Jev vs the LLM on detect-gate picks
-(accuracy + latency on kitchd/bryony/ai-training); adopt only as a documented optional agent tool if
+(accuracy + latency on fullstack-ts/node-monorepo/python-ml); adopt only as a documented optional agent tool if
 it clearly wins. No engine change either way.
 
 ### 2026-09-28 — T035 sign-off (user)
@@ -947,7 +947,7 @@ it clearly wins. No engine change either way.
 
 - **Option A, capped.** A new `RepoContext.peek_source` applies exactly the same refusals as `read_source` (secret-bearing per DDR-0002, outside the repo, symlinks) but records nothing, so `files_read` stays evidence-only. Critical Constraint 4a is read as "enforced in RepoContext". Security pre-screens generic source files for registry auth/session/cookie tokens and moves hits to the front of the generic tier. Evidence reads stay ≤ `MAX_SECURITY_SOURCES` (200, unchanged). The pre-screen is capped at 2000 files, with a warning when the cap is reached.
 - Rejected: B (pre-screen via `read_source` would inflate `files_read` about 6x and shift metrics on every repo); C (a second 4a enforcement site); D (type-only ordering fails the confirmed Expected items without raising the cap).
-- Root cause (T058 diagnosis): the 200-read cap hid bryony's index.js (rank 788 of 1532); the 40-excerpt pack was never truncated.
+- Root cause (T058 diagnosis): the 200-read cap hid node-monorepo's index.js (rank 788 of 1532); the 40-excerpt pack was never truncated.
 
 ---
 
@@ -972,7 +972,7 @@ name items it never sees). Source: `BRAINSTORMING_LOG_improvement-plan.md`.
 
 **Decision**: (1) `MEASURED_WEIGHT_FLOOR` 0.50 — below it a dimension abstains `insufficient_measured_weight`. (2) Evidence-lack abstentions (that, below_coverage_floor, coverage_not_applicable, all_metrics_abstained, dimension_failed) are warnings + improvement-plan lines, **never gated / agent-rated**; only `no_static_rule` (solution-fit) and borderline inputs are gated — partially supersedes DDR-0006. (3) Above the 200-file cap, code tiers read priority batches (purpose class → churn → path), sample disclosed; MCP `needs_input.continue_batches`, CLI `--batches N`/`--all` default 1; stateless — engine recomputes batches 1..N, the agent never carries a number. Reverses T031/T050 all-or-none. Tasks T067 (floor) → T068 (batches).
 
-**Why**: bryony code-quality showed 100 from 20/100 weight because the cap read zero code; user: "we do not hallucinate, just warning".
+**Why**: node-monorepo code-quality showed 100 from 20/100 weight because the cap read zero code; user: "we do not hallucinate, just warning".
 
 ---
 
@@ -995,7 +995,7 @@ structure vs LLM meaning split — meaning stays agent-side).
 
 **Decision (user, AskUserQuestion):** `swallowed_errors_observed` 35, `outbound_calls_without_timeout_observed` 35, `retries_without_backoff_observed` 10, `queries_in_loops_observed` 20, all `at_most 0`. Area #6 (transactions/idempotency) gets no rule; its code is quoted in the pack as evidence, and the evaluate gate is NOT widened (DDR-0010 stands: gate only for no_static_rule / borderline).
 **Why:** outage-causing failures (hidden errors, unbounded waits) weigh most; retry backoff is rarely measurable. Widening the gate would cost tokens on every score.
-**Real repos at sign-off:** coffee 100 (overall 65→72), bryony batch-1 61 (69→67), kitchd 0 (72→58; 20/20 calls no deadline, 4 empty catches, real N+1 at alerts.service.ts:71).
+**Real repos at sign-off:** nest-api 100 (overall 65→72), node-monorepo batch-1 61 (69→67), fullstack-ts 0 (72→58; 20/20 calls no deadline, 4 empty catches, real N+1 at alerts.service.ts:71).
 
 ## 2026-10-06 — T047 healthcare pack weights 50/50 (user sign-off)
 
@@ -1003,7 +1003,7 @@ structure vs LLM meaning split — meaning stays agent-side).
 
 ## 2026-10-06 — T048 finance pack: weights 50/25/25; TS `number` counts only in the persistence layer (user)
 
-`float_money_observed` 50, `ledger_tables_without_audit_columns_observed` 25, `ledger_rows_mutated_observed` 25 (area #3, at_most 0; ledger rules abstain without a declared ledger). JS/TS has no decimal type, so `number` counts as float money only in entity/schema/model/migration files; DTOs and view types are skipped (before this: coffee 72→60 from one response-DTO `price`). Explicit float types in other languages are unchanged. Bare `total` is not a money name (pagination counts).
+`float_money_observed` 50, `ledger_tables_without_audit_columns_observed` 25, `ledger_rows_mutated_observed` 25 (area #3, at_most 0; ledger rules abstain without a declared ledger). JS/TS has no decimal type, so `number` counts as float money only in entity/schema/model/migration files; DTOs and view types are skipped (before this: nest-api 72→60 from one response-DTO `price`). Explicit float types in other languages are unchanged. Bare `total` is not a money name (pagination counts).
 
 ## 2026-10-07 — T041 supply-chain floor 0.40 inclusive; weights 20/15/20/20/25 (user sign-off)
 
@@ -1014,8 +1014,8 @@ structure vs LLM meaning split — meaning stays agent-side).
 ## 2026-10-07 — T041 D1: CI `image:` references count for `ci_actions_unpinned_share` (user)
 
 **Decision (user, AskUserQuestion 2026-10-07):** add `image:` as a second action-reference token in `GENERIC_CI_FACTS["action_reference"]` (roles.py); pinned only with `@sha256:` digest (OpenSSF Scorecard Pinned-Dependencies). Metric name and weights unchanged.
-**Why:** bryony's `.drone.yml` pulls `bryony/li-tool-backend-base:master` but the rule abstained (only `uses:` was read) — an abstention on a repo that clearly has the evidence is a defect.
-**Expected:** bryony supply-chain 44 → 35; kitchd share stays 1.0 over 13 refs (postgres service image); templated `${{ matrix.x }}` image may count as unpinned (accepted, note as known limitation).
+**Why:** node-monorepo's `.drone.yml` pulls `node-monorepo/li-tool-backend-base:master` but the rule abstained (only `uses:` was read) — an abstention on a repo that clearly has the evidence is a defect.
+**Expected:** node-monorepo supply-chain 44 → 35; fullstack-ts share stays 1.0 over 13 refs (postgres service image); templated `${{ matrix.x }}` image may count as unpinned (accepted, note as known limitation).
 
 ## 2026-10-07 — Remaining dimensions run in order; floors 0.25; cited weight proposals accepted (user)
 
@@ -1029,8 +1029,8 @@ structure vs LLM meaning split — meaning stays agent-side).
 
 ## 2026-10-12 — PROPOSED: recognize architecture by behaviour and content, not names → see DDR-0012
 
-Retest showed the name-based rules fail both ways: scraping-devops' "Folder structures" README was
-reported missing, and bryony passed on `event_design.md` (event payloads). User: we cover only A,
+Retest showed the name-based rules fail both ways: k8s-ops' "Folder structures" README was
+reported missing, and node-monorepo passed on `event_design.md` (event payloads). User: we cover only A,
 risk is B and C; "find a way", not abstain. Layers are assigned by behaviour (route registration /
 DB-ORM call / import path between), with folder names only a hint. Request path is reported, not
 scored: the DB is another service, so only in-repo code is scored. Document roles are filled by
@@ -1043,8 +1043,8 @@ exclusion is a prerequisite. DDR-0011 weights are unchanged. Log:
 The implementer found the guide's premise wrong: Linguist `vendor.yml` excludes files from
 *language statistics* (CI configs, `.d.ts`, `dist/`, fixtures, `Vagrantfile`, `[Ee]xtern(als?)?/`),
 and `generated.rb` is Ruby code that counts lockfiles. Used verbatim, it would exclude team code on
-kitchd, bryony and coffee-shop-api. Decision (Supervisor, Option A): vendor a filtered, pinned
-snapshot of the third-party categories only; drop `extern/` (bryony team scripts); "generated"
+fullstack-ts, node-monorepo and nest-api. Decision (Supervisor, Option A): vendor a filtered, pinned
+snapshot of the third-party categories only; drop `extern/` (node-monorepo team scripts); "generated"
 comes only from `.gitattributes`. A single path predicate is shared by both walkers
 (`scope._walk_files`, `context._walk`), whose `_EXCLUDED_DIRS` sets disagreed (context had
 `vendor`/`target`). → see DDR-0012 §5
@@ -1052,20 +1052,20 @@ comes only from `.gitattributes`. A single path predicate is shared by both walk
 ## 2026-10-13 — T089 content-shape precision (Supervisor, implementer findings 1–4)
 
 - architecture-doc: the document with the most described entries wins. "First that qualifies"
-  cited kitchd's BRAINSTORMING_LOG planned-file list over PROJECT_SPEC.
+  cited fullstack-ts's BRAINSTORMING_LOG planned-file list over PROJECT_SPEC.
 - decision-record needs a decision field (Decision / Decision Outcome / Recommended Path / Chosen /
   Selected / Approved direction) plus context-or-alternatives. Context + Status alone made
-  ai-training's requirements doc count as an ADR (architecture 83→100, a false pass). This also
+  python-ml's requirements doc count as an ADR (architecture 83→100, a false pass). This also
   brings kit brainstorming logs back for solution-fit by content, after the name pattern was
   removed.
 - requirements-doc: a requirements-named heading followed by ≥3 list items also fills it. "Find a
-  way": ai-training's "## Functional Requirements" bullets have no FR/US ids.
+  way": python-ml's "## Functional Requirements" bullets have no FR/US ids.
   `requirement_items_traced_share` is unchanged. → see DDR-0012 §3
 
 ## 2026-10-13 — User: test-path sink hits are shown but not scored (T092); backend-only layer share (T093)
 
 The user agreed to both suggestions ("yes, agree"). (1) `sink_hits_observed` counts only non-test
-hits; test hits are listed and tagged `[test path]`; only test files scanned → abstain. coffee
+hits; test hits are listed and tagged `[test path]`; only test files scanned → abstain. nest-api
 security 18→59. (2) The layer classified-share floor counts only backend units (nearest manifest
 above api files). Planned as T093.
 
@@ -1073,4 +1073,4 @@ above api files). Planned as T093.
 - A table whose header has a change or plan column (`CHANGE_COLUMNS`: Change, Changes, Action, Edit, Modification, Status, Todo, Reason) is not a source of described entries.
 - A `##`+ architecture-headed section naming ≥3 real paths in prose qualifies in any document. Kind: `architecture-heading`; READMEs keep `readme-heading`. A level-1 heading is a title and never opens a section.
 - In prose, a bare token counts as a path only if it contains `/`.
-- kitchd now cites `memory/decisions.md` ## Architecture, chosen over PROJECT_SPEC.md by the unchanged T089 ranking (most directories), and accepted. No rating changed on 6 repos.
+- fullstack-ts now cites `memory/decisions.md` ## Architecture, chosen over PROJECT_SPEC.md by the unchanged T089 ranking (most directories), and accepted. No rating changed on 6 repos.

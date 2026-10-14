@@ -40,7 +40,7 @@ running the verification command against the pre-change tree:
 ```
 $ date -u +"%Y-%m-%dT%H:%M:%SZ"
 2026-08-17T02:33:01Z
-$ PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t005_budget.py -q
+$ PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t005_budget.py -q
 ERROR: file or directory not found: tests/test_t005_budget.py
 
 no tests ran in 0.00s
@@ -57,7 +57,7 @@ tight (FR-011a not met).
 ```
 $ date -u +"%Y-%m-%dT%H:%M:%SZ"
 2026-08-17T02:33:10Z
-$ PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t005_budget.py -q
+$ PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t005_budget.py -q
 .....................                                                    [100%]
 21 passed in 0.06s
 EXIT:0

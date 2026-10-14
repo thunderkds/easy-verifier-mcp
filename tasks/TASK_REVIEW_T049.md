@@ -16,9 +16,9 @@
 |-------|--------|------------------------|
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t049_a11y_pack.py` (61 tests, red-first per rule: AC1 img/controls/aria-hidden incl. empty alt, spread props, htmlFor, hidden/submit inputs, capitalised components; AC2 viewport + Next default + zoom, browser support pairs; AC3 JSX/Vue/Svelte/Angular/Jinja/ERB; AC4 inactive pack + byte-equal replay; AC5 weights/floor/exact-50 test). Included in the full run below |
 | Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!` (implementer); full suite below |
-| Negative cases hold | ☑ pass | `alt=""` met; `{...props}` not verifiable (never missing); `<Input>`/`<Select>` components not DOM controls (regression test after a real-repo false positive: tapchat 20 → 1); `type=hidden/submit` not judged; `i<input` comparison not a tag |
-| verify | ☑ pass | Supervisor MCP `score`: packs off → no a11y metrics, #19 uncovered; `agent_input.packs=["frontend-a11y"]` → rating 19 with arithmetic consistent (15/80). Real repo tapchat-web: pack off byte-identical to BEFORE (sha256 d05f4709…), pack on 45 / overall 65→60 with 2 real zoom-disabled hits and 1 real unlabeled input — pass |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | reviewed new `packs/frontend_a11y.py` + `registry/packs/frontend-a11y.toml` + wiring in judge/metrics/registry/improve/report/mcp_server (mirrors T048 finance pack), test file, doc/pin edits. Weights 25/25/20/15/15 (WCAG 2.2 SC 1.1.1, 1.3.1+4.1.2, 4.1.2+Using ARIA rule 4, 1.4.4+1.4.10; browser support ISO 25010 + Browserslist, project-default) sum 100, admit exact 50 — accepted under the 2026-10-07 policy. Findings: P0 0 / P1 0 / **P2** viewport credits Next/Nuxt default viewport but not Next's default browser targets (asymmetry; −15 on tapchat) — reported to user / P3 markup cap 500 files disclosed in derivation. Security: pack patterns load from the curated layer only (`load_pack`), so a scanned repo cannot inject regexes; secret-bearing files refused by `read_source`; paths redacted — clean |
+| Negative cases hold | ☑ pass | `alt=""` met; `{...props}` not verifiable (never missing); `<Input>`/`<Select>` components not DOM controls (regression test after a real-repo false positive: next-app 20 → 1); `type=hidden/submit` not judged; `i<input` comparison not a tag |
+| verify | ☑ pass | Supervisor MCP `score`: packs off → no a11y metrics, #19 uncovered; `agent_input.packs=["frontend-a11y"]` → rating 19 with arithmetic consistent (15/80). Real repo next-web: pack off byte-identical to BEFORE (sha256 d05f4709…), pack on 45 / overall 65→60 with 2 real zoom-disabled hits and 1 real unlabeled input — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | reviewed new `packs/frontend_a11y.py` + `registry/packs/frontend-a11y.toml` + wiring in judge/metrics/registry/improve/report/mcp_server (mirrors T048 finance pack), test file, doc/pin edits. Weights 25/25/20/15/15 (WCAG 2.2 SC 1.1.1, 1.3.1+4.1.2, 4.1.2+Using ARIA rule 4, 1.4.4+1.4.10; browser support ISO 25010 + Browserslist, project-default) sum 100, admit exact 50 — accepted under the 2026-10-07 policy. Findings: P0 0 / P1 0 / **P2** viewport credits Next/Nuxt default viewport but not Next's default browser targets (asymmetry; −15 on next-app) — reported to user / P3 markup cap 500 files disclosed in derivation. Security: pack patterns load from the curated layer only (`load_pack`), so a scanned repo cannot inject regexes; secret-bearing files refused by `read_source`; paths redacted — clean |
 | Full smoke suite still green (no regression) | ☑ pass | Supervisor run on 9520b89: `2 failed, 2407 passed, 2 skipped in 342.27s` — failures are the known stale-image container tests (`missing=['api','data','infrastructure','operations','supply-chain']`), pre-existing — pass |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend analysis of target-repo markup; no UI of our own changed (report rows reuse existing layout) |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend-only |
@@ -35,13 +35,13 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE** (captured by backend-developer before any T049 implementation commit, worktree HEAD = c50955f; real repo = `/home/hungnguyenhuu/workspace/project/beautifly/github/tapchat-web` (pnpm/turbo monorepo, Next.js + React, 832 JSX/TSX/HTML files), read-only):
+**BEFORE** (captured by backend-developer before any T049 implementation commit, worktree HEAD = c50955f; real repo = `<real-repos>/next-web` (pnpm/turbo monorepo, Next.js + React, 832 JSX/TSX/HTML files), read-only):
 
 ```text
 $ date -u; git rev-parse HEAD
 2026-10-08T03:40:49Z
 c50955f839d7e6d4dde26a16a698c5c87a3080fd
-$ PYTHONPATH=<worktree>/src python -m easy_verifier.adapters.cli score --repo tapchat-web </dev/null > tapchat_before.json
+$ PYTHONPATH=<worktree>/src python -m easy_verifier.adapters.cli score --repo next-web </dev/null > next_web_before.json
 exit=0   (finished 2026-10-08T03:41:07Z)
 stderr:
 warning [batches]: read batches 1 of 5 (200 of 891 in-scope source files, most important and most-changed first); continue with --batches 2, or --all
@@ -60,7 +60,7 @@ warning [batches]: read batches 1 of 5 (200 of 891 in-scope source files, most i
 overall 65
 ratings ['api', 'architecture', 'blast-radius', 'code-quality', 'data', 'infrastructure', 'operations', 'reliability', 'requirement-fidelity', 'security', 'solution-fit', 'supply-chain', 'test-strategy']
 #19 in areas_without_rule True
-cmp tapchat_before.json tapchat_before_on.json -> IDENTICAL
+cmp next_web_before.json next_web_before_on.json -> IDENTICAL
 ```
 
 The `frontend-a11y` pack is unknown (ignored with a warning), no accessibility metric exists, and area #19 "Accessibility, responsive UX, browser compat" is listed in `areas_without_rule`.

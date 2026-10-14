@@ -41,7 +41,7 @@ run against the worktree in its state at that moment — before `findings.py` or
 ```
 Traceback (most recent call last):
   File "<string>", line 1, in <module>
-ImportError: cannot import name 'findings' from 'easy_verifier.core' (/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.claude/worktrees/agent-adc9574f95a28bdfe/src/easy_verifier/core/__init__.py)
+ImportError: cannot import name 'findings' from 'easy_verifier.core' (<repo>/.claude/worktrees/agent-adc9574f95a28bdfe/src/easy_verifier/core/__init__.py)
 ```
 `ls src/easy_verifier/core/` at the same timestamp: `context.py __init__.py models.py pipeline.py __pycache__ redact.py` — no `findings.py`. There is no
 `validate_findings` anywhere; an LLM-authored finding with a missing or dangling

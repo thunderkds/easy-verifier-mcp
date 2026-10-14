@@ -24,7 +24,7 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-User (2026-09-26), after running the v0.1.0 image against kitchd, bryony and ai-training and seeing
+User (2026-09-26), after running the v0.1.0 image against fullstack-ts, node-monorepo and python-ml and seeing
 2–5 of 7 dimensions abstain: "we scope the project in the language and the specific docs, not open
 wide for flexible in any" → "this repo can evaluate any language with no boundary".
 
@@ -98,7 +98,7 @@ wide for flexible in any" → "this repo can evaluate any language with no bound
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | Generic-language fixture, no config | ≥1 dimension rated that abstains on `develop` HEAD `6328455` | automated test |
-| 2 | Real repo `kitchd` via Docker (rebuilt image) | Fewer abstentions than the 2026-09-26 baseline (code-quality, security abstained) | `verify` run, output pasted |
+| 2 | Real repo `fullstack-ts` via Docker (rebuilt image) | Fewer abstentions than the 2026-09-26 baseline (code-quality, security abstained) | `verify` run, output pasted |
 | 3 | `.easy-verifier.toml` with `coverage_floor = 0.1` | exit 2, message names `coverage_floor` | automated test |
 | 4 | picks `{"lockfile": ["../etc/passwd"]}` | validation error naming the path | automated test |
 | 5 | Same picks via CLI and MCP | byte-equal after DDR-0005 normalization | parity test |
@@ -195,7 +195,7 @@ Option A from `BRAINSTORMING_LOG_source-discovery.md`:
 Unit: role resolution per table, generic patterns, exclusions, TOML validation matrix, picks
 validation matrix, coverage arithmetic by role. Integration: five fixture repos (generic, Python,
 JS/TS monorepo, Rust, Java), adapter parity with and without picks, report provenance rendering.
-Live: rebuilt Docker image against `kitchd` (read-only mount, `--user $(id -u):$(id -g)`) —
+Live: rebuilt Docker image against `fullstack-ts` (read-only mount, `--user $(id -u):$(id -g)`) —
 compare to the 2026-09-26 baseline.
 
 ---

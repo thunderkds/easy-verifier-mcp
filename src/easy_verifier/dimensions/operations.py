@@ -221,7 +221,7 @@ def _facts(context: DimensionContext) -> dict:
     )
 
     # A logging library declared as a dependency is in use even when the
-    # sampled source files never import it (bryony, T046): the same registry
+    # sampled source files never import it (node-monorepo, T046): the same registry
     # tokens are matched in the in-scope package manifests.
     # Registry manifest names are bare (``package.json``); a monorepo
     # service's own manifest (``backend/package.json``) counts too.

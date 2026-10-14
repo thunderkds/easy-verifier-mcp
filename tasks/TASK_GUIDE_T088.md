@@ -31,7 +31,7 @@ service, we just check what we have"*.
 
 Today `layer_direction_violations` (weight 40) assigns layers only from folder names
 (`registry/curated/conventions.toml` `[[layer_paths]]`: `controllers/`, `routes/`, `services/`,
-`repositories/`, `dao/`…). bryony's `backend/server/*/routers/*.js` and
+`repositories/`, `dao/`…). node-monorepo's `backend/server/*/routers/*.js` and
 `backend/platform/core/models/` are largely unclassified.
 
 **Restated intent**:
@@ -80,9 +80,9 @@ Today `layer_direction_violations` (weight 40) assigns layers only from folder n
 | 6 | Path conventions (`layer_paths`) become a **hint**. When hint and behaviour disagree, behaviour wins and the payload lists the disagreement (file, hint layer, behaviour layer, evidence line) | hint, reported |
 | 7 | Framework not recognised and no hint classifies ≥ `MIN_CLASSIFIED_SHARE`: the rule abstains with reason code `framework_not_recognized`, distinct from "no routes found" | honest abstention |
 | 8 | **Embarrass-the-implementation fixtures**: arbitrary Express receivers (`webapp`), `Array.prototype.find` lookalikes, a Nest controller whose service is constructor-injected (relative TS import present), and a FastAPI router using `Depends(get_db)` | adversarial |
-| 9 | **Real repos (paste)**: bryony, kitchd, coffee-shop-api, ai-training, scraping-devops before and after. For each: classified share, violation count, cited examples, disagreements with path hints. Hand-check at least 3 cited violations and 3 disagreements per repo against the source | real-repo verified |
+| 9 | **Real repos (paste)**: node-monorepo, fullstack-ts, nest-api, python-ml, k8s-ops before and after. For each: classified share, violation count, cited examples, disagreements with path hints. Hand-check at least 3 cited violations and 3 disagreements per repo against the source | real-repo verified |
 | 10 | CLI/MCP parity (DDR-0005). The DDR-0011 floor `MIN_CLASSIFIED_SHARE` is unchanged | parity |
-| 11 | **Dynamic import with a static directory prefix** links the importing file to **every** in-scope source file in that directory (non-recursive): JS `require('./dir/' + x)`, `` require(`./dir/${x}`) ``, `import('./dir/' + x)`; Python `importlib.import_module('pkg.mod.' + x)` / f-string with a literal dotted prefix. The edge is cited at the import line and named as a prefix edge in the derivation. A fully dynamic import (no literal directory prefix) adds no edge. *(Added 2026-10-12, user: "find a way" for bryony's `controller-manager.js:35`, `fs.readdirSync(__dirname + '/controllers')` + `require('./controllers/' + name)` → 56 controllers.)* | request path through dynamic dispatch |
+| 11 | **Dynamic import with a static directory prefix** links the importing file to **every** in-scope source file in that directory (non-recursive): JS `require('./dir/' + x)`, `` require(`./dir/${x}`) ``, `import('./dir/' + x)`; Python `importlib.import_module('pkg.mod.' + x)` / f-string with a literal dotted prefix. The edge is cited at the import line and named as a prefix edge in the derivation. A fully dynamic import (no literal directory prefix) adds no edge. *(Added 2026-10-12, user: "find a way" for node-monorepo's `controller-manager.js:35`, `fs.readdirSync(__dirname + '/controllers')` + `require('./controllers/' + name)` → 56 controllers.)* | request path through dynamic dispatch |
 ---
 
 ## Evaluation & Acceptance (How we know the agent worked correctly)

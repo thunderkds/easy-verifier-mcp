@@ -8,7 +8,7 @@ only the implementation shape is open)
 
 ## The Problem Space
 
-v0.1.0 abstained on 2–5 of 7 dimensions for kitchd (pnpm monorepo), bryony and ai-training because
+v0.1.0 abstained on 2–5 of 7 dimensions for fullstack-ts (pnpm monorepo), node-monorepo and python-ml because
 each dimension's `SOURCES_SOUGHT` is a tuple of exact filenames
 (`src/easy_verifier/dimensions/code_quality.py:36` — `CONTRIBUTING.md`, `ruff.toml`, `.flake8`, …),
 and `pipeline.py:95` clamps "found" to that exact list. Requirements now demand:

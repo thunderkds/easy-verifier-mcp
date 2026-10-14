@@ -40,7 +40,7 @@ absent, so `write_report` cannot be called at all):
 ```
 $ date -u
 Tue Aug 25 09:53:41 AM UTC 2026
-$ /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t013_report.py -q
+$ <repo>/.venv/bin/python -m pytest tests/test_t013_report.py -q
 ERROR: file or directory not found: tests/test_t013_report.py
 
 no tests ran in 0.00s
@@ -60,7 +60,7 @@ $ .venv/bin/python -m pytest tests/test_t013_report.py -q
 39 passed in 0.34s
 exit=0
 $ ls -l /tmp/evtest/reports/
--rw-r--r-- 1 hungnguyenhuu hungnguyenhuu 9667 Aug 25 17:00 evidence-report-project-20260825T100038-582758Z.html
+-rw-r--r-- 1 user user 9667 Aug 25 17:00 evidence-report-project-20260825T100038-582758Z.html
 ```
 
 **DELTA**: A caller can hand validated findings plus a multi-dimension `CombinedPack` to

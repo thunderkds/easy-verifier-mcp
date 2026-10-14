@@ -82,7 +82,7 @@ python -m easy_verifier.adapters.cli score --repo . --scope changes --ref main..
 > - architecture rates the repository's documents, not the change.
 > - blast-radius `max_fan_in_changed` abstains when the reference sweep stops at its file ceiling.
 >
-> Example: a one-file bryony bugfix with no test scored 97 (architecture 90, code-quality 100,
+> Example: a one-file node-monorepo bugfix with no test scored 97 (architecture 90, code-quality 100,
 > blast-radius 100; test-strategy, security and requirement-fidelity abstained). Read
 > `overall.abstentions` and `warnings` before trusting the number.
 

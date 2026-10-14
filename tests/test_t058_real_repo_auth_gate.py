@@ -19,7 +19,7 @@ from easy_verifier.core.metrics import MetricAbstention, compute_metrics
 from easy_verifier.core.pipeline import run_dimension
 from easy_verifier.dimensions import security
 
-# Shaped like bryony backend/server/dashboard/index.js:93-99 and 163-164.
+# Shaped like node-monorepo backend/server/dashboard/index.js:93-99 and 163-164.
 DASHBOARD_JS = """\
 var express = require('express');
 var passport = require('passport');
@@ -28,7 +28,7 @@ function Dashboard(webapp, conf) {
     webapp.use(express.cookieParser('x'));
 
     const sessionHandler = express.session({
-      secret: 'bryony',
+      secret: 'node-monorepo',
       store: new MongoStore({url : conf.get('db')}),
       cookie: {
           maxAge: conf.get('maxAge') || 60 * 60 * 24 * 14 * 1000 // 2 weeks
@@ -128,7 +128,7 @@ def _repo(root: Path, files: dict[str, str]) -> Path:
     return root
 
 
-def _bryony_shaped(root: Path) -> Path:
+def _monorepo_shaped(root: Path) -> Path:
     """Auth code in a path without an auth marker, behind path-ranked decoys
     (auth-path templates, manifests, Dockerfiles) and more alphabetically
     earlier token-free generic files than the read budget holds."""
@@ -142,7 +142,7 @@ def _bryony_shaped(root: Path) -> Path:
 
 
 def test_auth_code_behind_the_read_budget_is_quoted_and_judged(tmp_path):
-    root = _bryony_shaped(tmp_path / "r")
+    root = _monorepo_shaped(tmp_path / "r")
     evidence = run_dimension(security.DESCRIPTOR, root, "project")
     quoted = [e for e in evidence.excerpts if e.path == "server/dashboard/index.js"]
     assert any(e.start_line <= SESSION_LINE <= e.end_line for e in quoted)
@@ -152,7 +152,7 @@ def test_auth_code_behind_the_read_budget_is_quoted_and_judged(tmp_path):
 
 
 def test_a_repo_without_auth_code_still_abstains_behind_decoys(tmp_path):
-    root = _bryony_shaped(tmp_path / "r")
+    root = _monorepo_shaped(tmp_path / "r")
     (root / "server/dashboard/index.js").write_text("module.exports = 1;\n")
     evidence = run_dimension(security.DESCRIPTOR, root, "project")
     (found,) = compute_metrics(evidence, curated_metric_tables()).by_name(COOKIES)
@@ -161,7 +161,7 @@ def test_a_repo_without_auth_code_still_abstains_behind_decoys(tmp_path):
 
 
 def test_auth_code_behind_the_read_budget_keeps_the_evidence_read_cap(tmp_path):
-    root = _bryony_shaped(tmp_path / "r")
+    root = _monorepo_shaped(tmp_path / "r")
     evidence = run_dimension(security.DESCRIPTOR, root, "project")
     swept = [p for p in evidence.files_read if p.startswith("data/")]
     # 250 decoys, 41 path-tier reads, 1 promoted file: the cap still binds.

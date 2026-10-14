@@ -25,7 +25,7 @@
 | **UI: Responsiveness at target viewports** | ☑ N/A | Backend only. |
 | Repro loop | ☑ pass (implementer) | Intake trigger printed `…****:458fc23ebb1e.html` before the fix; the same text now unchanged |
 | Regression test | ☑ pass (implementer) | tests/test_t095_upper_digit_pieces.py |
-| Smoke suite | ☑ pass | Real repos: security hits bryony 11→11, coffee 26→26, kitchd 62→62, this repo 7→3 (21 vanished hits all `w3.org/WAI/WCAG22/Understanding/*.html`); overall unchanged on all four. |
+| Smoke suite | ☑ pass | Real repos: security hits node-monorepo 11→11, nest-api 26→26, fullstack-ts 62→62, this repo 7→3 (21 vanished hits all `w3.org/WAI/WCAG22/Understanding/*.html`); overall unchanged on all four. |
 
 ---
 
@@ -48,9 +48,9 @@ See https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html for detail
 ```
 
 AC 6 real repos, `score --scope project`, security-bearing `redaction_hits_observed` before -> after (overall in brackets):
-- bryony: security 11 -> 11 [59 -> 59]
-- coffee-shop-api: security 26 -> 26 [81 -> 81]
-- kitchd: security 62 -> 62 [56 -> 56]
+- node-monorepo: security 11 -> 11 [59 -> 59]
+- nest-api: security 26 -> 26 [81 -> 81]
+- fullstack-ts: security 62 -> 62 [56 -> 56]
 - this repo: security 7 -> 3, reliability 4 -> 0, architecture 5 -> 1 [43 -> 43]
 Hits that disappeared (21 over all tracked files, none new): every one is a w3.org/WAI/WCAG22/Understanding/<slug>.html URL path, in README.md (6), src/easy_verifier/core/judge.py (5), registry/packs/frontend-a11y.toml (2), tasks/TASK_GUIDE_T095.md (2), tasks/TASK_REVIEW_T095.md (1), tests/test_t049_a11y_pack.py (1), tests/test_t095_upper_digit_pieces.py (4). All checked by hand as plain W3C citation paths, not secrets.
 

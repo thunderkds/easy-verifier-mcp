@@ -23,9 +23,9 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-User (2026-10-12), after the bryony retest: *"we are scoring the document related like architecture
+User (2026-10-12), after the node-monorepo retest: *"we are scoring the document related like architecture
 like our definition of kit repos, but you know, we are not the judge"* led to DDR-0012. Grilling
-decision G7 makes third-party exclusion a prerequisite: in the retest, `bryony/scraping-devops`
+decision G7 makes third-party exclusion a prerequisite: in the retest, `node-monorepo/k8s-ops`
 scored **architecture 0**. Its 1 import cycle and 8 layer violations all come from a full copy of
 Harbor (Go) committed under `docker-registry/harbor/`. That copy has its own `LICENSE`, `NOTICE`,
 `AUTHORS`, `README.md` and `vendor/`. `core/scope.py:_EXCLUDED_DIRS` excludes neither `vendor`
@@ -66,13 +66,13 @@ nor nested third-party projects.
 
 | # | Criterion (testable) | Traces to requirement |
 |---|----------------------|-----------------------|
-| 1 | Paths matching the **third-party categories** of GitHub Linguist's `vendor.yml` are excluded, vendored as a pinned, filtered, checksummed snapshot (commit `d0921d10`, MIT) with NOTICE listing kept and dropped categories. **Kept**: Node/Bower/Yarn-2/Go Godeps dependency dirs, `(3rd|third)[-_]?party/`, `vendors?/`, `[Vv]+endor/`, minified `(\.|-)min\.(js|css)$`, `Carthage/`, `*.framework`, `flow-typed/`, bundled-framework entries (jQuery, MathJax, …). **Dropped**: CI/editor configs, `.d.ts`, `dist/`, `cache/`, `env/`, fixtures, git config files, wrapper scripts, and `[Ee]xtern(als?)?/` (team code on bryony). There are **no default 'generated' patterns**: `generated.rb` is code and counts lockfiles. 'generated' comes only from `.gitattributes` (AC 2). *(Amended 2026-10-12 by the Supervisor after the implementer found that `vendor.yml` is a language-statistics list, not a third-party list; Option A.)* | third-party never feeds a rating |
+| 1 | Paths matching the **third-party categories** of GitHub Linguist's `vendor.yml` are excluded, vendored as a pinned, filtered, checksummed snapshot (commit `d0921d10`, MIT) with NOTICE listing kept and dropped categories. **Kept**: Node/Bower/Yarn-2/Go Godeps dependency dirs, `(3rd|third)[-_]?party/`, `vendors?/`, `[Vv]+endor/`, minified `(\.|-)min\.(js|css)$`, `Carthage/`, `*.framework`, `flow-typed/`, bundled-framework entries (jQuery, MathJax, …). **Dropped**: CI/editor configs, `.d.ts`, `dist/`, `cache/`, `env/`, fixtures, git config files, wrapper scripts, and `[Ee]xtern(als?)?/` (team code on node-monorepo). There are **no default 'generated' patterns**: `generated.rb` is code and counts lockfiles. 'generated' comes only from `.gitattributes` (AC 2). *(Amended 2026-10-12 by the Supervisor after the implementer found that `vendor.yml` is a language-statistics list, not a third-party list; Option A.)* | third-party never feeds a rating |
 | 2 | `.gitattributes` entries with `linguist-vendored` or `linguist-generated` (set, not `-` or `=false`) exclude their paths. A `-linguist-vendored` entry re-includes a path that a default pattern excluded | the repo's own declaration wins |
 | 3 | `.easy-verifier.toml` can declare `exclude = ["glob", …]`. Paths are validated with the same bounds as role globs. An invalid glob is a rejected config, never silently ignored | declared by the project |
 | 4 | **Nested third-party root**: a directory below the repo root that holds its own licence file (`LICENSE*`, `COPYING*`) **and** at least one of `NOTICE*`, `AUTHORS*` or `CONTRIBUTORS*` is excluded as third-party, together with everything below it. The repo root is never excluded this way | Harbor case |
 | 5 | Every exclusion is disclosed in the payload as `excluded: third-party` with its reason kind (`linguist-pattern`, `gitattributes`, `declared`, `nested-project`) and the matched rule. The HTML report shows a folded count plus list | nothing silently disappears |
 | 6 | Negative: a monorepo package with only its own `LICENSE` (no NOTICE/AUTHORS/CONTRIBUTORS) is **not** excluded. A test fixture shapes this as `packages/shared/{LICENSE,package.json}` | precision |
-| 7 | **Real repos (paste evidence)**: scraping-devops excludes `docker-registry/harbor/**` (nested-project) and the architecture inputs no longer cite any Harbor file. bryony, kitchd, ai-training and coffee-shop-api exclude nothing they did not before, or each new exclusion is listed and justified by hand in the review | done means real-repo verified |
+| 7 | **Real repos (paste evidence)**: k8s-ops excludes `docker-registry/harbor/**` (nested-project) and the architecture inputs no longer cite any Harbor file. node-monorepo, fullstack-ts, python-ml and nest-api exclude nothing they did not before, or each new exclusion is listed and justified by hand in the review | done means real-repo verified |
 | 8 | CLI and MCP give byte-equal output after DDR-0005 normalization. The T068 snapshot changes only where an exclusion applies | parity |
 
 ---
@@ -88,14 +88,14 @@ nor nested third-party projects.
 | 3 | fixture `third/harbor/{LICENSE,NOTICE,api/a.go}` | `third/harbor/**` excluded, reason `nested-project` | automated test |
 | 4 | fixture `packages/shared/{LICENSE,package.json,index.ts}` | not excluded | automated test |
 | 5 | sabotage: delete the `NOTICE` from fixture 3 | it is no longer excluded (the test fails if the predicate is hard-wired) | automated test (pins both extremes) |
-| 6 | scraping-devops real run | no `docker-registry/harbor/` path in any rating input | pasted output |
+| 6 | k8s-ops real run | no `docker-registry/harbor/` path in any rating input | pasted output |
 
 ### Verification Command (exact, runnable)
 
 ```bash
 PYTHONPATH=src .venv/bin/python -m pytest -q
 .venv/bin/python -m ruff check src tests
-.venv/bin/easy-verifier score --repo /home/hungnguyenhuu/workspace/project/bryony/scraping-devops --scope project > /tmp/sd.json   # run_in_background
+.venv/bin/easy-verifier score --repo <real-repos>/k8s-ops --scope project > /tmp/sd.json   # run_in_background
 ```
 
 ### Evidence

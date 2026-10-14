@@ -12,13 +12,13 @@
 
 1. Read `PROJECT_SPEC.md`, `memory/MEMORY.md`, this file, `.claude/agents/backend.md`
 2. Read `tasks/TASK_GUIDE_T075.md` and `tasks/TASK_REVIEW_T075.md` (Design) — this task finishes T075 on the **same branch**
-3. Read `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md` (incl. the 2026-10-04 addendum)
+3. Read `<repo>/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md` (incl. the 2026-10-04 addendum)
 
 ---
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-Supervisor Stage 4 review of T075 (2026-10-04): coffee-shop-api scored requirement-fidelity **0**, wrong for
+Supervisor Stage 4 review of T075 (2026-10-04): nest-api scored requirement-fidelity **0**, wrong for
 known reasons. The user asked for the wave to run automatically; a number known to be wrong is not
 shippable (DDR-0010 spirit). Decisions (Supervisor, under DDR-0011's "flexible, not one format"):
 A — add `requirements_doc_missing` (document rule, 10, at most 0) replacing `requirements_docs_count` in
@@ -66,7 +66,7 @@ requirement items: drop them from curated defaults (a repo may declare them).
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t075_requirement_fidelity_code_rules.py tests/test_t077_rf_review_fixes.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t075_requirement_fidelity_code_rules.py tests/test_t077_rf_review_fixes.py -q
 ```
 
 ### Evidence
@@ -75,7 +75,7 @@ cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111
 
 ## Demonstration
 
-> BEFORE (Supervisor): T075 branch on coffee-shop-api — requirement-fidelity 0; routes 11/17 untested (most "(no handler)"); requirement items 0/300 (plan checklists); issue refs abstained (path prefix).
+> BEFORE (Supervisor): T075 branch on nest-api — requirement-fidelity 0; routes 11/17 untested (most "(no handler)"); requirement items 0/300 (plan checklists); issue refs abstained (path prefix).
 
 ## UI / Design Acceptance Criteria
 

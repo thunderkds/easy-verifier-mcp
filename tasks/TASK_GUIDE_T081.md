@@ -23,7 +23,7 @@ cannot learn today:
    (`cli._read_findings`); an agent/script shell that leaves stdin open waits forever. Observed in
    this session: a `score --scope changes` run hung until a 300 s timeout; the same run with stdin
    closed took 11 s.
-3. A change score is partial: on a real one-file bryony bugfix with no test
+3. A change score is partial: on a real one-file node-monorepo bugfix with no test
    (`09be767d0~1...09be767d0`) `score` gave 97 (architecture 90, code-quality 100, blast-radius 100;
    test-strategy, security, requirement-fidelity abstained `below_coverage_floor`).
 
@@ -59,7 +59,7 @@ symbol-level reach, stdin behaviour) — that is the change-risk vision, to be p
 |---|---|---|
 | 1 | README has "Checking a feature or bugfix" with the CLI command `score --repo . --scope changes --ref main...HEAD < /dev/null`, the worktree alternative and the MCP arguments | FR-066 |
 | 2 | README states a bare commit/branch name is one commit, and three dots rate the whole branch only — and a test pins both behaviours on a real git repo | FR-008, FR-066 |
-| 3 | README explains the stdin wait and states the change score is partial (missing test not penalised), with the dated bryony example | FR-066 |
+| 3 | README explains the stdin wait and states the change score is partial (missing test not penalised), with the dated node-monorepo example | FR-066 |
 | 4 | `DOCKER_MCP_GUIDE.md` § 5 tells MCP users the sentence to ask and the `scope`/`ref` the tool takes, and points to the README limits | FR-066 |
 | 5 | Existing README doc-truth test (T018) still passes; full suite passes | FR-066 |
 
@@ -85,8 +85,8 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/test_t081_change_check_guide.py 
 |---|---|---|
 | New test(s) cover acceptance criteria | ☑ pass | `tests/test_t081_change_check_guide.py` (5 tests: AC 1/3/4 doc pins, AC 2 range semantics on a real tmp git repo — `main...HEAD` → `("one.py", "two.py")`, bare `feature` → `("two.py",)`). Against the pre-change docs (`git stash` of README + guide): `3 failed, 2 passed in 1.55s`; after: `5 passed in 0.24s`. With T018: `11 passed, 1 skipped in 39.30s` |
 | Full suite passes | ☑ pass | `2006 passed, 2 skipped in 296.91s`; `ruff check` → All checks passed; `ruff format --check` → 1 file already formatted. A first run gave `1 failed, 2005 passed` while `tasks/TASK_GUIDE_T081.md` was being written mid-run; all 33 doc/scope/CLI test files passed in isolation and the rerun passed — cause not confirmed, recorded as an unreproduced flake |
-| Real-repo command works | ☑ pass | bryony (`project/bryony/bryony`), develop `fae8969`: `score --repo . --scope changes --ref 09be767d0~1...09be767d0 < /dev/null` → overall 97, contributors architecture 90 / code-quality 100 / blast-radius 100; abstained solution-fit `no_static_rule`, requirement-fidelity / security / test-strategy `below_coverage_floor` |
-| code-review | ☑ pass | Supervisor self-review (C1 docs-only): every claim traced to code or a run — range semantics to `scope._normalize_range` and the AC 2 tests, stdin to `cli._read_findings`, the 97 example to the bryony run above; `console` fence so T018 never executes the command. No P0–P2 findings. Noted, not fixed (out of scope): FR-066 names EVALUATION_GUIDE as the single place to read a score — the partial-score caveat should move there when change-risk rules are planned |
+| Real-repo command works | ☑ pass | node-monorepo (`<real-repos>/node-monorepo`), develop `fae8969`: `score --repo . --scope changes --ref 09be767d0~1...09be767d0 < /dev/null` → overall 97, contributors architecture 90 / code-quality 100 / blast-radius 100; abstained solution-fit `no_static_rule`, requirement-fidelity / security / test-strategy `below_coverage_floor` |
+| code-review | ☑ pass | Supervisor self-review (C1 docs-only): every claim traced to code or a run — range semantics to `scope._normalize_range` and the AC 2 tests, stdin to `cli._read_findings`, the 97 example to the node-monorepo run above; `console` fence so T018 never executes the command. No P0–P2 findings. Noted, not fixed (out of scope): FR-066 names EVALUATION_GUIDE as the single place to read a score — the partial-score caveat should move there when change-risk rules are planned |
 | UI visual regression | ☐ N/A | docs-only, no UI |
 | UI design-system compliance | ☐ N/A | docs-only, no UI |
 | UI responsiveness | ☐ N/A | docs-only, no UI |

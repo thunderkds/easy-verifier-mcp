@@ -16,7 +16,7 @@
 4. Read `.claude/agents/backend.md`
 5. Apply the C2 process from `.claude/agents/general-agent-template.md`
 6. Read `memory/codebase-map.md`, `BRAINSTORMING_LOG_code-derived-rules.md`, and
-   `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md`
+   `<repo>/docs/ddr/0011-code-derived-rules-and-flexible-conventions.md`
    (docs/ddr is gitignored — main checkout only), plus DDR-0007 (registry citations)
 
 ---
@@ -82,7 +82,7 @@ solution"). This task adds the data and the pure extraction functions only; no r
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t073_structure_patterns.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t073_structure_patterns.py -q
 ```
 
 ### Evidence

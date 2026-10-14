@@ -20,7 +20,7 @@
 
 T068 follow-up #2 (logged 2026-10-04): repositories at or under the 200-file cap still compute code
 structure metrics from byte-budgeted excerpts, so truncation makes them abstain. After DDR-0011 moved
-architecture weight to code, kitchd's architecture went from a documents-only 100 to "no number".
+architecture weight to code, fullstack-ts's architecture went from a documents-only 100 to "no number".
 The user asked for this wave to run automatically; this task is required for its goal.
 
 **Restated intent**:
@@ -69,12 +69,12 @@ payload size (separate follow-up); requirement-fidelity (T075).
 |---|---|---|---|
 | 1 | Fixture ≤ cap with a tiny budget that truncates | cycles / CCN metrics computed, not abstained | automated |
 | 2 | Same fixture, metric values | equal to computing directly over all its files (oracle) | automated |
-| 3 | kitchd | architecture rated (Supervisor) | verify |
+| 3 | fullstack-ts | architecture rated (Supervisor) | verify |
 
 ### Verification Command
 
 ```bash
-cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.venv/bin/python -m pytest tests/test_t076_whole_file_metrics.py -q
+cd <worktree> && PYTHONPATH=src <repo>/.venv/bin/python -m pytest tests/test_t076_whole_file_metrics.py -q
 ```
 
 ### Evidence
@@ -83,7 +83,7 @@ cd <worktree> && PYTHONPATH=src /home/hungnguyenhuu/workspace/pets/hungnguyen111
 
 ## Demonstration
 
-> BEFORE (Supervisor): kitchd architecture `insufficient_measured_weight` — import cycles and layer direction abstain "whole-set-dependent: the byte budget truncated this pack" (scratchpad `t073/t074-kitchd.json`).
+> BEFORE (Supervisor): fullstack-ts architecture `insufficient_measured_weight` — import cycles and layer direction abstain "whole-set-dependent: the byte budget truncated this pack" (scratchpad `t073/t074-fullstack-ts.json`).
 
 ## UI / Design Acceptance Criteria
 

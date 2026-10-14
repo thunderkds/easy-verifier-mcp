@@ -49,7 +49,7 @@ selection into the pipeline/CLI (per the codebase map, `budget.py`'s relevance o
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
 **BEFORE**: Captured 2026-08-16T09:18:47Z, before any T003 implementation commit exists, in worktree
-`/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp/.claude/worktrees/agent-a9350b8c7f8100e4c`:
+`<repo>/.claude/worktrees/agent-a9350b8c7f8100e4c`:
 
 ```
 $ date -u +%Y-%m-%dT%H:%M:%SZ

@@ -192,7 +192,7 @@ def test_a_weak_password_with_a_trailing_comment_is_still_redacted(text, raw):
 def test_an_ordinary_repository_path_is_not_fingerprinted():
     """The cosmetic problem the old exemption existed for, still fixed."""
     text = (
-        "- **Repo**: `/home/hungnguyenhuu/workspace/pets/hungnguyen111"
+        "- **Repo**: `/home/user/work"
         "/easy-verifier-mcp`"
     )
 

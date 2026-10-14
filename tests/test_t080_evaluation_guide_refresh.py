@@ -54,26 +54,26 @@ def test_missing_document_is_a_failed_rule_not_a_warning() -> None:
 def test_worked_examples_are_the_2026_10_05_rerun() -> None:
     examples = _section(_guide(), "Worked examples")
     assert "2026-10-05" in examples and "`7d64f08`" in examples
-    coffee, bryony = examples.split("**bryony**")
-    assert "overall 65; 4 of 7" in coffee
-    coffee_parts = (
+    nest_api, monorepo = examples.split("**node-monorepo**")
+    assert "overall 65; 4 of 7" in nest_api
+    nest_api_parts = (
         "architecture 80",
         "code-quality 71",
         "requirement-fidelity 50",
         "security 59",
     )
-    for part in coffee_parts:
-        assert part in coffee, part
-    assert "overall 69; 4 of 7" in bryony
-    bryony_parts = (
+    for part in nest_api_parts:
+        assert part in nest_api, part
+    assert "overall 69; 4 of 7" in monorepo
+    monorepo_parts = (
         "architecture 83",
         "code-quality 67",
         "test-strategy 75",
         "security\n50",
     )
-    for part in bryony_parts:
-        assert part in bryony, part
-    assert "coverage floor" in bryony
+    for part in monorepo_parts:
+        assert part in monorepo, part
+    assert "coverage floor" in monorepo
     # stale 2026-10-04 claims
     assert "2 of 7 dimensions rated (code-quality 71, security 59)" not in examples
     assert "architecture 70" not in examples

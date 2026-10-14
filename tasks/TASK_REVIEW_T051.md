@@ -17,7 +17,7 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t051_redaction_false_positives.py` (41 tests: hash-context reproducers + secret-veto twins, word-only identifier exemption with guards, git-ignore filter incl. nested .gitignore/tracked-kept/never-read files still listed/no-git unchanged; 29 fail on pre-fix source) + `tests/test_t051_safe_git.py` (7 tests: armed fixture repo — fsmonitor, diff.external, textconv, clean/smudge filters, pager, hooks — positive control fires, real CLI project/worktree/changes + blast-radius never fire the marker; command-shape and env pins; grep test no subprocess outside core/git.py). `test_t010_blast_radius.py` structural test repointed to `run_git_text`. Sabotage: 17/18 exemption guards + runner defences caught (the uncatchable one documented). Supervisor re-run `1175 passed, 2 skipped in 40.98s` |
 | Verification command run | ☑ pass | Supervisor 2026-09-28: pytest `1175 passed, 2 skipped` (exit 0); `ruff check src tests` → `All checks passed!` (exit 0); `grep subprocess|os.system|popen src/` outside core/git.py → only comments and curated sink data; `docker compose build && bash scripts/verify_container.sh` → PASS (uid=10001, read-only, network=none) |
 | Negative cases hold | ☑ pass | `API_TOKEN = "<64 hex>"` and `token_sha256` still fingerprinted (secret veto); malicious repo config/attributes/hooks never execute through the CLI (marker absent) while plain `git status` does fire it (positive control) |
-| verify | ☑ pass | Real CLI 4-repo redaction_hits_observed (agent, re-run 12:46Z after P0): easy-verifier 159→20, kitchd 222→59, bryony 132→14, ai-training 271→31; ratings otherwise identical. Supervisor in-container runs (`--entrypoint easy-verifier`, read-only mount, network none): worktree and project scope exit 0 with no git warnings; project ratings architecture 100, code-quality 50, security 50, test-strategy 100 — pass |
+| verify | ☑ pass | Real CLI 4-repo redaction_hits_observed (agent, re-run 12:46Z after P0): easy-verifier 159→20, fullstack-ts 222→59, node-monorepo 132→14, python-ml 271→31; ratings otherwise identical. Supervisor in-container runs (`--entrypoint easy-verifier`, read-only mount, network none): worktree and project scope exit 0 with no git warnings; project ratings architecture 100, code-quality 50, security 50, test-strategy 100 — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `core/redact.py` (hash-context + identifier exemptions, docstring residuals), `core/context.py` (`git_ignore_filter`), `core/scope.py`, new `core/git.py` (hardened runner: config overrides, filter blanking, --no-ext-diff/--no-textconv, no shell, stdin closed, 120s timeout, explicit env without HOME), `dimensions/blast_radius.py`. P0 found during review (existing git calls honoured repo-configured fsmonitor/filters → target code execution, NFR-007) → fixed in 75650d6. Rulings: AC4 partial → remaining classes + API_TOKEN detector gap moved to T053; once-per-walk git; ignore filter for all dimensions; listing in scope.py; line-wide secret veto; global git config ignored (safer; container unaffected, verified); extra `git config` call accepted. Security review inline (High): passed with the P0 fix |
 | Full smoke suite still green (no regression) | ☑ pass | full suite 1175 passed, 2 skipped |
 | **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
@@ -43,19 +43,19 @@ Run log (UTC; repo HEAD; exit code):
 ```
 2026-09-28T07:47:24Z start easy-verifier-mcp 673a83a
 2026-09-28T07:47:25Z end easy-verifier-mcp exit=0
-2026-09-28T07:47:25Z start kitchd 872cc92
-2026-09-28T07:47:27Z end kitchd exit=0
-2026-09-28T07:47:27Z start bryony 8df7b986f
-2026-09-28T07:47:35Z end bryony exit=0
-2026-09-28T07:47:35Z start ai-training 86c98d5
-2026-09-28T07:47:36Z end ai-training exit=0
+2026-09-28T07:47:25Z start fullstack-ts 872cc92
+2026-09-28T07:47:27Z end fullstack-ts exit=0
+2026-09-28T07:47:27Z start node-monorepo 8df7b986f
+2026-09-28T07:47:35Z end node-monorepo exit=0
+2026-09-28T07:47:35Z start python-ml 86c98d5
+2026-09-28T07:47:36Z end python-ml exit=0
 ```
 Security `redaction_hits_observed` (and security rating) extracted from each JSON:
 ```
 easy-verifier-mcp {'redaction_hits_observed': 159} security rating: 20 overall: 68
-kitchd {'redaction_hits_observed': 222} security rating: 60 overall: 90
-bryony {'redaction_hits_observed': 132} security rating: 60 overall: 78
-ai-training {'redaction_hits_observed': 271} security rating: 60 overall: 70
+fullstack-ts {'redaction_hits_observed': 222} security rating: 60 overall: 90
+node-monorepo {'redaction_hits_observed': 132} security rating: 60 overall: 78
+python-ml {'redaction_hits_observed': 271} security rating: 60 overall: 70
 ```
 Where the hits come from (security pack via `run_dimension(security, repo, "project")`; lines shown are the already-redacted excerpt text, never raw values):
 ```
@@ -63,15 +63,15 @@ Where the hits come from (security pack via `run_dimension(security, repo, "proj
 hits: 159
 by file: [('.claude/harness-lock.json', 94), ('.claude/hooks/tests/test_diagnose_evidence_loop.py', 4), ('.claude/hooks/tests/test_memory_channel_and_budget.py', 4), ('.claude/hooks/tests/test_bugfix_evidence_parity.py', 2), ('.claude/hooks/tests/test_pre_agent_validate_guide.py', 2), ('.claude/hooks/tests/test_agent_guide_dedup.py', 1), ('.claude/hooks/tests/test_delivery_report_render.py', 1), (
 by detector: [('high_entropy_hex', 96), ('high_entropy_string', 62), ('key_material_segment', 1)]
-[kitchd]
+[fullstack-ts]
 hits: 222
 by file: [('.claude/harness-lock.json', 111), ('.codex/harness-lock.json', 60), ('apps/api/src/auth/auth.e2e.spec.ts', 7), ('repo…****:e808c802ee27.html', 4), ('repo…****:4d10b85626cf.html', 4), ('repo…****:c1e88fe3b79e.html', 4), ('repo…****:80b8e26427f3.html', 4), ('repo…****:733ce35941d0.html', 4), ('repo…****:9a2cc977475d.html', 4), ('repo…****:60e7365a9573.html', 4), ('repo…**
 by detector: [('high_entropy_hex', 171), ('high_entropy_string', 19), ('credential_assignment', 18), ('key_material_segment', 14)]
-[bryony]
+[node-monorepo]
 hits: 132
 by file: [('backend/yarn.lock', 42), ('backend/package-lock.json', 38), ('backend/scripts/netwise/package-lock.json', 37), ('CHANGELOG.md', 3), ('backend/bin/ec2/fabric/fabfile.py', 3), ('frontend/app/scripts/modules/auth/views/register.itemview.js', 2), ('backend/Gruntfile.js', 2), ('backend/bin/fabric/fabfile.py', 2), ('backend/utils/elmongo/package.json', 1), ('nodes/package.json', 1), ('backen
 by detector: [('high_entropy_string', 75), ('high_entropy_hex', 50), ('credential_assignment', 4), ('key_material_segment', 3)]
-[ai-training]
+[python-ml]
 hits: 271
 by file: [('uv.lock', 237), ('tests/test_llm_factory.py', 6), ('tests/test_llm_payload_contracts.py', 5), ('src/core/llm/factory.py', 3), ('src/core/observability/langfuse.py', 3), ('src/core/subgraphs/research/research_agent.py', 2), ('src/docs/ragas-evaluation.md', 2), ('tests/test_e2e_happy_path.py', 2), ('tests/test_fitness_planner.py', 2), ('tests/test_llm_payload_gates.py', 2), ('src/core/pr
 by detector: [('high_entropy_hex', 194), ('high_entropy_string', 70), ('credential_assignment', 7)]
@@ -88,38 +88,38 @@ by file: [('.claude/harness-lock.json', 94), ('.claude/hooks/tests/test_diagnose
 .claude/hooks/.stat…****:6027350fa4f6.txt:1 high_entropy_string | 
 .claude/hooks/.stat…****:62cc48bad1a5.txt:1 high_entropy_string | 
 (... 46 hits are file *paths* under git-ignored .claude/hooks/.state/ fingerprinted by path redaction)
-[bryony sample]
+[node-monorepo sample]
 backend/package-lock.json:9 high_entropy_string | "integrity": "sha1…****:15562a0bc4ee",
 backend/package-lock.json:15 high_entropy_string | "integrity": "sha1…****:0e1d5a7e3906",
 by file: [('backend/yarn.lock', 42), ('backend/package-lock.json', 38), ('backend/scripts/netwise/package-lock.json', 37), ('CHANGELOG.md', 3), ('backend/bin/ec2/fabric/fabfile.py', 3), ('frontend/app
 backend/yarn.lock:7 high_entropy_hex | resolved "https://registry.yarnpkg.com/Faker/-/Faker-0.5.12.tgz#c7d7…****:6fec7a6e308b"
-[ai-training sample]
+[python-ml sample]
 by file: [('uv.lock', 237), ('tests/test_llm_factory.py', 6), ('tests/test_llm_payload_contracts.py', 5), ('src/core/llm/factory.py', 3), ('src/core/observability/langfuse.py', 3), ('src/core/subgraph
 uv.lock:17 high_entropy_hex | sdist = { url = "https://files.pythonhosted.org/packages/33/c6/61a2…****:89717eb5a29e/aiohappyeyeballs-2.6.2.tar.gz", hash = "sha256:e202…****:a28ff45
 tests/integration/test_todos_gate.py:9 high_entropy_string | def test…****:3c618ee84c72(workspace_root: Path) -> None:
 tests/test_e2e_happy_path.py:36 high_entropy_string | def test…****:e0e58f3005c2(
-[kitchd sample]
+[fullstack-ts sample]
 by file: [('.claude/harness-lock.json', 111), ('.codex/harness-lock.json', 60), ('apps/api/src/auth/auth.e2e.spec.ts', 7), ('repo…****:e808c802ee27.html', 4), ('repo…****:4d10b85626cf.html', 4), ('repo…****:c1e88fe3b79e.html', 4), ('repo…****:80b8e26427f3.html', 4), ('repo…****:733ce35941d0.html', 4), ('repo…****:9a2cc977475d.html', 4), ('repo…****:60e7365a9573.html', 4), ('repo…****:7131be7be111.html', 4), ('apps/api/src/kitchens/kitchens-rbac.e2e.spec.ts', 3)]
 .claude/harness-lock.json:3 high_entropy_hex | ".claude/hooks/lib/guide_sections.py": "b9e2…****:3929f5fe5361",
 ```
-Observed: on this repo all 159 hits are in git-ignored `.claude/` (94 sha256 values in `.claude/harness-lock.json`, `def test_…` names, suffix-less paths, and 46 fingerprinted paths of `.claude/hooks/.state/*`). kitchd: 171 of 222 in git-ignored `.claude/`/`.codex/harness-lock.json`. bryony: 117 of 132 in lockfiles (`"integrity": "sha1-…"`, yarn `resolved "…tgz#<sha1>"`). ai-training: 237 of 271 in `uv.lock` (`hash = "sha256:…"` + pythonhosted URL digests) plus `def test_…` names.
+Observed: on this repo all 159 hits are in git-ignored `.claude/` (94 sha256 values in `.claude/harness-lock.json`, `def test_…` names, suffix-less paths, and 46 fingerprinted paths of `.claude/hooks/.state/*`). fullstack-ts: 171 of 222 in git-ignored `.claude/`/`.codex/harness-lock.json`. node-monorepo: 117 of 132 in lockfiles (`"integrity": "sha1-…"`, yarn `resolved "…tgz#<sha1>"`). python-ml: 237 of 271 in `uv.lock` (`hash = "sha256:…"` + pythonhosted URL digests) plus `def test_…` names.
 
 **AFTER** (captured 2026-09-28T08:10:25Z on branch `feat/T051-redaction-fp` @ `10ba129`; same command, same 4 target repos; target-repo HEADs in the log — this repo's main checkout had moved to `3ff6dda` through concurrent Supervisor/T036 commits, which do not touch the scanned `.claude/` or lockfile content):
 ```
 2026-09-28T08:10:25Z start easy-verifier-mcp 3ff6dda
 2026-09-28T08:10:27Z end easy-verifier-mcp exit=0
-2026-09-28T08:10:27Z start kitchd 872cc92
-2026-09-28T08:10:30Z end kitchd exit=0
-2026-09-28T08:10:30Z start bryony 8df7b986f
-2026-09-28T08:10:40Z end bryony exit=0
-2026-09-28T08:10:40Z start ai-training 86c98d5
-2026-09-28T08:10:42Z end ai-training exit=0
+2026-09-28T08:10:27Z start fullstack-ts 872cc92
+2026-09-28T08:10:30Z end fullstack-ts exit=0
+2026-09-28T08:10:30Z start node-monorepo 8df7b986f
+2026-09-28T08:10:40Z end node-monorepo exit=0
+2026-09-28T08:10:40Z start python-ml 86c98d5
+2026-09-28T08:10:42Z end python-ml exit=0
 easy-verifier-mcp {'redaction_hits_observed': 21} security rating: 50 overall: 75
-kitchd {'redaction_hits_observed': 59} security rating: 60 overall: 90
-bryony {'redaction_hits_observed': 14} security rating: 60 overall: 78
-ai-training {'redaction_hits_observed': 31} security rating: 60 overall: 70
+fullstack-ts {'redaction_hits_observed': 59} security rating: 60 overall: 90
+node-monorepo {'redaction_hits_observed': 14} security rating: 60 overall: 78
+python-ml {'redaction_hits_observed': 31} security rating: 60 overall: 70
 ```
-Before → after, security `redaction_hits_observed`: easy-verifier-mcp **159 → 21**, kitchd **222 → 59**, bryony **132 → 14**, ai-training **271 → 31**. Only rating change across all 4 repos × 7 dimensions: easy-verifier-mcp security 20 → 50 (overall 68 → 75). Other metric deltas on this repo only (from dropping git-ignored `.claude/`): `security.sink_hits_observed` 6 → 0 (the 6 sinks were in `.claude/hooks/*.py`), `security.lockfile_missing` 0 → abstained (`.claude/harness-lock.json` had been filling the lockfile role), `architecture.top_level_import_cycles` abstained → 0.
+Before → after, security `redaction_hits_observed`: easy-verifier-mcp **159 → 21**, fullstack-ts **222 → 59**, node-monorepo **132 → 14**, python-ml **271 → 31**. Only rating change across all 4 repos × 7 dimensions: easy-verifier-mcp security 20 → 50 (overall 68 → 75). Other metric deltas on this repo only (from dropping git-ignored `.claude/`): `security.sink_hits_observed` 6 → 0 (the 6 sinks were in `.claude/hooks/*.py`), `security.lockfile_missing` 0 → abstained (`.claude/harness-lock.json` had been filling the lockfile role), `architecture.top_level_import_cycles` abstained → 0.
 
 Remaining hits (redacted excerpt text, never raw values):
 ```
@@ -127,15 +127,15 @@ Remaining hits (redacted excerpt text, never raw values):
 hits: 21
 by file: [('src/easy_verifier/core/redact.py', 5), ('README.md', 4), ('CLAUDE.md', 3), ('PROJECT_KANBAN.md', 2), ('scripts/vendor_sources.py', 2), ('src/easy_verifier/core/metric_tables.py', 2), ('memory/learnings.md', 1), ('src/easy_verifier/core/judge.py', 1), ('src/easy_verifier/core/scope.py', 1
 by detector: [('high_entropy_string', 11), ('key_material_segment', 5), ('credential_assignment', 3), ('aws_access_key_id', 1), ('high_entropy_hex', 1)]
-[kitchd]
+[fullstack-ts]
 hits: 59
 by file: [('apps/api/src/auth/auth.e2e.spec.ts', 7), ('repo…****:e808c802ee27.html', 4), ('repo…****:4d10b85626cf.html', 4), ('repo…****:c1e88fe3b79e.html', 4), ('repo…****:80b8e26427f3.html', 4), ('repo…****:733ce35941d0.html', 4), ('repo…****:9a2cc977475d.html', 4), ('repo…****:60e73
 by detector: [('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
-[bryony]
+[node-monorepo]
 hits: 14
 by file: [('CHANGELOG.md', 3), ('backend/bin/ec2/fabric/fabfile.py', 3), ('frontend/app/scripts/modules/auth/views/register.itemview.js', 2), ('backend/Gruntfile.js', 2), ('backend/bin/fabric/fabfile.py', 2), ('nodes/package.json', 1), ('backend/server/dashboard/authenticate.js', 1)]
 by detector: [('high_entropy_hex', 7), ('credential_assignment', 4), ('high_entropy_string', 2), ('key_material_segment', 1)]
-[ai-training]
+[python-ml]
 hits: 31
 by file: [('tests/test_llm_payload_contracts.py', 4), ('src/core/llm/factory.py', 3), ('src/core/observability/langfuse.py', 3), ('src/core/subgraphs/research/research_agent.py', 2), ('src/docs/ragas-evaluation.md', 2), ('tests/test_llm_factory.py', 2), ('tests/test_llm_payload_gates.py', 2), ('test
 by detector: [('high_entropy_string', 24), ('credential_assignment', 7)]
@@ -148,32 +148,32 @@ README.md:128 high_entropy_string | | `security` | `redaction_hits_observed` | �
 README.md:130 high_entropy_string | | `security` | `lockfile_missing` | ≤ 0 | 20 | [OWASP ASVS 5.0.0 V15.1.2 (third-party component inventory)](https://github.com/OWASP
 memory/learnings.md:139 aws_access_key_id | run_dimension(DESCRIPTOR, "/nonexistent/AKIA…****:1a5d44a2dca1/repo")
 scripts/vendor_sources.py:58 high_entropy_string | "OWAS…****:e1b0aefbf060.0.0_en.flat.json"
-[bryony sample]
+[node-monorepo sample]
 nodes/package.json:29 key_material_segment | "license": "BSD-…****:248dd895a2f8"
 frontend/app/scripts/modules/auth/views/register.itemview.js:19 credential_assignment | password: '#pas…****:a9ca1573cef4',
 frontend/app/scripts/modules/auth/views/register.itemview.js:101 credential_assignment | password = this…****:fcad7430e71a),
 backend/server/dashboard/authenticate.js:41 credential_assignment | const token = quer…****:12d09cfeec1f;
-CHANGELOG.md:9 high_entropy_hex | - [#5dad3801](https://gitlab.asoft-python.com/bryony/bryony/commit/5dad…****:c7dce6c9ce19) Developer implement feature to allow user r
-CHANGELOG.md:15 high_entropy_hex | - [#61d3ce17](https://gitlab.asoft-python.com/bryony/bryony/commit/61d3…****:1435d5caead0) To Be Added to LinkedIn List extract wrong
-CHANGELOG.md:25 high_entropy_hex | - [#ec0d9d76](https://gitlab.asoft-python.com/bryony/bryony/commit/ec0d…****:d77f64a8c89c) Supports Company Tags feature: show compan
+CHANGELOG.md:9 high_entropy_hex | - [#5dad3801](https://<client-gitlab>/node-monorepo/commit/5dad…****:c7dce6c9ce19) Developer implement feature to allow user r
+CHANGELOG.md:15 high_entropy_hex | - [#61d3ce17](https://<client-gitlab>/node-monorepo/commit/61d3…****:1435d5caead0) To Be Added to LinkedIn List extract wrong
+CHANGELOG.md:25 high_entropy_hex | - [#ec0d9d76](https://<client-gitlab>/node-monorepo/commit/ec0d…****:d77f64a8c89c) Supports Company Tags feature: show compan
 backend/Gruntfile.js:77 high_entropy_hex | login: '6b88…****:42332d012db5',
-[ai-training sample]
+[python-ml sample]
 src/core/profile/extraction.py:137 high_entropy_string | SystemMessage(cont…****:deed5ccff74a),
 src/core/subgraphs/fitness/planner.py:155 high_entropy_string | SystemMessage(cont…****:bd58f154ce1d),
 src/core/subgraphs/fitness/template_registry.py:60 high_entropy_string | sess…****:cf21321ce3cb(profile, constraints),
 src/core/subgraphs/research/research_agent.py:113 credential_assignment | token = set_…****:4ce698f2e665)
 src/core/subgraphs/research/research_agent.py:144 high_entropy_string | SystemMessage(cont…****:f7cd178577aa),
 src/docs/ragas-evaluation.md:61 high_entropy_string | - Set `VERI…****:bf883de7139a` in your environment/`.env`.
-[kitchd sample]
+[fullstack-ts sample]
 by detector: [('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
 apps/api/src/auth/auth.e2e.spec.ts:39 credential_assignment | password: 'corr…****:622493693890',
 apps/api/src/auth/auth.e2e.spec.ts:65 credential_assignment | const password = 'corr…****:622493693890';
 by detector: [('high_entropy_string', 22), ('credential_assignment', 18), ('key_material_segment', 18), ('high_entropy_hex', 1)]
 repo…****:e808c802ee27.html:5 key_material_segment | <title>Code Review Report — task/T019…****:c69625c8230c</title>
 ```
-What remains is (a) real secret shapes the suite is meant to flag — `credential_assignment` on test passwords/`api_key=` lines, a hex `login:` value in bryony `Gruntfile.js`, deliberate `FAKE…` fixtures in this repo's docs — and (b) false-positive classes outside T051's three: tracked report/URL paths with digit pieces (kitchd `reports/*-T019-…html`), commit SHAs in prose/URLs (`CHANGELOG.md`, `commit <sha>`), `key=CONSTANT` (`content=SYSTEM_PROMPT`), and `sha256sum`-format lines. Ruling items, not fixed here.
+What remains is (a) real secret shapes the suite is meant to flag — `credential_assignment` on test passwords/`api_key=` lines, a hex `login:` value in node-monorepo `Gruntfile.js`, deliberate `FAKE…` fixtures in this repo's docs — and (b) false-positive classes outside T051's three: tracked report/URL paths with digit pieces (fullstack-ts `reports/*-T019-…html`), commit SHAs in prose/URLs (`CHANGELOG.md`, `commit <sha>`), `key=CONSTANT` (`content=SYSTEM_PROMPT`), and `sha256sum`-format lines. Ruling items, not fixed here.
 
-Runtime (bryony, same machine, back to back): pre-T051 `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/06633da9-85a5-4902-ba87-95dec4f60d5e/scratchpad/pre/src` 9.97 s vs T051 9.71 s; ignore listing = 16 `git ls-files` calls per score run, 82 ms total.
+Runtime (node-monorepo, same machine, back to back): pre-T051 `<scratchpad>/pre/src` 9.97 s vs T051 9.71 s; ignore listing = 16 `git ls-files` calls per score run, 82 ms total.
 
 **DELTA**: Security scores no longer drown in hashes, test names and git-ignored files (784→125 hits over 4 repos), and a hostile target repo can no longer make the verifier execute code through git config, filters or hooks.
 
@@ -202,15 +202,15 @@ Verification: `pytest -q` → `1175 passed, 2 skipped in 41.79s` (exit 0); `ruff
 ```
 2026-09-28T12:46:15Z start easy-verifier-mcp b6b67f0
 2026-09-28T12:46:16Z end easy-verifier-mcp exit=0
-2026-09-28T12:46:16Z start kitchd 872cc92
-2026-09-28T12:46:18Z end kitchd exit=0
-2026-09-28T12:46:18Z start bryony 8df7b986f
-2026-09-28T12:46:25Z end bryony exit=0
-2026-09-28T12:46:25Z start ai-training 86c98d5
-2026-09-28T12:46:26Z end ai-training exit=0
+2026-09-28T12:46:16Z start fullstack-ts 872cc92
+2026-09-28T12:46:18Z end fullstack-ts exit=0
+2026-09-28T12:46:18Z start node-monorepo 8df7b986f
+2026-09-28T12:46:25Z end node-monorepo exit=0
+2026-09-28T12:46:25Z start python-ml 86c98d5
+2026-09-28T12:46:26Z end python-ml exit=0
 easy-verifier-mcp {'redaction_hits_observed': 20} security rating: 50 overall: 75
-kitchd {'redaction_hits_observed': 59} security rating: 60 overall: 90
-bryony {'redaction_hits_observed': 14} security rating: 60 overall: 78
-ai-training {'redaction_hits_observed': 31} security rating: 60 overall: 70
+fullstack-ts {'redaction_hits_observed': 59} security rating: 60 overall: 90
+node-monorepo {'redaction_hits_observed': 14} security rating: 60 overall: 78
+python-ml {'redaction_hits_observed': 31} security rating: 60 overall: 70
 ```
-kitchd, bryony and ai-training are identical to the AFTER capture above in every metric and rating. easy-verifier-mcp shows 21 → 20, but only because the main checkout moved (`3ff6dda` → `b6b67f0`). Pre-P0 source (`728a435`) on the same `b6b67f0` checkout also gives **20**.
+fullstack-ts, node-monorepo and python-ml are identical to the AFTER capture above in every metric and rating. easy-verifier-mcp shows 21 → 20, but only because the main checkout moved (`3ff6dda` → `b6b67f0`). Pre-P0 source (`728a435`) on the same `b6b67f0` checkout also gives **20**.

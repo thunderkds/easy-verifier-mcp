@@ -65,7 +65,7 @@ what we have"*.
 | 2 | Summary counts: routes found; routes reaching a boundary directly (handler file is data); via ≥ 1 in-repo module; reaching none. Purely descriptive wording, no "violation" or "bad" | reported, not judged |
 | 3 | The metric is in the payload's metric list and in the HTML report's architecture card as a folded list, capped (e.g. first 20 routes, with the cap disclosed) | readable output |
 | 4 | **No rating, overall, improvement-plan item or area count changes** because of this metric. Test: the rating payload is equal with the metric on and off | not scored |
-| 5 | **Real repos (paste)**: bryony and kitchd summary counts plus 3 hand-checked paths each | real-repo verified |
+| 5 | **Real repos (paste)**: node-monorepo and fullstack-ts summary counts plus 3 hand-checked paths each | real-repo verified |
 
 ---
 
@@ -134,7 +134,7 @@ BFS over T088's import graph from each api file. Never build a new graph.
 
 ## Test Plan
 
-Unit fixtures SC 1–3. Real-repo pass on bryony and kitchd.
+Unit fixtures SC 1–3. Real-repo pass on node-monorepo and fullstack-ts.
 
 ---
 

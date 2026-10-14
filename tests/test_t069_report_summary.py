@@ -25,8 +25,8 @@ from test_t067_evidence_floor import (
     REF,
     _all_abstained,
     _below_floor,
-    _bryony_code_quality,
     _failed,
+    _monorepo_code_quality,
     _not_applicable,
     _rating,
     _score,
@@ -90,7 +90,7 @@ def _two_rated_four_warnings():
     return _by_name(
         architecture=_architecture_missing_roles(),
         **{"requirement-fidelity": _not_applicable("requirement-fidelity")},
-        **{"code-quality": _bryony_code_quality()},
+        **{"code-quality": _monorepo_code_quality()},
         security=_security_three_failures(),
         **{"test-strategy": _all_abstained("test-strategy")},
     )
@@ -243,7 +243,7 @@ def test_overall_abstained_says_no_dimension_could_be_rated() -> None:
         _below_floor("architecture"),
         _solution_fit(),
         _not_applicable("requirement-fidelity"),
-        _bryony_code_quality(),
+        _monorepo_code_quality(),
         _failed("security"),
         _all_abstained("test-strategy"),
         _below_floor("blast-radius"),

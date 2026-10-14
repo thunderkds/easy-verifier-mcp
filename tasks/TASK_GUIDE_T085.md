@@ -23,7 +23,7 @@ Before writing any code:
 
 ## Requirement (Pillar 1 — Adapt the requirement)
 
-The frontend-a11y pack (`src/easy_verifier/packs/frontend_a11y.py`, `registry/packs/frontend-a11y.toml`) rates `browser_support_declaration_missing` = 1 when no `browser_support` file declares targets. Next.js and Nuxt ship a documented default browser target, the same way the pack already credits their default viewport through `viewport_default_entries` (`defaulted` count). On tapchat-web (a Next/Nuxt app) the metric reports "missing" though the framework defines targets; a11y = 45.
+The frontend-a11y pack (`src/easy_verifier/packs/frontend_a11y.py`, `registry/packs/frontend-a11y.toml`) rates `browser_support_declaration_missing` = 1 when no `browser_support` file declares targets. Next.js and Nuxt ship a documented default browser target, the same way the pack already credits their default viewport through `viewport_default_entries` (`defaulted` count). On next-web (a Next/Nuxt app) the metric reports "missing" though the framework defines targets; a11y = 45.
 
 **Restated intent** (user decision 2026-10-08, "Count framework default"):
 > When no explicit browser-support declaration is found but the scope ships a Next.js or Nuxt config file (registry-listed globs, cited to each framework's supported-browsers documentation), `browser_support_declaration_missing` = 0, citing that config file, and the derivation says the targets are the **framework default** (naming the framework). An explicit declaration still wins and is reported as today.
@@ -61,7 +61,7 @@ The globs live in a new cited pack field (e.g. `browser_support_default_entries`
 | 4 | Neither → value 1, today's derivation unchanged | no regression |
 | 5 | Globs are a cited pack registry field validated by the registry (shape check, `PACK_FIELDS`); the local layer can add a glob (test) | DDR-0007 |
 | 6 | Pack off → payload byte-identical to BEFORE on a real repo (sha256) | no regression |
-| 7 | Real repo: tapchat-web a11y browser metric 1 → 0, dimension rating BEFORE/AFTER pasted | real-repo verified |
+| 7 | Real repo: next-web a11y browser metric 1 → 0, dimension rating BEFORE/AFTER pasted | real-repo verified |
 
 ---
 
@@ -72,7 +72,7 @@ The globs live in a new cited pack field (e.g. `browser_support_default_entries`
 | # | Given (input/state) | Expect (output/behavior) | How it's checked |
 |---|---------------------|--------------------------|------------------|
 | 1 | fixtures AC 1–4 | as listed | automated test |
-| 2 | tapchat-web with the a11y pack | browser metric 0, "framework default" | real-repo run (background) |
+| 2 | next-web with the a11y pack | browser metric 0, "framework default" | real-repo run (background) |
 
 ### Verification Command (exact, runnable)
 
@@ -91,7 +91,7 @@ The globs live in a new cited pack field (e.g. `browser_support_default_entries`
 
 > **Moved.** See `tasks/TASK_REVIEW_T085.md`.
 
-BEFORE commands (before any code change; paste timestamped output): tapchat-web `score --scope project` with the frontend-a11y pack enabled (see `tasks/TASK_REVIEW_T049.md` for the exact command and pack flag) `</dev/null` — record the a11y rating and `browser_support_declaration_missing` derivation; plus the same run with the pack off piped to `sha256sum` (background).
+BEFORE commands (before any code change; paste timestamped output): next-web `score --scope project` with the frontend-a11y pack enabled (see `tasks/TASK_REVIEW_T049.md` for the exact command and pack flag) `</dev/null` — record the a11y rating and `browser_support_declaration_missing` derivation; plus the same run with the pack off piped to `sha256sum` (background).
 
 ---
 
@@ -103,7 +103,9 @@ BEFORE commands (before any code change; paste timestamped output): tapchat-web 
 
 ## Real repos
 
-real repos (read-only, `--repo` only): coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`, kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`, bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`, tapchat-web (path in `memory/learnings.md`, T049 entry). Run real-repo scores with `run_in_background` and `</dev/null`; worktree code via `PYTHONPATH=<worktree>/src`. CLI: `.venv/bin/python -m easy_verifier.adapters.cli score --repo R --scope project|changes [--ref A..B] [--all] </dev/null`.
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
+real repos (read-only, `--repo` only): nest-api `<real-repos>/nest-api`, fullstack-ts `<real-repos>/fullstack-ts`, node-monorepo `<real-repos>/node-monorepo`, next-web (path in `memory/learnings.md`, T049 entry). Run real-repo scores with `run_in_background` and `</dev/null`; worktree code via `PYTHONPATH=<worktree>/src`. CLI: `.venv/bin/python -m easy_verifier.adapters.cli score --repo R --scope project|changes [--ref A..B] [--all] </dev/null`.
 
 ---
 
@@ -141,7 +143,7 @@ real repos (read-only, `--repo` only): coffee-shop-api `/home/hungnguyenhuu/work
 
 ## Test Plan
 
-Unit tests on the pack for AC 1–5; existing T049 tests stay green unedited (except an expectation that encoded the old Next/Nuxt "missing" result — call it out if so). Real-repo tapchat-web + pack-off sha256.
+Unit tests on the pack for AC 1–5; existing T049 tests stay green unedited (except an expectation that encoded the old Next/Nuxt "missing" result — call it out if so). Real-repo next-web + pack-off sha256.
 
 ## Completion Checklist
 

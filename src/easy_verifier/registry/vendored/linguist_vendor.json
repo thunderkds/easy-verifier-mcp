@@ -62,7 +62,7 @@
       "patterns": [
         "([^\\s]*)import\\.(css|less|scss|styl)$"
       ],
-      "reason": "matches the team's own *import.scss partials (bryony)"
+      "reason": "matches the team's own *import.scss partials (node-monorepo)"
     },
     {
       "category": "Vendor Conventions / Bootstrap css and js",
@@ -70,14 +70,14 @@
         "(^|/)bootstrap([^/.]*)(\\..*)?\\.(js|css|less|scss|styl)$",
         "(^|/)custom\\.bootstrap([^\\s]*)(js|css|less|scss|styl)$"
       ],
-      "reason": "bootstrap* is a common app entry-point name (bryony bootstrap.conf.js)"
+      "reason": "bootstrap* is a common app entry-point name (node-monorepo bootstrap.conf.js)"
     },
     {
       "category": "Vendor Conventions / Vendored dependencies",
       "patterns": [
         "(^|/)[Ee]xtern(als?)?/"
       ],
-      "reason": "external/ is a common team directory name (bryony backend/scripts/companies/external)"
+      "reason": "external/ is a common team directory name (node-monorepo backend/scripts/companies/external)"
     },
     {
       "category": "Vendor Conventions / Debian packaging",
@@ -116,14 +116,14 @@
         "(^|/)controls\\.js$",
         "(^|/)dragdrop\\.js$"
       ],
-      "reason": "prototype.js, effects.js, controls.js are common team file names (bryony prototype.js)"
+      "reason": "prototype.js, effects.js, controls.js are common team file names (node-monorepo prototype.js)"
     },
     {
       "category": "Commonly Bundled JavaScript frameworks / Typescript definition files",
       "patterns": [
         "(.*?)\\.d\\.ts$"
       ],
-      "reason": "the team writes its own .d.ts types (kitchd, coffee-shop-api)"
+      "reason": "the team writes its own .d.ts types (fullstack-ts, nest-api)"
     },
     {
       "category": "Python / Sphinx",
@@ -145,7 +145,7 @@
       "patterns": [
         "(^|/)fabfile\\.py$"
       ],
-      "reason": "fabfile.py is the team's own deploy script (bryony)"
+      "reason": "fabfile.py is the team's own deploy script (node-monorepo)"
     },
     {
       "category": "Python / WAF",
@@ -267,7 +267,7 @@
       "patterns": [
         "(^|/)\\.github/"
       ],
-      "reason": "the team's own CI and repository config (kitchd .github/workflows)"
+      "reason": "the team's own CI and repository config (fullstack-ts .github/workflows)"
     },
     {
       "category": ".NET / obsidian.md settings",

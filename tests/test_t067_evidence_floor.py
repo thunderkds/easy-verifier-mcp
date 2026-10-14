@@ -92,8 +92,8 @@ def _measured_only(dimension: str, *measured: str):
     )
 
 
-def _bryony_code_quality() -> RatingAbstention:
-    """bryony 2026-10-03: lint + format config measured (20 of 100)."""
+def _monorepo_code_quality() -> RatingAbstention:
+    """node-monorepo 2026-10-03: lint + format config measured (20 of 100)."""
     return _measured_only(
         "code-quality", "lint_config_missing", "format_config_missing"
     )
@@ -163,7 +163,7 @@ def _every_kind() -> tuple:
         "architecture": _below_floor("architecture"),
         "solution-fit": _solution_fit(),
         "requirement-fidelity": _not_applicable("requirement-fidelity"),
-        "code-quality": _bryony_code_quality(),
+        "code-quality": _monorepo_code_quality(),
         "security": _failed("security"),
         "test-strategy": _all_abstained("test-strategy"),
         "blast-radius": borderline,
@@ -194,7 +194,7 @@ def test_floor_is_declared_decimal_half() -> None:
 
 
 def test_twenty_of_hundred_abstains_with_share_and_unmeasured_rules() -> None:
-    result = _bryony_code_quality()
+    result = _monorepo_code_quality()
     assert type(result) is RatingAbstention
     assert result.reason_code == "insufficient_measured_weight"
     assert result.measured_share == Decimal("0.20")
@@ -258,7 +258,7 @@ def test_solution_fit_still_no_static_rule() -> None:
 
 
 def test_to_dict_carries_share_floor_and_unmeasured() -> None:
-    payload = _bryony_code_quality().to_dict()
+    payload = _monorepo_code_quality().to_dict()
     assert payload["reason_code"] == "insufficient_measured_weight"
     assert payload["measured_share"] == "0.20"
     assert payload["measured_weight_floor"] == "0.50"
@@ -275,7 +275,7 @@ def test_other_abstentions_do_not_gain_share_keys() -> None:
 
 
 def test_abstention_round_trips_through_its_fields() -> None:
-    original = _bryony_code_quality()
+    original = _monorepo_code_quality()
     rebuilt = RatingAbstention(
         **{f.name: getattr(original, f.name) for f in dataclasses.fields(original)}
     )
@@ -284,7 +284,7 @@ def test_abstention_round_trips_through_its_fields() -> None:
 
 
 def test_forged_abstention_at_or_above_floor_is_rejected() -> None:
-    original = _bryony_code_quality()
+    original = _monorepo_code_quality()
     with pytest.raises(ValueError, match="insufficient_measured_weight"):
         dataclasses.replace(
             original, unavailable_metrics=original.unavailable_metrics[:1]
@@ -293,11 +293,11 @@ def test_forged_abstention_at_or_above_floor_is_rejected() -> None:
 
 def test_forged_abstention_without_unmeasured_rules_is_rejected() -> None:
     with pytest.raises(ValueError, match="insufficient_measured_weight"):
-        dataclasses.replace(_bryony_code_quality(), unavailable_metrics=())
+        dataclasses.replace(_monorepo_code_quality(), unavailable_metrics=())
 
 
 def test_forged_rating_below_floor_is_rejected() -> None:
-    """A Rating cannot be built from less than the floor (the bryony 100)."""
+    """A Rating cannot be built from less than the floor (the node-monorepo 100)."""
     rated = _rating("code-quality")
     measured = tuple(
         item
@@ -396,7 +396,7 @@ def test_solution_fit_and_borderline_are_still_accepted() -> None:
     [
         lambda: _below_floor("architecture"),
         lambda: _not_applicable("requirement-fidelity"),
-        _bryony_code_quality,
+        _monorepo_code_quality,
         lambda: _failed("security"),
         lambda: _all_abstained("test-strategy"),
     ],
@@ -485,7 +485,7 @@ def test_plan_abstained_line_lists_unmeasured_rules_with_fix() -> None:
     line = next(a for a in plan["abstained"] if a["dimension"] == "code-quality")
     assert line["reason_code"] == "insufficient_measured_weight"
     assert [u["metric_name"] for u in line["unmeasured"]] == [
-        name for name, _ in _bryony_code_quality().unavailable_metrics
+        name for name, _ in _monorepo_code_quality().unavailable_metrics
     ]
     first = line["unmeasured"][0]
     assert first["reason"] == GONE.reason

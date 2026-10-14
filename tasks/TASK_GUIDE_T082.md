@@ -32,7 +32,7 @@ no documentation rule, including the business-domain areas #3 financial integrit
 transactions/idempotency, #9 PHI, #28 BAA/residency and #32 business continuity. The score payload
 and the HTML report never say this. `OverallRating.disclosure` names abstained *dimensions*, and
 the report lists *unmeasured metrics* of rated dimensions, but nothing names the *areas* a score
-does not speak for. Example: coffee-shop-api scored 65 from code-quality + security, covering
+does not speak for. Example: nest-api scored 65 from code-quality + security, covering
 areas 8, 10, 17, 18, 20 and 31 — the reader cannot learn that from the output. This gap is visible
 only in `docs/AREA_COVERAGE.md`.
 
@@ -79,7 +79,7 @@ only in `docs/AREA_COVERAGE.md`.
 | 5 | When the overall is withheld (`OverallAbstention`), the area lists still appear in the payload and the report | nothing hidden on abstention |
 | 6 | No rating value changes: existing rating/replay tests pass unchanged except tests that pin the exact disclosure text or payload key set, which are updated | out of scope guard |
 | 7 | `docs/EVALUATION_GUIDE.md` and `docs/AREA_COVERAGE.md` mention the new fields in one line each; `PRD.md` gains FR-073 | docs truth |
-| 8 | **Real repo**: `score` on coffee-shop-api or bryony shows the measured count and the uncovered list in JSON and in the written report (paste both) | done means real-repo verified |
+| 8 | **Real repo**: `score` on nest-api or node-monorepo shows the measured count and the uncovered list in JSON and in the written report (paste both) | done means real-repo verified |
 
 ---
 

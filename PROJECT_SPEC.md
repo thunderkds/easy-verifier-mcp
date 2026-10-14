@@ -11,7 +11,7 @@
 ## Project Identity
 
 - **Name**: easy-verifier-mcp
-- **Repo**: `/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp` (GitHub: `thunderkds/easy-verifier-mcp`)
+- **Repo**: `<repo>` (GitHub: `thunderkds/easy-verifier-mcp`)
 - **Primary tech**: Python 3.11+ · `mcp` SDK (FastMCP) · Jinja-free self-contained HTML rendering
 - **Type**: MCP server + CLI (dual adapter over one shared core). No UI, no web frontend.
 - **Deployment target**: Local Docker container, stdio transport, reached by the operator's agent harness. Never internet-exposed (NFR-012).

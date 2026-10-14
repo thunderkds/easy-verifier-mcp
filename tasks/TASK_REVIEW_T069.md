@@ -17,12 +17,12 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t069_report_summary.py` (34 tests: summary first section; N of M rated with values + sample note; top 3 P0→P1 with gain + first citation; could-not-evaluate plain names from `_SOURCE_TEXT` (completeness test vs every sources_sought); blast-radius project-scope 'run with --scope changes'; no-gaps / overall-abstained text; agent summary redacted+escaped+labelled; empty/over-length/non-string → ValidationError with no reports/ written; _METRIC_TEXT completeness). Sabotage (agent): focus limit, redaction, empty check, position, P2 in focus, roles key, all citations — each red — pass |
 | Verification command run | ☑ pass | Supervisor 2026-10-04 04:21 UTC: full suite 1774 passed, 2 skipped, 2 failed (known stale-Docker container tests); ruff All checks passed — pass |
 | Negative cases hold | ☑ pass | Validation-before-write tests for agent summary (empty, 2001 chars, non-string); partial-dimension report → one-line 'No score in this report' — pass |
-| verify | ☑ pass | Supervisor re-rendered scratch copies with the worktree CLI: coffee-shop-api (with agent summary) → 'Overall 65/100 — 2 of 7 dimensions rated…', 3 focus items one/two lines each, 4 plain could-not-evaluate lines, AGENT paragraph; bryony → 'Overall 66/100 — 4 of 7… (sample: 200 of 1,178 files)', 3 focus items, 2 could-not-evaluate — feature confirmed working — pass |
+| verify | ☑ pass | Supervisor re-rendered scratch copies with the worktree CLI: nest-api (with agent summary) → 'Overall 65/100 — 2 of 7 dimensions rated…', 3 focus items one/two lines each, 4 plain could-not-evaluate lines, AGENT paragraph; node-monorepo → 'Overall 66/100 — 4 of 7… (sample: 200 of 1,178 files)', 3 focus items, 2 could-not-evaluate — feature confirmed working — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed report.py (_render_summary, _METRIC_TEXT, _SOURCE_TEXT, summary validation, CSS), roles.py key, mcp_server description, tests. code-review: P0 0, P1 0; P2 1 (summary ~20 lines vs user's 'too much to read') → fixed in 93dd3eb (one citation, plain names, counts, scope hint). Security (manual): agent summary redact→escape; errors never echo text; hrefs from static citation data only — pass |
 | Full smoke suite still green (no regression) | ☑ pass | 1774 passed; only the 2 pre-existing container failures — pass |
-| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/shots/coffee-1280-v2.png` — LLM-vision verdict (Supervisor): Summary is the first section after the share notice; 3 focus items, 4 could-not-evaluate lines, AGENT paragraph; detail follows. AC6 (agent): detail body byte-identical to BEFORE report after removing the summary and normalizing timestamp/first-write marker — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | `<scratchpad>/shots/nest-api-1280-v2.png` — LLM-vision verdict (Supervisor): Summary is the first section after the share notice; 3 focus items, 4 could-not-evaluate lines, AGENT paragraph; detail follows. AC6 (agent): detail body byte-identical to BEFORE report after removing the summary and normalizing timestamp/first-write marker — pass |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | existing section/card styles; agent label reuses `.fix-source-agent` — pass |
-| **UI: Responsiveness at target viewports** | ☑ pass | true 400px iframe (agent, `/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad/shots/coffee-400.png`, `bryony-400.png`): summary scrollWidth 349 = clientWidth 349; page-level overflow comes from the pre-existing Context-warnings banner (logged follow-up) — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | true 400px iframe (agent, `<scratchpad>/shots/nest-api-400.png`, `node-monorepo-400.png`): summary scrollWidth 349 = clientWidth 349; page-level overflow comes from the pre-existing Context-warnings banner (logged follow-up) — pass |
 
 ---
 
@@ -34,19 +34,19 @@
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
 **BEFORE** (captured by backend-developer on `feat/T069-report-summary` at `ae77a8b`, before any code
-change; `S=/tmp/claude-1000/-home-hungnguyenhuu-workspace-pets-hungnguyen111-easy-verifier-mcp/4b78de6f-bc95-4225-acbd-da02da5664de/scratchpad`):
+change; `S=<scratchpad>`):
 
 ```
 $ rsync -a --exclude node_modules --exclude reports \
-    /home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api/ $S/coffee-shop-api/
+    <real-repos>/nest-api/ $S/nest-api/
 $ echo '[]' > $S/findings-empty.json
 $ cd <worktree> && date -u && PYTHONPATH=src <main>/.venv/bin/python -m easy_verifier.adapters.cli \
-    write-report --repo $S/coffee-shop-api --scope project --findings $S/findings-empty.json </dev/null > $S/before-out.json
+    write-report --repo $S/nest-api --scope project --findings $S/findings-empty.json </dev/null > $S/before-out.json
 Sun Oct  4 04:01:53 AM UTC 2026
 exit=0
   "path": "reports/evidence-report-project-20261004T040154-307470Z.html",
 
-$ date -u; grep -o '<h[12][^>]*>[^<]*' $S/coffee-shop-api/reports/*.html | head -12
+$ date -u; grep -o '<h[12][^>]*>[^<]*' $S/nest-api/reports/*.html | head -12
 Sun Oct  4 04:01:58 AM UTC 2026
 <h1>Evidence report
 <h2>Before you share this report
@@ -67,7 +67,7 @@ second run with `--agent-input $S/agent-summary.json` carrying an example `summa
 
 ```
 $ date -u; PYTHONPATH=src <main>/.venv/bin/python -m easy_verifier.adapters.cli write-report \
-    --repo $S/coffee-shop-api --scope project --findings $S/findings-empty.json </dev/null
+    --repo $S/nest-api --scope project --findings $S/findings-empty.json </dev/null
 Sun Oct  4 04:09:20 AM UTC 2026
 exit=0   "path": "reports/evidence-report-project-20261004T040922-176546Z.html"
 $ ... --agent-input $S/agent-summary.json </dev/null
@@ -101,20 +101,20 @@ $ python3 $S/detail_diff.py $S/before-report.html <first AFTER report>
 detail sections byte-identical after removing summary: True (108622 bytes)
 ```
 
-bryony copy (`$S/bryony`, `write-report --scope project`, 04:11:12→04:11:25 UTC, exit 0): `Overall
+node-monorepo copy (`$S/node-monorepo`, `write-report --scope project`, 04:11:12→04:11:25 UTC, exit 0): `Overall
 66/100 — 4 of 7 dimensions rated: architecture 70 (sample: 200 of 1,178 files), code-quality 67
 (sample: …), security 50, test-strategy 75 (sample: …)`; focus = security redaction_hits_observed
 (+8), architecture decision_records_missing (+7), test-strategy
 source_files_without_covering_test_share (+6); could not evaluate = blast-radius,
 requirement-fidelity.
 
-Screenshots: `$S/shots/coffee-1280.png`, `$S/shots/coffee-400.png`, `$S/shots/bryony-1280.png`,
-`$S/shots/bryony-400.png` (400 = a true 400px iframe). Measured in the 400px iframe: summary
+Screenshots: `$S/shots/nest-api-1280.png`, `$S/shots/nest-api-400.png`, `$S/shots/node-monorepo-1280.png`,
+`$S/shots/node-monorepo-400.png` (400 = a true 400px iframe). Measured in the 400px iframe: summary
 `scrollWidth=349 clientWidth=349`, no summary element past 400px; the page's own scrollWidth
-(402 coffee / 522 bryony) comes from the pre-existing Context-warnings banner (T067 learning), not
+(402 nest-api / 522 node-monorepo) comes from the pre-existing Context-warnings banner (T067 learning), not
 the summary.
 
-**AFTER, post Stage 4 P2 trim** (Supervisor, 2026-10-04 04:21 UTC, commit `93dd3eb`, coffee-shop-api copy, tags stripped):
+**AFTER, post Stage 4 P2 trim** (Supervisor, 2026-10-04 04:21 UTC, commit `93dd3eb`, nest-api copy, tags stripped):
 
 ```
 Summary Overall 65/100 — 2 of 7 dimensions rated: code-quality 71, security 59.
@@ -136,4 +136,4 @@ top three fixes with their rule, standard and worth, and what to add for the dim
 not be rated, plus an optional paragraph from the calling agent labelled agent. Before, the report
 opened straight into warnings and detail.
 
-**WITNESS**: Supervisor (main session), 2026-10-04 04:21 UTC — independent re-render of coffee-shop-api and bryony copies, screenshot, full-suite re-run; not the implementing agent alone.
+**WITNESS**: Supervisor (main session), 2026-10-04 04:21 UTC — independent re-render of nest-api and node-monorepo copies, screenshot, full-suite re-run; not the implementing agent alone.

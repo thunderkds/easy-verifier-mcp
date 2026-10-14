@@ -10,7 +10,7 @@
 ## Feature Task Guide — T098
 
 ### Background (follow-up from T094, 2026-10-13)
-On scraping-devops (develop `9bfa721`), `easy-verifier score` rates **infrastructure 100**. The only
+On k8s-ops (develop `9bfa721`), `easy-verifier score` rates **infrastructure 100**. The only
 `computed_from` is 50 manifests, but the repo has 197 Kubernetes manifests. The score JSON says nothing
 about that: `'exceed the cap' in json` and `'matched more than' in json` are both False.
 
@@ -34,7 +34,7 @@ Root cause, as the Supervisor diagnosed it:
   **byte-for-byte as before**. Shape, one entry per (dimension, role) bound hit, in canonical dimension
   order and then role name:
   `{"dimension": str, "role": str, "matched": int, "read": int}`.
-  - `matched` is the true count of files that matched before the cap (scraping-devops
+  - `matched` is the true count of files that matched before the cap (k8s-ops
     k8s-manifest → 197). `RoleResolution` must keep the count, not only the name.
   - `read` is the number actually used (50).
   - A dimension-level cap (`CAP_WARNING`) reports its own `matched`/`read` under the same shape.
@@ -51,8 +51,8 @@ Root cause, as the Supervisor diagnosed it:
 | 2 | A fixture with no cap hit has no `capped` key, and its serialised payload is byte-identical to develop (existing golden/parity tests pass unedited) |
 | 3 | A dimension-level cap (e.g. infrastructure `MAX_FILES_PER_ROLE` reached with the role cap not hit, by monkeypatching the constant) also appears in `capped` |
 | 4 | CLI and MCP `score` payloads agree (existing parity normalisation unchanged) |
-| 5 | scraping-devops real run: `capped` contains `{"dimension":"infrastructure","role":"k8s-manifest","matched":197,"read":50}` (or the true count, pasted). Every rating before → after is pasted and unchanged |
-| 6 | bryony, kitchd, coffee-shop-api, ai-training, this repo: ratings before → after are unchanged, and any `capped` entries that appear are pasted and checked by hand against the repo |
+| 5 | k8s-ops real run: `capped` contains `{"dimension":"infrastructure","role":"k8s-manifest","matched":197,"read":50}` (or the true count, pasted). Every rating before → after is pasted and unchanged |
+| 6 | node-monorepo, fullstack-ts, nest-api, python-ml, this repo: ratings before → after are unchanged, and any `capped` entries that appear are pasted and checked by hand against the repo |
 
 ### Files to Change (prediction, not contract)
 - `src/easy_verifier/core/roles.py`: keep the matched count per truncated role
@@ -72,12 +72,14 @@ Root cause, as the Supervisor diagnosed it:
 
 ### Real repos
 
+Absolute paths: `.local/real-repos.md` (local, git-ignored).
+
 All read-only:
-- scraping-devops `/home/hungnguyenhuu/workspace/project/bryony/scraping-devops`
-- bryony `/home/hungnguyenhuu/workspace/project/bryony/bryony`
-- kitchd `/home/hungnguyenhuu/workspace/pets/hungnguyen111/kitchd`
-- coffee-shop-api `/home/hungnguyenhuu/workspace/training/tien.nguyen/nestjs-training/coffee-shop-api`
-- ai-training `/home/hungnguyenhuu/workspace/training/hoang.hoan/ai-training`
+- k8s-ops `<real-repos>/k8s-ops`
+- node-monorepo `<real-repos>/node-monorepo`
+- fullstack-ts `<real-repos>/fullstack-ts`
+- nest-api `<real-repos>/nest-api`
+- python-ml `<real-repos>/python-ml`
 
 Command: `.venv/bin/easy-verifier score --repo <path> </dev/null`. Run it in the background. Agent
 worktrees have no `.venv`, so use the main checkout's interpreter with `PYTHONPATH=src`.
