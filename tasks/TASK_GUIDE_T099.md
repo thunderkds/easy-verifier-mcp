@@ -51,24 +51,28 @@
 | 6 | Real repos (scraping-devops, bryony, kitchd, coffee-shop-api, ai-training, this repo): security `redaction_hits_observed` and every rating before → after are pasted. Hits may only go down, and each vanished hit is checked by hand as a path |
 
 ### Diagnosis Gates (Pillar 1 — must pass before any fix)
-- [ ] Phase 1 feedback loop built and running (the trigger above)
-- [ ] Bug reproduces deterministically on the loop
-- [ ] 3–5 ranked falsifiable hypotheses listed
-- [ ] Correct hypothesis identified via instrumentation
+- [x] Phase 1 feedback loop built and running (the trigger above)
+- [x] Bug reproduces deterministically on the loop
+- [x] 3–5 ranked falsifiable hypotheses listed
+- [x] Correct hypothesis identified via instrumentation
 
 ### Attempts Log
 | # | Hypothesis | Predicted signal | Actual result | Verdict |
 |---|---|---|---|---|
+| 1 | No exemption applies: not `_PATHISH`, no suffix, not underscore identifier, and entropy >= 4.0 | `_WORD_JOINED_NAME` fullmatches, `_PATHISH` no, entropy >= 4.0, detector `high_entropy_string` | cand True, pathish False, wordjoined True, underscore False, entropy 4.04, hit `high_entropy_string` | confirmed |
+| 2 | A named detector, not the entropy rule, masks it | detector name is not `high_entropy_string` | only `high_entropy_string` fired | rejected |
+| 3 | The per-segment rule (`_KEY_MATERIAL_CANDIDATE`) masks it | `key_material_segment` hit | segments lack the 3 char classes; no such hit | rejected |
+| 4 | The hex rule masks a piece | `high_entropy_hex` hit | none (no 32-hex run) | rejected |
 
 ### Fix Gates (Pillar 2)
-- [ ] Regression test written before the fix (fails on develop `9bfa721`)
-- [ ] Fix applied; regression test passes
-- [ ] Fix matches "Expected" (AC 2–5)
-- [ ] Real repos: AC 6 pasted
+- [x] Regression test written before the fix (fails on develop `9bfa721`)
+- [x] Fix applied; regression test passes
+- [x] Fix matches "Expected" (AC 2–5)
+- [x] Real repos: AC 6 pasted
 
 ### Cleanup Checklist (Pillar 3)
-- [ ] All [DEBUG-...] instrumentation removed (grep verified)
-- [ ] Correct hypothesis stated in commit message
+- [x] All [DEBUG-...] instrumentation removed (grep verified)
+- [x] Correct hypothesis stated in commit message
 - [ ] Post-mortem: what would have prevented this?
 
 ### Files Must NOT Touch

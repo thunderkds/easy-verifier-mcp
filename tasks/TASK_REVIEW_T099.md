@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t099_extensionless_word_paths.py` (17 tests; 4 red on develop before the fix). Sabotage check: widening the piece to `[A-Za-z0-9]` makes 3 negatives fail. Supervisor rerun 2026-10-14T03:48Z of T099 plus all redaction suites (T051/T053/T091/T095/T097): `248 passed in 11.14s` |
+| Verification command run | ☑ pass | Agent full suite: `2 failed, 2841 passed, 2 skipped in 668.60s`. The 2 failures are the pre-existing container tests (stale Docker image), which fail the same way on develop. `ruff check src tests` → `All checks passed!` (agent + Supervisor) |
+| Negative cases hold | ☑ pass | Supervisor probe: Slack webhook → `xQzR…****:751e81a725f9`, `AKIA…****:1a5d44a2dca1`, `bin/aB3x…****:b0b781daa6b1`, a no-slash identifier `buil…****`, mixed case `Bin/…****`. The trigger survives. A low-entropy userinfo password (`hunter2secretpw`) is unmasked identically on develop, so this branch did not cause it |
+| verify | ☑ pass | `redact()` driven directly (the redaction surface every adapter shares), plus the agent's `score --scope project` on 6 real repos: hits only went down (bryony 11→9, this repo 7→3, kitchd/coffee/ai-training unchanged), ratings identical, and scraping-devops tracked paths changed by redact went 1→0 of 597. Each vanished hit was checked by hand and is a path or a branch name. Pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | code-review covered `core/redact.py` (`_entropy_spans` long-token loop only) and the new test. P0 0, P1 0, P2 0, P3 0. ReDoS: the pieces are bounded and a joiner is required between them, so the pattern is linear. Security review done by hand (Medium risk; the built-in skill needs an `origin` remote): named detectors, the per-segment rule and the hex rule are untouched, and the residue is documented in the docstring. Pass |
+| Full smoke suite still green (no regression) | ☑ pass | No new failures beyond the 2 pre-existing container tests |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | Pure backend task, no UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | Pure backend task, no UI |
 
 ---
 
@@ -33,12 +33,23 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-14T03:34:04Z on develop `2452bcf`, before any implementation commit; run by backend-developer):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+$ PYTHONPATH=src .venv/bin/python -c "from easy_verifier.core.redact import redact; print(redact('bin/build-push-kibana-docker-image'))"
+bin/…****:e169e83f548e
+$ git -C scraping-devops ls-files | count paths where redact(p) != p
+tracked 597 changed 1
+  bin/build-push-kibana-docker-image -> bin/…****:e169e83f548e
+```
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**AFTER** (2026-10-14T03:37:09Z, worktree `fix/T099-extensionless-paths`):
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T099.jsonl`, never the
-implementing agent alone]
+```
+bin/build-push-kibana-docker-image
+tracked 597 changed 0
+```
+
+**DELTA**: a citation to `bin/build-push-kibana-docker-image` (and any extensionless lower-case word path) now resolves; scraping-devops goes from 1 tracked path changed by `redact()` to 0.
+
+**WITNESS**: Supervisor (not the implementing agent), 2026-10-14T03:48Z: test rerun and `redact()` probe as above; the trace is in `memory/event-trace/T099.jsonl`.
