@@ -251,6 +251,26 @@ rule or by the per-segment rule. Generated keys are alphanumeric and mixed case,
 this is not the shape credentials take; it is the price of readable paths.
 """
 
+_LOWER_NAME_PIECE = r"(?:[a-z]{1,30}[0-9]{0,8}|[0-9]{1,8})"
+_LOWER_WORD_PATH = re.compile(
+    rf"{_LOWER_NAME_PIECE}(?:[/_-]{_LOWER_NAME_PIECE}){{1,30}}"
+)
+"""T099: an extensionless lower-case word path — `bin/build-push-kibana-docker-image`.
+
+It has one relative slash, so :data:`_PATHISH` misses it, and no suffix, so the name
+exemption above misses it; at 34 characters it scores 4.04 bits and was fingerprinted,
+so a citation to it could not resolve. The long-token rule now skips a token that
+contains a `/` and whose every piece is lower case (letters, up to 30, optionally
+followed by up to 8 digits, or a digit run) joined by `/`, `-` or `_`. A bare identifier
+with no `/`, mixed or upper-case pieces with no suffix, and random mixed-case tokens
+after `bin/` are judged as before.
+
+Residue, stated plainly: a secret made only of lower-case letter words (with optional
+short digit runs) joined by `-`/`_` and containing a `/` is no longer caught by the
+long-token rule. Generated credentials are mixed-case alphanumerics, so this is not
+their shape. The per-segment rule (:data:`_KEY_MATERIAL_CANDIDATE`) is unchanged.
+"""
+
 _UNDERSCORE_IDENTIFIER = re.compile(rf"{_WORD_PIECE}(?:_{_WORD_PIECE}){{1,30}}")
 """A long token that is plainly a code identifier — `test_agent_guide_dedup_rules`.
 
@@ -523,6 +543,8 @@ def _entropy_spans(text: str) -> Iterator[tuple[int, int, str]]:
         if _PATHISH.search(match.group()):
             continue
         if is_version_labelled_name(match):
+            continue
+        if "/" in match.group() and _LOWER_WORD_PATH.fullmatch(match.group()):
             continue
         if _UNDERSCORE_IDENTIFIER.fullmatch(match.group()):
             continue
