@@ -283,6 +283,8 @@ class RepoContext:
         self.reach: object | None = None
         self.compat: object | None = None
         self.doc_history: object | None = None
+        # T098: role -> (matched, read) for every per-role cap a dimension hit
+        self.capped: dict[str, tuple[int, int]] = {}
         self._secret_approval = secret_approval
         self._secret_approval_decisions: dict[str, bool] = {}
         self._approved_secret_reads: set[str] = set()

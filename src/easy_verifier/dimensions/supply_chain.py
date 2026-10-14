@@ -117,6 +117,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             message = CAP_WARNING.format(
                 count=len(ranked), role=source, cap=MAX_FILES_PER_ROLE
             )
+            context.capped[source] = (len(ranked), MAX_FILES_PER_ROLE)
             # Before the first yield: the budget may abandon this generator.
             if message not in context.warnings:
                 context.warnings = (*context.warnings, message)

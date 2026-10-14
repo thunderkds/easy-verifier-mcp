@@ -191,6 +191,7 @@ def _facts(context: DimensionContext) -> dict:
     cap_note = ""
     if len(candidates) > MAX_MIGRATION_FILES:
         message = CAP_WARNING.format(count=len(candidates), cap=MAX_MIGRATION_FILES)
+        context.capped[MIGRATIONS] = (len(candidates), MAX_MIGRATION_FILES)
         if message not in context.warnings:
             context.warnings = (*context.warnings, message)
         cap_note = (

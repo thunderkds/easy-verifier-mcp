@@ -20,6 +20,7 @@ from .budget import DEFAULT_BUDGET_BYTES
 from .budget import budget as _run_budget
 from .context import DEFAULT_SCOPE, RepoPathError, detect_context
 from .models import (
+    CapHit,
     DimensionDescriptor,
     DocumentEvidence,
     EvidencePack,
@@ -29,6 +30,7 @@ from .models import (
 )
 from .registry import RegistryEntry
 from .roles import (
+    MAX_ROLE_FILES,
     load_repo_config,
     resolution_warnings,
     resolve,
@@ -194,11 +196,26 @@ def run_dimension(
         sample=getattr(context, "sample", None),
         whole_file=getattr(context, "whole_file", None),
         documents=_redacted_documents(getattr(context, "documents", None)),
+        capped=_capped(resolution, getattr(context, "capped", {})),
         excluded=_redacted_exclusions(resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
     )
+
+
+def _capped(resolution, dimension_caps) -> tuple[CapHit, ...] | None:
+    """Every per-role cap this pack's inputs hit (T098): the resolution's role
+    cap and the dimension's own, merged per role (the most matched, the
+    fewest read), sorted by role; ``None`` when no cap was hit."""
+    caps = dict(dimension_caps)
+    if resolution is not None:
+        for name, matched in resolution.truncated_matched.items():
+            own = caps.get(name, (matched, MAX_ROLE_FILES))
+            caps[name] = (max(matched, own[0]), min(MAX_ROLE_FILES, own[1]))
+    if not caps:
+        return None
+    return tuple(CapHit(name, *caps[name]) for name in sorted(caps))
 
 
 def _redacted_documents(documents) -> tuple[DocumentEvidence, ...] | None:

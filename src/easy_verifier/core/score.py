@@ -118,6 +118,11 @@ class ScoreResult:
     excluded: "third-party", reason, rule}``, one per root. In
     :meth:`to_dict` for both adapters, only when non-empty, so a repository
     with nothing excluded serialises exactly as before."""
+    capped: tuple[dict[str, Any], ...] = ()
+    """Every per-role cap a dimension's inputs hit (T098, NFR-009):
+    ``{dimension, role, matched, read}``, in canonical dimension order and then
+    role name. In :meth:`to_dict` for both adapters, only when non-empty, so a
+    repository with no cap hit serialises exactly as before."""
     continue_batches: dict[str, Any] | None = None
     """MCP-only (T068, FR-061): ``{batches_done, batches_total, files_read,
     files_in_scope, question}`` while batches remain. Like ``needs_input``,
@@ -166,6 +171,8 @@ class ScoreResult:
             payload["samples"] = [dict(item) for item in self.samples]
         if self.excluded:
             payload["excluded"] = [dict(item) for item in self.excluded]
+        if self.capped:
+            payload["capped"] = [dict(item) for item in self.capped]
         payload |= {
             "metrics": json.loads(self.metrics.serialize()),
             "provenance": [
@@ -415,6 +422,12 @@ def score_packs(
         ),
         (),
     )
+    capped = tuple(
+        {"dimension": slot.dimension, **asdict(item)}
+        for slot in packs.slots
+        if slot.pack is not None and slot.pack.capped
+        for item in slot.pack.capped
+    )
     return ScoreResult(
         ratings,
         overall,
@@ -433,6 +446,7 @@ def score_packs(
         ),
         samples=samples,
         excluded=excluded,
+        capped=capped,
     )
 
 
