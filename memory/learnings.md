@@ -813,3 +813,28 @@ another package (`users.service` → `apps/web/src/routes/auth.ts`). Fixed befor
 hint conflict, a violation needs behaviour at both ends, and import targets resolve within the
 importer's manifest unit. Lesson: when a change turns an abstention into a number, hand-check every
 cited item before merging. A new false penalty is worse than the abstention it replaced.
+
+## 2026-10-13 — T095: widen a redaction piece shape symmetrically
+T091 admitted `[a-z]{1,6}[0-9]{1,8}` pieces (t087) but not the upper-case twin, so `WCAG22` in W3C URLs kept being fingerprinted (21 hits in this repo). When an entropy exemption admits a shape, test its case twin in the same task. Check a realistic secret (Slack webhook, AKIA key) before and after: identical output.
+
+## 2026-10-13 — Real-repo paths (for guides)
+ai-training is `/home/hungnguyenhuu/workspace/training/hoang.hoan/ai-training` (measured 64/83 on develop after T095; earlier "60" notes are stale). Put the absolute path in each guide's "Real repos" list. T095/T096 agents could not find it from learnings.md.
+
+## 2026-10-13 — T094: IaC YAML placed by content
+`core/iac_content.classify` checks top-level keys line by line, with no YAML parser:
+- k8s needs `apiVersion` + `kind`;
+- Compose needs `services:`, or a v1 top-level entry with `image:`/`build:`, with guards against CI keys (`stages`, `jobs`, `script`, `runs-on`);
+- CFN needs `AWSTemplateFormatVersion` or `Type: AWS::`.
+
+`roles._placed_by_content` runs after name and config matching and reads each candidate once (256 KB, at most 1000 candidates).
+
+On scraping-devops, infrastructure went from abstaining to 100, so overall is 100 with only 1 of 13 dimensions contributing; that is disclosed.
+
+Found while reviewing:
+- (a) redaction fingerprints `rancher2/…` paths (50 of 371), because `_LETTER_DIGIT_PIECE` allows at most 6 letters before the digits;
+- (b) the infrastructure 50-file `CAP_WARNING` does not reach the payload.
+
+Residual risk: a Helm values file shaped like `worker: {image: x}` reads as Compose v1.
+
+## 2026-10-13 — T097: pin a piece-shape boundary at the bound itself
+`_LETTER_DIGIT_PIECE` letter run went from 6 to 30, in both cases, so `rancher2`-style paths survive. scraping-devops paths changed by redact went 51 → 1. The T091/T095 tests pinned "7 letters is rejected", which made the widening look like a regression; they were moved to 31 letters. Pin boundaries at the declared bound (30/31), not at an arbitrary nearby value. Still open: `bin/build-push-kibana-docker-image`, an extensionless word name.

@@ -291,3 +291,4 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 ### Learning Records
 
 _None yet._
+- ▶ **[Wave 19 merged (T094–T096), 2026-10-13](learnings.md)**. T095: `WCAG22`-style redaction exemption. T096: change-column tables are not architecture descriptions, and `##` architecture prose sections count. T094: k8s, Compose and CFN YAML are recognised by content (scraping-devops infrastructure 100). T097 merged: letter run before digits allowed up to 30 (`rancher2`). Open: the infrastructure cap warning is missing from the payload; an extensionless word path is still masked.

@@ -1068,3 +1068,9 @@ The user agreed to both suggestions ("yes, agree"). (1) `sink_hits_observed` cou
 hits; test hits are listed and tagged `[test path]`; only test files scanned → abstain. coffee
 security 18→59. (2) The layer classified-share floor counts only backend units (nearest manifest
 above api files). Planned as T093.
+
+## 2026-10-13 — T096: architecture-doc shape (Supervisor decision, citation-only)
+- A table whose header has a change or plan column (`CHANGE_COLUMNS`: Change, Changes, Action, Edit, Modification, Status, Todo, Reason) is not a source of described entries.
+- A `##`+ architecture-headed section naming ≥3 real paths in prose qualifies in any document. Kind: `architecture-heading`; READMEs keep `readme-heading`. A level-1 heading is a title and never opens a section.
+- In prose, a bare token counts as a path only if it contains `/`.
+- kitchd now cites `memory/decisions.md` ## Architecture, chosen over PROJECT_SPEC.md by the unchanged T089 ranking (most directories), and accepted. No rating changed on 6 repos.
