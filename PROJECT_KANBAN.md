@@ -71,7 +71,8 @@
 - 💡 Compute code metrics over whole files below the cap too (fullstack-ts: code-quality/test-strategy abstain on byte-budget truncation while above-cap repos use whole files)
 
 **Deferred ideas (revisit after T029–T049 are done — no guide yet, not pickable)**
-- 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev".
+- 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev". → **Now T104** (2026-10-15).
+- 💡 **T105 (gated on T104's verdict — no guide until T104 says adopt)** — Optional agent-side judge with the model as a parameter: `easy-verifier judge --model {laya,laya-ft,jev} --questions <needs_input.json>` → agent-input JSON → `score --agent-input`; MCP `score` gains an optional `judge` argument (default `none` = today's behaviour) that runs the judge **outside the engine core** (adapter-level, NFR-001 intact), answers are recorded as agent input so replay is byte-equal (FR-022), confidence feeds `w=0.5·c`. Model deps as extras (`[judge-laya]`, `[judge-jev]`), never default; `jev` refused for repos not on an allow-list; container image ships without weights. Reuses T104's backend interface unchanged.
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2 | 🔄 In Progress 2026-10-08 (namespace temvar; script/docs/tests first, push only after explicit user go)
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**

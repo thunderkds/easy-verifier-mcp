@@ -78,8 +78,10 @@ labelling and no LLM-as-truth. They also fit Laya's sweet spot (`choice`, < 20 o
 | 5 | LLM baseline: the harness writes a **questions-only** file (no labels). The Supervisor has a separate agent answer it at Stage 4 and scores it with `evaluate.py`. The implementing agent must not produce LLM answers |
 | 6 | Repos: the public fixtures plus the real repos listed in `.local/real-repos.md` (aliases only in any tracked file). Report the question count per repo |
 | 7 | Results report at `docs/experiments/T104_laya_picks.md` (git-ignored, local): table of all baselines × metrics, CPU p50 latency, model load time and RAM, failure examples **by alias only**, and an adopt/reject recommendation against the pre-registered bar below |
-| 8 | Tests `tests/test_t104_experiment_harness.py` cover AC1 (determinism, label always in candidates, cap 20), AC2 (over-budget handling counted), AC3 (accuracy/ECE on a hand-computed toy file). They must run **without** torch/laya installed. The T100 identifier guard still passes |
+| 8 | Tests `tests/test_t104_experiment_harness.py` cover AC1 (determinism, label always in candidates, cap 20), AC2 (over-budget handling counted), AC3 (accuracy/ECE on a hand-computed toy file), AC10 (unknown model and missing key exit non-zero naming it; `jev` refuses a non-allow-listed repo; `random`/`heuristic` produce the shared answer format). They must run **without** torch/laya installed. The T100 identifier guard still passes |
 | 9 | Laya, torch and transformers are installed only into a separate experiment venv (`.local/t104/venv`); `pyproject.toml` is unchanged. Network check (PyPI reachable) before installing; on failure stop and report |
+
+| 10 | **The model is a parameter.** One runner, `experiments/t104_laya/run.py --model <name> --questions <jsonl> --out <answers.jsonl> [--train <jsonl>]`, behind one small backend interface: `answer(question) -> {choice, confidence, latency_ms}`, plus optional `fit(train_questions)`. Backends: `random`, `heuristic`, `laya` (zero-shot), `laya-ft` (fine-tuned via `fit`), `jev` (needs `TYPESAFE_API_KEY`; refuses to start unless every question's repo is on a public-fixture allow-list — test this refusal). An unknown `--model` or a missing key exits non-zero naming it. Adding a model = one new backend file + one registry line; `evaluate.py` never changes per model. Every backend writes the same answer format, so the LLM baseline (AC5) uses it too |
 
 ### Pre-registered adoption bar (decided now, before any number is seen)
 
@@ -134,10 +136,13 @@ grouping and candidate selection exactly; the dataset must mirror what the gate 
 
 1. Dataset builder (AC1–2) and evaluator (AC3) first, test-first, with no ML dependency.
 2. Simple baselines (random, filename heuristic) through the evaluator — proves the pipeline end to end.
-3. Experiment venv, Laya zero-shot, then leave-one-repo-out fine-tuning (use Laya's documented
-   fine-tune path; if none is documented, stop and report rather than inventing one).
-4. Write the questions-only file for the LLM baseline; hand back to the Supervisor.
-5. Report.
+3. The backend interface + registry and `run.py --model` (AC10), proven with `random` and
+   `heuristic` before any ML backend exists.
+4. Experiment venv, `laya` zero-shot, then `laya-ft` leave-one-repo-out (use Laya's documented
+   fine-tune path; if none is documented, stop and report rather than inventing one). `jev` only if
+   the user supplies a key; otherwise its row is N/A.
+5. Write the questions-only file for the LLM baseline; hand back to the Supervisor.
+6. Report.
 
 Real-repo runs are long: run them in the background and never two at once.
 
@@ -161,7 +166,8 @@ Real-repo runs are long: run them in the background and never two at once.
 |------|--------|
 | `experiments/t104_laya/build_dataset.py` | new — question set builder |
 | `experiments/t104_laya/evaluate.py` | new — metrics |
-| `experiments/t104_laya/run_laya.py` | new — zero-shot + fine-tuned inference (experiment venv only) |
+| `experiments/t104_laya/run.py` | new — `--model` runner + backend registry |
+| `experiments/t104_laya/backends/` | new — `random`, `heuristic`, `laya`, `laya_ft`, `jev` (ML imports inside the backend only) |
 | `experiments/t104_laya/README.md` | new — how to reproduce |
 | `tests/test_t104_experiment_harness.py` | new |
 | `.gitignore` | add `/.local/t104/` only if `.local/` is not already ignored |
