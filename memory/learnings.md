@@ -853,3 +853,8 @@ T100's acceptance search used `git grep`, which never matches a file **name**. 8
 
 ## 2026-10-14 — T101: shared scoring container (DDR-0013)
 `docker compose up -d scorer` runs one container (`network_mode: host`, loopback 8766, workspace mounted read-only at the same host path, reports in `EASY_VERIFIER_REPORTS_DIR/<repo>/`); each repo registers `claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp`. Tool calls are serialised by `_CORE_LOCK`. Gotcha: `core/git.py` sets `GIT_CONFIG_NOSYSTEM=1`, so system git config in the image never reaches the engine. The image uses a `/usr/local/bin/git` wrapper with `-c safe.directory=*` (safe because the engine already forces fsmonitor off, hooksPath=/dev/null and no external diff). Do not use `pkill -f <pattern>` inside a Bash call whose own command line contains the pattern: it kills the call (exit 144).
+
+## 2026-10-15 — `.venv` broken by system Python upgrade
+`/usr/bin/python3` is now 3.14; `.venv/bin/python3` symlinks to it, so `.venv/bin/python -m pytest`
+fails with `No module named pytest` although `.venv/lib/python3.12/site-packages` has everything.
+Workaround until the venv is rebuilt: `PYTHONPATH=src:<main>/.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest`.
