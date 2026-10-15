@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t103_docs_shared_container.py` (new, 19 tests, AC1–AC7). Red on pre-change docs: `14 failed, 4 passed, 1 skipped`; green after: `18 passed, 1 skipped` (AC5 skips without `.claude/`). With the real verify skill linked in (Supervisor, 2026-10-15): `19 passed in 0.08s` — pass |
+| Verification command run | ☑ pass | Clean py3.12 venv (project `.venv` broken by the system python 3.14 upgrade): `2907 passed, 3 skipped in 436.11s` EXIT=0; `ruff check src tests`: All checks passed! — pass |
+| Negative cases hold | ☑ pass | The test asserts that no in-scope doc still calls stdio "required" (historical PRD issue #13 row excluded). FR-019b loopback rule unchanged; NFR-007 "never execute code from the target repository" kept verbatim — pass |
+| verify | ☑ N/A | Docs/spec/skill text only; no src/ or runtime surface changed. Commands copied from README/DOCKER_MCP_GUIDE/compose.yaml; T101 container tests (real HTTP server) pass in the clean venv — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed the full diff of PRD.md, PROJECT_SPEC.md, LOCAL_MCP_GUIDE.md, RELEASE_GUIDE.md and the new test; verify SKILL.md (git-ignored) edited by the Supervisor. The agent's 2 failures and 3 errors reproduced as environment-only and pass in the clean venv; the T100 guard failure was the guide's home path, scrubbed in 3e46e18 — pass |
+| Full smoke suite still green (no regression) | ☑ pass | 2907 passed, 0 failed — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | No UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | No UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | No UI |
 
 ---
 
@@ -80,7 +80,6 @@ docs/RELEASE_GUIDE.md Supplemental checks list ended at `python -m pytest tests/
 
 **AFTER**: PRD.md FR-019a now reads "The **primary** deployment is the one shared streamable-HTTP container (FR-019b, DDR-0013). Per-session **stdio** ... is the supported alternative and the default transport of the bare `easy-verifier-mcp` command ... **Amended 2026-10-15 (T103)**: stdio is no longer the sole transport." PROJECT_SPEC.md constraint 6: "The shared streamable-HTTP container is the primary deployment; per-session stdio is the supported alternative and the bare-command default ... bind `127.0.0.1` only — never `0.0.0.0`". See `git diff` of the commit for the rest.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**DELTA**: A reader of the PRD, spec, local guide, release guide or verify skill is now pointed at the shared HTTP container as the primary path, with stdio as the alternative, and the reports-dir exception is stated wherever the "only `reports/`" rule appears.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T103.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-15 — re-ran the new test file (19 passed with the real verify skill) and the full suite (2907 passed) in a clean py3.12 venv, independent of the implementing agent.
