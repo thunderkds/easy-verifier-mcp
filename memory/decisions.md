@@ -1074,3 +1074,11 @@ above api files). Planned as T093.
 - A `##`+ architecture-headed section naming ≥3 real paths in prose qualifies in any document. Kind: `architecture-heading`; READMEs keep `readme-heading`. A level-1 heading is a title and never opens a section.
 - In prose, a bare token counts as a path only if it contains `/`.
 - fullstack-ts now cites `memory/decisions.md` ## Architecture, chosen over PROJECT_SPEC.md by the unchanged T089 ranking (most directories), and accepted. No rating changed on 6 repos.
+
+## 2026-10-15 — Shared container is the primary documented path (T103, user choice "2")
+The shared streamable-HTTP `scorer` container (DDR-0013) is the primary deployment in PRD (FR-019a,
+FR-017, NFR-006/007/013), PROJECT_SPEC (deployment target, constraints 5–6) and every guide.
+Per-session stdio stays the supported alternative and the bare `easy-verifier-mcp` default — no code
+or default changed. Reports may live outside the target repo only via `EASY_VERIFIER_REPORTS_DIR`.
+Open follow-ups: report advisory text still says "inside the evaluated repository" under that env;
+`scripts/verify_release_gate.sh` has no shared-container check.
