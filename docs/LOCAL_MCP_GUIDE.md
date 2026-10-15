@@ -52,7 +52,9 @@ Use the path printed by `which easy-verifier-mcp` in step 1.
 Every tool takes a `repo` argument, and it defaults to `.`, the server's working directory.
 Claude Code starts the server in your project directory, so the default usually works. Other
 clients may start it somewhere else. There, pass `repo` as an **absolute path** in the tool call.
-Reports are written to `<repo>/reports/`, which must be writable by your user.
+Reports are written to `<repo>/reports/` by default, which must be writable by your user. When
+`EASY_VERIFIER_REPORTS_DIR` is set to an absolute path, they go to
+`$EASY_VERIFIER_REPORTS_DIR/<repo name>/` instead.
 
 ## Source roles and agent input
 
@@ -97,16 +99,27 @@ generic patterns only. The CLI never shows `reference`.
 - By hand: `easy-verifier-mcp` with no arguments waits silently on stdin. That is correct, since
   stdout is reserved for the protocol. Press Ctrl-C to exit.
 
-## HTTP/SSE (opt-in, loopback only)
+## HTTP (opt-in, loopback only)
 
-stdio is the default and recommended transport. For clients that can only reach a URL, there is a
-legacy opt-in:
+stdio is the default for the bare `easy-verifier-mcp` command. To keep one server running that
+several repositories share, use streamable HTTP:
+
+```console
+easy-verifier-mcp --transport streamable-http
+```
+
+It serves `/mcp` on `127.0.0.1` at the port in `EASY_VERIFIER_PORT` (default `8766`), and never on a
+routable address. There is **no authentication**: while it runs, any local process can reach it.
+The recommended way to run it is the shared Docker container, which also mounts your repositories
+read-only; see [`DOCKER_MCP_GUIDE.md`](DOCKER_MCP_GUIDE.md).
+
+For clients that can only reach a URL with the older protocol, there is a legacy opt-in:
 
 ```console
 easy-verifier-mcp --http
 ```
 
-It binds to `127.0.0.1` only, never to a routable address.
+It also binds to `127.0.0.1` only.
 
 ## Troubleshooting
 

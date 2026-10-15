@@ -14,7 +14,7 @@
 - **Repo**: `<repo>` (GitHub: `thunderkds/easy-verifier-mcp`)
 - **Primary tech**: Python 3.11+ · `mcp` SDK (FastMCP) · Jinja-free self-contained HTML rendering
 - **Type**: MCP server + CLI (dual adapter over one shared core). No UI, no web frontend.
-- **Deployment target**: Local Docker container, stdio transport, reached by the operator's agent harness. Never internet-exposed (NFR-012).
+- **Deployment target**: Local Docker, reached by the operator's agent harness. **Primary**: one shared streamable-HTTP container (`scorer`, loopback `127.0.0.1:8766`, DDR-0013). **Supported alternative**: per-session stdio container (`docker run -i`, no network), which is also the bare-command default. Never internet-exposed (NFR-012).
 - **Key stakeholders**: thunderkds (owner / sole operator)
 
 ---
@@ -108,8 +108,8 @@ src/easy_verifier/
 4a. **Never read the contents of a secret-bearing file** (DDR-0002) — `.env*`, `*.pem`, `*.key`, `id_rsa`, `.netrc`, `.pgpass`, `credentials`, `.npmrc`, `secrets.*` and the rest of the DDR's list. Enforced in `RepoContext.read_source()` so no dimension can bypass it.
    Existence is still reported as `excluded: secret-bearing` — distinct from `not found` and `not examined`; only the bytes are withheld. T008 alone may request such contents, via an operator HITL approval defaulting to refuse.
    **Complements constraint 4, does not replace it**: secrets also appear in files we cannot refuse to read, so exclusion shrinks the intake and redaction covers the residue.
-5. **Write nothing outside the target repo's `reports/`**, with one exception: the local reference-registry layer at `$EASY_VERIFIER_SOT` or `~/.easy-verifier-sot/` (DDR-0007, FR-042), which must never be inside the target repo. Never execute code from the target repo (NFR-007).
-6. **stdio is the default and required transport** (FR-019a). HTTP/SSE is opt-in and must bind `127.0.0.1` only — never `0.0.0.0`, including inside a container (FR-019b, NFR-012).
+5. **Write nothing outside the target repo's `reports/`**, with one exception: the local reference-registry layer at `$EASY_VERIFIER_SOT` or `~/.easy-verifier-sot/` (DDR-0007, FR-042), which must never be inside the target repo, and a second exception: when `EASY_VERIFIER_REPORTS_DIR` is set (the shared container), reports go to `<that dir>/<repo name>/` outside the target repo, which is then mounted fully read-only (DDR-0013). Never execute code from the target repo (NFR-007).
+6. **The shared streamable-HTTP container is the primary deployment; per-session stdio is the supported alternative and the bare-command default** (FR-019a, amended 2026-10-15, T103). Every HTTP transport is opt-in and must bind `127.0.0.1` only — never `0.0.0.0`, including inside a container (FR-019b, NFR-012).
 7. **Adapters stay thin.** No evaluation, context-loading, or rendering logic in `adapters/` (FR-021).
 8. **Shared extraction helper serves the four document-shaped dimensions only.** `security`, `test-strategy` and `blast-radius` stay bespoke — forcing them into the helper is the mistake that sank Option A.
 9. **Reports are self-contained** — zero external CSS/JS/font/image requests (FR-018) — and must never leak container-internal paths (FR-021c).
@@ -197,3 +197,4 @@ Running log of key decisions, patterns, and lessons learned across tasks.
 | 2026-08-18 | The four document-shaped dimensions share one narrow extractor: kit declarations and task-guide globs are direct candidates; standalone mode reads discovered docs before a bounded code fallback. | T007 |
 | 2026-08-18 | Secret-file exclusion must check both the requested path and resolved target after truthful metadata checks, preventing safe-name symlink aliases without inventing file presence. | T007 |
 | 2026-09-12 | Adapter parity for quality output is kept structural by one `core.score` orchestration path: adapters only parse/serialize, while metric, rating, assessment, and divergence arithmetic remain in their owning modules. | T022 |
+| 2026-10-15 | User decision: the shared streamable-HTTP container (DDR-0013) is the primary documented path; per-session stdio stays the supported alternative and the bare-command default. Spec, PRD and guides amended in place; no code or default changed. | T103 |

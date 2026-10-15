@@ -33,6 +33,9 @@ The wrapper performs these required checks in order:
 3. The container hardening verifier, including the real MCP stdio boundary and path scrubbing.
 4. The KPI summary, which is allowed to run only after the earlier checks pass.
 
+`scripts/verify_release_gate.sh` covers the stdio boundary only. It does not start or probe the
+shared container; use the shared-container checks under Supplemental checks.
+
 The command must finish with output equivalent to:
 
 ```text
@@ -53,7 +56,12 @@ bash -n scripts/verify_release_gate.sh
 docker compose config --quiet
 git diff --check
 python -m pytest tests/test_t018_readme.py -q
+python -m pytest tests/test_t101_shared_container.py -q
 ```
+
+Shared container (HTTP): the last command covers the shared container's code paths. To observe the
+running container, follow the "Shared container (HTTP)" surface of the `verify` skill
+(`.claude/skills/verify/SKILL.md`) and record the result beside the others.
 
 The compatible interpreter must be recorded in the evidence; do not substitute a stale editable
 installation or rely on a piped command whose exit code hides a failed test.
