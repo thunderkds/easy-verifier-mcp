@@ -11,7 +11,7 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T103** — Make the shared scoring container the primary documented path (docs + spec after T101) | backend-developer | C1 | Risk: Medium | P1
+- [x] **T103** — Make the shared scoring container the primary documented path (docs + spec after T101) | backend-developer | C1 | Risk: Medium | P1 | ✅ Done 2026-10-15 (PRD FR-017/019a/NFR-006/007/013, PROJECT_SPEC, LOCAL_MCP_GUIDE, RELEASE_GUIDE amended; verify skill gained the shared-container surface; new test 19 passed; suite 2907 passed. Follow-ups: report advisory text under EASY_VERIFIER_REPORTS_DIR; release-gate script has no shared-container check)
 
 **Wave 22 — Shared scoring container + T100 gap (added 2026-10-14; user: "only 1 container for scoring … like the way to the easy-ui-mcp"; DDR-0013, PRD FR-019b amended)**
 - [x] **T101** — One shared scoring container that every repo points at (streamable HTTP on 127.0.0.1:8766, `network_mode: host`, read-only same-path workspace mount, central reports dir, serialised tool calls) | common-infrastructure | C2 | Risk: High | P1 | ✅ Done 2026-10-14 (`--transport streamable-http`, compose `scorer` service, central reports dir, serialised tools; real container scored 2 repos concurrently; container tests green again)

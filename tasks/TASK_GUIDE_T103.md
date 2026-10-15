@@ -56,7 +56,7 @@ any other task guide or review, and T025's branch.
 `.venv` is broken (system Python is 3.14; see `memory/learnings.md`, 2026-10-15). Use:
 
 ```bash
-M=/home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp
+M=<absolute path of the main checkout>
 PYTHONPATH=src:$M/.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest -q tests/test_t103_docs_shared_container.py
 PYTHONPATH=src:$M/.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest -q
 PYTHONPATH=src:$M/.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m ruff check src tests
