@@ -33,8 +33,19 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by backend-developer in worktree `easy-verifier-mcp-T104`, branch
+`feat/T104-laya-picks-experiment` at `0ca6e35`, before any implementation commit):
+
+```
+$ date -u; ls experiments/; echo "exit=$?"
+Thu Oct 15 02:46:48 PM UTC 2026
+ls: cannot access 'experiments/': No such file or directory
+exit=2
+```
+
+And `memory/decisions.md` (2026-10-15 "Jev / Laya revisit") states the bar is unmeasured:
+> "Must be measured before adoption: zero-shot is useless, so it needs our own labelled gate questions
+> from the real repos." … "Awaiting user go."
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
