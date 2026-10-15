@@ -193,11 +193,16 @@ def write_jsonl(path: str | Path, records: Iterable[dict]) -> None:
 
 
 def _tokenizer_counter(name: str) -> Callable[[str], int]:
+    """Count with the checkpoint's own tokenizer (``<checkpoint>/tokenizer``)."""
     try:
+        from laya.agent import _fix_tokenizer_config
+        from laya.train import resolve_checkpoint_dir
         from transformers import AutoTokenizer
     except ImportError:
-        sys.exit("--tokenizer needs transformers: run from the experiment venv")
-    tokenizer = AutoTokenizer.from_pretrained(name)
+        sys.exit("--tokenizer needs laya + transformers: run from the experiment venv")
+    model_dir = resolve_checkpoint_dir(name)
+    _fix_tokenizer_config(model_dir)
+    tokenizer = AutoTokenizer.from_pretrained(str(Path(model_dir) / "tokenizer"))
     return lambda text: len(tokenizer(text)["input_ids"])
 
 
@@ -226,6 +231,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(stats, sort_keys=True))
     write_jsonl(out_dir / "questions.jsonl", every)
     write_jsonl(out_dir / "questions_only.jsonl", questions_only(every))
+    for stats in all_stats:
+        train, test, stats["loro_train_deduped"] = split_loro(every, stats["repo"])
+        write_jsonl(out_dir / "loro" / f"train_{stats['repo']}.jsonl", train)
+        write_jsonl(out_dir / "loro" / f"test_{stats['repo']}.jsonl", test)
     write_jsonl(out_dir / "stats.jsonl", all_stats)
     return 0
 
