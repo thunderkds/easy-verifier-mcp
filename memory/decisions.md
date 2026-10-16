@@ -1082,3 +1082,22 @@ Per-session stdio stays the supported alternative and the bare `easy-verifier-mc
 or default changed. Reports may live outside the target repo only via `EASY_VERIFIER_REPORTS_DIR`.
 Open follow-ups: report advisory text still says "inside the evaluated repository" under that env;
 `scripts/verify_release_gate.sh` has no shared-container check.
+
+## 2026-10-15 — Jev / Laya revisit (revisit trigger met: T029–T049 done) — investigation, nothing adopted yet
+- **Jev** (TypeSafe, early access, hosted only): typed choice/noul/score, ≤255 options, 70–500 ms,
+  $0.042/MTok in. Same blockers as 2026-09-28: network + repo content leaves the machine.
+- **Laya** (Convai, Apache-2.0, `convaiinnovations/laya`, `pip install laya`, 421M ModernBERT encoder,
+  <1 GB, runs offline, ONNX/MLX ports, has an MCP-server extra): typed `choice`/`score`/`noul`, 512-token
+  input, best <20 options. Zero-shot ≈ random (0.36 vs 0.318 baseline); fine-tuned 0.766; ECE 0.081
+  after temperature refit (third-party review, unverified).
+- **Fit**: NOT in the engine (NFR-001, FR-040, byte-parity under float nondeterminism). Fits as an
+  optional **agent-side judge** that answers the engine's existing `needs_input` (detect picks,
+  `gate_evaluations`, reference/review gates) and is saved as `--agent-input`, so replay parity holds
+  and the `w=0.5·c` blend uses its calibrated confidence. Must be measured before adoption:
+  zero-shot is useless, so it needs our own labelled gate questions from the real repos.
+- Proposed next step: experiment task — harvest gate questions + LLM answers on the real repos,
+  compare Laya (zero-shot, then fine-tuned) vs the LLM on accuracy/ECE/latency. Awaiting user go.
+- **Model as a parameter (user, 2026-10-15)**: T104 runner takes `--model {random,heuristic,laya,laya-ft,jev}`
+  behind one backend interface (`answer()` → choice/confidence/latency, optional `fit()`); the same
+  interface is the planned T105 product judge (`judge --model …` / MCP `score(judge=…)`, default `none`),
+  answers recorded as agent input, deps as extras, never inside the engine core.
