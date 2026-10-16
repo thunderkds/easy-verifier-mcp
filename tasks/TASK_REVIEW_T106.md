@@ -28,7 +28,14 @@
 
 ## Demonstration
 
-**BEFORE**: [pasted timestamped `run.py --model kev` output (unknown model, exit 2), captured before the first implementation commit]
+**BEFORE** (captured before any implementation commit):
+
+```
+$ date -u; <py312> experiments/t104_laya/run.py --model kev --questions .local/t104/questions.jsonl --out /tmp/claude-1000/x.jsonl; echo exit=$?
+Fri Oct 16 04:30:43 AM UTC 2026
+error: unknown model 'kev'; known: random, heuristic, laya, laya-ft, jev
+exit=2
+```
 
 **AFTER**: [same command against a real kev.serve, post-change]
 
