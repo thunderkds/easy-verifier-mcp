@@ -21,6 +21,7 @@ from easy_verifier.adapters import mcp_server
 from easy_verifier.core import report as report_module
 from easy_verifier.core.gate import detect_evaluate_gates
 from easy_verifier.core.judge import (
+    CHANGE_FLOORS,  # T108: change-risk added
     COVERAGE_FLOORS,
     CURATED,
     PACK_FLOORS,
@@ -121,6 +122,10 @@ APPROVED = {
         ("destructive_migration_ops", 15, "at_most", 0,
          ("Semantic Versioning", "Parallel Change"), PROJECT_DEFAULT),
     ],
+    "change-risk": [  # T108: change-risk added
+        ("bugfix_without_regression_test", 100, "at_least", 1,
+         ("29119",), PROJECT_DEFAULT),
+    ],
 }
 
 
@@ -130,7 +135,8 @@ APPROVED = {
 
 
 def test_rule_table_equals_the_approved_table():
-    assert list(RATING_RULES) == [*COVERAGE_FLOORS, *PACK_FLOORS]
+    # T108: change-risk added
+    assert list(RATING_RULES) == [*COVERAGE_FLOORS, *CHANGE_FLOORS, *PACK_FLOORS]
     for dimension, rows in APPROVED.items():
         rules = RATING_RULES[dimension]
         assert list(rules) == [row[0] for row in rows], dimension

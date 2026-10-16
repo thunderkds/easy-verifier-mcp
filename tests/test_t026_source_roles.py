@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.adapters import cli
+from easy_verifier.core import judge  # T108: change-risk added
 from easy_verifier.core import roles as roles_module
 from easy_verifier.core.findings import ValidationError
 from easy_verifier.core.models import SourceRole
@@ -30,7 +31,10 @@ from easy_verifier.core.roles import (
     resolve,
     validate_agent_input,
 )
-from easy_verifier.core.score import score_repository
+from easy_verifier.core.score import (
+    score_repository,
+    scored_dimensions,  # T108: change-risk added
+)
 from easy_verifier.core.synthesis import combined_pack
 from easy_verifier.dimensions import DIMENSIONS, dimension_names, list_dimensions
 
@@ -124,7 +128,7 @@ def _mcp(name: str, arguments: dict) -> object:
 
 
 def test_every_descriptor_declares_roles_and_sources_sought_is_their_names() -> None:
-    assert len(DIMENSIONS) == 13
+    assert len(DIMENSIONS) == 14  # T108: change-risk added
     for name, descriptor in DIMENSIONS.items():
         assert descriptor.roles, name
         assert all(isinstance(role, SourceRole) for role in descriptor.roles), name
@@ -132,7 +136,10 @@ def test_every_descriptor_declares_roles_and_sources_sought_is_their_names() -> 
         assert len(set(descriptor.sources_sought)) == len(descriptor.sources_sought)
         # At least one role per dimension is file-backed: pseudo-roles alone
         # would leave the dimension with nothing a pattern can fill.
-        assert any(role.patterns for role in descriptor.roles), name
+        # T108 / DDR-0014: change-risk evaluates the change itself,
+        # not a file a pattern fills
+        if name not in judge.CHANGE_FLOORS:
+            assert any(role.patterns for role in descriptor.roles), name
 
 
 def test_every_file_backed_role_takes_its_patterns_from_the_generic_table() -> None:
@@ -684,7 +691,7 @@ def test_report_renders_one_provenance_line_per_dimension(tmp_path: Path) -> Non
         tmp_path / "rep", {"notes/wants.md": "# Wants\n", "README.md": "# r\n"}
     )
     packs = combined_pack(
-        dimension_names(),
+        scored_dimensions("project"),  # T108: change-risk added
         repo_path=repo,
         agent_input={"picks": {"requirements-doc": ["notes/wants.md"]}},
     )

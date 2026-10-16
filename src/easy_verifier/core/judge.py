@@ -78,9 +78,22 @@ PACK_FLOORS: dict[str, CoverageFloor] = {
 }
 
 
+# The change-risk dimension (T108, FR-079): rated beside ``overall`` as the
+# separate ``change_risk`` headline, never averaged into it, so it is not in
+# ``COVERAGE_FLOORS`` (which ``overall`` and assessments are declared over).
+# Its one pseudo-role (the change itself) must be filled.
+CHANGE_FLOORS: dict[str, CoverageFloor] = {
+    "change-risk": CoverageFloor(1.0, "inclusive"),
+}
+
+
 def floor_of(dimension: str) -> CoverageFloor | None:
     """The declared coverage floor of a dimension or a pack, else ``None``."""
-    return COVERAGE_FLOORS.get(dimension) or PACK_FLOORS.get(dimension)
+    return (
+        COVERAGE_FLOORS.get(dimension)
+        or PACK_FLOORS.get(dimension)
+        or CHANGE_FLOORS.get(dimension)
+    )
 
 
 def declared_dimensions(names: Sequence[str] = ()) -> tuple[str, ...]:
@@ -988,6 +1001,16 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
             area=AREAS[23],
         ),
     ),
+    # T108 change-risk (CHANGE_FLOORS), slice 1: a bugfix needs >= 1 matched
+    # test added or changed in the scope (FR-082, user 2026-10-16). No standard
+    # publishes the number, so the threshold is a project default.
+    "change-risk": _rules(
+        RatingRule(
+            "bugfix_without_regression_test", 100, 1, "at_least",
+            (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+    ),
     # T047 healthcare pack (PACK_FLOORS): #9 PHI test-data safety. Any
     # PHI-shaped value fails safe-harbor de-identification, hence at most 0.
     # Weights 50/50 user-approved 2026-10-06 (T047 review).
@@ -1777,8 +1800,15 @@ def rate_overall(
     """Average one result per declared dimension (FR-054), raters only.
 
     A :class:`GatedRating` contributes its blended or agent-rated value; the
-    disclosure counts each kind (FR-038)."""
+    disclosure counts each kind (FR-038). A change-risk rating is the separate
+    ``change_risk`` headline and never part of the average (FR-079): it is
+    left out here, wherever it came from."""
     _validate_declared_data()
+    ratings = [
+        item
+        for item in ratings
+        if getattr(item, "dimension", "") not in CHANGE_FLOORS
+    ]
     expected = declared_dimensions([getattr(item, "dimension", "") for item in ratings])
     if len(ratings) != len(expected):
         raise ValueError("rate_overall requires exactly the declared dimensions")
@@ -1937,7 +1967,7 @@ def _passes(value: float | int, rule: RatingRule) -> bool:
 
 
 def _validate_declared_data() -> None:
-    for name, floor in {**COVERAGE_FLOORS, **PACK_FLOORS}.items():
+    for name, floor in {**COVERAGE_FLOORS, **PACK_FLOORS, **CHANGE_FLOORS}.items():
         if type(floor) is not CoverageFloor:
             raise ValueError(f"coverage floor for {name!r} is not CoverageFloor data")
         _validate_unit_number(floor.value, f"coverage floor for {name!r}")
@@ -1949,7 +1979,11 @@ def _validate_declared_data() -> None:
 
     if set(COVERAGE_FLOORS) & set(PACK_FLOORS):
         raise ValueError("a pack cannot share a dimension's name")
-    if set(RATING_RULES) != set(COVERAGE_FLOORS) | set(PACK_FLOORS):
+    if set(CHANGE_FLOORS) & (set(COVERAGE_FLOORS) | set(PACK_FLOORS)):
+        raise ValueError("change-risk cannot share a dimension's or pack's name")
+    if set(RATING_RULES) != set(COVERAGE_FLOORS) | set(PACK_FLOORS) | set(
+        CHANGE_FLOORS
+    ):
         raise ValueError(
             "rating rules must be declared for exactly the known dimensions"
         )

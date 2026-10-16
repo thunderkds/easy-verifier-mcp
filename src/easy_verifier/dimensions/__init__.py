@@ -21,6 +21,7 @@ from . import (
     api,
     architecture,
     blast_radius,
+    change_risk,
     code_quality,
     data,
     infrastructure,
@@ -47,6 +48,8 @@ DIMENSIONS: dict[str, DimensionDescriptor] = {
     data.NAME: data.DESCRIPTOR,
     operations.NAME: operations.DESCRIPTOR,
     infrastructure.NAME: infrastructure.DESCRIPTOR,
+    # T108: rated beside the overall as the `change_risk` headline (FR-079).
+    change_risk.NAME: change_risk.DESCRIPTOR,
 }
 
 

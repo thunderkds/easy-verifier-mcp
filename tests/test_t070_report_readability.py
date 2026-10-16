@@ -49,7 +49,8 @@ from easy_verifier.core.report import (
 from easy_verifier.core.synthesis import combined_pack
 from easy_verifier.dimensions import dimension_names
 
-DIMENSIONS = dimension_names()
+# T108: change-risk added
+DIMENSIONS = tuple(n for n in dimension_names() if n != "change-risk")
 CTX = _Ctx(Path("/repo"))
 ORDER = [
     "Before you share this report",

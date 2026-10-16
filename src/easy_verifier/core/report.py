@@ -50,6 +50,7 @@ from easy_verifier.core.improve import (
 from easy_verifier.core.judge import (
     AREAS,
     BORDERLINE_BAND,
+    CHANGE_FLOORS,
     PACK_FLOORS,
     PROJECT_DEFAULT,
     RATING_RULES,
@@ -107,7 +108,10 @@ class ReportWriteError(OSError):
 def _scoreable(names: tuple[str, ...]) -> bool:
     """Every dimension in canonical order, then only active optional packs
     (T047): the set ``score`` rates, so the report shows the same score."""
-    core = dimension_names()
+    # T108: change-risk is gathered except at project scope.
+    core = tuple(
+        name for name in dimension_names() if name not in CHANGE_FLOORS or name in names
+    )
     return names[: len(core)] == core and set(names[len(core) :]) <= set(PACK_FLOORS)
 
 
@@ -546,6 +550,8 @@ _METRIC_TEXT: dict[str, str] = {
     "outbound_calls_without_timeout_observed": "outbound calls with no timeout",
     "retries_without_backoff_observed": "retries with no backoff",
     "queries_in_loops_observed": "database queries inside loops",
+    # change-risk (T108)
+    "bugfix_without_regression_test": "a bugfix with no matching test added or changed",
     # healthcare pack (T047)
     "phi_values_in_test_data_observed": "PHI-shaped values in test data",
     "phi_values_in_log_statements_observed": "PHI-shaped values in log statements",
@@ -646,6 +652,7 @@ _SOURCE_TEXT: dict[str, str | None] = {
     "source files of a registry language": None,
     "outbound HTTP client calls in source files": None,
     "database access calls in source files": None,
+    "the change under evaluation (changes or worktree scope)": None,
     "test data files (the pack's test_data_paths)": "test data files",
     "log statements in source files (the pack's log_calls)": None,
     "money-named field declarations (the pack's money_declarations)": None,
@@ -720,6 +727,8 @@ def _render_summary(
         )
     else:
         parts.append(_summary_overall(ctx, score))
+        if score.change_risk is not None:
+            parts.append(_summary_change_risk(ctx, score))
         parts.append(_summary_evidence(ctx, score, context_warning_count))
         if type(score.overall) is OverallRating:
             parts.append(_summary_focus(ctx, plan))
@@ -776,6 +785,46 @@ def _summary_overall(ctx: _Ctx, score: ScoreResult) -> str:
     if not_rated:
         line += f"<p>Not rated: {ctx.esc('; '.join(not_rated))}.</p>"
     return line
+
+
+def _summary_change_risk(ctx: _Ctx, score: ScoreResult) -> str:
+    """T108, FR-079: the change's own headline beside the overall -- rating
+    or abstention, the detected kind with its signals, and each rule with the
+    files it cites. Existing summary classes only."""
+    rating = score.change_risk
+    kind = score.change_kind
+    if kind is None:
+        kind_text = "change kind not detected"
+    else:
+        signals = "; ".join(f"{item.source}: {item.value}" for item in kind.signals)
+        if kind.signals_omitted:
+            signals += f"; {kind.signals_omitted} more"
+        kind_text = (
+            f"change kind {kind.value} ({kind.source} from "
+            f"{signals or 'no signal, so the default'})"
+        )
+    if type(rating) is Rating:
+        rules = "; ".join(
+            f"{'passing' if item.passed else 'failing'}: {item.metric_name} "
+            f"{_number(item.metric_value)} "
+            f"({'≥' if item.comparison == 'at_least' else '≤'} "
+            f"{_number(item.threshold)}), cites {', '.join(item.computed_from)}"
+            for item in rating.inputs
+        )
+        return (
+            '<p class="summary-overall">Change risk '
+            f"<strong>{ctx.esc(rating.value)}/100</strong> — "
+            f"{ctx.esc(kind_text)}; {ctx.esc(rules)}. Not averaged into the "
+            "overall.</p>"
+        )
+    reasons = [miss.reason for miss in rating.sources_missing] + [
+        reason for _name, reason in rating.unavailable_metrics
+    ]
+    return (
+        '<p class="summary-overall notice notice-abstain">Change risk: no number '
+        f"— {ctx.esc('; '.join(reasons) or rating.reason)}; "
+        f"{ctx.esc(kind_text)}.</p>"
+    )
 
 
 def _summary_evidence(

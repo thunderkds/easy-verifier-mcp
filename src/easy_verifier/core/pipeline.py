@@ -110,6 +110,8 @@ def run_dimension(
     except ScopeError:
         resolved_scope = None
     context.resolved_scope = resolved_scope
+    # T108: change-risk reads the commit range the changes scope diffed.
+    context.ref = ref
 
     # The *call* is handed over, not its result: a conforming dimension can
     # still read and parse eagerly before returning its lazy iterator, and an
@@ -197,6 +199,7 @@ def run_dimension(
         whole_file=getattr(context, "whole_file", None),
         documents=_redacted_documents(getattr(context, "documents", None)),
         capped=_capped(resolution, getattr(context, "capped", {})),
+        change_kind=getattr(context, "change_kind", None),
         excluded=_redacted_exclusions(resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"

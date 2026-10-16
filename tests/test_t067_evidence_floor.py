@@ -40,7 +40,8 @@ from easy_verifier.core.roles import documentation_present
 from easy_verifier.core.score import ScoreResult
 from easy_verifier.dimensions import dimension_names
 
-DIMENSIONS = dimension_names()
+# T108: change-risk added
+DIMENSIONS = tuple(n for n in dimension_names() if n != "change-risk")
 REF = "README.md:1-3"
 GONE = MetricAbstention("no function was read: the source cap was exceeded")
 

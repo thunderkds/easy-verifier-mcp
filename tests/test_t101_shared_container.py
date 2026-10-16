@@ -275,7 +275,7 @@ def test_http_lists_every_tool_and_scores_two_repos_like_stdio(
 
     expected_tools = sorted(t.name for t in asyncio.run(mcp_server.mcp.list_tools()))
     assert http_tools == stdio_tools == expected_tools
-    assert len(expected_tools) == 17
+    assert len(expected_tools) == 18  # T108: change-risk added
     assert normalize(http_scores[0]) == normalize(stdio_scores[0])
     assert normalize(http_scores[1]) == normalize(stdio_scores[1])
     # Two different repositories really were scored by the one process.

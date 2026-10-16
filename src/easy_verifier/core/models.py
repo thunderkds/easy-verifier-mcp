@@ -306,6 +306,37 @@ class EvidencePack:
     by role. ``None`` when no cap was hit, and then left out of the
     serialized pack."""
 
+    change_kind: ChangeKind | None = field(default=None)
+    """The change's detected kind (T108, FR-080), set only by the
+    ``change-risk`` pack at a scope that carries a change; ``None`` otherwise,
+    and then left out of the serialized pack."""
+
+
+@dataclass(frozen=True)
+class ChangeSignal:
+    """One piece of evidence for a change kind (T108, FR-080)."""
+
+    source: str
+    """``branch``, ``commit subject``, ``issue reference`` or ``file kinds``."""
+
+    value: str
+    """The text the signal was read from (redacted)."""
+
+    kind: str
+
+
+@dataclass(frozen=True)
+class ChangeKind:
+    """What a change is for (FR-080): ``bugfix``, ``feature``, ``refactor`` or
+    ``chore``, with every signal it was detected from. ``source`` is
+    ``detected`` until the agent gate (T109) can say ``confirmed``."""
+
+    value: str
+    source: str
+    signals: tuple[ChangeSignal, ...]
+    signals_omitted: int = 0
+    """Signals counted into ``value`` but not listed (beyond the list cap)."""
+
 
 @dataclass(frozen=True)
 class AcceptanceCriterion:
@@ -508,6 +539,7 @@ _OMITTED_WHEN_ABSENT = frozenset(
         "excluded",
         "documents",
         "capped",
+        "change_kind",
     }
 )
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out

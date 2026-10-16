@@ -43,7 +43,8 @@ from easy_verifier.core.synthesis import combined_pack
 from easy_verifier.dimensions import dimension_names
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DIMENSIONS = dimension_names()
+# T108: change-risk added
+DIMENSIONS = tuple(n for n in dimension_names() if n != "change-risk")
 CTX = _Ctx(Path("/repo"))
 
 # Assembled at runtime: never commit a whole credential-shaped literal.

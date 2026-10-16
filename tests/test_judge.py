@@ -175,7 +175,8 @@ def test_floor_table_is_complete_static_data_and_matches_live_discovery():
         "operations",
         "infrastructure",
     )
-    assert set(COVERAGE_FLOORS) == set(dimension_names())
+    # T108: change-risk added
+    assert set(COVERAGE_FLOORS) | {"change-risk"} == set(dimension_names())
     assert {name: floor.value for name, floor in COVERAGE_FLOORS.items()} == {
         "architecture": 0.40,
         "solution-fit": 0.50,

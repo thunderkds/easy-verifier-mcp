@@ -254,7 +254,7 @@ def render_report(
     agent_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Gather the cited dimensions, validate findings, and write the report."""
-    default, active = report_dimensions(repo, agent_input)
+    default, active = report_dimensions(repo, agent_input, scope)
     packs = combined_pack(
         dimensions or default,
         repo_path=repo,
