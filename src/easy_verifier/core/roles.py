@@ -1211,9 +1211,9 @@ def validate_agent_input(
     for key in document:
         if key not in _AGENT_INPUT_KEYS:
             errors.append(
-                f"{redact(str(key))}: unknown key; only picks, packs, "
+                f"{redact(str(key))}: unknown key; only picks, packs, change_kind, "
                 "gate_evaluations, registry_entries, reviews, improvements, "
-                "batches, summary and change_kind are accepted"
+                "batches and summary are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]
