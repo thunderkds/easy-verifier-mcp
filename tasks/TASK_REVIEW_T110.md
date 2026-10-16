@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail / ☐ N/A | |
-| Verification command run | ☐ pass / ☐ fail / ☐ N/A | |
-| Negative cases hold | ☐ pass / ☐ fail / ☐ N/A | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail / ☐ N/A | |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | No UI |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | No UI |
-| **UI: Responsiveness at target viewports** | ☐ N/A | No UI |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t110_change_kind_rules.py` (15 tests; ImportError before `CHANGE_KIND_RULES` existed; sabotage of the kind-group selection fails 8 of 15). Supervisor re-run t110 + t108 + t109 + test_judge: `243 passed in 25.76s` — pass |
+| Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!`; T100 grep clean (agent) — pass |
+| Negative cases hold | ☑ pass | chore abstains on every rule "chore: no test expectation"; tests-only feature abstains "no changed source code"; moved test (git `-M`) is not a deletion; monorepo test in another project does not cover; rules of another kind are neither rated nor listed (`NOT_THIS_KIND`) — pass |
+| verify | ☑ pass | AC6 on python-ml, all four matched the pre-registered expectations (agent): feature-with-tests `8969d63` 100; feature-without `684ebb4` 0 (cites 3 sources); refactor `299fe50` 50; docs-only `77dab9c` chore abstains. Supervisor independent re-run 2026-10-16 13:56 UTC of the refactor case: `rating 50 refactor detected`, `refactor_tests_deleted 0 (w25) passed`, `refactor_uncovered_share 0.5 (w25) failed` citing `src/core/subgraphs/research/prompts.py` — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed change_risk.py, judge (`CHANGE_KIND_RULES`, `declared_rules` returns the plain table for every non-CHANGE_FLOORS dimension, `NOT_THIS_KIND` drop in `rate`), metrics, improve hints, report descriptions, README/AREA_COVERAGE rows. Supervisor decisions: weights 25×4 accepted (rating earned over the active kind's group only, so bugfix/feature stay 0/100, refactor 50/50 — no previously observed score changes); updated pins accepted (t108 ×2, t109 ×2, t035 table). code-review: P0/P1/P2 none; P3: (a) `test_confirmed_feature_over_detected_bugfix_abstains` name no longer matches its assertion; (b) "anywhere in the repository" uses today's working tree for a past commit (disclosed in the explanation) — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Agent: `3095 passed, 3 skipped in 456.28s`, exit 0 (with `EASY_VERIFIER_REPORTS_DIR` unset; setting it during the suite breaks 14 report-writing tests — environment, not code) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | No UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | No UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | No UI |
 
 ---
 
