@@ -39,7 +39,9 @@ class KevBackend:
         except urllib.error.HTTPError:
             pass  # the server answered; any HTTP status proves it is up
         except (urllib.error.URLError, OSError) as error:
-            raise BackendError(f"kev server unreachable at {self.base}: {error}") from error
+            raise BackendError(
+                f"kev server unreachable at {self.base}: {error}"
+            ) from error
 
     def answer(self, question: dict) -> dict:
         body = {**choice_body(question), "model": self.model}
