@@ -39,7 +39,7 @@ $PY experiments/t104_laya/build_dataset.py --out-dir .local/t104 \
     --tokenizer convaiinnovations/laya --repo easy-verifier-mcp=$PWD --repo ALIAS=PATH ...
 ```
 
-Answer and score, any model (`random`, `heuristic`, `laya`, `laya-ft`, `jev`):
+Answer and score, any model (`random`, `heuristic`, `laya`, `laya-ft`, `jev`, `kev`):
 
 ```bash
 $PY experiments/t104_laya/run.py --model laya --questions .local/t104/questions.jsonl \
@@ -54,6 +54,34 @@ per held-out repo. Temperature is refit on the training side only.
 
 `jev` needs `TYPESAFE_API_KEY` and `TYPESAFE_BASE_URL` and refuses to start unless every
 question's repo is on its public allow-list (`easy-verifier-mcp` only).
+
+## Kev (self-hosted)
+
+[Kev](https://github.com/jaredpalmer/kev) (Apache-2.0) is an open-weight Jev-style model that speaks
+the same `POST /v1/systemone` protocol. The server is **ours** (this machine or a host we run), so
+there is no repo allow-list; the backend prints the target URL to stderr and exits non-zero naming
+it if the server is unreachable. Not on PyPI: install from source, outside this repo's environment
+(`.local/` is git-ignored; Python 3.12/3.13).
+
+```bash
+git clone https://github.com/jaredpalmer/kev.git .local/t106/kev && cd .local/t106/kev
+uv sync --extra serve
+# local, CPU (binds 127.0.0.1 only)
+uv run --extra serve python -m kev.serve --run jaredpalmer/kev-0.8b --port 8009 --device cpu
+# on a host we own: add --host 0.0.0.0 ONLY on a trusted network, then point KEV_BASE_URL at it
+```
+
+`KEV_DTYPE=bf16` halves CPU weight memory. Then, from the repo root, with one model server at a time:
+
+```bash
+export KEV_BASE_URL=http://127.0.0.1:8009   # default; KEV_MODEL=kev-0.8b (default); KEV_API_KEY optional
+$PY experiments/t104_laya/run.py --model kev --questions .local/t104/questions_only.jsonl \
+    --out .local/t106/answers/kev08.jsonl
+$PY experiments/t104_laya/evaluate.py --questions .local/t104/questions.jsonl \
+    --answers .local/t106/answers/kev08.jsonl
+```
+
+`latency_ms` is the server's own `latency_ms` (inference time, comparable to Laya's) when present.
 
 ## LLM baseline (AC5)
 

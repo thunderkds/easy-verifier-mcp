@@ -16,6 +16,7 @@ REGISTRY = {
     "laya": "backends.laya_backend:LayaBackend",
     "laya-ft": "backends.laya_ft_backend:LayaFineTunedBackend",
     "jev": "backends.jev_backend:JevBackend",
+    "kev": "backends.kev_backend:KevBackend",
 }
 
 

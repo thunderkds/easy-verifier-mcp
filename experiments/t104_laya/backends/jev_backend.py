@@ -17,6 +17,24 @@ from . import BackendError
 QUESTION_KEY = "pick"
 
 
+def choice_body(question: dict) -> dict:
+    """The ``/v1/systemone`` request body shared by every Jev-protocol backend."""
+    return {
+        "state": {"role": question["role"]},
+        "questions": {
+            QUESTION_KEY: {
+                "type": "choice",
+                "instructions": "Which file in this repository fills the source "
+                f"role \"{question['role']}\"?",
+                "criteria": {
+                    c["path"]: c["heading"] or c["path"]
+                    for c in question["candidates"]
+                },
+            }
+        },
+    }
+
+
 class JevBackend:
     ALLOWED_REPOS = frozenset({"easy-verifier-mcp"})
 
@@ -28,20 +46,7 @@ class JevBackend:
         self.url = os.environ["TYPESAFE_BASE_URL"].rstrip("/") + "/v1/systemone"
 
     def answer(self, question: dict) -> dict:
-        body = {
-            "state": {"role": question["role"]},
-            "questions": {
-                QUESTION_KEY: {
-                    "type": "choice",
-                    "instructions": "Which file in this repository fills the source "
-                    f"role \"{question['role']}\"?",
-                    "criteria": {
-                        c["path"]: c["heading"] or c["path"]
-                        for c in question["candidates"]
-                    },
-                }
-            },
-        }
+        body = choice_body(question)
         request = urllib.request.Request(
             self.url,
             data=json.dumps(body).encode(),
