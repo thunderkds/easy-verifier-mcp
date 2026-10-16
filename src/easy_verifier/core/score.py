@@ -27,6 +27,7 @@ from .gate import (
 )
 from .improve import ImprovementPlan, improvement_plan
 from .judge import (
+    CHANGE_FLOORS,
     DOCUMENTATION_RULES,
     EVIDENCE_LACK_REASONS,
     MEASURED_WEIGHT_FLOOR,
@@ -48,7 +49,7 @@ from .metric_tables import (
     with_conventions,
 )
 from .metrics import MetricSet, compute_metrics
-from .models import CombinedPack, CoverageSummary, EvidencePack
+from .models import ChangeKind, CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
 from .registry import RegistryEntry, convention_entries, sot_root
 from .roles import (
@@ -127,6 +128,13 @@ class ScoreResult:
     """MCP-only (T068, FR-061): ``{batches_done, batches_total, files_read,
     files_in_scope, question}`` while batches remain. Like ``needs_input``,
     never part of :meth:`to_dict`."""
+    change_risk: Rating | RatingAbstention | None = None
+    """The change-risk rating (T108, FR-079): the separate ``change_risk``
+    headline beside ``overall``, never in ``ratings`` or the overall. ``None``
+    when the dimension was not gathered (``project`` scope), and then left out
+    of :meth:`to_dict`, so a project payload serialises exactly as before."""
+    change_kind: ChangeKind | None = None
+    """The detected change kind shown with ``change_risk`` (FR-080)."""
 
     @property
     def improvement_plan(self) -> ImprovementPlan:
@@ -162,6 +170,13 @@ class ScoreResult:
         payload: dict[str, Any] = {
             "ratings": [item.to_dict() for item in self.ratings],
             "overall": self.overall.to_dict(),
+        }
+        if self.change_risk is not None:
+            payload["change_risk"] = {
+                **self.change_risk.to_dict(),
+                "change_kind": _change_kind_dict(self.change_kind),
+            }
+        payload |= {
             "areas_measured": list(self.areas_measured),
             "areas_without_rule": list(self.areas_without_rule),
             "improvement_plan": self.improvement_plan.to_dict(),
@@ -244,7 +259,7 @@ def score_repository(
     # dimensions; an unknown name is a note, never an error.
     pack_names, pack_notes = active_packs(repo_path, document)
     packs = combined_pack(
-        (*dimension_names(), *pack_names),
+        (*scored_dimensions(scope), *pack_names),
         repo_path=repo_path,
         scope=scope,
         budget_bytes=budget_bytes,
@@ -300,6 +315,17 @@ def score_repository(
     return dataclasses.replace(result, needs_input=needs_input, gate_requests=requests)
 
 
+def scored_dimensions(scope: str) -> tuple[str, ...]:
+    """The dimensions ``score`` gathers at ``scope``, canonical order: all of
+    them, except that ``change-risk`` rates a change and is left out at
+    ``project`` scope (FR-079), so project payloads stay as they were."""
+    return tuple(
+        name
+        for name in dimension_names()
+        if not (scope == "project" and name in CHANGE_FLOORS)
+    )
+
+
 def report_dimensions(
     repo_path: str | Path, agent_input: object | None = None
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -336,10 +362,14 @@ def score_packs(
     non-curated values are embedded in ``registry_entries`` for replay.
     """
     actual = tuple(slot.dimension for slot in packs.slots)
-    # Every dimension in canonical order, then any active optional packs
-    # (T047) in declared order.
+    # Every dimension in canonical order (change-risk only where gathered,
+    # T108), then any active optional packs (T047) in declared order.
     expected = (
-        *dimension_names(),
+        *(
+            name
+            for name in dimension_names()
+            if name not in CHANGE_FLOORS or name in actual
+        ),
         *(name for name in PACK_FLOORS if name in actual),
     )
     if actual != expected:
@@ -356,7 +386,7 @@ def score_packs(
     metrics = rejected_abstentions(compute_metrics(packs, tables), packs, applied)
     sources = registry_sources(packs, applied)
     pack_map = _pack_map(packs)
-    rules_ratings = tuple(
+    every_rating = tuple(
         rate(
             _metrics_for(metrics, dimension),
             _coverage_for(packs, dimension),
@@ -369,6 +399,13 @@ def score_packs(
             else None,
         )
         for dimension in expected
+    )
+    # T108: change-risk is its own headline, kept out of the overall.
+    change_risk = next(
+        (item for item in every_rating if item.dimension in CHANGE_FLOORS), None
+    )
+    rules_ratings = tuple(
+        item for item in every_rating if item.dimension not in CHANGE_FLOORS
     )
     ratings = (
         apply_gate_evaluations(gate_evaluations, rules_ratings, _pack_map(packs))
@@ -385,7 +422,7 @@ def score_packs(
             {
                 name: items
                 for name, items in findings_by_dimension.items()
-                if name not in PACK_FLOORS
+                if name not in PACK_FLOORS and name not in CHANGE_FLOORS
             }
         )
         comparisons = compare(
@@ -400,6 +437,7 @@ def score_packs(
             else "unavailable: the dimension failed and produced no pack",
         )
         for slot in packs.slots
+        if slot.dimension not in CHANGE_FLOORS
     )
     samples = tuple(
         {
@@ -447,6 +485,15 @@ def score_packs(
         samples=samples,
         excluded=excluded,
         capped=capped,
+        change_risk=change_risk,
+        change_kind=next(
+            (
+                pack_map[name].change_kind
+                for name in CHANGE_FLOORS
+                if name in pack_map
+            ),
+            None,
+        ),
     )
 
 
@@ -496,6 +543,17 @@ def continue_question(samples: Sequence[Mapping[str, Any]]) -> dict[str, Any] | 
                 ),
             }
     return None
+
+
+def _change_kind_dict(kind: ChangeKind | None) -> dict[str, Any] | None:
+    if kind is None:
+        return None
+    return {
+        "value": kind.value,
+        "source": kind.source,
+        "signals": [dataclasses.asdict(item) for item in kind.signals],
+        "signals_omitted": kind.signals_omitted,
+    }
 
 
 def _evidence_warning(item: RatingAbstention) -> dict[str, Any]:
@@ -563,4 +621,10 @@ def _coverage_for(packs: CombinedPack, dimension: str) -> CoverageSummary:
     )
 
 
-__all__ = ["ScoreResult", "report_dimensions", "score_packs", "score_repository"]
+__all__ = [
+    "ScoreResult",
+    "report_dimensions",
+    "score_packs",
+    "score_repository",
+    "scored_dimensions",
+]

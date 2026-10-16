@@ -175,6 +175,11 @@ FIX_HINTS: dict[str, str] = {
         "Fetch the rows in one batched query (IN list, join or bulk API) "
         "instead of one query per loop iteration."
     ),
+    # change-risk (T108)
+    "bugfix_without_regression_test": (
+        "Add or change a test named for the changed source file, in the same "
+        "project, that reproduces the bug the change fixes."
+    ),
     # healthcare pack (T047)
     "phi_values_in_test_data_observed": (
         "Replace real-looking SSNs, record numbers and birth dates in test data "

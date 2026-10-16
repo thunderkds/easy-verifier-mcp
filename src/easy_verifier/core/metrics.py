@@ -3564,11 +3564,14 @@ PACK_METRICS: dict[str, tuple[str, ...]] = {
         "viewport_missing_or_zoom_disabled_observed",
         "browser_support_declaration_missing",
     ),
+    # T108: the change-risk dimension owns its metric the same way, so no
+    # other dimension's metric list (and no project payload) gains it.
+    "change-risk": ("bugfix_without_regression_test",),
 }
-"""Metrics of an optional pack (T047). A pack's evidence computes only these, and
-no other dimension computes them, so a repository that does not enable the
-pack serializes exactly as before. The pack computes them over whole files
-(``EvidencePack.whole_file``)."""
+"""Metrics of an optional pack (T047), or of the change-risk dimension (T108).
+A pack's evidence computes only these, and no other dimension computes them, so
+a repository that does not enable the pack serializes exactly as before. The
+pack computes them over whole files (``EvidencePack.whole_file``)."""
 
 _PACK_METRIC_NAMES = frozenset(
     name for names in PACK_METRICS.values() for name in names
@@ -3831,8 +3834,13 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     ),
     # T047: optional packs; computed over whole files by the pack itself
     *(
-        MetricDefinition(name, FAMILY_SECURITY_SURFACE, EVIDENCE_LOCAL, _pack_only)
-        for names in PACK_METRICS.values()
+        MetricDefinition(
+            name,
+            FAMILY_TEST_STRENGTH if pack == "change-risk" else FAMILY_SECURITY_SURFACE,
+            EVIDENCE_LOCAL,
+            _pack_only,
+        )
+        for pack, names in PACK_METRICS.items()
         for name in names
     ),
     MetricDefinition(
