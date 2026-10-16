@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail / ☐ N/A | |
-| Verification command run | ☐ pass / ☐ fail / ☐ N/A | |
-| Negative cases hold | ☐ pass / ☐ fail / ☐ N/A | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail / ☐ N/A | |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | No UI |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | No UI |
-| **UI: Responsiveness at target viewports** | ☐ N/A | No UI |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t109_change_kind_gate.py` (44 tests; ImportError at collection before the code, exit 2). Supervisor re-run: `44 passed in 13.06s` — pass |
+| Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!`; T100 guard 16 passed (agent) — pass |
+| Negative cases hold | ☑ pass | Supervisor real-repo run 2026-10-16 13:22 UTC, node-monorepo `--ref 09be767d0 --agent-input` with `{"value": "hotfix", "reason": "", "extra": 1}` → exit 0, kind stays `"bugfix"` / `"detected"`, rating 0, `rejected`: `change_kind.extra: unknown key; only value and reason are accepted`, `change_kind.value: must be one of bugfix, feature, refactor, chore`, `change_kind.reason: must be a non-empty string`. Secret-shaped reason redacted (t109 test) — pass |
+| verify | ☑ pass | Agent AC6 through the real stdio MCP server + CLI (2026-10-16T13:19:56Z): MCP asks `needs_input.change_kind {proposal: bugfix, allowed: [bugfix, feature, refactor, chore]}`; answered → `source: confirmed`, question no longer asked; CLI `--agent-input` same; CLI == MCP True with and without the answer. AC5 override flips the rule both ways (t109 tests). Supervisor negative run above — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed the 7-file src diff (+185/−8): `gate.parse_change_kind` (type-checked, bounded, unknown keys redacted, never raises), `change_kind_request`, score headline `reason`/`rejected`, synthesis → pipeline → change_risk pass-through, roles agent-input key, MCP adapter. Accepted 2 out-of-list test touches: T101 stub gains `change_kind_question = None` (pure presence); T069 test unchanged (message reworded to list `change_kind`). code-review: P0/P1/P2 none; P3: the report shows the confirmed source but not the agent's reason. Security (Medium): untrusted input validated before use, reason redacted, no model call (NFR-001) — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Agent: `3077 passed, 3 skipped in 452.06s`, exit 0 (a first run's 44 t013 errors were the agent's own log under `.local/`; re-run clean) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | No UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | No UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | No UI |
 
 ---
 
