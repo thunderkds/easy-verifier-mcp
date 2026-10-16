@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from easy_verifier.adapters import cli
+from easy_verifier.core import judge  # T108: change-risk added
 from easy_verifier.core import roles as roles_module
 from easy_verifier.core.findings import ValidationError
 from easy_verifier.core.models import SourceRole
@@ -135,7 +136,10 @@ def test_every_descriptor_declares_roles_and_sources_sought_is_their_names() -> 
         assert len(set(descriptor.sources_sought)) == len(descriptor.sources_sought)
         # At least one role per dimension is file-backed: pseudo-roles alone
         # would leave the dimension with nothing a pattern can fill.
-        assert any(role.patterns for role in descriptor.roles), name
+        # T108 / DDR-0014: change-risk evaluates the change itself,
+        # not a file a pattern fills
+        if name not in judge.CHANGE_FLOORS:
+            assert any(role.patterns for role in descriptor.roles), name
 
 
 def test_every_file_backed_role_takes_its_patterns_from_the_generic_table() -> None:

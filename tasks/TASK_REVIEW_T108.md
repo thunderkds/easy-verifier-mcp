@@ -90,6 +90,7 @@ AC7 actual `change_risk` headlines (run after the expectations above, background
 1. One prefix vocabulary for branch names and commit subjects (fix, bugfix, hotfix, feat, feature, refactor, chore, docs, ci, build, deps), case-insensitive, the type followed by `:` or `/` (so `Bugfix/ …` is a bugfix; side effect accepted: `CI/CD: …` counts as chore).
 2. Only issue references whose keyword is fix / fixes / fixed are a bugfix signal; a bare `#N` or `closes #N` gives no kind.
 3. `write_report` at project scope omits the change-risk line, matching the score payload.
+4. Option A for the t026 invariant: `test_every_descriptor_declares_roles_and_sources_sought_is_their_names` exempts dimensions in `judge.CHANGE_FLOORS` from the "at least one file-backed role" assertion only (DDR-0014: change-risk evaluates the change itself, not a file a pattern fills); every other assertion in that test still applies to change-risk.
 
 **DELTA**: `change-risk` is now the 14th listed dimension and the node-monorepo no-test bugfix carries a separate failing `change_risk` headline (0), while `overall` (85) and all four project-scope payloads are byte-identical to before.
 
