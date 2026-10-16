@@ -9,8 +9,11 @@ shared answer format). Runs without torch or laya installed.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import pytest
@@ -396,7 +399,7 @@ def test_heuristic_prefers_the_role_named_file(tmp_path: Path) -> None:
 def test_every_registered_model_is_lazily_importable_by_name() -> None:
     from backends import REGISTRY
 
-    assert set(REGISTRY) == {"random", "heuristic", "laya", "laya-ft", "jev"}
+    assert set(REGISTRY) == {"random", "heuristic", "laya", "laya-ft", "jev", "kev"}
     assert all(":" in target for target in REGISTRY.values())
 
 
@@ -418,3 +421,187 @@ def test_runner_cli_runs_end_to_end_without_ml_dependencies(tmp_path: Path) -> N
         capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL,
     )
     assert unknown.returncode != 0 and "nope" in unknown.stderr
+
+
+# ---------------------------------------------------------------------------
+# T106 — Kev (self-hosted, Jev-compatible) against a stub /v1/systemone server
+# ---------------------------------------------------------------------------
+
+
+class _Stub:
+    """A stdlib ``/v1/systemone`` server on an ephemeral 127.0.0.1 port."""
+
+    def __init__(self, answer=None, status: int = 200) -> None:
+        self.requests: list[dict] = []
+        self.answer = answer
+        self.status = status
+        stub = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *_args) -> None:
+                pass
+
+            def do_GET(self) -> None:
+                self.send_response(200)
+                self.end_headers()
+
+            def do_POST(self) -> None:
+                length = int(self.headers["content-length"])
+                body = json.loads(self.rfile.read(length))
+                stub.requests.append(
+                    {"path": self.path, "body": body,
+                     "authorization": self.headers.get("authorization")}
+                )
+                if stub.status != 200:
+                    self.send_response(stub.status)
+                    self.end_headers()
+                    return
+                key = next(iter(body["questions"]))
+                options = list(body["questions"][key]["criteria"])
+                answer = (stub.answer(options) if stub.answer
+                          else {"choice": options[-1],
+                                "probabilities": {options[-1]: 0.75}})
+                payload = json.dumps(
+                    {"answers": {key: answer}, "latency_ms": 12.5}
+                    if "latency" not in answer else
+                    {"answers": {key: {k: v for k, v in answer.items()
+                                       if k != "latency"}}}
+                ).encode()
+                self.send_response(200)
+                self.send_header("content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(payload)
+
+        self.server = HTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def close(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+
+
+@pytest.fixture
+def stub():
+    made: list[_Stub] = []
+
+    def make(**kwargs) -> _Stub:
+        made.append(_Stub(**kwargs))
+        return made[-1]
+
+    yield make
+    for item in made:
+        item.close()
+
+
+def _run_kev(tmp_path: Path, monkeypatch, url: str, **env: str) -> tuple[int, Path]:
+    monkeypatch.setenv("KEV_BASE_URL", url)
+    monkeypatch.delenv("KEV_MODEL", raising=False)
+    monkeypatch.delenv("KEV_API_KEY", raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    out = tmp_path / "kev.jsonl"
+    code = run.main(["--model", "kev", "--questions",
+                     str(_questions_file(tmp_path, "private-alias")),
+                     "--out", str(out)])
+    return code, out
+
+
+def test_kev_request_shape_defaults_and_shared_answer_format(
+    tmp_path: Path, monkeypatch, stub, capsys
+) -> None:
+    server = stub()
+    code, out = _run_kev(tmp_path, monkeypatch, server.url)
+    assert code == 0
+    # A private repo is allowed: Kev is our own server, no allow-list.
+    questions = evaluate.load_jsonl(tmp_path / "questions.jsonl")
+    answers = evaluate.load_jsonl(out)
+    assert len(server.requests) == len(questions)
+    first = server.requests[0]
+    assert first["path"] == "/v1/systemone"
+    assert first["body"]["model"] == "kev-0.8b"
+    assert first["authorization"] is None
+    spec = first["body"]["questions"]["pick"]
+    assert spec["type"] == "choice"
+    assert list(spec["criteria"]) == [c["path"] for c in questions[0]["candidates"]]
+    assert all(value is None or isinstance(value, str)
+               for value in spec["criteria"].values())
+    for answer in answers:
+        assert set(answer) == {"id", "model", "choice", "confidence", "latency_ms"}
+        assert answer["model"] == "kev"
+        assert answer["confidence"] == 0.75
+        assert answer["latency_ms"] == 12.5  # the server's, not the runner's
+    assert server.url in capsys.readouterr().err
+    assert evaluate.score(questions, answers)["overall"]["n"] == len(questions)
+
+
+def test_kev_model_and_api_key_are_sent_only_when_set(
+    tmp_path: Path, monkeypatch, stub
+) -> None:
+    server = stub()
+    code, _ = _run_kev(tmp_path, monkeypatch, server.url,
+                       KEV_MODEL="kev-4b", KEV_API_KEY="FAKEfake")
+    assert code == 0
+    assert server.requests[0]["body"]["model"] == "kev-4b"
+    assert server.requests[0]["authorization"] == "Bearer FAKEfake"
+
+
+def test_kev_confidence_falls_back_then_zero_and_foreign_choice_is_kept(
+    tmp_path: Path, monkeypatch, stub
+) -> None:
+    server = stub(answer=lambda options: {"choice": options[0], "confidence": 0.4,
+                                          "latency": None})
+    code, out = _run_kev(tmp_path, monkeypatch, server.url)
+    assert code == 0
+    answers = evaluate.load_jsonl(out)
+    assert {a["confidence"] for a in answers} == {0.4}
+    # No server latency: the runner's measured time is used.
+    assert all(a["latency_ms"] >= 0 and a["latency_ms"] != 12.5 for a in answers)
+
+    server = stub(answer=lambda options: {"choice": "not/a/candidate.md",
+                                          "probabilities": {}})
+    code, out = _run_kev(tmp_path, monkeypatch, server.url)
+    assert code == 0
+    answers = evaluate.load_jsonl(out)
+    assert {a["choice"] for a in answers} == {"not/a/candidate.md"}
+    assert {a["confidence"] for a in answers} == {0.0}
+    questions = evaluate.load_jsonl(tmp_path / "questions.jsonl")
+    assert evaluate.score(questions, answers)["overall"]["n"] == len(questions)
+
+
+def test_kev_non_ascii_candidate_survives_the_round_trip(
+    tmp_path: Path, monkeypatch, stub
+) -> None:
+    from backends.kev_backend import KevBackend
+
+    server = stub()
+    monkeypatch.setenv("KEV_BASE_URL", server.url)
+    path = "docs/Alternative Dispute Resolution — café.json"
+    result = KevBackend().answer(
+        {"id": "x:1", "role": "readme", "candidates": [
+            {"path": path, "heading": None}, {"path": "a.md", "heading": "A"}]}
+    )
+    assert path in server.requests[0]["body"]["questions"]["pick"]["criteria"]
+    assert result["choice"] == "a.md"
+
+
+def test_kev_unreachable_server_refuses_naming_the_url(
+    tmp_path: Path, monkeypatch, stub, capsys
+) -> None:
+    server = stub()
+    dead = server.url
+    server.close()
+    code, out = _run_kev(tmp_path, monkeypatch, dead)
+    assert code != 0
+    assert dead in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_kev_server_error_mid_run_names_the_question_and_writes_nothing(
+    tmp_path: Path, monkeypatch, stub, capsys
+) -> None:
+    server = stub(status=503)
+    code, out = _run_kev(tmp_path, monkeypatch, server.url)
+    assert code != 0
+    assert "private-alias:" in capsys.readouterr().err
+    assert not out.exists()
