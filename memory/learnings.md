@@ -1004,3 +1004,14 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 
 (Index line removed as a duplicate of "shipped seven times", 2026-10-16:)
 - ⚠️ **[The miss-list defect class has shipped four times](learnings.md)** — T007 false secret reasons, T008 a wholly fabricated list, T009 the inverse (read happened, miss list denied it), T010 a cap-truncated sweep asserting a repo-wide zero. Standing review questions: cross-check `sources_missing` against `files_read`/`excerpts`, **and ask what bounded the search and whether the miss reason says so**.
+
+## 2026-10-16 — T107 merged (FR-078) + two Supervisor gotchas
+- `roles.CONTEXT_ROLES` + `role_files_in_scope()` / `note_context_roles()`: context roles read repo-wide at a
+  non-empty narrow scope; empty/unresolved narrow scope still reads nothing. Project payloads raw-byte equal on
+  4 repos. node-monorepo `09be767d0`: 97 (3 rated) -> 85 (5 rated). The context note is a pack warning only —
+  not in the combined score JSON. Two pre-FR-078 tests (t008 manifest, t044 api_spec_missing) updated by
+  Supervisor decision as an authorised spec change.
+- **Clear `.claude/hooks/.state/active_task` as soon as a sub-agent finishes**: otherwise the step-limit hook
+  counts the Supervisor's own review/merge calls against that task and kills one at 90.
+- **A hook auto-appends a kanban row for every newly committed TASK_GUIDE**, under the board's own wording —
+  hand-written rows for the same task become duplicates; delete the auto-added copies after a plan commit.

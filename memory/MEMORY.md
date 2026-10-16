@@ -46,6 +46,7 @@ input; **never commit realistic credential shapes** — assemble them at runtime
      The enforced gate is the 32,000-character whole-file budget above. -->
 
 ### Decisions
+- ▶ **[T107 merged: context roles repo-wide at narrow scopes (2026-10-16)](learnings.md)** — FR-078; project byte-equal on 4 repos; 97→85 on the node-monorepo bugfix; clear active_task after each agent
 - 🔒 **[DDR-0014 change-risk dimension (2026-10-16)](decisions.md)** — separate `change_risk` headline at changes/worktree; engine detects kind, agent confirms; S1 = context fix + 4 kind rules; FR-078–083
 - 🔬 **[T106 Kev zero-shot rejected (2026-10-16)](decisions.md)** — `--model kev` → own `kev.serve` (`KEV_BASE_URL`); Kev-0.8B 0.625 top-1 / p50 1.65 s, below the free heuristic; reopen only with kev.train + GPU
 - 🔬 **[T104 Laya verdict: not yet — CPU latency (2026-10-16)](decisions.md)** — fine-tuned Laya 11/11 on a 3-fold sample vs LLM 0.946/56, but p50 343–808 ms vs ≤200 ms bar; T105 judge stays gated; harness `experiments/t104_laya`
