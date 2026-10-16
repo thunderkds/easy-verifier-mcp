@@ -112,3 +112,26 @@ node-monorepo: raw EQUAL (2264964 vs 2264964 bytes); normalized EQUAL
 
 `self` = a clone of this repo pinned at develop `29ef8fe`, scored by the old and the new code (scoring the live
 worktree would differ only because its own source changed).
+
+---
+
+## Notes (implementer, 2026-10-16)
+
+- **Two existing test expectations changed — Supervisor-authorised spec change (FR-078), not a test fix.**
+  Both passed on develop `29ef8fe` and encoded the pre-FR-078 behaviour:
+  1. `tests/test_t008_security.py::test_changes_scope_reads_only_the_explicit_ref_file_set` → renamed
+     `test_changes_scope_measures_only_the_ref_files_and_reads_manifest_as_context`: `requirements.txt`
+     (package-manifest, outside the diff) is now read as context; `src/auth.py` stays the only code file read.
+  2. `tests/test_t044_api.py::test_a_narrow_scope_never_reports_presence_as_missing` → renamed
+     `test_a_narrow_scope_measures_the_repo_spec_and_abstains_on_validation`: `api_spec_missing` is a measured
+     0 when the spec exists repo-wide (option a); `request_validation_missing` (code, scope-only) still abstains.
+  Each carries a one-line `FR-078 / T107` comment.
+- **Guide inaccuracy (AC5 "Before")**: the guide says requirement-fidelity abstained because context roles were
+  "not in the resolved changes scope". The real BEFORE payload shows otherwise: its misses are
+  `requirements-doc`/`spec-doc` "not found: no file in the repository matched", no route handler in the 1
+  in-scope source file, and "no in-scope test file". It still abstains after T107, for those same reasons.
+- Role mapping (licence-file counted as a project document; dev-environment, codeowners, agent-config,
+  tool-version-pin, release-config, observability-config, schema-file, IaC roles, auth-code stay measured)
+  and the empty-narrow-scope guard were accepted by the Supervisor as-is.
+- Final verification: `pytest -q` (full suite, run alone) → `2983 passed, 3 skipped in 565.54s`;
+  `ruff check src tests` → `All checks passed!`; T107 + t008 + t044 + adapter parity → `84 passed in 63.10s`.
