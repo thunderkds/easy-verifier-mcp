@@ -1101,3 +1101,23 @@ Open follow-ups: report advisory text still says "inside the evaluated repositor
   behind one backend interface (`answer()` → choice/confidence/latency, optional `fit()`); the same
   interface is the planned T105 product judge (`judge --model …` / MCP `score(judge=…)`, default `none`),
   answers recorded as agent input, deps as extras, never inside the engine core.
+
+## 2026-10-16 — T104 verdict: Laya NOT YET (deciding metric: CPU latency); T105 stays gated
+- 56 detect-pick questions from 8 repos (labels = rule-resolved files). Top-1: random 0.054, filename
+  heuristic 0.696 (0.91 accurate when conf >= 0.8, <0.1 ms), Laya zero-shot 0.304 @ p50 906 ms,
+  LLM (blind agent, path+heading only) 0.946 / ECE 0.131.
+- Laya fine-tuned (laya.train.finetune, leave-one-repo-out) on a 3-of-8 fold sample, 11 questions:
+  11/11, ECE 0.000/0.000/0.134, p50 343-808 ms; ~14 GB RAM and ~15 min per fold on CPU.
+  User 2026-10-16: a sample is enough for an experiment ("just use some for testing is oke").
+- Bar unchanged (p50 <= 200 ms) -> not yet. Re-open only with a faster runtime (ONNX/quantised/GPU),
+  then run the remaining 5 folds. Harness: experiments/t104_laya (run.py --model; one backend file per model).
+
+## 2026-10-16 — T106: Kev (self-hosted) added beside Laya; zero-shot REJECTED
+- `--model kev` talks to our own `kev.serve` (`/v1/systemone`, Jev protocol) at `KEV_BASE_URL`
+  (default 127.0.0.1:8009; a host we run works the same). No allow-list — user: "use it by our own".
+  Kev is not on PyPI; installed from source under `.local/t106/` (HF cache ~9 GB there).
+- Kev-0.8B CPU fp32, 56 qs: top-1 0.625, ECE 0.236, p50 1652 ms, RSS 5.8 GB — below the free filename
+  heuristic (0.696). Kev-4B bf16, 14-q sample: 0.571 @ p50 24 s, RSS 8.9 GB.
+- Reopen only with `kev.train` on our pick questions + a GPU; accuracy/ECE fail even before latency.
+- Gotcha: running a model install under `.local/` while the full suite runs makes
+  `test_t013_report.py` teardown fail ("wrote into the verifier's own repository") — run suites alone.
