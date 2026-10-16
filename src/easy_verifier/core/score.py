@@ -18,10 +18,12 @@ from .assessment import AssessmentSet, ComparisonSet, assess, compare
 from .findings import Finding, validate_findings
 from .gate import (
     apply_gate_evaluations,
+    change_kind_request,
     detect_evaluate_gates,
     detect_pick_gates,
     detect_stack,
     gate_requests,
+    parse_change_kind,
     reference_requests,
     review_requests,
 )
@@ -51,6 +53,7 @@ from .metric_tables import (
 from .metrics import MetricSet, compute_metrics
 from .models import ChangeKind, CombinedPack, CoverageSummary, EvidencePack
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
+from .redact import redact
 from .registry import RegistryEntry, convention_entries, sot_root
 from .roles import (
     GENERIC_PATTERNS,
@@ -134,7 +137,18 @@ class ScoreResult:
     when the dimension was not gathered (``project`` scope), and then left out
     of :meth:`to_dict`, so a project payload serialises exactly as before."""
     change_kind: ChangeKind | None = None
-    """The detected change kind shown with ``change_risk`` (FR-080)."""
+    """The change kind shown with ``change_risk`` (FR-080): detected, or
+    confirmed by the calling agent (T109, FR-081)."""
+    change_kind_reason: str | None = None
+    """The agent's redacted reason for a confirmed kind (T109); in
+    :meth:`to_dict` only when the kind is confirmed."""
+    change_kind_rejected: tuple[str, ...] = ()
+    """Why an ``agent_input.change_kind`` answer was rejected (T109); in
+    :meth:`to_dict` only when non-empty, the detected kind kept."""
+    change_kind_question: dict[str, Any] | None = None
+    """MCP-only change-kind gate (T109, FR-081): ``needs_input.change_kind``
+    while the kind is only detected. Like ``needs_input``, never part of
+    :meth:`to_dict`; the CLI never asks (FR-034)."""
 
     @property
     def improvement_plan(self) -> ImprovementPlan:
@@ -174,7 +188,11 @@ class ScoreResult:
         if self.change_risk is not None:
             payload["change_risk"] = {
                 **self.change_risk.to_dict(),
-                "change_kind": _change_kind_dict(self.change_kind),
+                "change_kind": _change_kind_dict(
+                    self.change_kind,
+                    self.change_kind_reason,
+                    self.change_kind_rejected,
+                ),
             }
         payload |= {
             "areas_measured": list(self.areas_measured),
@@ -281,21 +299,32 @@ def score_repository(
         frameworks=frameworks,
         conventions=repo_conventions(repo_path, document),
     )
+    kind_answer = _change_kind_answer(document, result.change_kind)
     result = dataclasses.replace(
         result,
         stack=stack,
         registry_notes=registry_notes(document, repo_path)
         + ignored_reviews
         + pack_notes
-        + repo_convention_notes(repo_path, document),
+        + repo_convention_notes(repo_path, document)
+        + kind_answer[2],
+        change_kind_reason=kind_answer[0],
+        change_kind_rejected=kind_answer[1],
     )
 
     # One round each: a caller that already supplied agent input gets no
     # detect gate, stateless and unconditional (DDR-0006 §7). No repository
     # walk happens at all in that case, so a picks round costs nothing extra.
+    # The change-kind question rides along with every round too (T109): it
+    # is asked until a valid answer arrives, never at project/task scope.
     if detect_gates:
+        kind = result.change_kind
         result = dataclasses.replace(
-            result, continue_batches=continue_question(result.samples)
+            result,
+            continue_batches=continue_question(result.samples),
+            change_kind_question=change_kind_request(kind)
+            if kind is not None and kind.source == "detected"
+            else None,
         )
     if not detect_gates or evaluations is not None:
         return result
@@ -555,15 +584,47 @@ def continue_question(samples: Sequence[Mapping[str, Any]]) -> dict[str, Any] | 
     return None
 
 
-def _change_kind_dict(kind: ChangeKind | None) -> dict[str, Any] | None:
+CHANGE_KIND_IGNORED = (
+    "agent_input.change_kind ignored: there is no change kind to confirm on "
+    "this call (change risk is rated only for a change, at changes or "
+    "worktree scope)"
+)
+
+
+def _change_kind_answer(
+    document: Mapping[str, Any] | None, kind: ChangeKind | None
+) -> tuple[str | None, tuple[str, ...], tuple[str, ...]]:
+    """``(reason, rejected, notes)`` for ``agent_input.change_kind`` (T109):
+    the redacted reason of a valid answer, the problems of an invalid one,
+    or a note when this call has no kind to confirm. Never raises."""
+    if document is None or "change_kind" not in document:
+        return None, (), ()
+    if kind is None:
+        return None, (), (CHANGE_KIND_IGNORED,)
+    answer, problems = parse_change_kind(document["change_kind"])
+    if answer is None:
+        return None, tuple(problems), ()
+    return redact(answer["reason"]), (), ()
+
+
+def _change_kind_dict(
+    kind: ChangeKind | None,
+    reason: str | None = None,
+    rejected: tuple[str, ...] = (),
+) -> dict[str, Any] | None:
     if kind is None:
         return None
-    return {
+    payload: dict[str, Any] = {
         "value": kind.value,
         "source": kind.source,
         "signals": [dataclasses.asdict(item) for item in kind.signals],
         "signals_omitted": kind.signals_omitted,
     }
+    if kind.source == "confirmed" and reason is not None:
+        payload["reason"] = reason
+    if rejected:
+        payload["rejected"] = list(rejected)
+    return payload
 
 
 def _evidence_warning(item: RatingAbstention) -> dict[str, Any]:

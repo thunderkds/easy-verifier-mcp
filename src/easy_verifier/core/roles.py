@@ -1173,6 +1173,7 @@ _AGENT_INPUT_KEYS = (
     "improvements",
     "batches",
     "summary",
+    "change_kind",
 )
 
 
@@ -1212,7 +1213,7 @@ def validate_agent_input(
             errors.append(
                 f"{redact(str(key))}: unknown key; only picks, packs, "
                 "gate_evaluations, registry_entries, reviews, improvements, "
-                "batches and summary are accepted"
+                "batches, summary and change_kind are accepted"
             )
     errors.extend(
         parse_local_entries(document.get("registry_entries"), GENERIC_PATTERNS)[1]

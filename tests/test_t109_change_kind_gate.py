@@ -146,9 +146,15 @@ def test_valid_answer_is_accepted(value: str) -> None:
         ({"reason": "r"}, "change_kind.value: must be one of"),
         ({"value": "bugfix"}, "change_kind.reason: must be a non-empty string"),
         ({"value": "bugfix", "reason": ""}, "change_kind.reason: must be a non-empty"),
-        ({"value": "bugfix", "reason": "   "}, "change_kind.reason: must be a non-empty"),
+        (
+            {"value": "bugfix", "reason": "   "},
+            "change_kind.reason: must be a non-empty",
+        ),
         ({"value": "bugfix", "reason": 7}, "change_kind.reason: must be a non-empty"),
-        ({"value": "bugfix", "reason": None}, "change_kind.reason: must be a non-empty"),
+        (
+            {"value": "bugfix", "reason": None},
+            "change_kind.reason: must be a non-empty",
+        ),
         (
             {"value": "bugfix", "reason": "x" * (MAX_CHANGE_KIND_REASON_CHARS + 1)},
             "change_kind.reason: at most 500 characters",
@@ -178,7 +184,9 @@ def test_reason_bound_is_500_characters_including_unicode() -> None:
 
 def test_unknown_key_in_rejection_is_redacted() -> None:
     secret = "token: " + "FAKEfake" + "Q7x9Lm2Pz8Rt4Kw6Yb3N"
-    _answer_, problems = parse_change_kind({"value": "bugfix", "reason": "r", secret: 1})
+    _answer_, problems = parse_change_kind(
+        {"value": "bugfix", "reason": "r", secret: 1}
+    )
     assert problems and secret not in " ".join(problems)
 
 
@@ -215,7 +223,9 @@ def test_mcp_asks_at_changes_scope_and_cli_never_does(
     assert asked["proposal"] == "bugfix" and asked["allowed"] == ALLOWED
     cli = _cli(bugfix_repo, tmp_path, "--scope", "changes", "--ref", "HEAD")
     assert "needs_input" not in cli
-    assert "change_kind" not in json.dumps({k: v for k, v in cli.items() if k != "change_risk"})
+    assert "change_kind" not in json.dumps(
+        {k: v for k, v in cli.items() if k != "change_risk"}
+    )
 
 
 def test_mcp_asks_at_worktree_scope(bugfix_repo: Path) -> None:
@@ -404,9 +414,18 @@ def test_change_kind_and_picks_are_validated_independently(
         agent_input={"picks": picks, **_answer("bugfix")},
     ).to_dict()
     assert applied["change_risk"]["change_kind"]["source"] == "confirmed"
-    assert {k: v for k, v in applied.items() if k != "change_risk"} == {
-        k: v for k, v in only_picks.items() if k != "change_risk"
+    assert _outside_change_risk(applied) == _outside_change_risk(only_picks)
+
+
+def _outside_change_risk(payload: dict) -> dict:
+    """The payload without the change-risk headline and its own metrics."""
+    rest = {k: v for k, v in payload.items() if k != "change_risk"}
+    metrics = rest["metrics"]["metrics"]
+    rest["metrics"] = {
+        **rest["metrics"],
+        "metrics": [m for m in metrics if m["dimension"] != "change-risk"],
     }
+    return rest
 
 
 # --------------------------------------------------------------------------
@@ -427,12 +446,19 @@ def test_cli_and_mcp_payloads_are_byte_equal(
         arguments["agent_input"] = agent_input
     mcp = _mcp(arguments)
     cli = _cli(
-        feature_repo, tmp_path, "--scope", "changes", "--ref", "HEAD",
+        feature_repo,
+        tmp_path,
+        "--scope",
+        "changes",
+        "--ref",
+        "HEAD",
         agent_input=agent_input,
     )
     # needs_input and registry_notes are MCP-only (FR-034, DDR-0005): the CLI
     # never asks, and prints registry notes to stderr.
-    shared = {k: v for k, v in mcp.items() if k not in ("needs_input", "registry_notes")}
+    shared = {
+        k: v for k, v in mcp.items() if k not in ("needs_input", "registry_notes")
+    }
     dump = {"sort_keys": True, "separators": (",", ":")}
     assert json.dumps(cli, **dump) == json.dumps(shared, **dump)
     if agent_input is not None and agent_input["change_kind"]["value"] == "bugfix":
