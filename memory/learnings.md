@@ -858,3 +858,149 @@ T100's acceptance search used `git grep`, which never matches a file **name**. 8
 `/usr/bin/python3` is now 3.14; `.venv/bin/python3` symlinks to it, so `.venv/bin/python -m pytest`
 fails with `No module named pytest` although `.venv/lib/python3.12/site-packages` has everything.
 Workaround until the venv is rebuilt: `PYTHONPATH=src:<main>/.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest`.
+
+
+## Archived 2026-09-16 handoff (moved verbatim from MEMORY.md by /compact-memory, 2026-10-16)
+
+
+**State**: **20 of 22 tasks done.** T022 and T016 both closed this session, each with Stage 5
+verification driven at a real surface. Post-merge: **570 tests, ruff clean.**
+
+**Push state**: all of this session's work is **pushed** — `github/develop` is at `ec3b393`
+(the merge resolving the parallel T016 fix), confirmed after the user ran the push. Only the commit
+carrying this handoff may be outstanding; check with `git rev-list --left-right --count
+github/develop...develop` and raise it only if the right-hand number is non-zero. The remote is
+**`github`**, not `origin`, and the `git-guardrails` hook blocks `git push` from the Supervisor by
+design — the user runs it as `! git push github develop`.
+
+> Note for whoever writes here next: the same hook pattern-matches the literal string `git push`
+> **inside heredoc text**, not just in an executed command, so a Bash call that merely *documents*
+> that command is refused. Edit this file with the Write tool when the content mentions it.
+
+**Only T017 remains, and it is now spawnable.** Its HITL gate closed today via **DDR-0005**: parity
+is byte-equality after a closed three-rule normalization — paths repo-relative, timestamps one
+fixed token, report filename excluded — with every other field compared byte-for-byte and no
+tolerance. **Binding on the implementer: widening that list is a spec change, not a test fix; an
+agent that finds a fourth difference stops and reports.** T017 is C2 / High Risk / P0, owned by
+`qa-expert`, guide at `tasks/TASK_GUIDE_T017.md`, and mandates `security-review` at Stage 4. T022's
+Stage 5 is the existence proof that the parity is reachable — the CLI and the MCP server returned
+the same `overall` and the same rating/abstention sequence for identical arguments.
+
+**What T016 turned out to be — read this before trusting any "blocked" status.** T016 sat open for
+two weeks labelled "Docker unreachable / static tests pass". Docker became reachable today and the
+container was correct all along. What was broken was `scripts/verify_container.sh`, in a way that
+**could not fail**: it closed stdin, the MCP server dropped trailing responses, and
+`for request_id in (3, 4)` raised `KeyError` before any pass/fail. The command had never once run to
+completion. **PR #11 (`8e3c560`, 2026-09-12) fixed the stale tool count and still could not reach the
+assertion** — a correct check added to a script that could not get to it, merged while Docker was
+unreachable so nothing ran it. Three consecutive status updates described a container nothing had
+verified. The generalizable form, now in `learnings.md`: **"blocked" was blocking *discovery*, not
+merely verification, and a check that has always failed for a plausible reason is indistinguishable
+from one that cannot pass.**
+
+**The defect recurred inside its own fix**, which is the part worth remembering: the first
+remediation made the timeout path print the entire expected id set instead of the missing one — a
+harness that knew exactly which id had vanished and declined to say. Caught only by driving a
+sabotaged copy, never by reading the diff. **The check that works: withhold one input deliberately
+and confirm the harness fails naming that input.** Running the real thing and seeing PASS cannot
+establish it, because the broken harness passed too.
+
+**Open follow-up, highest value**: T022 residue (a) — `ScoreResult.to_dict()` emits no `scope` and
+no `warnings`, so an unresolved `--scope task` reports a confident **overall 70** against a resolved
+project run's **66**, because abstention drops low contributors out of the average. Honest in every
+part, misleading in the headline; the ninth instance of that class and the first outside a single
+pack. Closing it is a schema addition and needs its own task.
+
+**New this session**: `.claude/skills/verify/SKILL.md` now exists and covers all four surfaces —
+CLI, MCP over stdio, HTML report, and the container (including the FIFO trick for driving the
+containerized server without losing the last response). Read it before any cold verification.
+
+
+**Spawn-prompt additions earned so far — keep all four in every spawn:**
+1. *"Commit your work before reporting ready-for-review."* (T003 reported done with zero commits.)
+2. *"Before writing any file walk or path resolver, find the existing one and port its hardening."*
+3. *"Implement the guide's prescribed Approach; if you intend to substitute a different design, say so
+   before you build it, not in the completion report."*
+4. *"Reproduce the reported defect before fixing it, and confirm your new test fails on the pre-fix
+   commit."*
+
+**A verification harness is code — pin it to both extremes too.** T016 (2026-09-16) is the eighth
+instance of the green-test-that-cannot-fail class and the **first outside a test file**: the
+container was correct for two weeks while `scripts/verify_container.sh` could never reach its own
+final assertion (it closed stdin, the MCP server dropped trailing responses, `KeyError` before any
+pass/fail). "Static tests pass" on the board meant nothing. A script that exits non-zero for a
+plausible reason reads as a known failure rather than a broken check, which is exactly why it
+survived where unit-test instances were caught. The check that works: **drive a sabotaged copy with
+one input deliberately withheld and confirm it fails naming that input** — running the real thing
+and seeing PASS cannot establish it, because the broken harness passed too. It then recurred inside
+its own fix (the timeout named every id instead of the missing one). See `learnings.md`.
+
+**Cheapest reliable check for this project's most persistent defect class**: hardwire the predicate a
+test depends on to each of its extremes and re-run. A test that passes under both is pinning nothing.
+That is how T018's P1(b) was caught, and it retroactively explains T005, T008 and T010.
+
+**The miss-list defect class has now moved up a layer — this is the thing to watch.** Eight instances
+so far, all one property: *the output is honest in its parts and misleading in its headline.* T022's
+Stage 5 found the ninth and it is the first **outside** a single dimension's pack, so DDR-0004's
+structural fix cannot reach it: `ScoreResult.to_dict()` emits no `scope` and no `warnings`, so a
+`--scope task` run whose selector was never supplied reports a confident **overall 70** — *higher*
+than a fully-resolved project run's **66**, because abstention drops low contributors out of the
+average. Every miss reason names the unresolved scope and the panel says abstention can raise the
+overall, so nothing lies. What is missing is **elevation**. Recorded as residue (a) in
+`TASK_REVIEW_T022.md`; closing it is a schema addition and needs its own task.
+
+**Review procedure — seven sessions have proved it out**: re-run a selection or ordering AC against
+**a repo built to embarrass the implementation**, never the author's fixture. Cross-check
+`sources_missing` against `files_read` and `excerpts` in the same pack, and ask what *bounded* the
+search and whether the miss reason says so. **Now add: ask what the headline number omits, and
+whether the payload says which scope produced it.**
+
+**Stage 5 `verify` has now passed first-try twice (T010, T022) after failing T008 and T009.** Both
+first-try passes happened because Stage 4 *ran the thing* rather than reading the diff. A clean
+Stage 4 is still no evidence about Stage 5 unless Stage 4 actually drove the surface. `verify` is
+user-invocation-only — the Supervisor cannot call it via the Skill tool and must hand back to the user.
+
+**Tooling gotchas**:
+- **The repo's checked-in `.venv` does not have the project installed** — `easy-verifier` is off
+  PATH until `.venv/bin/python -m pip install -e .`. This blocks any cold verification; the recipe
+  and the surface-driving commands are now captured in **`.claude/skills/verify/SKILL.md`**.
+- **The shell here is zsh**: an unquoted `$VAR` holding several flags is *not* word-split. Write each
+  invocation out in full.
+- `score --scope project` runs **5–10 minutes printing nothing** and will blow a 120s tool timeout;
+  background it, and do not run two at once (a concurrent second call was starved into a 600s timeout
+  that did not reproduce alone). Use `--scope worktree` or `--scope task` for probes.
+- The built-in `security-review` skill **cannot run in this repo** — it resolves the diff via
+  `origin/HEAD` and the remote is named `github`. Review the diff surface directly and record the
+  substitution in the evidence.
+- The `pre_agent` hook warns that a task's Demonstration BEFORE field is blank by reading the
+  **guide**, but since T064 that block lives in `tasks/TASK_REVIEW_Txxx.md`. Advisory only.
+
+**Waiting on the user (do not proceed without a decision)**:
+- ~~**T017 HITL gate**~~ — **CLOSED 2026-09-16 (DDR-0005)**: parity is byte-equality after a closed
+  three-rule normalization (paths repo-relative, timestamps one fixed token, report filename
+  excluded); everything else byte-for-byte, no tolerance. T017 is spawnable. **Binding**: widening
+  that list is a spec change, not a test fix — an agent finding a fourth difference stops and reports.
+- **T010 residue (d)** — under `project` scope `blast-radius` yields zero citable excerpts unless the
+  repo declares an entry point, and in a non-git directory the pack is entirely empty.
+
+**Open follow-up candidates (none scheduled)**: elevate scope/warnings into the `score` payload
+(T022 residue (a) — the highest-value one); add `vendor` to `core/scope.py:_EXCLUDED_DIRS`;
+`files_read` duplicated 2×; make `pipeline.py:60`'s "never widen on failure" invariant structural
+rather than conventional; close T004's two detector floors; thread `secret_approval` through the
+adapters so T008's HITL gate is operable; `--budget-bytes 0` traceback at the CLI; a manifest read
+but declaring nothing is credited in `sources_found` and counts toward `coverage_score`; the
+`[Errno 2]` repr leak on a missing `--findings` path.
+
+
+**Standing traps — read `learnings.md` before verifying or merging**:
+- Agent worktrees have **no `.venv`**; verify with the main checkout's interpreter and read pytest's
+  **exit code directly** (piping through `tail` masks it, and did let a commit land on a red suite).
+- The merge gate blocks while the board still shows the task **In Progress** — move it to Done and
+  copy `TASK_REVIEW_Txxx.md` into the main checkout *before* merging.
+- The gate's own error message recommends `CLAUDE_ACTIVE_TASK=`, which **cannot work** from inside a
+  Bash call. Use the state file, written with `date -u`; a **future** timestamp is rejected as hard as
+  a stale one. Clear it when the task finishes.
+- **Never commit realistic credential shapes**, even in tests — assemble them at runtime.
+
+(Index line removed as a duplicate of "shipped seven times", 2026-10-16:)
+- ⚠️ **[The miss-list defect class has shipped four times](learnings.md)** — T007 false secret reasons, T008 a wholly fabricated list, T009 the inverse (read happened, miss list denied it), T010 a cap-truncated sweep asserting a repo-wide zero. Standing review questions: cross-check `sources_missing` against `files_read`/`excerpts`, **and ask what bounded the search and whether the miss reason says so**.
