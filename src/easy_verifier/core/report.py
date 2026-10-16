@@ -552,6 +552,9 @@ _METRIC_TEXT: dict[str, str] = {
     "queries_in_loops_observed": "database queries inside loops",
     # change-risk (T108)
     "bugfix_without_regression_test": "a bugfix with no matching test added or changed",
+    "new_code_without_test_share": "changed source files of a feature without a test",
+    "refactor_tests_deleted": "test files a refactor deletes",
+    "refactor_uncovered_share": "refactored source files no test in the repo covers",
     # healthcare pack (T047)
     "phi_values_in_test_data_observed": "PHI-shaped values in test data",
     "phi_values_in_log_statements_observed": "PHI-shaped values in log statements",

@@ -89,7 +89,13 @@ def test_registered_listed_with_roles_and_floor() -> None:
     assert listed["change-risk"].roles == change_risk.ROLES
     assert listed["change-risk"].roles
     assert floor_of("change-risk") is not None
-    assert set(RATING_RULES["change-risk"]) == {RULE}
+    # T110 adds the feature and refactor rules beside the bugfix rule
+    assert set(RATING_RULES["change-risk"]) == {
+        RULE,
+        "new_code_without_test_share",
+        "refactor_tests_deleted",
+        "refactor_uncovered_share",
+    }
 
 
 def test_cli_and_mcp_expose_it_alone(repo: Path, capsys) -> None:
@@ -344,14 +350,16 @@ def test_overall_is_unchanged_by_the_dimension(repo: Path) -> None:
     assert payload["change_risk"]["value"] == 0
 
 
-def test_other_kinds_abstain_until_t110(repo: Path) -> None:
+def test_other_kinds_get_their_own_rules_from_t110(repo: Path) -> None:
     subtract = {"src/calc.py": "def sub(a, b):\n    return a - b\n"}
     _commit(repo, "feat: subtract", subtract)
     headline = _headline(repo, scope="changes", ref="HEAD")
-    assert headline["kind"] == "rating_abstention"
-    assert headline["unavailable_metrics"] == [
-        [RULE, "rules for feature arrive in T110"]
+    # T110: a feature is rated by its own rule, the bugfix rule not evaluated
+    assert headline["kind"] == "rating"
+    assert [item["metric_name"] for item in headline["inputs"]] == [
+        "new_code_without_test_share"
     ]
+    assert headline["unavailable_metrics"] == []
     assert headline["change_kind"]["value"] == "feature"
 
 

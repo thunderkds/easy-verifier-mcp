@@ -29,6 +29,7 @@ from easy_verifier.core.redact import redact
 from easy_verifier.core.score import score_repository
 
 RULE = "bugfix_without_regression_test"
+FEATURE_RULE = "new_code_without_test_share"
 ALLOWED = ["bugfix", "feature", "refactor", "chore"]
 SRC = Path(__file__).resolve().parents[1] / "src"
 
@@ -282,8 +283,9 @@ def test_confirmed_bugfix_over_detected_feature_applies_the_rule(
     before = _headline(feature_repo)
     assert before["change_kind"]["value"] == "feature"
     assert before["change_kind"]["source"] == "detected"
-    assert before["kind"] == "rating_abstention"
-    assert "rules for feature arrive in T110" in json.dumps(before)
+    # T110: a feature is rated by its own rule, not the bugfix rule
+    assert before["kind"] == "rating"
+    assert [item["metric_name"] for item in before["inputs"]] == [FEATURE_RULE]
 
     after = _headline(feature_repo, _answer("bugfix", "swapping operands fixes a sum"))
     assert after["change_kind"]["value"] == "bugfix"
@@ -309,8 +311,9 @@ def test_confirmed_feature_over_detected_bugfix_abstains(bugfix_repo: Path) -> N
         "source": "confirmed",
         "reason": "adds behaviour",
     }
-    assert after["kind"] == "rating_abstention"
-    assert "rules for feature arrive in T110" in json.dumps(after)
+    # T110: the confirmed feature applies the feature rule instead
+    assert after["kind"] == "rating"
+    assert [item["metric_name"] for item in after["inputs"]] == [FEATURE_RULE]
 
 
 def test_answer_equal_to_detected_is_confirmed_and_rating_unchanged(

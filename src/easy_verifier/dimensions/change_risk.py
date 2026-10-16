@@ -8,10 +8,14 @@ separate ``change_risk`` headline beside ``overall``, never averaged into it.
 Slice 1: the change kind (``bugfix``, ``feature``, ``refactor``, ``chore``) is
 *detected* from the branch name, the commit subjects and issue references of
 the scope's range, and the kinds of the changed files; the most demanding kind
-wins and every signal is disclosed. Only the bugfix rule exists yet:
-``bugfix_without_regression_test`` counts the test files added or changed in
-the scope that match changed source code by the naming correspondence
-test-strategy uses, inside one project. Other kinds abstain until T110.
+wins and every signal is disclosed. Only the active kind's rules are
+evaluated (T110): a bugfix needs a matched test (``bugfix_without_regression_test``),
+a feature leaves few changed source files without one
+(``new_code_without_test_share``), a refactor deletes no test
+(``refactor_tests_deleted``) and leaves few changed source files without a
+covering test anywhere in the repository (``refactor_uncovered_share``); a
+chore has no rule. Matching is the naming correspondence test-strategy uses,
+inside one project.
 
 Nothing here runs target code; git is read through ``core.git.run_git`` only.
 """
@@ -25,6 +29,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path, PurePosixPath
 
 from ..core.git import run_git_text
+from ..core.judge import NOT_THIS_KIND
 from ..core.metric_tables import curated_metric_tables
 from ..core.metrics import PACK_METRICS, code_kind
 from ..core.models import (
@@ -63,13 +68,15 @@ ROLES: tuple[SourceRole, ...] = (SourceRole(name=CHANGE_SET, patterns=()),)
 
 SOURCES_SOUGHT: tuple[str, ...] = tuple(item.name for item in ROLES)
 
-(METRIC,) = PACK_METRICS[NAME]
+METRICS = PACK_METRICS[NAME]
+METRIC, FEATURE_METRIC, DELETED_METRIC, UNCOVERED_METRIC = METRICS
 
 RATED_SCOPES = frozenset({"changes", "worktree"})
 
 SCOPE_ONLY = "change risk is rated at changes/worktree scope only"
 NO_SOURCE = "no changed source code"
-LATER_RULES = "rules for {kind} arrive in T110"
+CHORE = "chore: no test expectation"
+UNREADABLE = "no changed source file could be read, so none can be cited"
 ROOT_COMMIT = (
     "the change is a root commit, with no parent to compare it against, so it "
     "is not rated"
@@ -241,10 +248,188 @@ def _assess(context: DimensionContext) -> None:
         return
     context.sources_found.append(CHANGE_SET)
     kind = context.change_kind.value
-    if kind != "bugfix":
-        context.whole_file = (_no_value(LATER_RULES.format(kind=kind)),)
+    if kind == "chore":
+        context.whole_file = tuple(_no_value(CHORE, name) for name in METRICS)
         return
-    context.whole_file = (_bugfix_metric(context, repo, changed, statuses),)
+    if kind == "bugfix":
+        own = (_bugfix_metric(context, repo, changed, statuses),)
+    elif kind == "feature":
+        own = (_feature_metric(context, repo, changed, statuses),)
+    else:
+        own = _refactor_metrics(context, repo, changed, statuses)
+    # Another kind's rule is not evaluated: the judge drops it (T110).
+    by_name = {item.name: item for item in own}
+    context.whole_file = tuple(
+        by_name.get(name) or _no_value(NOT_THIS_KIND, name) for name in METRICS
+    )
+
+
+def _changed_code(
+    context: DimensionContext, changed: tuple[str, ...], statuses: dict[str, str]
+) -> tuple[list[str], list[str], list[str]]:
+    """Changed source files, readable changed test files, and the readable
+    changed sources. A deleted file, or a pure rename (``R100``), is not part
+    of the change's code."""
+    tables = curated_metric_tables()
+    live = [
+        path
+        for path in changed
+        if statuses.get(path, "M") != "D" and statuses.get(path) != "R100"
+    ]
+    sources = [path for path in live if code_kind(path, tables) == "source"]
+    tests = [
+        path
+        for path in live
+        if code_kind(path, tables) == "test" and context.read_source(path) is not None
+    ]
+    readable = [path for path in sources if context.read_source(path) is not None]
+    return sources, tests, readable
+
+
+def _pairs(pairs: dict[str, tuple[str, ...]]) -> str:
+    return "; ".join(
+        f"{redact(source)} -> {', '.join(redact(t) for t in found)}"
+        for source, found in sorted(pairs.items())
+    ) or "none"
+
+
+def _listed(paths: Sequence[str]) -> str:
+    return ", ".join(redact(path) for path in paths) or "none"
+
+
+def _feature_metric(
+    context: DimensionContext,
+    repo: Path,
+    changed: tuple[str, ...],
+    statuses: dict[str, str],
+) -> SampledMetric:
+    """``new_code_without_test_share``: the share of changed source files
+    with no matched test -- a test file added or changed in the scope whose
+    name corresponds to it in the same project (FR-082)."""
+    sources, tests, readable = _changed_code(context, changed, statuses)
+    if not sources:
+        return _no_value(NO_SOURCE, FEATURE_METRIC)
+    if not readable:
+        return _no_value(UNREADABLE, FEATURE_METRIC)
+    manifests = _manifest_paths(repo, (*sources, *tests))
+    matched, _unmatched = _correspondence((*sources, *manifests, *tests), tuple(tests))
+    pairs = {source: matched[source] for source in sources if source in matched}
+    uncovered = [source for source in sources if source not in pairs]
+    hits = sorted({test for found in pairs.values() for test in found})
+    cited = [path for path in uncovered if path in readable] or hits or readable
+    return SampledMetric(
+        name=FEATURE_METRIC,
+        value=len(uncovered) / len(sources),
+        abstention=None,
+        computed_from=tuple(redact(path) for path in cited),
+        derivation=(
+            f"{len(uncovered)} of {len(sources)} changed source file(s) have no "
+            f"matched test: {_listed(uncovered)}; matched: {_pairs(pairs)}; a test "
+            "file counts when it is added or changed in this change and its name "
+            "is a conventional test name of the changed source file in the same "
+            "project (test-strategy's correspondence); a deleted test never counts"
+        ),
+    )
+
+
+def _refactor_metrics(
+    context: DimensionContext,
+    repo: Path,
+    changed: tuple[str, ...],
+    statuses: dict[str, str],
+) -> tuple[SampledMetric, ...]:
+    """``refactor_tests_deleted`` (test files the diff deletes; a rename git
+    detects is not a deletion) and ``refactor_uncovered_share`` (changed source
+    files with no covering test anywhere in the repository's working tree,
+    changed or not, in the same project; a deleted test never covers)."""
+    tables = curated_metric_tables()
+    sources, tests, readable = _changed_code(context, changed, statuses)
+    deleted = sorted(
+        path
+        for path, status in statuses.items()
+        if status == "D" and code_kind(path, tables) == "test"
+    )
+    resolution = getattr(context, "role_resolution", None)
+    walked = tuple(getattr(resolution, "walked", ()) or ())
+    truncated = (
+        "; the repository walk stopped at its file cap, so tests beyond it were "
+        "not searched"
+        if getattr(resolution, "walk_truncated", False)
+        else ""
+    )
+
+    cited = readable or [
+        path
+        for path in changed
+        if statuses.get(path) != "D" and context.read_source(path) is not None
+    ]
+    if cited:
+        deleted_metric = SampledMetric(
+            name=DELETED_METRIC,
+            value=len(deleted),
+            abstention=None,
+            computed_from=tuple(redact(path) for path in cited),
+            derivation=(
+                f"{len(deleted)} test file(s) deleted by the change: "
+                f"{_listed(deleted)} (git diff --name-status -M: a rename git "
+                "detects is not a deletion); cited are the changed files read"
+            ),
+        )
+    else:
+        deleted_metric = _no_value(
+            f"no changed file could be read, so the {len(deleted)} deleted test "
+            f"file(s) ({_listed(deleted)}) cannot be cited",
+            DELETED_METRIC,
+        )
+
+    if not sources:
+        return deleted_metric, _no_value(NO_SOURCE, UNCOVERED_METRIC)
+    if not readable:
+        return deleted_metric, _no_value(UNREADABLE, UNCOVERED_METRIC)
+    gone = set(deleted)
+    repo_tests = sorted(
+        {
+            *(
+                path
+                for path in walked
+                if code_kind(path, tables) == "test" and path not in gone
+            ),
+            *tests,
+        }
+    )
+    manifests = sorted(
+        {
+            *(
+                path
+                for path in walked
+                if PurePosixPath(path).name.lower() in _MANIFEST_NAMES
+            ),
+            *_manifest_paths(repo, sources),
+        }
+    )
+    matched, _unmatched = _correspondence(
+        (*sources, *manifests, *repo_tests), tuple(repo_tests)
+    )
+    pairs = {source: matched[source] for source in sources if source in matched}
+    uncovered = [source for source in sources if source not in pairs]
+    uncovered_metric = SampledMetric(
+        name=UNCOVERED_METRIC,
+        value=len(uncovered) / len(sources),
+        abstention=None,
+        computed_from=tuple(
+            redact(path)
+            for path in ([p for p in uncovered if p in readable] or readable)
+        ),
+        derivation=(
+            f"{len(uncovered)} of {len(sources)} changed source file(s) have no "
+            f"covering test in the repository: {_listed(uncovered)}; covered: "
+            f"{_pairs(pairs)}; a test covers when its name is a conventional test "
+            "name of the source file in the same project, wherever it sits in the "
+            "working tree and whether or not the change touched it; a deleted "
+            f"test never covers{truncated}"
+        ),
+    )
+    return deleted_metric, uncovered_metric
 
 
 def _bugfix_metric(
@@ -294,7 +479,7 @@ def _bugfix_metric(
             derivation=f"{len(hits)} matched test file(s): {listed}; {method}",
         )
     if not readable:
-        return _no_value("no changed source file could be read, so none can be cited")
+        return _no_value(UNREADABLE)
     unmatched = ", ".join(redact(path) for path in tests) or "none"
     return SampledMetric(
         name=METRIC,
@@ -311,12 +496,12 @@ def _bugfix_metric(
 
 def _abstain(context: DimensionContext, reason: str) -> None:
     context.sources_missing.append(SourceMiss(source=CHANGE_SET, reason=reason))
-    context.whole_file = (_no_value(reason),)
+    context.whole_file = tuple(_no_value(reason, name) for name in METRICS)
 
 
-def _no_value(reason: str) -> SampledMetric:
+def _no_value(reason: str, name: str = METRIC) -> SampledMetric:
     return SampledMetric(
-        name=METRIC, value=None, abstention=reason, computed_from=(), derivation=""
+        name=name, value=None, abstention=reason, computed_from=(), derivation=""
     )
 
 
