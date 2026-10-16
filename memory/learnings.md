@@ -1015,3 +1015,6 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
   counts the Supervisor's own review/merge calls against that task and kills one at 90.
 - **A hook auto-appends a kanban row for every newly committed TASK_GUIDE**, under the board's own wording —
   hand-written rows for the same task become duplicates; delete the auto-added copies after a plan commit.
+
+- CLI `write-report` with stdin redirected from /dev/null fails ("malformed JSON at line 1") — it parses
+  empty stdin as findings. Pass `--findings <file containing []>` for a findings-free report (2026-10-16).

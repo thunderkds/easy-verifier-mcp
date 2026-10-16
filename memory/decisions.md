@@ -1158,3 +1158,12 @@ Full text of MEMORY.md index lines that exceeded 400 characters, moved verbatim 
   engine and confirmed by the calling agent via a `change_kind` gate (CLI `--agent-input`), `source` disclosed.
 - S1 rules approved: bugfix ≥1 matched test; feature uncovered share ≤0.20; refactor 0 deleted tests + uncovered
   ≤0.20; chore abstains. S2–S5 = symbol pairs, reach, co-change, contract. PRD US-022, FR-078–083.
+
+## 2026-10-16 — T108 merged: change-risk tracer (DDR-0014 S1, part 1)
+- 14th dimension `change-risk`; floor in `judge.CHANGE_FLOORS` (not COVERAGE_FLOORS) so `overall` and
+  assessments are untouched; `rate_overall` drops change-risk ratings; omitted at project scope
+  (`scored_dimensions`, `report_dimensions(scope=)`) → project payloads sha256-equal on 4 repos.
+- Kind detection: one prefix vocabulary for branch + commit subject (fix/bugfix/hotfix/feat/feature/refactor/
+  chore/docs/ci/build/deps, case-insensitive, ":" or "/"); only fix/fixes/fixed issue refs → bugfix.
+- t026 "every dimension has a file-backed role" invariant exempts CHANGE_FLOORS (the change is not a file).
+- Real: node-monorepo 09be767d0 change_risk 0 (overall 85 unchanged); fullstack-ts 522d666 → 100.
