@@ -319,9 +319,11 @@ from the point it left `main`. A bare commit or branch name rates only that one 
 uncommitted work use `scope="worktree"`. The local `main` ref must exist in the mounted repository;
 nothing is fetched.
 
-A change score is partial today: test-strategy and security usually abstain, so a bugfix without a
-regression test is not penalised. See "Checking a feature or bugfix" in the README before trusting the
-number.
+A change score has two headlines: `overall` and a separate `change_risk`, rated only at `changes` and
+`worktree` scope and never averaged into `overall`. The agent is asked to confirm the detected change
+kind (bugfix, feature, refactor or chore) before the rule is applied; a bugfix without a regression
+test now gets a `change_risk` of 0 instead of passing unnoticed. Some dimensions still abstain, so
+see "Checking a feature or bugfix" in the README before trusting the number.
 
 ## Troubleshooting
 

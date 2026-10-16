@@ -76,17 +76,56 @@ python -m easy_verifier.adapters.cli score --repo . --scope changes --ref main..
 - `< /dev/null`: when stdin is not a terminal, `score` reads optional findings JSON from it. A
   script or agent shell that leaves stdin open makes it wait forever.
 
-> **Read a change score as partial (2026-10-05).** The `changes` scope narrows which files are read,
-> but most rules are still repository-health rules:
-> - test-strategy and security usually abstain (`below_coverage_floor`): their test config, CI and
->   lockfile are not in the diff. A bugfix without a regression test is **not penalised**; the gap
->   only shows in `sources_missing` as "no test discovered for N file(s)".
-> - architecture rates the repository's documents, not the change.
-> - blast-radius `max_fan_in_changed` abstains when the reference sweep stops at its file ceiling.
->
-> Example: a one-file node-monorepo bugfix with no test scored 97 (architecture 90, code-quality 100,
-> blast-radius 100; test-strategy, security and requirement-fidelity abstained). Read
-> `overall.abstentions` and `warnings` before trusting the number.
+**Reading a change score (2026-10-16).** A `changes` or `worktree` score has two headlines:
+`overall`, the mean of the repository-health dimensions that could be rated, and `change_risk`, a
+separate rating of the change itself. `change_risk` is never averaged into `overall`. It is rated
+only at `changes` and `worktree` scope; at `project` and `task` scope it abstains with a stated
+reason. Read both numbers.
+
+- **Change kind.** Each change has one kind: `bugfix`, `feature`, `refactor` or `chore`
+  (docs, config or dependency-only). The engine proposes it from the branch name, the commit
+  subjects, issue references and the kinds of files changed; with no signal it proposes `feature`,
+  and a mixed change takes the most demanding kind (bugfix, then feature, refactor, chore). The
+  payload says where the kind came from: `change_kind: {value, source}`, with `source` either
+  `detected` or `confirmed`, and lists the signals it used.
+- **Confirming the kind.** Through MCP, `score` returns `needs_input.change_kind` (the proposal,
+  the signals, the allowed values) and the agent confirms or overrides it by calling `score` again
+  with `agent_input.change_kind`. The CLI never asks; give the same answer in a file and pass its
+  path (the CLI takes a path, not inline JSON):
+
+  ```console
+  echo '{"change_kind": {"value": "bugfix", "reason": "swaps operands to fix a wrong sum"}}' > agent-input.json
+  python -m easy_verifier.adapters.cli score --repo . --scope changes --ref main...HEAD --agent-input agent-input.json < /dev/null
+  ```
+
+- **What each kind requires.**
+
+  | Kind | Rule | Passes when |
+  |---|---|---|
+  | `bugfix` | `bugfix_without_regression_test` | at least one test file added or changed in the change is matched to changed code |
+  | `feature` | `new_code_without_test_share` | at most 20% of changed source files lack a matched test |
+  | `refactor` | `refactor_tests_deleted`, `refactor_uncovered_share` | the change deletes no test, and at most 20% of changed source files lack any covering test in the repository |
+  | `chore` | none | the dimension abstains: "chore: no test expectation" |
+
+  A test the change deletes never counts as matched. Matching is by naming correspondence
+  (`foo.py` and `test_foo.py`, within one project); tests are searched repository-wide.
+- **Fewer abstentions.** At a narrow scope, context files (test config, CI workflow, lockfile,
+  lint config, package manifest, container config, API spec, project documents) are now read from
+  the whole repository, while the files measured stay the changed ones. Test-strategy, security and
+  supply-chain no longer abstain just because their files are outside the diff.
+- **Still repository-level.** Architecture rates the repository's documents, not the change, and
+  blast-radius `max_fan_in_changed` abstains when the reference sweep stops at its file ceiling.
+  Other dimensions still abstain when they have too little evidence; read `overall.abstentions` and
+  `warnings` before trusting `overall`.
+- **Not yet.** Test-to-symbol pairing, reach to entry points, missed co-change and contract-change
+  rules are not yet available.
+
+Example (a one-file node-monorepo bugfix, commit subject "Bugfix/ Update condition time range",
+no test): before these changes `overall` was 97 (architecture 90, code-quality 100, blast-radius 100;
+test-strategy, security and requirement-fidelity abstained). Now `overall` is 85 (security 100 and
+supply-chain 35 are rated) and `change_risk` is 0: kind `bugfix`, detected from the commit subject,
+and `bugfix_without_regression_test` fails, citing the changed source file with no matched test.
+A bugfix that changes a matching test file passes the rule.
 
 ## Two modes: kit-aware and standalone
 

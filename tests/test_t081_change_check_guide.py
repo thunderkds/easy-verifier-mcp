@@ -54,8 +54,9 @@ def test_readme_documents_the_change_check() -> None:
 
 def test_readme_states_the_change_score_is_partial() -> None:
     readme = README.read_text(encoding="utf-8")
-    assert "Read a change score as partial" in readme
-    assert "**not penalised**" in readme
+    assert "Reading a change score" in readme
+    assert "`change_risk`" in readme
+    assert "never averaged into `overall`" in readme
     assert "`overall.abstentions`" in readme
 
 
@@ -63,7 +64,7 @@ def test_docker_guide_points_to_the_change_check() -> None:
     guide = DOCKER_GUIDE.read_text(encoding="utf-8")
     assert "## 5. Check a feature or bugfix" in guide
     assert 'ref="main...HEAD"' in guide
-    assert "not penalised" in guide
+    assert "`change_risk`" in guide
 
 
 def test_three_dots_rate_the_whole_branch_only(tmp_path: Path) -> None:

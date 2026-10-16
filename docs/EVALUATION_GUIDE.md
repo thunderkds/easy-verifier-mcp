@@ -21,6 +21,7 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 | `overall` | The overall `value`, its `contributors`, `rated_by` and `abstentions`, and a one-line `disclosure` |
 | `areas_measured`, `areas_without_rule` | The evaluation areas this run measured (counted in the `disclosure` as "measured N of 32 evaluation areas") and, by name, the areas no rule covers yet (an optional pack's areas count only in a run where it is enabled); both present even when the overall is withheld |
 | `warnings` | One entry per dimension that got no number for lack of evidence |
+| `"change_risk"` | Present at the changes and worktree scopes: a separate headline next to `overall`, rating the change itself (see "Reading the change-risk headline"); never part of `overall` |
 | `samples` | Present only for large repositories: which batches of source files were read |
 | `excluded` | Present only when something was left out as third-party: one entry per excluded root, with its reason (`linguist-pattern`, `gitattributes`, `declared` or `nested-project`) and the rule that matched. No rating, layer, cycle or document role is computed from these files; the report shows them as a folded list under the overall |
 | `improvement_plan` | Every unmet or unmeasured rule of every rated dimension, grouped and ranked by gain |
@@ -92,6 +93,30 @@ couldn't measure" section). The reasons are the evidence-lack set (`EVIDENCE_LAC
   requirement item in the documents read (see [`SCORING_RULES.md`](SCORING_RULES.md)).
 - A route written in a form the registry's route tokens do not match is not found. Without routes
   and requirement documents, requirement-fidelity can fall below its coverage floor (node-monorepo below).
+
+## Reading the change-risk headline
+
+At the changes and worktree scopes the payload carries a `"change_risk"` headline next to `overall`.
+It is not one of the dimensions averaged into `overall`; at project and task scope it abstains
+with a stated reason.
+
+- `"change_kind"` says what the change was judged to be: `{"value": ..., "source": ...}`. The source
+  value `"detected"` means the engine proposed it from the branch name, commit subjects, issue
+  references and file kinds (the signals are listed); `"confirmed"` means the calling agent answered
+  the `needs_input` question (or the CLI got an agent-input file) and its reason is shown. A detected
+  kind is a proposal: check the signals before trusting a rating that depends on it.
+- The rule follows the kind: a bugfix needs a matched test added or changed in the change; a feature
+  may leave at most 20% of changed source files without a matched test; a refactor deletes no test
+  and leaves at most 20% of changed source files without any covering test; a chore has no rule and
+  abstains ("chore: no test expectation").
+- Read the rating with its rule inputs: each lists the cited files, so a 0 names the changed source
+  files that lack a matched test. An abstention uses the same reason codes as any dimension.
+- Compare `overall` and `"change_risk"` together. A change can leave a healthy repository's `overall`
+  high while its `"change_risk"` is 0. In the node-monorepo bugfix without a test, `overall` was 97
+  before context files were read repository-wide and 85 after; `"change_risk"` was 0.
+- Context files (test config, CI workflow, lockfile and similar) are read from the whole repository
+  at a narrow scope, so fewer dimensions abstain than before. Dimensions that rate repository
+  documents, such as architecture, still describe the repository, not the change.
 
 ## Large repositories: batches
 
