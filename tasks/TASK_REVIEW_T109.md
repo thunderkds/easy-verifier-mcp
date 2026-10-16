@@ -38,8 +38,39 @@ CLI score --agent-input {"change_kind": {"value": "bugfix", "reason": "swaps ope
 CLI stderr: validation error: agent input: 1 error(s): change_kind: unknown key; only picks, packs, gate_evaluations, registry_entries, reviews, improvements, batches and summary are accepted
 ```
 
-**AFTER**: [same command, post-change]
+**AFTER** (captured 2026-10-16T13:20:50+00:00 at `6870c59`, same script and synthetic repo shape as BEFORE):
 
-**DELTA**: [one sentence]
+```
+captured: 2026-10-16T13:20:50+00:00
+MCP score(scope=changes): change_risk.kind = rating_abstention | change_kind = {"value": "feature", "source": "detected"}
+MCP needs_input keys: ['change_kind', 'gate_evaluations'] | needs_input.change_kind present: True
+CLI score --agent-input {"change_kind": {"value": "bugfix", "reason": "swaps operands to fix a wrong sum"}} -> exit 0
+CLI change_kind: {"value": "bugfix", "source": "confirmed", "reason": "swaps operands to fix a wrong sum", "rejected": null} | change_risk.kind = rating | rule: [('bugfix_without_regression_test', False)]
+```
 
-**WITNESS**: [who ran it and when]
+AC6 real repo (node-monorepo, `--scope changes --ref 09be767d0`; CLI via `python -m easy_verifier.adapters.cli score ... --agent-input <file>`, MCP via the stdio server `python -m easy_verifier.adapters.mcp_server` driven by `mcp.client.stdio` per `.claude/skills/verify/SKILL.md`; `EASY_VERIFIER_REPORTS_DIR` under `.local/t109/`):
+
+```
+captured: 2026-10-16T13:19:56+00:00
+[10.5s] CLI exit 0
+CLI (no answer): change_risk.kind=rating value=0 | change_kind={"value": "bugfix", "source": "detected", "reason": null, "rejected": null} | rules=[["bugfix_without_regression_test", 0, false]]
+CLI (no answer): signals=[{"source": "commit subject", "value": "09be767d Bugfix/ Update condition time range", "kind": "bugfix"}]
+CLI needs_input present: False
+[10.5s] CLI exit 0
+CLI --agent-input bugfix: change_risk.kind=rating value=0 | change_kind={"value": "bugfix", "source": "confirmed", "reason": "the commit corrects existing behaviour in one source file", "rejected": null} | rules=[["bugfix_without_regression_test", 0, false]]
+CLI --agent-input bugfix: signals=[{"source": "commit subject", "value": "09be767d Bugfix/ Update condition time range", "kind": "bugfix"}]
+[12.5s] MCP stdio score (no answer)
+MCP (no answer): change_risk.kind=rating value=0 | change_kind={"value": "bugfix", "source": "detected", "reason": null, "rejected": null} | rules=[["bugfix_without_regression_test", 0, false]]
+MCP (no answer): signals=[{"source": "commit subject", "value": "09be767d Bugfix/ Update condition time range", "kind": "bugfix"}]
+MCP needs_input.change_kind: {"proposal": "bugfix", "allowed": ["bugfix", "feature", "refactor", "chore"], "signals_omitted": 0} | instructions: The engine detected this change's kind from the signals listed (branch name, commit subjec...
+[10.8s] MCP stdio score (agent_input.change_kind bugfix)
+MCP agent_input bugfix: change_risk.kind=rating value=0 | change_kind={"value": "bugfix", "source": "confirmed", "reason": "the commit corrects existing behaviour in one source file", "rejected": null} | rules=[["bugfix_without_regression_test", 0, false]]
+MCP agent_input bugfix: signals=[{"source": "commit subject", "value": "09be767d Bugfix/ Update condition time range", "kind": "bugfix"}]
+MCP needs_input.change_kind after answer: False
+CLI == MCP (with answer, byte-equal sorted JSON, needs_input/registry_notes excluded): True
+CLI == MCP (no answer): True
+```
+
+**DELTA**: MCP `score` now asks `needs_input.change_kind` (proposal + signals + allowed + instructions), and the same `{value, reason}` answer through MCP or CLI `--agent-input` replaces the detected kind (`source: "confirmed"`, reason shown) and the rule follows it: detected `feature` abstained, confirmed `bugfix` applies `bugfix_without_regression_test` (fails); CLI and MCP payloads byte-equal on the real repo with and without the answer.
+
+**WITNESS**: backend-developer agent (T109), 2026-10-16 13:00 UTC (BEFORE) and 13:19-13:21 UTC (AFTER + AC6), worktree `feat/T109-change-kind-gate`; Stage 4/5 reviewer to re-run.
