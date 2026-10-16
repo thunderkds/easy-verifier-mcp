@@ -28,7 +28,20 @@
 
 ## Demonstration
 
-**BEFORE**: [verbatim prior README note]
+**BEFORE** (verbatim, README.md before T111):
+
+> **Read a change score as partial (2026-10-05).** The `changes` scope narrows which files are read,
+> but most rules are still repository-health rules:
+> - test-strategy and security usually abstain (`below_coverage_floor`): their test config, CI and
+>   lockfile are not in the diff. A bugfix without a regression test is **not penalised**; the gap
+>   only shows in `sources_missing` as "no test discovered for N file(s)".
+> - architecture rates the repository's documents, not the change.
+> - blast-radius `max_fan_in_changed` abstains when the reference sweep stops at its file ceiling.
+>
+> Example: a one-file node-monorepo bugfix with no test scored 97 (architecture 90, code-quality 100,
+> blast-radius 100; test-strategy, security and requirement-fidelity abstained). Read
+> `overall.abstentions` and `warnings` before trusting the number.
+
 
 **AFTER**: [verbatim new section excerpt]
 
