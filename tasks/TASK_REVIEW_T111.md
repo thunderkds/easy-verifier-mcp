@@ -43,9 +43,20 @@
 > `overall.abstentions` and `warnings` before trusting the number.
 
 
-**AFTER**: [verbatim new section excerpt]
+**AFTER** (README.md, new section "Reading a change score (2026-10-16)", first lines):
 
-**DELTA**: [one sentence]
+> **Reading a change score (2026-10-16).** A `changes` or `worktree` score has two headlines:
+> `overall`, the mean of the repository-health dimensions that could be rated, and `change_risk`, a
+> separate rating of the change itself. `change_risk` is never averaged into `overall`. It is rated
+> only at `changes` and `worktree` scope; at `project` and `task` scope it abstains with a stated
+> reason. Read both numbers.
+>
+> Also covers: change-kind detection and MCP/CLI (`--agent-input <file>`) confirmation, the FR-082
+> rule table, repository-wide context roles, and the node-monorepo example (overall 97 -> 85,
+> `change_risk` 0). `docs/EVALUATION_GUIDE.md` gains "Reading the change-risk headline";
+> `docs/DOCKER_MCP_GUIDE.md` section 5 now agrees. `tests/test_t081_change_check_guide.py` pins updated
+> (they asserted the removed "not penalised" wording).
 
-**WITNESS**: [who ran it and when]
+**DELTA**: the docs no longer say a bugfix without a test "is not penalised" or quote 97 as the change score; they explain the separate `change_risk` headline, kind detection and confirmation, the rule table, and the measured 97 -> 85 / `change_risk` 0 example.
 
+**WITNESS**: backend-developer agent (T111), 2026-10-16; `grep` exit=1 and 166 pytest passed, 1 skipped (py3.12 venv).
