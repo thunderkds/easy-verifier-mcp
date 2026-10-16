@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-15
+**Last updated**: 2026-10-16
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -11,7 +11,7 @@
 > Task-to-task preconditions live in the task's own `TASK_GUIDE_Txxx.md` (`Depends on:` field), not on this board — `pre_agent_validate_guide.py` checks it against this board's sections at spawn time. The `## Blocked` table below is for non-task blockers only (external people/APIs/decisions).
 
 ### Todo
-- [ ] **T104** — Experiment — can a local decision model (Laya) answer the detect-gate picks as well as the LLM? | backend-developer | C2 | Risk: Medium | P2
+- [x] **T104** — Experiment — can a local decision model (Laya) answer the detect-gate picks as well as the LLM? | backend-developer | C2 | Risk: Medium | P2 | ✅ Done 2026-10-16 (verdict **not yet — CPU latency**: 56 questions / 8 repos; top-1 random 0.054, heuristic 0.696, Laya zero-shot 0.304 @ p50 906 ms, LLM 0.946; Laya fine-tuned leave-one-repo-out on a 3-of-8 fold sample (user: sample is enough) 11/11, ECE ≤ 0.134, p50 343–808 ms vs bar ≤ 200 ms. Report local at docs/experiments/T104_laya_picks.md; 27 new tests; suite 2934 passed. Follow-ups: ONNX/quantised Laya latency re-run; heuristic as a free first pass (0.91 accurate when confident))
 - [x] **T103** — Make the shared scoring container the primary documented path (docs + spec after T101) | backend-developer | C1 | Risk: Medium | P1 | ✅ Done 2026-10-15 (PRD FR-017/019a/NFR-006/007/013, PROJECT_SPEC, LOCAL_MCP_GUIDE, RELEASE_GUIDE amended; verify skill gained the shared-container surface; new test 19 passed; suite 2907 passed. Follow-ups: report advisory text under EASY_VERIFIER_REPORTS_DIR; release-gate script has no shared-container check)
 
 **Wave 22 — Shared scoring container + T100 gap (added 2026-10-14; user: "only 1 container for scoring … like the way to the easy-ui-mcp"; DDR-0013, PRD FR-019b amended)**
@@ -72,7 +72,7 @@
 
 **Deferred ideas (revisit after T029–T049 are done — no guide yet, not pickable)**
 - 💡 Investigate TypeSafe AI **Jev** as an optional *agent-side* tool (detect-gate picks, pack selection, citation-link pre-screen); never inside the engine (NFR-001, no network). Details: `memory/decisions.md` 2026-09-28 "DEFERRED: TypeSafe AI Jev". → **Now T104** (2026-10-15).
-- 💡 **T105 (gated on T104's verdict — no guide until T104 says adopt)** — Optional agent-side judge with the model as a parameter: `easy-verifier judge --model {laya,laya-ft,jev} --questions <needs_input.json>` → agent-input JSON → `score --agent-input`; MCP `score` gains an optional `judge` argument (default `none` = today's behaviour) that runs the judge **outside the engine core** (adapter-level, NFR-001 intact), answers are recorded as agent input so replay is byte-equal (FR-022), confidence feeds `w=0.5·c`. Model deps as extras (`[judge-laya]`, `[judge-jev]`), never default; `jev` refused for repos not on an allow-list; container image ships without weights. Reuses T104's backend interface unchanged.
+- 💡 **T105 (gated on T104's verdict — T104 said NOT YET (latency) on 2026-10-16; no guide until a faster Laya runtime passes the bar)** — Optional agent-side judge with the model as a parameter: `easy-verifier judge --model {laya,laya-ft,jev} --questions <needs_input.json>` → agent-input JSON → `score --agent-input`; MCP `score` gains an optional `judge` argument (default `none` = today's behaviour) that runs the judge **outside the engine core** (adapter-level, NFR-001 intact), answers are recorded as agent input so replay is byte-equal (FR-022), confidence feeds `w=0.5·c`. Model deps as extras (`[judge-laya]`, `[judge-jev]`), never default; `jev` refused for repos not on an allow-list; container image ships without weights. Reuses T104's backend interface unchanged.
 - [ ] **T025** — Publish the container image to Docker Hub (pull-and-run; `0.1.0` + `latest`, multi-arch, guarded local `scripts/publish_image.sh`) | common-infrastructure | C1 | Risk: Med | P2 | 🔄 In Progress 2026-10-08 (namespace temvar; script/docs/tests first, push only after explicit user go)
 
 **Wave 9 — Any-language discovery & agent hard gates (added 2026-09-26, user request; DDR-0006, PRD FR-031…FR-040)**
