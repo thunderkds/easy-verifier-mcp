@@ -84,9 +84,9 @@ def test_cli_score_needs_no_findings_and_returns_disclosed_ratings(
         "improvement_plan",
         "warnings",
     }
-    assert [item["dimension"] for item in payload["provenance"]] == list(
-        dimension_names()
-    )
+    assert [item["dimension"] for item in payload["provenance"]] == [
+        n for n in dimension_names() if n != "change-risk"  # T108: change-risk added
+    ]
     assert payload["overall"]["kind"] in {"overall_rating", "rating_abstention"}
     if payload["overall"]["kind"] == "overall_rating":
         assert payload["overall"]["disclosure"]
