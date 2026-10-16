@@ -39,7 +39,7 @@ from ..core.models import (
     SourceMiss,
     SourceRole,
 )
-from ..core.roles import role
+from ..core.roles import note_context_roles, role, role_files_in_scope
 from . import _code_extract
 
 NAME = "test-strategy"
@@ -237,11 +237,12 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     # `packages/app/vitest.config.ts` wherever they sit; a narrow scope still
     # may not reach outside its own file set.
     scope_set = frozenset(scope_files)
+    note_context_roles(context, SOURCES_SOUGHT, scope_set, scope_kind, whole_repo)
     for source in SOURCES_SOUGHT:
         if source == CORRESPONDENCE_SOURCE:
             continue
         paths = context.role_files.get(source, ())
-        in_bounds = paths if whole_repo else [p for p in paths if p in scope_set]
+        in_bounds = role_files_in_scope(source, paths, scope_set, whole_repo)
         if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(

@@ -35,7 +35,13 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import redact
-from ..core.roles import GENERIC_API_FACTS, _matcher, role
+from ..core.roles import (
+    GENERIC_API_FACTS,
+    _matcher,
+    note_context_roles,
+    role,
+    role_files_in_scope,
+)
 from ..core.scope import KIND_CHANGES
 from ..core.structure import _curated as _curated_conventions
 from ..core.structure import context_conventions, find_routes
@@ -193,8 +199,10 @@ def _facts(context: DimensionContext):
 
 
 def _read_specs(context, scope_files, whole_repo) -> list[tuple[str, str]]:
+    kind = getattr(context.resolved_scope, "kind", None)
+    note_context_roles(context, (SPEC,), scope_files, kind, whole_repo)
     paths = context.role_files.get(SPEC, ())
-    in_bounds = paths if whole_repo else [p for p in paths if p in set(scope_files)]
+    in_bounds = role_files_in_scope(SPEC, paths, set(scope_files), whole_repo)
     if paths and not in_bounds:
         context.sources_missing.append(
             SourceMiss(source=SPEC, reason="not in the resolved scope")

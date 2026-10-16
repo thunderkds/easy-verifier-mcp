@@ -43,7 +43,9 @@ from ..core.roles import (
     GENERIC_PATTERNS,
     _matcher,
     _registry,
+    note_context_roles,
     role,
+    role_files_in_scope,
 )
 from ..core.tokens import strip
 from . import _code_extract
@@ -181,9 +183,10 @@ def _facts(context: DimensionContext) -> dict:
     tables = curated_metric_tables()
 
     files: dict[str, list[tuple[str, str]]] = {}
+    note_context_roles(context, _FILE_ROLES, scope_set, kind, whole_repo)
     for name in _FILE_ROLES:
         paths = context.role_files.get(name, ())
-        in_bounds = paths if whole_repo else [p for p in paths if p in scope_set]
+        in_bounds = role_files_in_scope(name, paths, scope_set, whole_repo)
         if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(source=name, reason=f"not in the resolved {kind} scope")

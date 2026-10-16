@@ -25,7 +25,7 @@ from ..core.models import (
     SourceMiss,
     SourceRole,
 )
-from ..core.roles import _matcher, role
+from ..core.roles import _matcher, note_context_roles, role, role_files_in_scope
 
 NAME = "supply-chain"
 
@@ -101,10 +101,11 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     scope_kind = getattr(resolved_scope, "kind", None)
     whole_repo = resolved_scope is None or scope_kind == "project"
     scope_set = frozenset(scope_files)
+    note_context_roles(context, _READ_ORDER, scope_set, scope_kind, whole_repo)
 
     for source in _READ_ORDER:
         paths = context.role_files.get(source, ())
-        in_bounds = paths if whole_repo else [p for p in paths if p in scope_set]
+        in_bounds = role_files_in_scope(source, paths, scope_set, whole_repo)
         if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(

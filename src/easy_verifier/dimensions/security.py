@@ -27,7 +27,7 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import scan
-from ..core.roles import _matcher, role
+from ..core.roles import _matcher, note_context_roles, role, role_files_in_scope
 
 NAME = "security"
 
@@ -217,6 +217,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     whole_repo = resolved_scope is None or scope_kind == "project"
 
     probed: set[str] = set()
+    note_context_roles(context, SOURCES_SOUGHT, scope_files, scope_kind, whole_repo)
 
     # Role files are probed explicitly, before anything else. Without this the
     # miss list is guesswork: an absent lockfile is indistinguishable from one
@@ -231,7 +232,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             continue
 
         paths = context.role_files.get(source, ())
-        in_bounds = paths if whole_repo else [p for p in paths if p in scope_files]
+        in_bounds = role_files_in_scope(source, paths, scope_files, whole_repo)
         if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(

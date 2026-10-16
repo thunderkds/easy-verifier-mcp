@@ -31,7 +31,7 @@ from ..core.models import (
     SourceMiss,
     SourceRole,
 )
-from ..core.roles import _matcher, role
+from ..core.roles import _matcher, note_context_roles, role, role_files_in_scope
 from . import _code_extract
 
 NAME = "reliability"
@@ -127,6 +127,9 @@ def _documents(context: DimensionContext) -> Iterator[Excerpt]:
     scope = context.resolved_scope
     scope_files = tuple(getattr(scope, "files", ()) or ())
     whole_repo = scope is None or getattr(scope, "kind", None) == "project"
+    note_context_roles(
+        context, SOURCES_SOUGHT, scope_files, getattr(scope, "kind", None), whole_repo
+    )
     for rule in DOCUMENTATION_RULES.get(NAME, ()):
         match = _matcher(rule.patterns)
         for path in sorted(p for p in scope_files if match(p)):
@@ -138,7 +141,7 @@ def _documents(context: DimensionContext) -> Iterator[Excerpt]:
                 yield excerpt
             break
     readmes = context.role_files.get("readme", ())
-    in_bounds = readmes if whole_repo else [p for p in readmes if p in scope_files]
+    in_bounds = role_files_in_scope("readme", readmes, scope_files, whole_repo)
     if readmes and not in_bounds:
         context.sources_missing.append(
             SourceMiss(source="readme", reason="not in the resolved scope")
