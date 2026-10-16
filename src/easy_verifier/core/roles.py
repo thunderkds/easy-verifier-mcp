@@ -892,6 +892,72 @@ def role(name: str) -> SourceRole:
     return SourceRole(name=name, patterns=GENERIC_PATTERNS[name])
 
 
+CONTEXT_ROLES: frozenset[str] = frozenset(
+    {
+        "test-config",
+        "ci-workflow",
+        "lockfile",
+        "lint-config",
+        "format-config",
+        "package-manifest",
+        "container-config",
+        "api-spec",
+        # project documents
+        "readme",
+        "architecture-doc",
+        "decision-record",
+        "requirements-doc",
+        "spec-doc",
+        "task-breakdown",
+        "contributing-guide",
+        "licence-file",
+    }
+)
+"""Context roles (FR-078): at a narrow scope their files are read from the
+whole repository and cited as context, never filtered to the diff. Measured
+roles (source and test code) are not here and stay the scope's file set."""
+
+CONTEXT_ROLE_WARNING = (
+    "Read as repository context at the {scope} scope, not as changed files: "
+    "{roles}. Their files come from the whole repository and are cited, not "
+    "measured; measured source and test files stay the scope's own."
+)
+
+
+def role_files_in_scope(
+    name: str, paths: Sequence[str], scope_files, whole_repo: bool
+) -> Sequence[str]:
+    """``paths`` (role ``name``'s resolved files) a dimension may read.
+
+    The whole list at ``project`` scope, and for a context role at a narrow
+    scope that resolved to a non-empty file set; otherwise only the paths in
+    ``scope_files``. An empty narrow scope stays empty (nothing to evaluate).
+    """
+    if whole_repo or (name in CONTEXT_ROLES and scope_files):
+        return paths
+    return [path for path in paths if path in scope_files]
+
+
+def note_context_roles(
+    context, names: Sequence[str], scope_files, scope_kind, whole_repo: bool
+) -> None:
+    """Warn once which of ``names`` are read as repository context: context
+    roles with a file outside a narrow scope. Call before the first yield."""
+    if whole_repo or not scope_files:
+        return
+    read = [
+        name
+        for name in names
+        if name in CONTEXT_ROLES
+        and any(path not in scope_files for path in context.role_files.get(name, ()))
+    ]
+    if not read:
+        return
+    message = CONTEXT_ROLE_WARNING.format(scope=scope_kind, roles=", ".join(read))
+    if message not in context.warnings:
+        context.warnings = (*context.warnings, message)
+
+
 MAX_ERROR_LINES = 20
 """Error lines kept in one :class:`RoleInputError`; the rest are counted."""
 

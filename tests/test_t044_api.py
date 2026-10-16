@@ -296,9 +296,12 @@ def test_a_spec_generated_from_code_counts_as_a_spec(tmp_path: Path) -> None:
     assert "generates one" in metric["derivation"]
 
 
-def test_a_narrow_scope_never_reports_presence_as_missing(tmp_path: Path) -> None:
-    """Edge case: a change touching only routes does not make the spec or the
-    validation 'missing'; they abstain and say presence is a project fact."""
+def test_a_narrow_scope_measures_the_repo_spec_and_abstains_on_validation(
+    tmp_path: Path,
+) -> None:
+    """Edge case: a change touching only routes reads the repository's spec as
+    context, so the spec is measured present; validation code outside the diff
+    is not measured, so it abstains and says presence is a project fact."""
     repo = _repo(tmp_path, GOOD)
     _git(repo, "init", "-q")
     _git(repo, "add", ".")
@@ -306,9 +309,10 @@ def test_a_narrow_scope_never_reports_presence_as_missing(tmp_path: Path) -> Non
     (repo / "src/routes.ts").write_text(ROUTES + "// touch\n", encoding="utf-8")
     _git(repo, "commit", "-qam", "touch routes")
     values = _values(_result(repo, scope="changes", ref="HEAD~1..HEAD"))
-    for name in ("api_spec_missing", "request_validation_missing"):
-        assert values[name]["abstained"], name
-        assert "project scope" in str(values[name]), name
+    # FR-078 / T107: api-spec is a context role, read repo-wide at a narrow scope.
+    assert values["api_spec_missing"] == 0
+    assert values["request_validation_missing"]["abstained"]
+    assert "project scope" in str(values["request_validation_missing"])
     assert values["api_version_missing"] == 0  # the changed routes are versioned
 
 

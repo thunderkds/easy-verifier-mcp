@@ -144,7 +144,7 @@ def _git(repo: Path, *args: str) -> None:
     )
 
 
-def test_changes_scope_reads_only_the_explicit_ref_file_set(
+def test_changes_scope_measures_only_the_ref_files_and_reads_manifest_as_context(
     tmp_path: Path,
 ) -> None:
     source_dir = tmp_path / "src"
@@ -168,9 +168,13 @@ def test_changes_scope_reads_only_the_explicit_ref_file_set(
         ref="HEAD",
     )
 
-    assert set(pack.files_read) == {"src/auth.py"}
-    assert {excerpt.path for excerpt in pack.excerpts} == {"src/auth.py"}
-    assert "requirements.txt" not in pack.files_read
+    # FR-078 / T107: the manifest is a context role (read repo-wide); code = the diff.
+    assert set(pack.files_read) == {"src/auth.py", "requirements.txt"}
+    assert {excerpt.path for excerpt in pack.excerpts} == {
+        "src/auth.py",
+        "requirements.txt",
+    }
+    assert "package-manifest" in pack.sources_found
 
 
 def test_dependency_crypto_ci_and_excluded_secret_categories_are_covered(

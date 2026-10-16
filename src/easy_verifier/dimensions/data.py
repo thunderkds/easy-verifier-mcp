@@ -34,7 +34,12 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import redact
-from ..core.roles import GENERIC_DATA_FACTS, role
+from ..core.roles import (
+    GENERIC_DATA_FACTS,
+    note_context_roles,
+    role,
+    role_files_in_scope,
+)
 from ..core.structure import context_conventions
 from ..core.tokens import strip
 from . import _code_extract
@@ -150,7 +155,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
 
 def _in_scope(context: DimensionContext, source: str, scope_set, whole_repo):
     paths = context.role_files.get(source, ())
-    in_bounds = list(paths) if whole_repo else [p for p in paths if p in scope_set]
+    in_bounds = list(role_files_in_scope(source, paths, scope_set, whole_repo))
     if paths and not in_bounds:
         context.sources_missing.append(
             SourceMiss(source=source, reason="not in the resolved scope")
@@ -165,6 +170,9 @@ def _facts(context: DimensionContext) -> dict:
     scope_files = tuple(getattr(scope, "files", ()) or ())
     whole_repo = scope is None or getattr(scope, "kind", None) == "project"
     scope_set = frozenset(scope_files)
+    note_context_roles(
+        context, SOURCES_SOUGHT, scope_set, getattr(scope, "kind", None), whole_repo
+    )
     tables = curated_metric_tables()
     dirs, destructive_pattern = migration_patterns(context_conventions(context))
 

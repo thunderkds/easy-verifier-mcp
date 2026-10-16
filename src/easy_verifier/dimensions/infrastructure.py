@@ -34,7 +34,13 @@ from ..core.models import (
     SourceRole,
 )
 from ..core.redact import redact
-from ..core.roles import GENERIC_INFRASTRUCTURE_FACTS, _matcher, role
+from ..core.roles import (
+    GENERIC_INFRASTRUCTURE_FACTS,
+    _matcher,
+    note_context_roles,
+    role,
+    role_files_in_scope,
+)
 from . import _code_extract
 
 NAME = "infrastructure"
@@ -184,9 +190,10 @@ def _facts(context: DimensionContext) -> dict:
 
     files: dict[str, list[tuple[str, str]]] = {}
     seen: set[str] = set()
+    note_context_roles(context, SOURCES_SOUGHT, scope_set, kind, whole_repo)
     for name in SOURCES_SOUGHT:
         paths = context.role_files.get(name, ())
-        in_bounds = paths if whole_repo else [p for p in paths if p in scope_set]
+        in_bounds = role_files_in_scope(name, paths, scope_set, whole_repo)
         if paths and not in_bounds:
             context.sources_missing.append(
                 SourceMiss(source=name, reason=f"not in the resolved {kind} scope")
