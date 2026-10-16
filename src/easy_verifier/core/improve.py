@@ -180,6 +180,17 @@ FIX_HINTS: dict[str, str] = {
         "Add or change a test named for the changed source file, in the same "
         "project, that reproduces the bug the change fixes."
     ),
+    "new_code_without_test_share": (
+        "Add or change a test named for each changed source file, in the same "
+        "project, that exercises the new behaviour."
+    ),
+    "refactor_tests_deleted": (
+        "Keep the tests a refactor deletes, or move them so git detects a rename."
+    ),
+    "refactor_uncovered_share": (
+        "Cover the refactored source files with tests, in the same project, "
+        "before restructuring them."
+    ),
     # healthcare pack (T047)
     "phi_values_in_test_data_observed": (
         "Replace real-looking SSNs, record numbers and birth dates in test data "

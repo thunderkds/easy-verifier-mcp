@@ -2450,11 +2450,13 @@ def _validate_rating(value: Rating) -> None:
         raise ValueError("rating inputs must contain exactly RatingInput values")
 
     input_names = tuple(item.metric_name for item in value.inputs)
-    rules = declared_rules(
-        value.dimension,
-        (*input_names, *(entry[0] for entry in value.unavailable_metrics
-                         if type(entry) is tuple and entry)),
+    # Malformed entries are rejected below; only well-formed names select.
+    listed = tuple(
+        entry[0]
+        for entry in value.unavailable_metrics
+        if type(entry) is tuple and entry and type(entry[0]) is str
     )
+    rules = declared_rules(value.dimension, (*input_names, *listed))
     if len(set(input_names)) != len(input_names):
         raise ValueError("rating inputs contain duplicate metric names")
     expected_input_order = tuple(name for name in rules if name in input_names)
