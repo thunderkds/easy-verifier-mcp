@@ -28,7 +28,15 @@
 
 ## Demonstration
 
-**BEFORE**: [pasted timestamped output, captured before the first implementation commit]
+**BEFORE** (captured 2026-10-16T13:00:08+00:00 on `feat/T109-change-kind-gate` at `20470ea`, before any implementation commit; synthetic git repo, one commit `add: swap operands` changing `src/calc.py` with no kind signal, so the detected kind is `feature`; MCP called in-process through `mcp_server.mcp.call_tool("score", ...)`, CLI through `python -m easy_verifier.adapters.cli`):
+
+```
+captured: 2026-10-16T13:00:08+00:00
+MCP score(scope=changes): change_risk.kind = rating_abstention | change_kind = {"value": "feature", "source": "detected"}
+MCP needs_input keys: ['gate_evaluations'] | needs_input.change_kind present: False
+CLI score --agent-input {"change_kind": {"value": "bugfix", "reason": "swaps operands to fix a wrong sum"}} -> exit 2
+CLI stderr: validation error: agent input: 1 error(s): change_kind: unknown key; only picks, packs, gate_evaluations, registry_entries, reviews, improvements, batches and summary are accepted
+```
 
 **AFTER**: [same command, post-change]
 
