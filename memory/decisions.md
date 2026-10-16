@@ -1170,3 +1170,7 @@ Full text of MEMORY.md index lines that exceeded 400 characters, moved verbatim 
 
 ## 2026-10-16 — T109 merged: change_kind gate (FR-081)
 - `gate.parse_change_kind` (enum value + reason 1..500 chars, no other keys; never raises) and `change_kind_request` (proposal, signals, signals_omitted, allowed, instructions). MCP asks while the kind is detected; CLI takes the same answer via `--agent-input <file>`. Confirmed -> `source: confirmed` + redacted reason; invalid -> `rejected` list, detected kept. CLI == MCP byte-equal on node-monorepo.
+
+## 2026-10-16 — T110 merged: change-risk slice 1 complete
+- Per-kind rule groups `judge.CHANGE_KIND_RULES` + `declared_rules()` (plain table for every other dimension); rules of another kind abstain `NOT_THIS_KIND` and are dropped. 4 rules x weight 25 (bugfix was 100; rating earned over the active group, so no observed score change). python-ml: feature w/ tests 100, w/o 0, refactor 50, docs-only chore abstains.
+- Gotcha: the full suite breaks 14 report-writing tests when `EASY_VERIFIER_REPORTS_DIR` is set in the environment — run the suite with it unset.

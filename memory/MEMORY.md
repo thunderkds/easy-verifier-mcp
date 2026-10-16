@@ -47,7 +47,7 @@ input; **never commit realistic credential shapes** — assemble them at runtime
 
 ### Decisions
 - ▶ **[T107 merged: context roles repo-wide at narrow scopes (2026-10-16)](learnings.md)** — FR-078; project byte-equal on 4 repos; 97→85 on the node-monorepo bugfix; clear active_task after each agent
-- 🔒 **[DDR-0014 change-risk (2026-10-16)](decisions.md)** — separate `change_risk` headline; engine detects kind, agent confirms; T107 context roles, T108 dimension + bugfix rule, T109 kind gate merged; T110 rules next
+- 🔒 **[DDR-0014 change-risk (2026-10-16)](decisions.md)** — separate `change_risk` headline; engine detects kind, agent confirms; slice 1 merged (T107 context roles, T108 dimension, T109 kind gate, T110 kind rules); S2–S5 backlog
 - 🔬 **[T106 Kev zero-shot rejected (2026-10-16)](decisions.md)** — `--model kev` → own `kev.serve` (`KEV_BASE_URL`); Kev-0.8B 0.625 top-1 / p50 1.65 s, below the free heuristic; reopen only with kev.train + GPU
 - 🔬 **[T104 Laya verdict: not yet — CPU latency (2026-10-16)](decisions.md)** — fine-tuned Laya 11/11 on a 3-fold sample vs LLM 0.946/56, but p50 343–808 ms vs ≤200 ms bar; T105 judge stays gated; harness `experiments/t104_laya`
 - 🔒 **[Shared container is the primary documented path (T103, 2026-10-15)](decisions.md)** — PRD/spec/guides amended; stdio = supported alternative + bare-command default; no code changed. `.venv` is broken (system py 3.14): use a py3.12 venv.
