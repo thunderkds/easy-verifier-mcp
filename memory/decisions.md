@@ -1167,3 +1167,6 @@ Full text of MEMORY.md index lines that exceeded 400 characters, moved verbatim 
   chore/docs/ci/build/deps, case-insensitive, ":" or "/"); only fix/fixes/fixed issue refs → bugfix.
 - t026 "every dimension has a file-backed role" invariant exempts CHANGE_FLOORS (the change is not a file).
 - Real: node-monorepo 09be767d0 change_risk 0 (overall 85 unchanged); fullstack-ts 522d666 → 100.
+
+## 2026-10-16 — T109 merged: change_kind gate (FR-081)
+- `gate.parse_change_kind` (enum value + reason 1..500 chars, no other keys; never raises) and `change_kind_request` (proposal, signals, signals_omitted, allowed, instructions). MCP asks while the kind is detected; CLI takes the same answer via `--agent-input <file>`. Confirmed -> `source: confirmed` + redacted reason; invalid -> `rejected` list, detected kept. CLI == MCP byte-equal on node-monorepo.
