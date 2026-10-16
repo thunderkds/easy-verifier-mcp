@@ -122,8 +122,13 @@ APPROVED = {
         ("destructive_migration_ops", 15, "at_most", 0,
          ("Semantic Versioning", "Parallel Change"), PROJECT_DEFAULT),
     ],
-    "change-risk": [  # T108: change-risk added
-        ("bugfix_without_regression_test", 100, "at_least", 1,
+    "change-risk": [  # T108: change-risk added; T110: one rule group per kind
+        ("bugfix_without_regression_test", 25, "at_least", 1,
+         ("29119",), PROJECT_DEFAULT),
+        ("new_code_without_test_share", 25, "at_most", 0.20,
+         ("29119",), PROJECT_DEFAULT),
+        ("refactor_tests_deleted", 25, "at_most", 0, ("29119",), PROJECT_DEFAULT),
+        ("refactor_uncovered_share", 25, "at_most", 0.20,
          ("29119",), PROJECT_DEFAULT),
     ],
 }

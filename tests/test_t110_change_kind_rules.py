@@ -95,8 +95,9 @@ def test_rule_table_has_the_three_rules_with_project_defaults() -> None:
         "feature": (FEATURE,),
         "refactor": (DELETED, UNCOVERED),
     }
-    for names in CHANGE_KIND_RULES.values():
-        assert sum(rules[name].weight for name in names) == 100
+    assert sorted(n for names in CHANGE_KIND_RULES.values() for n in names) == sorted(
+        rules
+    )
 
 
 # --------------------------------------------------------------------------
@@ -109,7 +110,8 @@ def test_feature_with_matched_test_passes_only_feature_rule(repo: Path) -> None:
         repo,
         "feat: subtract",
         {
-            "src/calc.py": BASE["src/calc.py"] + "\n\ndef sub(a, b):\n    return a - b\n",
+            "src/calc.py": BASE["src/calc.py"]
+            + "\n\ndef sub(a, b):\n    return a - b\n",
             "tests/test_calc.py": BASE["tests/test_calc.py"]
             + "\n\ndef test_sub():\n    assert True\n",
         },
@@ -130,7 +132,8 @@ def test_feature_without_test_fails_citing_uncovered_sources(repo: Path) -> None
         repo,
         "feat: subtract and shout",
         {
-            "src/calc.py": BASE["src/calc.py"] + "\n\ndef sub(a, b):\n    return a - b\n",
+            "src/calc.py": BASE["src/calc.py"]
+            + "\n\ndef sub(a, b):\n    return a - b\n",
             "src/fmt.py": "def show(x):\n    return str(x).upper()\n",
             "tests/test_calc.py": BASE["tests/test_calc.py"] + "\n# sub\n",
         },
@@ -145,7 +148,9 @@ def test_feature_without_test_fails_citing_uncovered_sources(repo: Path) -> None
 
 def test_feature_counts_only_tests_changed_in_scope(repo: Path) -> None:
     # tests/test_calc.py exists in the repository but is not in the change
-    _commit(repo, "feat: subtract", {"src/calc.py": "def sub(a, b):\n    return a - b\n"})
+    _commit(
+        repo, "feat: subtract", {"src/calc.py": "def sub(a, b):\n    return a - b\n"}
+    )
     rule = _inputs(_headline(repo))[FEATURE]
     assert rule["metric_value"] == 1.0 and rule["passed"] is False
     assert rule["computed_from"] == ["src/calc.py"]
@@ -153,7 +158,9 @@ def test_feature_counts_only_tests_changed_in_scope(repo: Path) -> None:
 
 def test_feature_tests_only_abstains_no_changed_source(repo: Path) -> None:
     _commit(
-        repo, "feat: more cases", {"tests/test_calc.py": BASE["tests/test_calc.py"] + "\n#\n"}
+        repo,
+        "feat: more cases",
+        {"tests/test_calc.py": BASE["tests/test_calc.py"] + "\n#\n"},
     )
     headline = _headline(repo)
     assert headline["kind"] == "rating_abstention"
@@ -162,7 +169,9 @@ def test_feature_tests_only_abstains_no_changed_source(repo: Path) -> None:
 
 def test_feature_deleted_test_is_not_matched(repo: Path) -> None:
     (repo / "tests" / "test_calc.py").unlink()
-    _commit(repo, "feat: subtract", {"src/calc.py": "def sub(a, b):\n    return a - b\n"})
+    _commit(
+        repo, "feat: subtract", {"src/calc.py": "def sub(a, b):\n    return a - b\n"}
+    )
     rule = _inputs(_headline(repo))[FEATURE]
     assert rule["metric_value"] == 1.0 and rule["passed"] is False
 
@@ -173,7 +182,11 @@ def test_feature_deleted_test_is_not_matched(repo: Path) -> None:
 
 
 def test_refactor_covered_by_unchanged_repo_test_passes(repo: Path) -> None:
-    _commit(repo, "refactor: tidy add", {"src/calc.py": "def add(x, y):\n    return x + y\n"})
+    _commit(
+        repo,
+        "refactor: tidy add",
+        {"src/calc.py": "def add(x, y):\n    return x + y\n"},
+    )
     headline = _headline(repo)
     assert headline["change_kind"]["value"] == "refactor"
     assert headline["kind"] == "rating" and headline["value"] == 100
@@ -201,7 +214,11 @@ def test_refactor_uncovered_source_fails_citing_it(repo: Path) -> None:
 
 def test_refactor_deleting_a_test_fails_and_names_it(repo: Path) -> None:
     (repo / "tests" / "test_calc.py").unlink()
-    _commit(repo, "refactor: tidy add", {"src/calc.py": "def add(x, y):\n    return x + y\n"})
+    _commit(
+        repo,
+        "refactor: tidy add",
+        {"src/calc.py": "def add(x, y):\n    return x + y\n"},
+    )
     headline = _headline(repo)
     deleted = _inputs(headline)[DELETED]
     assert deleted["metric_value"] == 1 and deleted["passed"] is False
@@ -237,13 +254,17 @@ def test_refactor_monorepo_test_in_other_project_does_not_cover(repo: Path) -> N
             "svc_b/tests/test_pay.py": "def test_pay():\n    assert True\n",
         },
     )
-    _commit(repo, "refactor: pay", {"svc_a/src/pay.py": "def pay():\n    return 2 - 1\n"})
+    _commit(
+        repo, "refactor: pay", {"svc_a/src/pay.py": "def pay():\n    return 2 - 1\n"}
+    )
     rule = _inputs(_headline(repo))[UNCOVERED]
     assert rule["metric_value"] == 1.0 and rule["computed_from"] == ["svc_a/src/pay.py"]
 
 
 def test_confirmed_refactor_applies_refactor_rules(repo: Path) -> None:
-    _commit(repo, "feat: tidy add", {"src/calc.py": "def add(x, y):\n    return x + y\n"})
+    _commit(
+        repo, "feat: tidy add", {"src/calc.py": "def add(x, y):\n    return x + y\n"}
+    )
     before = _headline(repo)
     assert before["change_kind"]["value"] == "feature"
     assert list(_inputs(before)) == [FEATURE]
@@ -288,7 +309,7 @@ def test_chore_abstains_with_exact_reason(repo: Path, message: str, files) -> No
 
 def _derivation(repo: Path, metric: str) -> str:
     payload = score_repository(repo, scope="changes", ref="HEAD").to_dict()
-    for item in payload["metrics"]:
+    for item in payload["metrics"]["metrics"]:
         if item.get("name") == metric and item.get("dimension") == "change-risk":
-            return str(item)
+            return item["derivation"]
     return ""

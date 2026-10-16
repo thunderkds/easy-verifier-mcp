@@ -86,6 +86,33 @@ CHANGE_FLOORS: dict[str, CoverageFloor] = {
     "change-risk": CoverageFloor(1.0, "inclusive"),
 }
 
+# T110 (FR-082): change-risk rules apply per change kind. A rating is held
+# only to its kind's group (its value is earned over that group's weight); a
+# chore has no group. Groups partition the dimension's rules.
+CHANGE_KIND_RULES: dict[str, tuple[str, ...]] = {
+    "bugfix": ("bugfix_without_regression_test",),
+    "feature": ("new_code_without_test_share",),
+    "refactor": ("refactor_tests_deleted", "refactor_uncovered_share"),
+}
+
+NOT_THIS_KIND = "not evaluated: the rule belongs to another change kind"
+"""Abstention reason of a change-risk metric whose rule is not the active
+kind's: dropped by :func:`rate`, never listed and never weighed."""
+
+
+def declared_rules(
+    dimension: str, names: Sequence[str] = ()
+) -> dict[str, RatingRule]:
+    """The rules a result of ``dimension`` is held to: all of them, except
+    that a change-risk result naming only one kind's metrics is held to that
+    kind's group (T110)."""
+    rules = RATING_RULES[dimension]
+    if dimension in CHANGE_FLOORS and names:
+        for group in CHANGE_KIND_RULES.values():
+            if set(names) <= set(group):
+                return {name: rules[name] for name in group}
+    return rules
+
 
 def floor_of(dimension: str) -> CoverageFloor | None:
     """The declared coverage floor of a dimension or a pack, else ``None``."""
@@ -1006,7 +1033,29 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
     # publishes the number, so the threshold is a project default.
     "change-risk": _rules(
         RatingRule(
-            "bugfix_without_regression_test", 100, 1, "at_least",
+            "bugfix_without_regression_test", 25, 1, "at_least",
+            (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+        # T110: a feature leaves at most 20% of its changed source files
+        # without a matched test; a refactor deletes no test and leaves at
+        # most 20% of its changed source files without any covering test in
+        # the repository. Project defaults (user 2026-10-16). One kind's rules
+        # apply per change (CHANGE_KIND_RULES) and the rating is earned over
+        # that group only, so equal weights of 25 keep the declared total at
+        # 100 and give a refactor's two rules equal halves.
+        RatingRule(
+            "new_code_without_test_share", 25, 0.20, "at_most",
+            (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+        RatingRule(
+            "refactor_tests_deleted", 25, 0, "at_most",
+            (_ISO_29119_2,), PROJECT_DEFAULT,
+            area=AREAS[15],
+        ),
+        RatingRule(
+            "refactor_uncovered_share", 25, 0.20, "at_most",
             (_ISO_29119_2,), PROJECT_DEFAULT,
             area=AREAS[15],
         ),
@@ -1384,9 +1433,13 @@ class RatingAbstention:
 
 
 def _measured_share(
-    dimension: str, unavailable: tuple[tuple[str, str], ...]
+    dimension: str,
+    unavailable: tuple[tuple[str, str], ...],
+    measured: Sequence[str] = (),
 ) -> Decimal:
-    rules = RATING_RULES[dimension]
+    rules = declared_rules(
+        dimension, (*measured, *(name for name, _reason in unavailable))
+    )
     declared = sum(rule.weight for rule in rules.values())
     missing = sum(rules[name].weight for name, _reason in unavailable)
     return Decimal(declared - missing) / Decimal(declared)
@@ -1647,6 +1700,21 @@ def rate(
     if missing:
         raise ValueError(
             f"missing declared rating metric(s) for {dimension!r}: {', '.join(missing)}"
+        )
+
+    if dimension in CHANGE_FLOORS:
+        # T110: another kind's rule is not evaluated -- neither rated nor
+        # listed, so it can never read as a silent zero or a gap.
+        rules = declared_rules(
+            dimension,
+            tuple(
+                name
+                for name in rules
+                if not (
+                    isinstance(by_name[name].outcome, MetricAbstention)
+                    and by_name[name].outcome.reason == NOT_THIS_KIND
+                )
+            ),
         )
 
     inputs: list[RatingInput] = []
@@ -2153,7 +2221,8 @@ def _validate_abstention(value: RatingAbstention) -> None:
             value.coverage_floor is None
             or value.achieved_coverage is None
             or value.achieved_coverage < value.coverage_floor
-            or unavailable_names != tuple(RATING_RULES[value.dimension])
+            or unavailable_names
+            != tuple(declared_rules(value.dimension, unavailable_names))
             or value.failure is not None
             or value.abstentions
         ):
@@ -2168,7 +2237,8 @@ def _validate_abstention(value: RatingAbstention) -> None:
             or value.achieved_coverage is None
             or value.achieved_coverage < value.coverage_floor
             or not unavailable_names
-            or unavailable_names == tuple(RATING_RULES[value.dimension])
+            or unavailable_names
+            == tuple(declared_rules(value.dimension, unavailable_names))
             or _measured_share(value.dimension, value.unavailable_metrics)
             >= MEASURED_WEIGHT_FLOOR
             or value.failure is not None
@@ -2379,8 +2449,12 @@ def _validate_rating(value: Rating) -> None:
     if any(type(item) is not RatingInput for item in value.inputs):
         raise ValueError("rating inputs must contain exactly RatingInput values")
 
-    rules = RATING_RULES[value.dimension]
     input_names = tuple(item.metric_name for item in value.inputs)
+    rules = declared_rules(
+        value.dimension,
+        (*input_names, *(entry[0] for entry in value.unavailable_metrics
+                         if type(entry) is tuple and entry)),
+    )
     if len(set(input_names)) != len(input_names):
         raise ValueError("rating inputs contain duplicate metric names")
     expected_input_order = tuple(name for name in rules if name in input_names)
@@ -2415,7 +2489,7 @@ def _validate_rating(value: Rating) -> None:
             "rating inputs and unavailable metrics must partition all rules"
         )
 
-    if _measured_share(value.dimension, value.unavailable_metrics) < (
+    if _measured_share(value.dimension, value.unavailable_metrics, input_names) < (
         MEASURED_WEIGHT_FLOOR
     ):
         raise ValueError(

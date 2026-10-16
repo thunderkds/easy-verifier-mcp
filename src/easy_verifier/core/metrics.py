@@ -3566,7 +3566,12 @@ PACK_METRICS: dict[str, tuple[str, ...]] = {
     ),
     # T108: the change-risk dimension owns its metric the same way, so no
     # other dimension's metric list (and no project payload) gains it.
-    "change-risk": ("bugfix_without_regression_test",),
+    "change-risk": (
+        "bugfix_without_regression_test",
+        "new_code_without_test_share",
+        "refactor_tests_deleted",
+        "refactor_uncovered_share",
+    ),
 }
 """Metrics of an optional pack (T047), or of the change-risk dimension (T108).
 A pack's evidence computes only these, and no other dimension computes them, so
