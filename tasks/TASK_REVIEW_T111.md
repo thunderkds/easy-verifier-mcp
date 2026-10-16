@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail / ☐ N/A | |
-| Verification command run | ☐ pass / ☐ fail / ☐ N/A | |
-| Negative cases hold | ☐ pass / ☐ fail / ☐ N/A | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail / ☐ N/A | |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | No UI |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | No UI |
-| **UI: Responsiveness at target viewports** | ☐ N/A | No UI |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t081_change_check_guide.py` now pins the new text ("Reading a change score", "`change_risk`", "never averaged into `overall`") instead of the removed wording — accepted by Supervisor (it pinned exactly the text this task removes). Doc pin tests t018/t035/t100/t081/t071/t080/t024/t103/t072: `166 passed, 1 skipped in 45.53s` (agent) — pass |
+| Verification command run | ☑ pass | `grep -rn "not penalised\|change score as partial" README.md docs/DOCKER_MCP_GUIDE.md docs/EVALUATION_GUIDE.md` → no match, exit=1 (agent) — pass |
+| Negative cases hold | ☑ pass | Docs only: `git diff develop...HEAD -- src` empty; no private names (T100 guard green) — pass |
+| verify | ☑ pass | Supervisor ran the README's CLI example verbatim (2026-10-16) on a throwaway repo (`fix/sum` branch, one-line bugfix, no test): exit 0, `change_risk` rating 0, kind `bugfix` `confirmed`, reason "swaps operands to fix a wrong sum", `bugfix_without_regression_test` failed — matches the documented behaviour. README section reviewed against T107–T110 review files: numbers and rule table accurate — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | README § Checking a feature or bugfix, DOCKER_MCP_GUIDE § 5, EVALUATION_GUIDE (payload row + "Reading the change-risk headline"), test_t081 pins. code-review: P0/P1/P2 none — pass |
+| Full smoke suite still green (no regression) | ☑ pass | No code change; every doc-pinning test passes (166 passed, 1 skipped) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | No UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | No UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | No UI |
 
 ---
 
