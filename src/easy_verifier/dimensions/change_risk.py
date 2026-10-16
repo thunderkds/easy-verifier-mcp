@@ -18,6 +18,7 @@ Nothing here runs target code; git is read through ``core.git.run_git`` only.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import re
 from collections.abc import Iterator, Sequence
@@ -225,6 +226,13 @@ def _assess(context: DimensionContext) -> None:
         issue_patterns=convention_values(conventions, "issue_reference_patterns"),
         issue_exclusions=convention_values(conventions, "issue_reference_exclusions"),
     )
+    # T109 (FR-081): the calling agent's validated answer replaces the
+    # detected value; the signals stay disclosed beside it.
+    confirmed = getattr(context, "confirmed_kind", None)
+    if confirmed is not None:
+        context.change_kind = dataclasses.replace(
+            context.change_kind, value=confirmed, source="confirmed"
+        )
     if root:
         _abstain(context, ROOT_COMMIT)
         return

@@ -164,7 +164,13 @@ def gather_combined(
         "than one read: only the listed share was read, in priority order. "
         "Ask the user its question -- read the next batch (more tokens) or "
         "stop -- and to continue call score again with the same agent_input "
-        'plus "batches": batches_done + 1 (or "all"). Optional domain packs '
+        'plus "batches": batches_done + 1 (or "all"). If it carries '
+        "needs_input.change_kind (changes or worktree scope), the engine "
+        "detected what the change is for (proposal, from the listed signals): "
+        "read the diff and send agent_input.change_kind = "
+        '{"value": one of allowed, "reason": "..."} on the next call to '
+        "confirm or override it; the change_risk rules follow that kind. "
+        "Optional domain packs "
         "are never guessed: only if the user confirms the repository handles "
         "patient health information, send agent_input.packs = "
         '["healthcare"] (PHI in test data and logs, BAA and residency '
@@ -218,6 +224,8 @@ def score(
         needs_input["review"] = result.review
     if result.continue_batches is not None:
         needs_input["continue_batches"] = result.continue_batches
+    if result.change_kind_question is not None:
+        needs_input["change_kind"] = result.change_kind_question
     if result.needs_input is not None:
         needs_input["picks"] = result.needs_input
     elif result.gate_requests is not None:

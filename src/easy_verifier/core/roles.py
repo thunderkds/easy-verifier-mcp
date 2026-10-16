@@ -1173,6 +1173,7 @@ _AGENT_INPUT_KEYS = (
     "improvements",
     "batches",
     "summary",
+    "change_kind",
 )
 
 
@@ -1210,7 +1211,7 @@ def validate_agent_input(
     for key in document:
         if key not in _AGENT_INPUT_KEYS:
             errors.append(
-                f"{redact(str(key))}: unknown key; only picks, packs, "
+                f"{redact(str(key))}: unknown key; only picks, packs, change_kind, "
                 "gate_evaluations, registry_entries, reviews, improvements, "
                 "batches and summary are accepted"
             )

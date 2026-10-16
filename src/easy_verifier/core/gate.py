@@ -25,6 +25,10 @@ The review gate (T038, FR-047) lists each local registry entry awaiting the
 user's review once — value and link — for the agent to show the user; the
 answers come back as ``agent_input.reviews``. An ``improve`` answer and a
 rejected field with no data left return through the reference gate.
+
+The change-kind gate (T109, FR-081) asks the agent to confirm or override the
+change kind the ``change-risk`` dimension detected; the answer comes back as
+``agent_input.change_kind = {value, reason}`` and is validated here.
 """
 
 from __future__ import annotations
@@ -36,6 +40,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from ..dimensions import _doc_extract
+from ..dimensions.change_risk import KINDS
 from .context import _is_secret_bearing, _resolved_repo, _walk
 from .judge import (
     BORDERLINE_BAND,
@@ -48,6 +53,7 @@ from .judge import (
     within_band,
 )
 from .metric_tables import FIELD_METRICS, OPTIONAL_FIELDS, ROLE_METRICS
+from .models import ChangeKind
 from .redact import redact
 from .registry import (
     ENTRY_FIELDS,
@@ -759,8 +765,78 @@ def _has(entry, field: str) -> bool:
     return bool(entry.fields.get(field))
 
 
+# ---------------------------------------------------------------------------
+# change-kind gate (T109)
+
+MAX_CHANGE_KIND_REASON_CHARS = 500
+
+CHANGE_KIND_INSTRUCTIONS = (
+    "The engine detected this change's kind from the signals listed (branch "
+    "name, commit subjects, issue references, file kinds); it decides which "
+    "change_risk rules apply. Read the change's diff and decide what it is "
+    "for: bugfix (corrects wrong behaviour), feature (adds behaviour), "
+    "refactor (same behaviour, different code) or chore (documentation, "
+    "configuration or dependencies only); a mixed change takes the most "
+    "demanding kind, in that order. Send the answer on the next score call "
+    "as agent_input.change_kind: {\"value\": one of allowed, \"reason\": "
+    "\"what in the diff decided it, at most 500 characters\"}. Answering the "
+    "proposal confirms it; another value overrides it. The payload then says "
+    "source confirmed with your reason; without a valid answer it keeps the "
+    "detected kind (source detected)."
+)
+"""Fixed text sent with every change-kind gate (FR-081)."""
+
+_CHANGE_KIND_FIELDS = ("value", "reason")
+
+
+def change_kind_request(kind: ChangeKind) -> dict:
+    """``needs_input.change_kind``: the detected kind as a proposal, the
+    signals it came from, the allowed values and fixed instructions."""
+    return {
+        "proposal": kind.value,
+        "signals": [
+            {"source": item.source, "value": item.value, "kind": item.kind}
+            for item in kind.signals
+        ],
+        "signals_omitted": kind.signals_omitted,
+        "allowed": list(KINDS),
+        "instructions": CHANGE_KIND_INSTRUCTIONS,
+    }
+
+
+def parse_change_kind(raw: object) -> tuple[dict | None, list[str]]:
+    """Validate ``agent_input.change_kind``: ``{value, reason}`` with ``value``
+    one of :data:`KINDS` and ``reason`` a non-empty string of at most
+    :data:`MAX_CHANGE_KIND_REASON_CHARS` characters, no other key. Returns the
+    answer and no problems, or ``None`` and every problem found. Untrusted:
+    an invalid answer is never an error, the caller reports the problems."""
+    if not isinstance(raw, dict):
+        return None, ["change_kind: must be an object with value and reason"]
+    problems = [
+        f"change_kind.{redact(str(key))}: unknown key; only value and reason "
+        "are accepted"
+        for key in raw
+        if key not in _CHANGE_KIND_FIELDS
+    ]
+    value, reason = raw.get("value"), raw.get("reason")
+    if not isinstance(value, str) or value not in KINDS:
+        problems.append(f"change_kind.value: must be one of {', '.join(KINDS)}")
+    if not isinstance(reason, str) or not reason.strip():
+        problems.append("change_kind.reason: must be a non-empty string")
+    elif len(reason) > MAX_CHANGE_KIND_REASON_CHARS:
+        problems.append(
+            f"change_kind.reason: at most {MAX_CHANGE_KIND_REASON_CHARS} "
+            f"characters, got {len(reason)}"
+        )
+    if problems:
+        return None, problems
+    return {"value": value, "reason": reason}, []
+
+
 __all__ = [
+    "CHANGE_KIND_INSTRUCTIONS",
     "FRAMEWORK_FIELDS",
+    "MAX_CHANGE_KIND_REASON_CHARS",
     "MAX_CANDIDATES_PER_ROLE",
     "MAX_IMPROVE_ROUNDS",
     "MAX_REVIEW_ENTRIES",
@@ -770,10 +846,12 @@ __all__ = [
     "REFERENCE_INSTRUCTIONS",
     "MAX_EVIDENCE_REFS_PER_GATE",
     "apply_gate_evaluations",
+    "change_kind_request",
     "detect_evaluate_gates",
     "detect_pick_gates",
     "detect_stack",
     "gate_requests",
+    "parse_change_kind",
     "reference_requests",
     "required_fields",
     "review_requests",

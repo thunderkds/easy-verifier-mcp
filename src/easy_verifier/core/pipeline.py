@@ -61,6 +61,7 @@ def run_dimension(
     picks: Mapping[str, Sequence[str]] | None = None,
     batches: int | str = 1,
     conventions: RegistryEntry | None = None,
+    change_kind: str | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
@@ -69,6 +70,8 @@ def run_dimension(
     validated by :func:`easy_verifier.core.roles.validate_agent_input`.
     ``batches`` is how many priority batches a code tier reads above its
     source cap (T068): a count of at least 1, or ``"all"``.
+    ``change_kind`` is the kind the calling agent confirmed (T109, already
+    validated by ``gate.parse_change_kind``); only ``change-risk`` reads it.
     """
     # Path validation lives in `detect_context` (T002), which raises
     # `RepoPathError` for a path that is absent or is not a directory. T004's
@@ -81,6 +84,8 @@ def run_dimension(
     # without them a dimension resolves the repository's own on first use.
     if conventions is not None:
         context.conventions = conventions
+    if change_kind is not None:
+        context.confirmed_kind = change_kind
 
     # Source roles resolve once, before `collect`, so every dimension -- the
     # bespoke three included -- reads from the same role -> files map, and the

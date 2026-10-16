@@ -29,6 +29,7 @@ from ..packs import PACKS
 from . import redact as redact_module
 from .batches import BatchInputError, parse_batches
 from .findings import ValidationError
+from .gate import parse_change_kind
 from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
     DEFAULT_BUDGET_BYTES,
@@ -114,6 +115,9 @@ def combined_pack(
         parse_agent_input(agent_input) if agent_input is not None else None,
     )
     count = _batch_count(batches, agent_input)
+    # T109: a valid agent_input.change_kind replaces the detected kind in the
+    # change-risk dimension; an invalid one is reported by score, never raised.
+    confirmed_kind = _confirmed_kind(agent_input)
 
     # Canonical, deterministic order regardless of the order requested (AC #10).
     ordered_names = tuple(name for name in available_names if name in requested)
@@ -131,6 +135,7 @@ def combined_pack(
                 picks=picks,
                 batches=count,
                 conventions=conventions,
+                change_kind=confirmed_kind,
             )
         except (RepoPathError, ValidationError):
             # NOT isolated. AC #6's robustness is about one *dimension* failing
@@ -155,6 +160,17 @@ def combined_pack(
         coverage=_aggregate_coverage(slots),
         budget_model=BUDGET_MODEL,
     )
+
+
+def _confirmed_kind(agent_input: object | None) -> str | None:
+    """The kind a valid ``agent_input.change_kind`` names, else ``None``."""
+    if agent_input is None:
+        return None
+    document = parse_agent_input(agent_input)
+    if "change_kind" not in document:
+        return None
+    answer, _problems = parse_change_kind(document["change_kind"])
+    return answer["value"] if answer is not None else None
 
 
 def _batch_count(explicit: object | None, agent_input: object | None) -> int | str:
