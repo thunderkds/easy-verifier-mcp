@@ -37,9 +37,15 @@ error: unknown model 'kev'; known: random, heuristic, laya, laya-ft, jev
 exit=2
 ```
 
-**AFTER**: [same command against a real kev.serve, post-change]
+**AFTER** (real `kev.serve --run jaredpalmer/kev-0.8b --device cpu`, 2026-10-16 04:48-04:49 UTC):
 
-**DELTA**: [one sentence]
+```
+$ KEV_BASE_URL=http://127.0.0.1:8009 run.py --model kev --questions .local/t104/questions_only.jsonl --out .local/t106/answers/kev08.jsonl
+kev server: http://127.0.0.1:8009 (model kev-0.8b)
+exit=0     (56 answers, 0 missing, 0 invalid; overall top-1 0.625, ECE 0.236, p50 1651.9 ms)
+```
 
-**WITNESS**: [who ran it and when]
+**DELTA**: `--model kev` went from `unknown model` (exit 2) to 56 scored answers from a self-hosted server; verdict reject against the unchanged bar.
+
+**WITNESS**: backend-developer agent, 2026-10-16 (BEFORE 04:30:43 UTC, AFTER 04:49:58 UTC).
 
