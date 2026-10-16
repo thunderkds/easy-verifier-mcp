@@ -327,14 +327,17 @@ def scored_dimensions(scope: str) -> tuple[str, ...]:
 
 
 def report_dimensions(
-    repo_path: str | Path, agent_input: object | None = None
+    repo_path: str | Path,
+    agent_input: object | None = None,
+    scope: str | None = None,
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """``(dimensions to gather, active packs)`` for ``write_report`` (T047):
     every dimension, then the packs ``.easy-verifier.toml`` or
     ``agent_input.packs`` enable, so the report scores what ``score`` does."""
     document = parse_agent_input(agent_input) if agent_input is not None else None
     names, _notes = active_packs(repo_path, document)
-    return (*dimension_names(), *names), names
+    core = scored_dimensions(scope) if scope is not None else dimension_names()
+    return (*core, *names), names
 
 
 def score_packs(
@@ -400,9 +403,16 @@ def score_packs(
         )
         for dimension in expected
     )
-    # T108: change-risk is its own headline, kept out of the overall.
+    # T108: change-risk is its own headline, kept out of the overall, and
+    # absent at project scope (as in the score payload) even when gathered.
     change_risk = next(
-        (item for item in every_rating if item.dimension in CHANGE_FLOORS), None
+        (
+            item
+            for item in every_rating
+            if item.dimension in CHANGE_FLOORS
+            and getattr(pack_map.get(item.dimension), "scope", None) != "project"
+        ),
+        None,
     )
     rules_ratings = tuple(
         item for item in every_rating if item.dimension not in CHANGE_FLOORS

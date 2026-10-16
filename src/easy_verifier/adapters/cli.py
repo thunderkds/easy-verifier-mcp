@@ -203,7 +203,7 @@ def _run_combined(args: argparse.Namespace) -> int:
 def _run_report(args: argparse.Namespace) -> int:
     findings = _read_findings(args.findings)
     agent_input = _read_agent_input(args.agent_input)
-    default, active = report_dimensions(args.repo, agent_input)
+    default, active = report_dimensions(args.repo, agent_input, args.scope)
     packs = combined_pack(
         _parse_dimensions(args.dimensions) if args.dimensions else default,
         repo_path=args.repo,

@@ -641,6 +641,7 @@ def test_registry_is_a_plain_dict_of_descriptors():
         "data",
         "operations",
         "infrastructure",
+        "change-risk",  # T108: change-risk added
     }
     descriptor = DIMENSIONS["architecture"]
     assert type(descriptor) is DimensionDescriptor

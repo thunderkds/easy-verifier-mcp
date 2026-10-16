@@ -345,7 +345,8 @@ def test_overall_is_unchanged_by_the_dimension(repo: Path) -> None:
 
 
 def test_other_kinds_abstain_until_t110(repo: Path) -> None:
-    _commit(repo, "feat: subtract", {"src/calc.py": "def sub(a, b):\n    return a - b\n"})
+    subtract = {"src/calc.py": "def sub(a, b):\n    return a - b\n"}
+    _commit(repo, "feat: subtract", subtract)
     headline = _headline(repo, scope="changes", ref="HEAD")
     assert headline["kind"] == "rating_abstention"
     assert headline["unavailable_metrics"] == [
@@ -433,7 +434,9 @@ def test_cli_payload_carries_the_headline(repo: Path, capsys, monkeypatch) -> No
 # --------------------------------------------------------------------------
 
 
-def test_report_shows_change_risk_block(repo: Path, tmp_path: Path, monkeypatch) -> None:
+def test_report_shows_change_risk_block(
+    repo: Path, tmp_path: Path, monkeypatch
+) -> None:
     from easy_verifier.core.report import write_report
     from easy_verifier.core.score import report_dimensions
     from easy_verifier.core.synthesis import combined_pack
@@ -447,3 +450,22 @@ def test_report_shows_change_risk_block(repo: Path, tmp_path: Path, monkeypatch)
     assert "Change risk <strong>0/100</strong>" in html
     assert "bugfix" in html and "commit subject" in html
     assert RULE in html and "src/calc.py" in html
+
+
+def test_project_report_omits_the_change_risk_line(
+    repo: Path, tmp_path: Path, monkeypatch
+) -> None:
+    from easy_verifier.core.report import write_report
+    from easy_verifier.core.score import report_dimensions
+    from easy_verifier.core.synthesis import combined_pack
+    from easy_verifier.dimensions import dimension_names
+
+    monkeypatch.setenv("EASY_VERIFIER_REPORTS_DIR", str(tmp_path / "reports"))
+    names, _active = report_dimensions(repo, scope="project")
+    assert "change-risk" not in names
+    assert "change-risk" in report_dimensions(repo, scope="changes")[0]
+    for gathered in (names, dimension_names()):
+        packs = combined_pack(gathered, repo_path=repo, scope="project")
+        html = Path(write_report([], packs, repo).absolute_path).read_text()
+        assert "Change risk" not in html
+        assert "Overall <strong>" in html

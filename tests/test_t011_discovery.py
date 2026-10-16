@@ -27,6 +27,7 @@ EXPECTED_NAMES = {
     "data",
     "operations",
     "infrastructure",
+    "change-risk",  # T108: change-risk added
 }
 
 
@@ -34,7 +35,7 @@ def test_discovery_returns_all_thirteen_descriptor_records() -> None:
     discovered = list_dimensions()
 
     assert {item.name for item in discovered} == EXPECTED_NAMES
-    assert len(discovered) == 13
+    assert len(discovered) == 14  # T108: change-risk added
     for item in discovered:
         descriptor = DIMENSIONS[item.name]
         assert item.purpose == descriptor.purpose

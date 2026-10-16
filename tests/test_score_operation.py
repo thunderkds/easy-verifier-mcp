@@ -68,7 +68,9 @@ def test_cli_score_needs_no_findings_and_returns_disclosed_ratings(
 
     assert completed.returncode == 0, completed.stderr
     payload = json.loads(completed.stdout)
-    assert tuple(item["dimension"] for item in payload["ratings"]) == dimension_names()
+    assert tuple(item["dimension"] for item in payload["ratings"]) == tuple(
+        n for n in dimension_names() if n != "change-risk"  # T108: change-risk added
+    )
     # T026 (FR-039, AC #10) adds per-dimension source provenance to the payload.
     # T065 (FR-055) adds the improvement plan; T067 (FR-059) the warnings;
     # T082 (FR-073) the measured and uncovered evaluation areas.

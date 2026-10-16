@@ -30,7 +30,10 @@ from easy_verifier.core.roles import (
     resolve,
     validate_agent_input,
 )
-from easy_verifier.core.score import score_repository
+from easy_verifier.core.score import (
+    score_repository,
+    scored_dimensions,  # T108: change-risk added
+)
 from easy_verifier.core.synthesis import combined_pack
 from easy_verifier.dimensions import DIMENSIONS, dimension_names, list_dimensions
 
@@ -124,7 +127,7 @@ def _mcp(name: str, arguments: dict) -> object:
 
 
 def test_every_descriptor_declares_roles_and_sources_sought_is_their_names() -> None:
-    assert len(DIMENSIONS) == 13
+    assert len(DIMENSIONS) == 14  # T108: change-risk added
     for name, descriptor in DIMENSIONS.items():
         assert descriptor.roles, name
         assert all(isinstance(role, SourceRole) for role in descriptor.roles), name
@@ -684,7 +687,7 @@ def test_report_renders_one_provenance_line_per_dimension(tmp_path: Path) -> Non
         tmp_path / "rep", {"notes/wants.md": "# Wants\n", "README.md": "# r\n"}
     )
     packs = combined_pack(
-        dimension_names(),
+        scored_dimensions("project"),  # T108: change-risk added
         repo_path=repo,
         agent_input={"picks": {"requirements-doc": ["notes/wants.md"]}},
     )

@@ -38,7 +38,11 @@ from ..core.models import (
 )
 from ..core.redact import redact
 from ..core.scope import _EMPTY_TREE, MAX_DIFF_CHARS, _is_contained, _normalize_range
-from ..core.structure import context_conventions, convention_values, find_issue_references
+from ..core.structure import (
+    context_conventions,
+    convention_values,
+    find_issue_references,
+)
 from .test_strategy import _MANIFEST_NAMES, _correspondence
 
 NAME = "change-risk"
@@ -384,7 +388,9 @@ def _manifest_paths(repo: Path, paths: Sequence[str]) -> tuple[str, ...]:
     directories = {""}
     for path in paths:
         parts = PurePosixPath(path).parent.parts
-        directories.update("/".join(parts[:index]) for index in range(1, len(parts) + 1))
+        directories.update(
+            "/".join(parts[:index]) for index in range(1, len(parts) + 1)
+        )
     found: list[str] = []
     for directory in sorted(directories):
         absolute = repo / directory if directory else repo

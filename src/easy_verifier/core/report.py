@@ -50,6 +50,7 @@ from easy_verifier.core.improve import (
 from easy_verifier.core.judge import (
     AREAS,
     BORDERLINE_BAND,
+    CHANGE_FLOORS,
     PACK_FLOORS,
     PROJECT_DEFAULT,
     RATING_RULES,
@@ -107,7 +108,10 @@ class ReportWriteError(OSError):
 def _scoreable(names: tuple[str, ...]) -> bool:
     """Every dimension in canonical order, then only active optional packs
     (T047): the set ``score`` rates, so the report shows the same score."""
-    core = dimension_names()
+    # T108: change-risk is gathered except at project scope.
+    core = tuple(
+        name for name in dimension_names() if name not in CHANGE_FLOORS or name in names
+    )
     return names[: len(core)] == core and set(names[len(core) :]) <= set(PACK_FLOORS)
 
 
