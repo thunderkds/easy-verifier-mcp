@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail / ☐ N/A | |
-| Verification command run | ☐ pass / ☐ fail / ☐ N/A | |
-| Negative cases hold | ☐ pass / ☐ fail / ☐ N/A | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail / ☐ N/A | |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t108_change_risk.py` (49 tests; collection failed pre-module with `ImportError: cannot import name 'change_risk'`); t026 invariant exemption (Supervisor decision 4): `110 passed in 11.51s` (t026 + t108) — pass |
+| Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!`; worktree clean at `2edcd8b` — pass |
+| Negative cases hold | ☑ pass | project/task scope abstain ("change risk is rated at changes/worktree scope only") and project payload omits the dimension; deleted test never matches; test in another monorepo project does not match; rename-only (R100) and test-only diffs abstain "no changed source code"; root commit / clipped diff disclosed (all in t108 tests) — pass |
+| verify | ☑ pass | Supervisor independent CLI run 2026-10-16 12:48 UTC, node-monorepo `--scope changes --ref 09be767d0`: payload keys `ratings, overall, change_risk, …`; `change_risk` = rating 0, `bugfix_without_regression_test` failed, cites `backend/server/dashboard/controllers/recently-added-companies.js`; `overall` 85 unchanged. Supervisor `write-report` on fullstack-ts `--ref 522d666`: "Change risk 100/100 — change kind bugfix (detected from commit subject: … fix(T041): …); passing: bugfix_without_regression_test 1 (≥ 1), cites apps/web/src/features/inventory/InventoryPage.test.tsx. Not averaged into the overall." AC2 (agent): project payload sha256 equal on 4 repos (option: omit). AC7 (a)(b)(c) all matched pre-registered expectations — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `change_risk.py` (417 lines), judge (`CHANGE_FLOORS`, rule, `rate_overall` filter, table-consistency check), metrics `PACK_METRICS`, score headline, report line, pipeline (2 lines), models, adapters (scope arg). code-review: P0/P1/P2 none. P3: (a) a project-scope `combined`/`write_report` explicitly requesting change-risk still renders its pack section; (b) the T107 context note is still pack-only. Security (Medium): git read-only with explicit argv (`log`, `diff --name-status -M`, `rev-parse`); commit subjects, branch, paths redacted; manifest probe contained (`_is_contained`) and never reads files — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Supervisor run on `2edcd8b`: `3033 passed, 3 skipped in 440.40s (0:07:20)`, exit 0. Presence-only test edits approved (marked `# T108: change-risk added`) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ pass | Rendered `evidence-report-changes-20261016T125657-233753Z.html` (fullstack-ts 522d666): one added `<p class="summary-overall">Change risk …</p>` line after the overall line, text pasted in the verify row; no other report element changed (project-scope report omits it, t108 test) — pass |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ pass | `git diff develop...HEAD -- core/report.py` adds 0 lines matching style/css/color/font/@media/px; the block uses only the existing `summary-overall` and `notice notice-abstain` classes — pass |
+| **UI: Responsiveness at target viewports** | ☑ pass | By construction, not a viewport screenshot: the line is the same element and class as the existing overall line inside the same summary container, with no new CSS or fixed widths, so it wraps exactly like the overall line at 375 px and 1280 px. No browser render was taken — pass (structural) |
 
 ---
 
