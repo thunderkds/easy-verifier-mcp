@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail / ☐ N/A | |
-| Verification command run | ☐ pass / ☐ fail / ☐ N/A | |
-| Negative cases hold | ☐ pass / ☐ fail / ☐ N/A | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail / ☐ N/A | |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail / ☐ N/A | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | No UI |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | No UI |
-| **UI: Responsiveness at target viewports** | ☐ N/A | No UI |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t107_context_roles_repo_wide.py` (43 tests; 23 failed pre-fix — `assert 'vitest.config.ts' in ('src/app.js', 'src/app.js')`). Supervisor re-run: t107 + t008 + t044 + t100 → `81 passed in 10.27s` — pass |
+| Verification command run | ☑ pass | `ruff check src tests` → `All checks passed!`; worktree clean — pass |
+| Negative cases hold | ☑ pass | Empty/unresolved narrow scope still reads nothing (refusal tests t008/t009 green; agent sabotage: removing the empty-scope guard fails them); secret-bearing `credential-file` is not a context role; project scope short-circuits in `role_files_in_scope` — pass |
+| verify | ☑ pass | Supervisor independent real-repo run 2026-10-16 11:49 UTC, node-monorepo `score --scope changes --ref 09be767d0`: `overall 85, contributors 5` (architecture 90, blast-radius 100, code-quality 100, security 100, supply-chain 35); was 97 with 3 contributors. No remaining abstention cites a context role outside the diff. AC4: project payloads raw-byte EQUAL on self/fullstack-ts/python-ml/node-monorepo (agent, `.local/t107/{before,after}`) — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed the 13-file diff: `roles.py` (CONTEXT_ROLES, `role_files_in_scope`, `note_context_roles`) and the one-line probe change in 8 dimensions, the new tests, the 2 updated tests. code-review: P0/P1/P2 none; P3: the context note is a pack warning only, absent from the combined score JSON (agent note 3) — candidate for T108's payload work. Security (Medium): no new file class read — context roles are the same files project scope already reads, through the same redacting reader — pass |
+| Full smoke suite still green (no regression) | ☑ pass | Agent, run alone: `2983 passed, 3 skipped in 565.54s (0:09:25)`, exit 0. Two pre-FR-078 expectations updated by Supervisor decision (t008 manifest-as-context, t044 api_spec_missing measured) — authorised spec change, see Notes — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☑ N/A | No UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☑ N/A | No UI |
+| **UI: Responsiveness at target viewports** | ☑ N/A | No UI |
 
 ---
 
