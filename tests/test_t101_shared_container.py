@@ -322,6 +322,7 @@ def _slow_core(events: list[str]):
         class _Result:
             registry_notes = ()
             reference = review = continue_batches = change_kind_question = None
+            test_pairs_question = None  # T112
             needs_input = gate_requests = None
 
             def to_dict(self):

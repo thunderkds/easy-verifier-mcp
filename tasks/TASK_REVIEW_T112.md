@@ -58,9 +58,20 @@ change_risk 0 | kind bugfix detected
 The changed test calls the changed function, but because its name does not correspond
 (`test_api.py` vs `dates.py`) the bugfix scores 0 / fail.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER** (backend-developer, 2026-10-17T03:34:12Z, branch `feat/T112-test-symbol-pairs`; same
+repo, same command):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+exit=0
+change_risk 100 | bugfix_without_regression_test 1 passed= True cites ['tests/test_api.py']
+pairs [{"source": "utils/dates.py", "test": "tests/test_api.py", "basis": "symbol",
+        "symbol": "parse_date", "ref": "tests/test_api.py:9", "status": "detected"}]
+derivation: 1 matched test file(s): utils/dates.py -> tests/test_api.py (symbol parse_date at
+tests/test_api.py:9, detected); a test file counts when it is added or changed ...
+```
+
+**DELTA**: a bugfix whose test calls the changed function under a different file name now counts
+as tested (cited by symbol and line), and the calling agent can confirm, reject or add pairs.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
@@ -107,3 +118,22 @@ Search used for (c): a scratch script that, for the newest 300 non-merge commits
 and lists changed tests that reference one (`_references`) but are not a name match
 (`_correspondence`). fullstack-ts: 69 candidate pairs; node-monorepo: none printed (run under a 300 s timeout, so
 not proven exhaustive).
+
+### AC9 results (backend-developer, runs started 03:33:27Z / 03:33:41Z / 03:33:47Z, all exit 0)
+
+| # | Headline | Pairs | Matches expectation |
+|---|---|---|---|
+| (a) | `change_risk` 0, `bugfix_without_regression_test` 0 fail, cites `backend/server/dashboard/controllers/recently-added-companies.js` | `pairs` [], `unpaired_tests` [], `unpaired_sources` [that file] | yes |
+| (b) | `change_risk` 100, metric 1 pass, cites `apps/web/src/features/inventory/InventoryPage.test.tsx` | `InventoryPage.tsx -> InventoryPage.test.tsx` (symbol `InventoryPage` at `InventoryPage.test.tsx:279`, detected); `IngredientFormDialog.tsx` unpaired | yes |
+| (c) | feature, `change_risk` 0, `new_code_without_test_share` 0.667 fail (4 of 6 api-side sources uncovered) | `LowStockWidget.tsx -> LowStockWidget.test.tsx` (symbol `LowStockWidget` at :3, detected); `api.ts -> LowStockWidget.test.tsx` (symbol `fetchLowStock` at :12, detected) -- the symbol-not-name pair; `inventory-alerts.e2e.spec.ts` unpaired; alerts controller/service/dto/module unpaired | yes |
+
+### AC8 -- project scope byte-equal to `develop` (08ab7fb)
+
+```
+2026-10-17T03:32:16Z this-repo develop exit=0 d81329c56c53b3e5fa6fb351177527ce0ff579e33e8a489047b614772ca7448a
+2026-10-17T03:32:32Z this-repo t112    exit=0 d81329c56c53b3e5fa6fb351177527ce0ff579e33e8a489047b614772ca7448a
+2026-10-17T03:32:50Z fullstack-ts develop exit=0 98b9346acfd541904f4385903ab73056a042eeb30c5da5832a97366f10d095a7
+2026-10-17T03:33:07Z fullstack-ts t112    exit=0 98b9346acfd541904f4385903ab73056a042eeb30c5da5832a97366f10d095a7
+```
+
+(this repo = a `develop` worktree as the target; the fullstack-ts hash also equals T108's.)
