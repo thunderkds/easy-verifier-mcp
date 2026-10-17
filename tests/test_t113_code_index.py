@@ -232,4 +232,4 @@ def test_index_metrics_cite_only_files_the_pack_read(tmp_path, dimension):
     packs = combined_pack((dimension,), repo, scope="project")
     pack = packs.slots[0].pack
     for item in pack.whole_file or ():
-        assert set(item.computed_from) <= set(pack.files_read)
+        assert set(item.computed_from) <= set(pack.code_index_files)

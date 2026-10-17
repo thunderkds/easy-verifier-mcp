@@ -289,6 +289,9 @@ class EvidencePack:
     serialized pack."""
 
     whole_file: tuple[SampledMetric, ...] | None = field(default=None)
+    code_index_files: tuple[str, ...] | None = field(default=None)
+    """The code-index files this pack's ``whole_file`` metrics were computed
+    over (T113), which they may cite; not part of ``files_read``."""
     """Structure metrics a code tier computed over the whole text of every
     source file when it had no more sources than its cap (T076, FR-072): one
     full batch, so no sample. ``None`` otherwise, and then left out of the
@@ -591,6 +594,7 @@ _OMITTED_WHEN_ABSENT = frozenset(
         "doc_history",
         "sample",
         "whole_file",
+        "code_index_files",
         "excluded",
         "documents",
         "capped",

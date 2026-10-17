@@ -218,8 +218,14 @@ def record_sample(
     if getattr(context, "code_index", None) is not None:
         # T113: the metrics come from the call's code index; a batch plan
         # still bounds the excerpts, and is still disclosed as the sample.
+        # The reads (served from the index) stay where they were, so
+        # ``files_read`` keeps its order: the batch first (T068).
         if plan and getattr(context, "sample", None) is None:
+            for path in plan.selected:
+                context.read_source(path)
             context.sample = sample_facts(plan)
+        elif not plan and getattr(context, "source_texts", None) is None:
+            context.source_texts = {path: context.read_source(path) for path in sources}
         record_index_metrics(context, dimension)
         return
     if getattr(context, "sample", None) is not None:
@@ -265,20 +271,23 @@ INDEX_METRICS: dict[str, tuple[str, ...]] = {
     "code-quality": SAMPLED_METRICS["code-quality"],
     "architecture": SAMPLED_METRICS["architecture"],
     "reliability": SAMPLED_METRICS["reliability"],
-    "security": ("sink_hits_observed",),
 }
 """The code metrics each dimension computes over the call's code index (T113,
 FR-085) rather than over its byte-budgeted excerpts. Test-strategy reads every
-indexed code file; the others its source files, as their excerpt tiers do."""
+indexed code file; the others its source files, as their excerpt tiers do.
+Security's ``sink_hits_observed`` stays evidence-local over the sink lines its
+pack quotes (T034)."""
 
 
 def record_index_metrics(context: DimensionContext, dimension: str) -> None:
     """Compute ``dimension``'s :data:`INDEX_METRICS` over the code index.
 
-    Each indexed file is read through ``read_source`` (served from the index,
-    never reopened), so the files the metrics cite are in ``files_read``.
-    Stored on ``context.whole_file``; once per context. No index or no file:
-    nothing is stored and the metrics fall back to the pack as before.
+    The texts come from the index (read once per call, with ``read_source``'s
+    refusals); the files computed over are kept on ``context.code_index_files``
+    (the pack's ``code_index_files``, which the metrics may cite), so the
+    pack's own ``files_read`` and its read caps are unchanged. Stored on
+    ``context.whole_file``; once per context. No index or no file: nothing is
+    stored and the metrics fall back to the pack as before.
     """
     index = getattr(context, "code_index", None)
     if index is None or getattr(context, "whole_file", None) is not None:
@@ -295,15 +304,14 @@ def record_index_metrics(context: DimensionContext, dimension: str) -> None:
     ]
     units = []
     for path in paths:
-        text = context.read_source(path)
-        if text is None:
-            continue
+        text = index.texts[path]
         lines = [line.removesuffix("\r") for line in text.split("\n")]
         units.append(
             Excerpt(path=path, start_line=1, end_line=len(lines), text="\n".join(lines))
         )
     if not units:
         return
+    context.code_index_files = tuple(paths)
     scope_files = getattr(context.resolved_scope, "files", ()) or ()
     manifests = tuple(
         path
@@ -321,16 +329,18 @@ def record_index_metrics(context: DimensionContext, dimension: str) -> None:
             names=INDEX_METRICS[dimension],
             files=manifests,
         ),
-        "; " + _index_note(index, len(units)),
+        "; " + _index_note(index, len(units), dimension),
     )
 
 
-def _index_note(index, used: int) -> str:
-    """``all N code files of the repository code index`` (T113), or the cap."""
+def _index_note(index, used: int, dimension: str) -> str:
+    """``all N source files`` (T076's wording) or ``all N code files``
+    (test-strategy, tests included) of the code index (T113), or its cap."""
+    what = "code" if dimension == "test-strategy" else "source"
     if index.cap is None:
         return (
-            f"all {used} code files of the code index -- computed over the whole "
-            "text of those files, not only the excerpts quoted in this pack"
+            f"all {used} {what} files -- computed over the whole text of those "
+            "files, not only the excerpts quoted in this pack"
         )
     return (
         f"the code index read {index.read} of {index.matched} code files (cap "

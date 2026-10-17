@@ -28,7 +28,6 @@ from ..core.models import (
 )
 from ..core.redact import scan
 from ..core.roles import _matcher, note_context_roles, role, role_files_in_scope
-from . import _code_extract
 
 NAME = "security"
 
@@ -211,10 +210,6 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         for source in SOURCES_SOUGHT:
             context.sources_missing.append(SourceMiss(source=source, reason=reason))
         return
-
-    # T113: whole-set code metrics over the call's code index, before any
-    # yield (the budget may abandon this generator at its first rejection).
-    _code_extract.record_index_metrics(context, NAME)
 
     # `project` (and its no-resolution fallback) covers the whole repository, so
     # every declared source is in bounds. A narrow scope is not allowed to reach

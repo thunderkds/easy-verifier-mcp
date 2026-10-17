@@ -4116,8 +4116,9 @@ def check_citations(metrics: Sequence[Metric], allowed_refs: frozenset[str]) -> 
 
 def allowed_refs(pack: EvidencePack) -> frozenset[str]:
     """Every reference a metric over ``pack`` may legitimately cite: each path
-    in ``files_read``, and each excerpt's ``ref`` and ``path``."""
-    refs = set(pack.files_read)
+    in ``files_read`` or ``code_index_files`` (T113), and each excerpt's
+    ``ref`` and ``path``."""
+    refs = set(pack.files_read) | set(pack.code_index_files or ())
     for excerpt in pack.excerpts:
         refs.add(excerpt.ref)
         refs.add(excerpt.path)

@@ -36,7 +36,7 @@
 **BEFORE** (captured before the first implementation commit; `develop` = `3182202`):
 
 1. node-api, `score --repo <real-repos>/node-api --scope project < /dev/null`, output file
-   `<scratchpad>/tapchat_score.json`, mtime `2026-10-17 11:31:23 +0700` (04:31:23Z). Verbatim lines:
+   `<scratchpad>/<node-api alias>_score.json` (scratch file named after the repo), mtime `2026-10-17 11:31:23 +0700` (04:31:23Z). Verbatim lines:
 
    ```
    "no number given — only 30% of its rule weight was measured (a rating needs at least 50%); add what the unmeasured rules need"

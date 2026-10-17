@@ -23,7 +23,7 @@
 
 ## Requirement (Pillar 1)
 
-User, 2026-10-17, after the tapchat-apis (`node-api`) run: *"I dont see you scan the code base. just
+User, 2026-10-17, after the `node-api` run: *"I dont see you scan the code base. just
 refer the docs, and the code that related to your checking points. Not all, so the point for the blast
 radius is not good at all."* → Supervisor proposal "one full code scan per run … metrics on whole
 files … blast-radius at project scope", user: *"looks good, let spawn"*. Tokens: the scan is local

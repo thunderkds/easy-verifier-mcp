@@ -217,6 +217,11 @@ def run_dimension(
         doc_history=getattr(context, "doc_history", None),
         sample=getattr(context, "sample", None),
         whole_file=getattr(context, "whole_file", None),
+        code_index_files=(
+            _redact_paths(context.code_index_files)[0]
+            if getattr(context, "code_index_files", None)
+            else None
+        ),
         documents=_redacted_documents(getattr(context, "documents", None)),
         capped=_capped(resolution, getattr(context, "capped", {})),
         change_kind=getattr(context, "change_kind", None),
