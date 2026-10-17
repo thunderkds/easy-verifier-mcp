@@ -43,8 +43,8 @@ from pathlib import Path, PurePosixPath
 
 from ..core.context import _is_secret_bearing
 from ..core.git import run_git_text
-from ..core.metric_tables import curated_metric_tables, token_regex
 from ..core.judge import NOT_THIS_SCOPE, SCOPE_RULE_GROUPS
+from ..core.metric_tables import curated_metric_tables, token_regex
 from ..core.metrics import (
     _MANIFEST_NAMES,
     MAX_LISTED_PATHS,
@@ -58,12 +58,12 @@ from ..core.metrics import (
 )
 from ..core.models import (
     CompatFacts,
-    SampledMetric,
     DiffItem,
     DimensionContext,
     DimensionDescriptor,
     Excerpt,
     ReachFacts,
+    SampledMetric,
     SourceMiss,
     SourceRole,
 )
@@ -798,7 +798,8 @@ def _high_reach_results(context, texts, high, fan_in, table, note):
         f"{REACH_METHOD}; {note}",
     )
     if isinstance(table, str):
-        return [tested, _abstained("high_reach_churn_hotspot_share", table + "; " + note)]
+        churned = _abstained("high_reach_churn_hotspot_share", table + "; " + note)
+        return [tested, churned]
     ranked, _counts, commits = table
     in_hot = [p for p in high if p in hot]
     hotspots = _metric(
@@ -857,7 +858,11 @@ def _metric(name: str, value: float, cited: tuple[str, ...], derivation: str):
 
 def _abstained(name: str, reason: str) -> SampledMetric:
     return SampledMetric(
-        name=name, value=None, abstention=redact(reason), computed_from=(), derivation=""
+        name=name,
+        value=None,
+        abstention=redact(reason),
+        computed_from=(),
+        derivation="",
     )
 
 
