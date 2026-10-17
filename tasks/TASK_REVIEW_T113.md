@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t113_code_index.py` (AC1–AC6, cycle-root regression, bounded citations, warning wording); 6 fail on develop. Supervisor re-run 2026-10-17: t113 + t068 + t112 + t100 → `117 passed in 105.13s`, exit 0 |
+| Verification command run | ☑ pass | as above; `ruff check src tests` passed (agent) |
+| Negative cases hold | ☑ pass | over-cap repo discloses `capped index/code` and replays byte-equal; secret files never indexed (T029/T100 green); root config file no longer hides an import cycle |
+| verify | ☑ pass | Real CLI `score --scope project` on 5 real repos, develop → branch: node-api test-strategy abstain→75, architecture 10→10, overall 60→62; node-monorepo reliability 61→22 (Supervisor spot-checked `backend/scripts/companies/linkedin/queue/utils.js:330` `catch (e) {}` and `dashboard-user.js:506` `http.request` without timeout — real), overall 59→53; fullstack-ts test-strategy abstain→75, 56→58; python-ml abstain→75, 64→65; nest-api abstain→75, 81→81 (last 3 re-run by Supervisor on the final commit). All other dimensions unchanged; no index cap hit — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed core/index.py, context `_load` index path, metrics/_code_extract index metrics + MAX_LISTED_PATHS, score `capped`, test_strategy wording. Index reads go through `peek_source` (containment, secret refusal, UTF-8) — no new walker. AC5: payload bytes shrank on every repo (this repo −1.7 %, node-monorepo −12.2 %, node-api −7.7 %, fullstack-ts −6.1 %, python-ml −5.5 %, nest-api −4.6 %). P2: node-monorepo run time 31.5 s → 62.3 s (≈2×, AC8 reported, not optimised). Accepted deviations: sink_hits stays evidence-local; guide alias fix |
+| Full smoke suite still green (no regression) | ☑ pass | Agent at fb90ad8: 3162 passed, 3 skipped; only the known env failures (T014 stdout import + 3 T101 HTTP, `No module named 'mcp'`, also on develop) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend |
+| **UI: Responsiveness at target viewports** | ☐ N/A | backend |
 
 ---
 
