@@ -1175,3 +1175,11 @@ Full text of MEMORY.md index lines that exceeded 400 characters, moved verbatim 
 - Per-kind rule groups `judge.CHANGE_KIND_RULES` + `declared_rules()` (plain table for every other dimension); rules of another kind abstain `NOT_THIS_KIND` and are dropped. 4 rules x weight 25 (bugfix was 100; rating earned over the active group, so no observed score change). python-ml: feature w/ tests 100, w/o 0, refactor 50, docs-only chore abstains.
 - Gotcha: the full suite breaks 14 report-writing tests when `EASY_VERIFIER_REPORTS_DIR` is set in the environment — run the suite with it unset.
 - T111 (2026-10-16): README / DOCKER_MCP_GUIDE §5 / EVALUATION_GUIDE now explain `change_risk`, the kind gate and the rule table; the old "not penalised" note is gone (test_t081 pins the new text). Doc pin gotchas: test_t018 bans "planned" in README; test_t071 requires every bare-backticked identifier in EVALUATION_GUIDE to be declared.
+
+## 2026-10-17 — T112 planned: change-risk S2 (FR-084)
+User picked "Change-risk S2". Supervisor decisions (not score-shaping beyond DDR-0014 decision 2, so not re-asked):
+changed symbols = declarations on +/- lines plus the hunk-header enclosing declaration, via the registry's
+`public_declarations` (no pattern → no symbols, disclosed); a changed test pairs by whole-word symbol
+reference first, name correspondence second; `test_pairs` gate copies T109's change_kind shape; agent may
+confirm/reject/add (added pairs must cite an existing test line); only bugfix + feature rules use the pairs —
+refactor keeps repo-wide naming.

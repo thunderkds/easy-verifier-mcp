@@ -46,6 +46,7 @@ input; **never commit realistic credential shapes** — assemble them at runtime
      The enforced gate is the 32,000-character whole-file budget above. -->
 
 ### Decisions
+- ▶ **[T112 planned: change-risk S2 test ↔ symbol pairs (2026-10-17)](decisions.md)** — FR-084; symbol reference first, naming second; `test_pairs` gate like T109; bugfix/feature only
 - ▶ **[T107 merged: context roles repo-wide at narrow scopes (2026-10-16)](learnings.md)** — FR-078; project byte-equal on 4 repos; 97→85 on the node-monorepo bugfix; clear active_task after each agent
 - 🔒 **[DDR-0014 change-risk (2026-10-16)](decisions.md)** — separate `change_risk` headline; engine detects kind, agent confirms; slice 1 merged (T107 context roles, T108 dimension, T109 kind gate, T110 kind rules); S2–S5 backlog
 - 🔬 **[T106 Kev zero-shot rejected (2026-10-16)](decisions.md)** — `--model kev` → own `kev.serve` (`KEV_BASE_URL`); Kev-0.8B 0.625 top-1 / p50 1.65 s, below the free heuristic; reopen only with kev.train + GPU
