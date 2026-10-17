@@ -288,7 +288,10 @@ def record_index_metrics(context: DimensionContext, dimension: str) -> None:
         path
         for path in index.texts
         if dimension == "test-strategy"
-        or (PurePosixPath(path).suffix in tables.syntax and _is_source_file(path, tables))
+        or (
+            PurePosixPath(path).suffix in tables.syntax
+            and _is_source_file(path, tables)
+        )
     ]
     units = []
     for path in paths:
