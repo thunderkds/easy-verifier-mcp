@@ -73,10 +73,15 @@ payload, against this worktree:
 | worktree | `850602b3541e8da8cc09a104d5f3c23f487129de0b858e4e469edb6077ad757c` | 2,356 | `40c062df7bd0cfe3c5cd23ecac113364944b52a1365b790e4996c02720e8b389` |
 | task T113 | `438a73183ceeb4f70f9c9d84e385ce2da21d5b296cd35d0026c94f8f6741512e` | 20,478 | `af89692a89e93720ca57af29b0a21a6adf8a234acdaef5d3518a53a0ec654075` |
 
-All six pairs identical — pass.
+All six pairs identical — pass. Re-run on the final source (after `5ac6cfc`, clean tree at the
+snapshot commit): blast-radius pack hashes unchanged (same three as above); the score payload hashes
+moved with HEAD (`86255d31…ea96a` changes, `d430451c…4849` worktree, `0c54855a…414f` task) and are
+still dev = branch for every scope — pass.
 
-Full suite on `bfa0a3a`+t071 fix: 1 failed, 3184 passed, 3 skipped, 3 errors, exit 1 — only the
-4 known env failures (T014 stdout import, 3 T101 HTTP) — pass.
+Final full suite (after the t068 snapshot regeneration): 1 failed, 3186 passed, 3 skipped,
+3 errors, exit 1. Only the 4 known env failures remain (T014 stdout import, 3 T101 HTTP) — pass.
+`ruff check src tests`: all checks passed. Re-regenerated `t068` snapshot after `5ac6cfc`: only the
+two high-reach metrics' method text changed; overall 61 unchanged.
 
 ### AC7 — real repos (AFTER on `5ac6cfc`, 2026-10-17T09:35-09:37Z, `score --scope project`)
 
