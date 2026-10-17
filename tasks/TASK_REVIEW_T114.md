@@ -33,8 +33,36 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured on `feat/T114-project-blast-radius` at `eae4175` (develop with T113 merged, no
+T114 code), by `score --scope project < /dev/null` (CLI, `PYTHONPATH=src`, py3.12):
+
+```
+$ date -u   # 2026-10-17T08:39:31Z
+$ easy-verifier score --repo <real-repos>/node-api --scope project < /dev/null
+blast-radius: {"kind": "rating_abstention", "reason_code": "all_metrics_abstained",
+  "reason": "all declared rating metrics abstained", "achieved_coverage": 0.5,
+  "unavailable_metrics": [["max_fan_in_changed", "no import statement was found in this pack's
+  code-file excerpts, so there is no import graph to measure; ..."],
+  ["changed_files_in_churn_hotspots_share", "... only the blast-radius pack at changes, worktree
+  or task scope gathers them ..."], ["public_symbols_removed", "this pack is at 'project' scope,
+  which carries no diff; ..."], ["destructive_migration_ops", "... 'project' scope ..."]]}
+overall: 62   (payload 1,894,820 bytes)
+
+$ date -u   # 2026-10-17T08:42:10Z
+$ easy-verifier score --repo <scratchpad>/synth --scope project < /dev/null
+  # synthetic repo, known import graph: src/core.ts and src/util.ts each imported by
+  # alpha/beta/gamma/delta (fan-in 4), src/helper.ts by delta (fan-in 1), tests/core.test.ts
+  # imports core; 26 commits, util.ts touched by 25 of them
+blast-radius: rating_abstention all_metrics_abstained "all declared rating metrics abstained"
+  unavailable: max_fan_in_changed, changed_files_in_churn_hotspots_share,
+  public_symbols_removed, destructive_migration_ops
+overall: 75 (1 contributor: test-strategy)
+```
+
+Baseline on the other AC7 repos (same commit, 2026-10-17T08:39-08:41Z), blast-radius
+abstained (`all_metrics_abstained`) on each: payload bytes node-monorepo 1,989,346, fullstack-ts
+1,752,617, nest-api 1,387,577, python-ml 1,388,972; overall node-monorepo 53, fullstack-ts 58,
+nest-api 81, python-ml 65.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
