@@ -24,6 +24,23 @@
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
 | **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
 
+### AC7 pre-registered expectations (written 2026-10-17 before the AFTER runs, commit `8cbd2f1`)
+
+Rules: `high_reach_files_without_test_share` <= 0.20, `high_reach_churn_hotspot_share` <= 0.30,
+weights 50/50 (one scope group; the four change rules are not evaluated at project scope).
+
+| Repo | Expected blast-radius | Expected values | Expected overall direction |
+|---|---|---|---|
+| node-api | rates | test share high (>= 0.50, fails: few tests); churn share 0.2-0.6 | down (a low blast-radius joins the average; baseline 62) |
+| node-monorepo | rates (or abstains: no fan-in >= 3 if most files share `index.js`/same-stem names) | test share high (fails); churn share any | down or unchanged (baseline 53) |
+| fullstack-ts | rates | test share 0.3-0.8; churn share any | small move (baseline 58) |
+| nest-api | rates | test share <= 0.5 (nest spec files by name); churn: abstains if < 20 commits | small move (baseline 81) |
+| python-ml | rates or abstains (stated reason: no file imported by >= 3, or churn unavailable) | test share high (few tests) | down or unchanged (baseline 65) |
+
+Pass criteria: every repo rates or abstains with a stated reason; each listed top-5 file's fan-in is
+plausible on a manual grep of its importers; no narrow-scope payload change (AC6); project payload
+growth <= 10 % vs develop on node-api and node-monorepo.
+
 ---
 
 ## Demonstration
