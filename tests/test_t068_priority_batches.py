@@ -574,7 +574,9 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # Regenerated for T113 (code index): every rating, value and the overall
     # (61) are unchanged; only the six test-strategy index metrics'
     # derivations gain "; all 51 code files -- computed over the whole text
-    # ..." (they now come from the index, not the pack).
+    # ..." (they now come from the index, not the pack); and every
+    # top_level_import_cycles derivation names its application-source root
+    # (T113 P1: a root config file no longer moves it). Values unchanged.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

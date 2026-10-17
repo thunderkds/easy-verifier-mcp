@@ -179,10 +179,12 @@ def metric_tables(
     # The curated layer_paths (T074); structure imports this module, hence
     # the late import. A scoring call binds its resolved conventions (local
     # layer, .easy-verifier.toml) through with_conventions (T078).
+    from .batches import purpose_rank
     from .structure import behaviour_evidence, layer_of
 
     return dataclasses.replace(
         tables,
+        purpose_rank=purpose_rank,
         layer_of=lambda path: layer_of(path, tables=tables),
         layer_evidence=behaviour_evidence(None, tables),
     )

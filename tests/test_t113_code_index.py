@@ -233,3 +233,23 @@ def test_index_metrics_cite_only_files_the_pack_read(tmp_path, dimension):
     pack = packs.slots[0].pack
     for item in pack.whole_file or ():
         assert set(item.computed_from) <= set(pack.code_index_files)
+
+
+def test_a_root_config_file_does_not_hide_an_import_cycle(tmp_path):
+    # node-api: commitlint.config.js beside src/ moved the shared root to the
+    # repository root once every file was indexed, so 2 cycles became 0.
+    repo = tmp_path / "repo"
+    (repo / "src" / "alpha").mkdir(parents=True)
+    (repo / "src" / "beta").mkdir()
+    (repo / "package.json").write_text('{"name": "demo"}\n')
+    (repo / "src" / "alpha" / "one.js").write_text(
+        'import { two } from "../beta/two";\nexport const one = 1;\n'
+    )
+    (repo / "src" / "beta" / "two.js").write_text(
+        'import { one } from "../alpha/one";\nexport const two = 2;\n'
+    )
+    (repo / "commitlint.config.js").write_text("module.exports = {};\n")
+    result = score_repository(repo, scope="project")
+    cycles = _metrics(result, "architecture")["top_level_import_cycles"]
+    assert cycles.numeric_value == 1, cycles.derivation
+    assert "under src:" in cycles.derivation

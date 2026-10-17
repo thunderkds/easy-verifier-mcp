@@ -311,6 +311,9 @@ class LanguageTables:
     """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
     declared ``layer_paths`` conventions, bound by the builder
     (``metric_tables``); ``None`` classifies nothing."""
+    purpose_rank: Callable[[str], int] | None = field(default=None, compare=False)
+    """``core.batches.purpose_rank`` (T113), bound by the builder: 0/1 is
+    application source, 2+ tooling/config/generated. ``None``: all count."""
     package_manifests: tuple[str, ...] = field(default=(), compare=False)
     """Repository paths of the ``package-manifest`` role (T093), from the role
     resolution's whole-repository walk, bound by the dimension: where the layer
@@ -1453,7 +1456,21 @@ def _top_level_import_cycles(view: _PackView) -> _Computed:
             and PurePosixPath(e.path).suffix in view.tables.syntax
         }
     )
-    prefix = _common_directory(files)
+    # T113: the root is shared by the application source only, so a root
+    # tooling/config file (``commitlint.config.js``, purpose class of
+    # ``core.batches``) cannot collapse every module into one; files outside
+    # that root are not modules and their statements are not edges.
+    rank = view.tables.purpose_rank
+    application = [p for p in files if rank is None or rank(p) <= 1] or files
+    prefix = _common_directory(application)
+    files = [
+        path for path in files if PurePosixPath(path).parts[: len(prefix)] == prefix
+    ]
+    statements = [
+        (excerpt, text)
+        for excerpt, text in statements
+        if PurePosixPath(excerpt.path).parts[: len(prefix)] == prefix
+    ]
 
     def module_of(path: str) -> str:
         parts = PurePosixPath(path).parts[len(prefix) :]
@@ -1486,8 +1503,10 @@ def _top_level_import_cycles(view: _PackView) -> _Computed:
         f"under {where}: "
         + ("; ".join(" <-> ".join(cycle) for cycle in cycles) or "none")
         + f". A top-level module is the first directory under the deepest "
-        f"directory shared by the {len(files)} source file(s) quoted here (a file "
-        "directly there is its own module); a cycle is a set of two or more "
+        f"directory shared by the application source file(s) quoted here "
+        f"({len(files)} under it; a file directly there is its own module; "
+        "tooling, config and generated files neither move it nor count); "
+        "a cycle is a set of two or more "
         "modules each reaching the others, counted once; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
     )
