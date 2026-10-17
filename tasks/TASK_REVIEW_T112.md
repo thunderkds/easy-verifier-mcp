@@ -14,15 +14,24 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t112_test_symbol_pairs.py` — 55 tests (AC1–7, AC10); 51 fail on c457c70 (4 no-gate cases pass there by design). Supervisor re-run 2026-10-17: T112 + T107–T110 + T055 + T100 → `261 passed in 58.14s`, exit 0 |
+| Verification command run | ☑ pass | `pytest -q tests/test_t112_test_symbol_pairs.py …` exit 0 (261 passed); `ruff check src tests`: All checks passed (agent) |
+| Negative cases hold | ☑ pass | substring, cross-project, self-declared helper, short/common symbols, deleted test, malformed/duplicate/off-change/ref-less/bad-ref answers all rejected without changing the pair set (tests listed above) |
+| verify | ☑ pass | Supervisor drove the real CLI on the scratch demo repo (`cli score --scope changes --ref HEAD`): no answer → change_risk 100 (detected symbol pair); `test_pairs` reject → 0 (fail); confirm with `ref tests/test_api.py:9` → 100 — pass. AC8: project payload sha256 byte-equal to develop on this repo and fullstack-ts; AC9 3/3 pre-registered expectations matched (agent) |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed the diff of change_risk.py, gate.py, score/synthesis/pipeline/models/roles/report, mcp_server.py, blast_radius `_diff_files` headers; manual security pass on untrusted `agent_input.test_pairs` (bounded 200 entries/500 chars, keys redacted+clipped, agent paths never opened — only compared against the change's file set). 0 P0/P1; P3s noted below |
+| Full smoke suite still green (no regression) | ☑ pass | Agent full run: 3144 passed, 3 skipped; T101 stub fixed; remaining T014 `test_module_import_emits_nothing_to_stdout` + 3 T101 HTTP errors reproduce identically on `develop` (Supervisor re-run: `ModuleNotFoundError: No module named 'mcp'` in the subprocess — broken `.venv`, not T112) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend task; report gains one text line in the existing change-risk block |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend task |
+| **UI: Responsiveness at target viewports** | ☐ N/A | backend task |
+
+---
+
+## Stage 4 code-review (Supervisor, 2026-10-17)
+
+- P0/P1: none.
+- P3: test references are counted anywhere in the test text, comments and strings included (`_references`).
+- P3: proposals show redacted paths while answers must name raw paths; if redaction ever alters a path the agent cannot answer that pair.
+- P2 (accepted deviation): symbol pairs bound projects by manifests only, not test-strategy's layout rule (needed for AC2's own example).
 
 ---
 
