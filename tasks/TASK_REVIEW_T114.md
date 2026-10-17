@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☑ pass | `tests/test_t114_project_blast_radius.py` (16 tests, AC1–AC6); 13 of the original 14 fail on the pre-change tree. Supervisor re-run 2026-10-17: t114 + test_judge + test_metrics + t035 + t113 + t100 → `227 passed in 29.35s`, exit 0 |
+| Verification command run | ☑ pass | as above; `ruff check src tests` passed (agent) |
+| Negative cases hold | ☑ pass | < 1 high-reach file and below MIN_CHURN_COMMITS abstain with reasons; declaration keywords never symbol-cover; cross-project symbol coverage refused |
+| verify | ☑ pass | Real CLI `score --scope project` on 5 repos: node-api blast-radius 50 (test share 0.26 fail, churn 0.14), overall 62→60; node-monorepo 50 (1.00 fail), 53→53; fullstack-ts 50 (0.50 fail), 58→57; nest-api 100, 81→83; python-ml 100, 65→69. Supervisor hand-count on node-api: `error.helper` 53 importers (=53), `user.enum` 25 (=25), `app.constant` 27 (reported 26) — pass. AC6 narrow-scope packs + payloads sha256-equal to develop |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☑ pass | Reviewed `import_fan_in` / `_named_modules` / `_name_owners`, `_project_reach`, judge scope groups, report table. Accepted deviations: SCOPE_RULE_GROUPS (mirrors T110), 50/50 weights, last-segment import naming (architecture rules unchanged). P3: files sharing a basename (node-api `status.enum.ts`, `heartbeat.handler.ts`) get no fan-in from that name — undercount, not disclosed. Payload +0.12–0.24 % |
+| Full smoke suite still green (no regression) | ☑ pass | Agent final: 3186 passed, 3 skipped; only the 4 known env failures (T014 stdout import, 3 T101 HTTP — `No module named 'mcp'`, also on develop) — pass |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | backend; one folded table in the existing blast-radius block |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | backend |
+| **UI: Responsiveness at target viewports** | ☐ N/A | backend |
 
 ### AC7 pre-registered expectations (written 2026-10-17 before the AFTER runs, commit `8cbd2f1`)
 
