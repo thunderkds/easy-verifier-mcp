@@ -30,6 +30,7 @@ from . import redact as redact_module
 from .batches import BatchInputError, parse_batches
 from .findings import ValidationError
 from .gate import parse_change_kind, parse_test_pairs
+from .index import IndexCache
 from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
     DEFAULT_BUDGET_BYTES,
@@ -126,6 +127,7 @@ def combined_pack(
     ordered_names = tuple(name for name in available_names if name in requested)
 
     slots: list[DimensionSlot] = []
+    code_index = IndexCache()  # T113: one code index for the whole call
     for name in ordered_names:
         try:
             pack = run_dimension(
@@ -140,6 +142,7 @@ def combined_pack(
                 conventions=conventions,
                 change_kind=confirmed_kind,
                 test_pairs=pair_answers,
+                code_index=code_index,
             )
         except (RepoPathError, ValidationError):
             # NOT isolated. AC #6's robustness is about one *dimension* failing
@@ -163,6 +166,7 @@ def combined_pack(
         slots=tuple(slots),
         coverage=_aggregate_coverage(slots),
         budget_model=BUDGET_MODEL,
+        index_capped=code_index.cap,
     )
 
 

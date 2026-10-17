@@ -224,6 +224,10 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             context.sources_missing.append(SourceMiss(source=source, reason=reason))
         return
 
+    # T113: whole-set code metrics over the call's code index, before any
+    # yield (the budget may abandon this generator at its first rejection).
+    _code_extract.record_index_metrics(context, NAME)
+
     scope_files = tuple(getattr(resolved_scope, "files", ()) or ())
     changed_files = frozenset(getattr(resolved_scope, "changed_files", ()) or ())
     scope_kind = getattr(resolved_scope, "kind", None)

@@ -3958,8 +3958,12 @@ def compute_metrics(
                 derivation = "no value: " + computed.reason
             else:
                 outcome, refs, derivation = computed
-            if sample is not None and definition.name in SAMPLE_METRICS.get(
-                dimension, ()
+            # A whole-file result (T076, the T113 code index) is not a sample.
+            whole = {item.name for item in evidence.whole_file or ()}
+            if (
+                sample is not None
+                and definition.name in SAMPLE_METRICS.get(dimension, ())
+                and definition.name not in whole
             ):
                 derivation += "; " + sample_note(
                     sample, whole_text=definition.name in stored
@@ -4029,20 +4033,28 @@ def sample_note(sample, *, whole_text: bool = False) -> str:
 
 
 def compute_sampled_metrics(
-    dimension: str, units: Sequence[Excerpt], tables: LanguageTables
+    dimension: str,
+    units: Sequence[Excerpt],
+    tables: LanguageTables,
+    *,
+    names: Sequence[str] | None = None,
+    files: Sequence[str] = (),
 ) -> tuple[SampledMetric, ...]:
     """Run this dimension's :data:`SAMPLED_METRICS` over whole-file ``units``.
 
     Pure, like every function here: the caller (a dimension) read the files
     and passes their text as whole-file excerpts; nothing is kept but the
     result. Refs are mapped from each unit's ``ref`` to its path, which is
-    what the pack's ``files_read`` holds.
+    what the pack's ``files_read`` holds. ``names`` replaces the dimension's
+    :data:`SAMPLED_METRICS` (the code index's set, T113); ``files`` are extra
+    text-less paths in the view (package manifests: project boundaries).
     """
+    wanted = SAMPLED_METRICS.get(dimension, ()) if names is None else names
     pack = EvidencePack(
         dimension=dimension,
         mode="",
         scope="",
-        files_read=tuple(unit.path for unit in units),
+        files_read=(*(unit.path for unit in units), *files),
         excerpts=tuple(units),
         sources_sought=(),
         sources_found=(),
@@ -4054,7 +4066,7 @@ def compute_sampled_metrics(
     paths = {unit.ref: unit.path for unit in units}
     results = []
     for definition in METRIC_DEFINITIONS:
-        if definition.name not in SAMPLED_METRICS.get(dimension, ()):
+        if definition.name not in wanted:
             continue
         computed = definition.compute(view)
         if isinstance(computed, MetricAbstention):

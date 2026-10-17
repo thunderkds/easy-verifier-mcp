@@ -19,6 +19,7 @@ from .batches import parse_batches
 from .budget import DEFAULT_BUDGET_BYTES
 from .budget import budget as _run_budget
 from .context import DEFAULT_SCOPE, RepoPathError, detect_context
+from .index import IndexCache
 from .models import (
     CapHit,
     DimensionDescriptor,
@@ -63,6 +64,7 @@ def run_dimension(
     conventions: RegistryEntry | None = None,
     change_kind: str | None = None,
     test_pairs: tuple | None = None,
+    code_index: IndexCache | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
@@ -75,6 +77,8 @@ def run_dimension(
     validated by ``gate.parse_change_kind``); only ``change-risk`` reads it.
     ``test_pairs`` is ``gate.parse_test_pairs``'s ``(entries, problems)`` for
     ``agent_input.test_pairs`` (T112); only ``change-risk`` reads it.
+    ``code_index`` is the call's shared :class:`~easy_verifier.core.index.IndexCache`
+    (T113); without one this run builds its own over the resolved scope.
     """
     # Path validation lives in `detect_context` (T002), which raises
     # `RepoPathError` for a path that is absent or is not a directory. T004's
@@ -120,6 +124,12 @@ def run_dimension(
     except ScopeError:
         resolved_scope = None
     context.resolved_scope = resolved_scope
+    # T113: every code file of the scope, read once per call and shared.
+    if resolved_scope is not None:
+        cache = code_index if code_index is not None else IndexCache()
+        context.code_index = cache.get(
+            context.repo_path, getattr(resolved_scope, "files", ()) or ()
+        )
     # T108: change-risk reads the commit range the changes scope diffed.
     context.ref = ref
 

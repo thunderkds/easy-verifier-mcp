@@ -715,6 +715,10 @@ class CombinedPack:
     total-budget regime is therefore a value change here, not a schema
     change."""
 
+    index_capped: CapHit | None = None
+    """The code index's cap (T113), when fewer code files were indexed than
+    the scope holds; ``score`` discloses it as ``dimension: "index"``."""
+
 
 @dataclass(frozen=True)
 class ReportResult:

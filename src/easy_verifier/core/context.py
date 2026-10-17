@@ -285,6 +285,9 @@ class RepoContext:
         self.doc_history: object | None = None
         # T098: role -> (matched, read) for every per-role cap a dimension hit
         self.capped: dict[str, tuple[int, int]] = {}
+        # T113: the call's code index (``core.index``); an indexed path is
+        # served from it, so each code file is opened once per run.
+        self.code_index: object | None = None
         self._secret_approval = secret_approval
         self._secret_approval_decisions: dict[str, bool] = {}
         self._approved_secret_reads: set[str] = set()
@@ -325,6 +328,11 @@ class RepoContext:
     ) -> tuple[str | None, str | None]:
         """``(text, None)`` or ``(None, miss reason)``: the one place a source's
         bytes are refused or read (Critical Constraint 4a)."""
+        # The index read this exact path through the same refusals (T113);
+        # a secret-bearing file is never in it.
+        indexed = getattr(self.code_index, "texts", None)
+        if indexed is not None and relative_path in indexed:
+            return indexed[relative_path], None
         candidate = self.repo_path / relative_path
 
         try:
