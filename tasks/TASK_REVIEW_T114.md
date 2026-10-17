@@ -56,6 +56,7 @@ First full suite on `8cbd2f1`: 27 failed, 3138 passed, 3 skipped, 3 errors, exit
 | `test_t055` `test_unused_facts_leave_the_pack_json_byte_identical` | project blast-radius pack adds `whole_file` (+ `code_index_files` when files are cited); narrow pack still has none | the project pack now carries its high-reach results |
 | `test_t068` under-cap snapshot | regenerated; only the 6 blast-radius metrics differ, every rating and overall (61) unchanged | as above |
 | `test_t069` blast-radius project summary line | new `_CHANGES_ONLY` text | the old text said blast-radius is measured only on a change, which is no longer true |
+| `test_t071` backticked identifiers | the 6 blast-radius rule names declared in `DECLARED` | the guide's scope bullet now names both rule groups |
 | `test_t072` area 5 row | `docs/AREA_COVERAGE.md` row lists the 2 new rules | doc must equal the rule table |
 
 Docs also updated: `README.md` rating table, `docs/EVALUATION_GUIDE.md` scope bullet,
