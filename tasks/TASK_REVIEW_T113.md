@@ -71,9 +71,23 @@
 | nest-api | as python-ml; security value may move (sinks over every source, T092 precedent) |
 | all | dimensions with no index metric (api, data, operations, infrastructure, supply-chain, requirement-fidelity, solution-fit, blast-radius) unchanged |
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: the same synthetic repo and command (`score --repo big --scope project --budget-bytes
+30000 < /dev/null`), on `fb90ad8`, `2026-10-17T08:23:32Z`, exit 0:
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+test-strategy assertion_density_per_test -> 1.0  | ...); all 80 code files -- computed over the whole text of those files, not only the excerpts quoted in this pack
+test-strategy source_files_without_covering_test_share -> 0.0  | ...; all 80 code files -- computed over the whole text of those files, ...
+test-strategy tests_without_assertions_share -> 0.0  | ...; all 80 code files -- computed over the whole text of those files, ...
+test-strategy skipped_test_share -> 0.0  | ...; all 80 code files -- computed over the whole text of those files, ...
+code-quality 100
+test-strategy 100
+index caps []
+```
+(BEFORE: those four abstained with "the byte budget truncated this pack", and test-strategy gave
+no number.) node-api project score: test-strategy went from "only 30% of its rule weight was
+measured" to 75 (AC7 table, Evidence).
+
+**DELTA**: a project score now measures test-strategy, code-quality, architecture and reliability code metrics over every code file of the repository (read once per run), so a pack the byte budget clips no longer makes them abstain or describe a sample.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
