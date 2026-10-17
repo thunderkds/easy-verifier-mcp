@@ -13,6 +13,7 @@ from easy_verifier.core.judge import (
     COVERAGE_FLOORS,
     DOCUMENTATION_RULES,
     RATING_RULES,
+    SCOPE_RULE_GROUPS,
     CoverageFloor,
     GatedRating,
     OverallRating,
@@ -21,6 +22,7 @@ from easy_verifier.core.judge import (
     RatingAbstention,
     RatingInput,
     _serialize,
+    declared_rules,
     rate_overall,
 )
 from easy_verifier.core.judge import (
@@ -77,12 +79,24 @@ def _metric(
     )
 
 
+def _held(dimension: str, name: str | None = None):
+    """The rules one result of ``dimension`` is held to. T114: a dimension
+    with scope groups (blast-radius) lists one group's metrics per pack -- the
+    group of ``name``, else the first (the change rules) -- and each group
+    sums to 100; every other dimension is held to all its rules."""
+    rules = RATING_RULES[dimension]
+    if dimension not in SCOPE_RULE_GROUPS:
+        return rules
+    return declared_rules(dimension, (name or next(iter(rules)),))
+
+
 def _numeric_metrics(
     dimension: str = "architecture",
     *,
     passing_names: set[str] | None = None,
+    group_of: str | None = None,
 ) -> MetricSet:
-    rules = RATING_RULES[dimension]
+    rules = _held(dimension, group_of)
     passing_names = set(rules) if passing_names is None else passing_names
     items = []
     for name, rule in rules.items():
@@ -115,7 +129,7 @@ def _rating_with_value(dimension: str, value: int) -> Rating | GatedRating:
     """A rules Rating of exactly ``value`` built through ``rate``, choosing
     which rule metrics pass and which abstain. solution-fit declares no rule
     (T035), so it can only contribute agent-rated at the evaluate gate."""
-    rules = RATING_RULES[dimension]
+    rules = _held(dimension)
     coverage = _coverage(dimension, score=max(COVERAGE_FLOORS[dimension].value, 0.88))
     if not rules:
         abstention = rate(_numeric_metrics(dimension), coverage)
@@ -274,8 +288,16 @@ def test_every_rule_threshold_distinguishes_pass_from_fail(
     dimension: str, metric_name: str
 ):
     coverage = _coverage(dimension, score=1.0, missing=())
-    passing = rate(_numeric_metrics(dimension, passing_names={metric_name}), coverage)
-    failing = rate(_numeric_metrics(dimension, passing_names=set()), coverage)
+    passing = rate(
+        _numeric_metrics(
+            dimension, passing_names={metric_name}, group_of=metric_name
+        ),
+        coverage,
+    )
+    failing = rate(
+        _numeric_metrics(dimension, passing_names=set(), group_of=metric_name),
+        coverage,
+    )
 
     assert isinstance(passing, Rating)
     assert isinstance(failing, Rating)

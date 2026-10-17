@@ -41,6 +41,26 @@ Pass criteria: every repo rates or abstains with a stated reason; each listed to
 plausible on a manual grep of its importers; no narrow-scope payload change (AC6); project payload
 growth <= 10 % vs develop on node-api and node-monorepo.
 
+### Changed test expectations (step 2, Supervisor-accepted scope groups + 50/50)
+
+First full suite on `8cbd2f1`: 27 failed, 3138 passed, 3 skipped, 3 errors, exit 1. Env-known: T014
+`test_module_import_emits_nothing_to_stdout` + 3 T101 HTTP errors. The 26 regressions, by cause:
+
+| Test | Change | Reason |
+|---|---|---|
+| `test_judge.py` (`_numeric_metrics`, `_rating_with_value`, threshold test x6, 5 overall/serialization tests) | fixtures build one scope group's metrics (`_held`: the group of the rule under test, else the change group) | a real blast-radius pack lists one group; each group sums to 100, so a single passing rule still earns exactly its weight (assertion unchanged) |
+| `test_metrics.py` (`_CORE_METRICS`, whole-set truncation test; 4 tests) | subtract / exclude `SCOPE_METRICS` like `PACK_METRICS` | the high-reach metrics are listed only by the project blast-radius pack that computed them (that is what keeps narrow payloads byte-equal) |
+| `test_t035_cited_rules.py` (approved table, weights, README table) | 2 approved rows added; weights checked per scope group; README rows added | new rules; each group is a rating's whole rule set |
+| `test_t055` `test_signed_off_weights_thresholds_and_areas[blast-radius]` | 2 signed-off rows; per-group sum | same |
+| `test_t052` project-scope churn share; `test_t055` project compat abstention | expect `NOT_THIS_SCOPE` at project scope (worktree case unchanged) | at project scope the change rules are not evaluated (mirrors T110 `NOT_THIS_KIND`) |
+| `test_t055` `test_unused_facts_leave_the_pack_json_byte_identical` | project blast-radius pack adds `whole_file` (+ `code_index_files` when files are cited); narrow pack still has none | the project pack now carries its high-reach results |
+| `test_t068` under-cap snapshot | regenerated; only the 6 blast-radius metrics differ, every rating and overall (61) unchanged | as above |
+| `test_t069` blast-radius project summary line | new `_CHANGES_ONLY` text | the old text said blast-radius is measured only on a change, which is no longer true |
+| `test_t072` area 5 row | `docs/AREA_COVERAGE.md` row lists the 2 new rules | doc must equal the rule table |
+
+Docs also updated: `README.md` rating table, `docs/EVALUATION_GUIDE.md` scope bullet,
+`docs/SCORING_RULES.md` blast-radius rows, `docs/AREA_COVERAGE.md` area 5.
+
 ---
 
 ## Demonstration

@@ -580,6 +580,10 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # derivation lists at most 20 uncovered files "(+K more)", an index
     # metric cites its first 20 files and names the full count. Values,
     # ratings and the overall unchanged.
+    # Regenerated for T114 (project blast-radius): every rating, value and the
+    # overall (61) are unchanged; only the blast-radius pack changed: its four
+    # change-rule metrics read "not evaluated at project scope" and it adds the
+    # two high-reach metrics (abstaining: no file in the fixture is imported).
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

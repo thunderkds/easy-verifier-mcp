@@ -328,7 +328,11 @@ def test_project_scope_still_abstains_because_the_share_is_10_percent_by_constru
     _churn_repo(tmp_path)
     pack = run_dimension(blast_radius.DESCRIPTOR, tmp_path, "project")
     assert pack.reach is None
-    assert "by construction" in _metric(pack, HOT).abstention.reason
+    # T114: at project scope the change rule is not evaluated (its group is
+    # the narrow scopes'); the changed-files share is still never computed.
+    from easy_verifier.core.judge import NOT_THIS_SCOPE
+
+    assert _metric(pack, HOT).abstention.reason == NOT_THIS_SCOPE
 
 
 def test_untraced_list_is_capped_and_counts_the_rest(

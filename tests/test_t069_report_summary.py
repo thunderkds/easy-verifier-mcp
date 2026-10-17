@@ -319,8 +319,11 @@ def test_blast_radius_at_project_scope_says_to_run_on_a_change() -> None:
     project = _summary(score, scopes={"blast-radius": "project"})
     (line,) = _items(project, "summary-missing")
     assert line == (
-        "<strong>blast-radius</strong>: measured only on a change: run with "
-        "--scope changes (a commit, range or branch)"
+        # T114: the change rules need a change; the high-reach rules are
+        # rated at project scope.
+        "<strong>blast-radius</strong>: its change rules are measured only on "
+        "a change: run with --scope changes (a commit, range or branch); at "
+        "project scope only its high-reach rules over the import graph are rated"
     )
     changes = _summary(score, scopes={"blast-radius": "changes"})
     (line,) = _items(changes, "summary-missing")
