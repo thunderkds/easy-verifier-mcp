@@ -658,6 +658,16 @@ def _view(pack: EvidencePack, tables: LanguageTables) -> _PackView:
     )
 
 
+MAX_LISTED_PATHS = 20
+"""Paths a derivation lists by name (T113): the first N in order, then
+``(+K more)``; the count beside the list is always the full one."""
+
+
+def _listed(paths: Sequence[str], limit: int = MAX_LISTED_PATHS) -> str:
+    shown = ", ".join(paths[:limit])
+    return shown + (f" (+{len(paths) - limit} more)" if len(paths) > limit else "")
+
+
 def _dedup(paths: Sequence[str]) -> tuple[str, ...]:
     seen: dict[str, None] = {}
     for path in paths:
@@ -716,7 +726,7 @@ def _sources_without_covering_test(view: _PackView) -> _Computed:
         tuple(sorted(view.source_files)),
         f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
         "conventionally named test file in the same project inside this pack: "
-        + (", ".join(sorted(unmatched)) or "(none)")
+        + (_listed(sorted(unmatched)) or "(none)")
         + "; "
         + _CLASSIFIED_BY,
     )
@@ -958,7 +968,7 @@ def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
         tuple(sorted(view.source_files)),
         f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
         "conventionally named test file in the same project inside this pack: "
-        + (", ".join(sorted(unmatched)) or "(none)")
+        + (_listed(sorted(unmatched)) or "(none)")
         + "; "
         + _CLASSIFIED_BY,
     )

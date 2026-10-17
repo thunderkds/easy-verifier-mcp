@@ -110,7 +110,8 @@ BATCH_SOURCES_WARNING = (
     "{count} in-scope source files do not fit beside the test evidence under "
     "the {cap}-file read cap; they are read in priority batches of {cap}: "
     "batches {done} of {total} ({read} of {count} files), ordered by {order}. "
-    "Source-to-test figures describe this sample."
+    "Only the files read for evidence are this sample; the source-to-test "
+    "figures are computed over every file of the code index."
 )
 
 DELETED_TEST_WARNING = (

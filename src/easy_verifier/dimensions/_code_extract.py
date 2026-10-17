@@ -38,6 +38,7 @@ from ..core.context import MAX_EXCERPT_LINES, MAX_LINE_CHARS
 from ..core.metric_tables import curated_metric_tables, with_conventions
 from ..core.metrics import (
     _MANIFEST_NAMES,
+    MAX_LISTED_PATHS,
     SAMPLED_METRICS,
     _is_source_file,
     compute_sampled_metrics,
@@ -59,7 +60,8 @@ MAX_CODE_SOURCES = 200
 BATCH_WARNING = (
     "{count} in-scope source files exceed the cap of {cap} for {what}; read in "
     "priority batches of {cap}: batches {done} of {total} ({read} of {count} "
-    "files), ordered by {order}. Metrics over {what} describe this sample."
+    "files), ordered by {order}. Only the excerpts for {what} are this "
+    "sample; the code metrics are computed over every file of the code index."
 )
 
 
@@ -319,15 +321,19 @@ def record_index_metrics(context: DimensionContext, dimension: str) -> None:
         if PurePosixPath(path).name.lower() in _MANIFEST_NAMES
     )
     context.whole_file = _redacted(
-        compute_sampled_metrics(
-            dimension,
-            units,
-            replace(
-                with_conventions(curated_metric_tables(), context_conventions(context)),
-                package_manifests=_package_manifests(context),
-            ),
-            names=INDEX_METRICS[dimension],
-            files=manifests,
+        _bounded(
+            compute_sampled_metrics(
+                dimension,
+                units,
+                replace(
+                    with_conventions(
+                        curated_metric_tables(), context_conventions(context)
+                    ),
+                    package_manifests=_package_manifests(context),
+                ),
+                names=INDEX_METRICS[dimension],
+                files=manifests,
+            )
         ),
         "; " + _index_note(index, len(units), dimension),
     )
@@ -348,6 +354,24 @@ def _index_note(index, used: int, dimension: str) -> str:
         f"of {used} of them, so a count is a lower bound and a share describes "
         "those files"
     )
+
+
+def _bounded(items, limit: int = MAX_LISTED_PATHS):
+    """Index results citing at most ``limit`` files (T113, AC5): the first in
+    their existing order, the full count named in the derivation."""
+    for item in items:
+        cited = item.computed_from
+        if len(cited) <= limit:
+            yield item
+            continue
+        yield replace(
+            item,
+            computed_from=cited[:limit],
+            derivation=item.derivation
+            + f"; cites the first {limit} of the {len(cited)} files it was "
+            f"computed over (+{len(cited) - limit} more, in the pack's "
+            "code_index_files)",
+        )
 
 
 def _redacted(items, note: str) -> tuple[SampledMetric, ...]:

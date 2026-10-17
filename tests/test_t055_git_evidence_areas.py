@@ -501,8 +501,9 @@ def test_unused_facts_leave_the_pack_json_byte_identical(tmp_path: Path, capsys)
     root = _base(tmp_path)
     pack = run_dimension(DIMENSIONS["code-quality"], root, "project")
     emitted = to_json_dict(pack)
-    # T076: a code tier with sources now carries its whole-file metrics.
-    assert list(emitted) == [*PRE_T055_PACK_KEYS, "whole_file", "code_index_files"]  # T113
+    # T076: a code tier with sources now carries its whole-file metrics;
+    # T113 adds the code-index files they cite.
+    assert list(emitted) == [*PRE_T055_PACK_KEYS, "whole_file", "code_index_files"]
     legacy = dataclasses.asdict(pack)
     del legacy["compat"], legacy["doc_history"], legacy["sample"]  # T068 too
     del legacy["excluded"]  # T087: unset third-party disclosure is omitted too

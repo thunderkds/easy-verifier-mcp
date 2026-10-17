@@ -253,3 +253,25 @@ def test_a_root_config_file_does_not_hide_an_import_cycle(tmp_path):
     cycles = _metrics(result, "architecture")["top_level_import_cycles"]
     assert cycles.numeric_value == 1, cycles.derivation
     assert "under src:" in cycles.derivation
+
+
+def test_batch_warnings_no_longer_say_metrics_describe_the_sample():
+    from easy_verifier.dimensions import _code_extract, test_strategy
+
+    for text in (_code_extract.BATCH_WARNING, test_strategy.BATCH_SOURCES_WARNING):
+        assert "describe this sample" not in text
+        assert "code index" in text
+
+
+def test_index_metrics_return_bounded_citations_and_lists(tmp_path):
+    repo = _make_repo(tmp_path / "repo")
+    (repo / "tests" / "test_mod0.py").unlink()  # one uncovered source
+    for i in range(1, 30):
+        (repo / "tests" / f"test_mod{i}.py").rename(repo / "tests" / f"t_{i}.py")
+    result = score_repository(repo, scope="project", budget_bytes=SMALL_BUDGET)
+    ts = _metrics(result, "test-strategy")
+    share = ts["source_files_without_covering_test_share"]
+    assert len(share.computed_from) == 20
+    assert "cites the first 20 of the 30 files" in share.derivation
+    assert "(+10 more)" in share.derivation  # 30 uncovered, 20 named
+    assert share.numeric_value == 1.0  # the value still covers every file
