@@ -64,3 +64,46 @@ The changed test calls the changed function, but because its name does not corre
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
+
+---
+
+## Deviations and edge-case rules (backend-developer; rules 1-8 accepted by the Supervisor 2026-10-17)
+
+1. **Deviation -- project boundary for symbol pairs is manifest-only.** A symbol pair needs the
+   source and test to share the deepest directory holding a project manifest (repository root
+   when none does). test-strategy's `_project_boundary` also cuts at the first non-layout
+   directory, so `utils/dates.py` (project `utils`) and `tests/test_api.py` (project root) would
+   be different projects and the guide's own AC2 example could never pair. Name pairs keep
+   `_correspondence` unchanged; cross-project tests (separate manifests) still never pair.
+2. Enclosing declaration = the nearest declaration above the changed line inside its hunk, else
+   the one git names in the hunk header (a header alone misses a small function whose `def`
+   line is a context line of the hunk).
+3. A symbol under 4 characters or in `COMMON_SYMBOLS` never pairs; a name the test declares
+   itself is never a reference.
+4. The cited `ref` prefers the first line the diff added to the test that names the symbol,
+   else the first line naming it.
+5. Worktree scope reads `git diff HEAD` (not used above the changes-diff ceiling); an untracked
+   file counts every line as added.
+6. `needs_input.test_pairs` is not asked when there is neither a proposal nor an unpaired
+   changed test (nothing to judge); asked until at least one answer entry applies.
+7. Duplicate answers, rejecting a pair that was not proposed, and added pairs without a valid
+   `ref` are listed in `rejected` and change nothing.
+8. A bugfix with changed source now reads its changed tests through `_changed_code` (as the
+   feature rule already did); a bugfix with no changed source still reads nothing.
+
+## AC9 -- pre-registered expectations (written 2026-10-17, before any AC9 run)
+
+Command per row: `cli score --repo <real-repos>/<alias> --scope changes --ref <ref> < /dev/null`,
+run in the background one at a time, on branch `feat/T112-test-symbol-pairs`.
+
+| # | Repo / ref | Expected |
+|---|---|---|
+| (a) | node-monorepo `09be767d0` (bugfix, no test) | `change_risk` 0, `bugfix_without_regression_test` 0 fail; `test_pairs.pairs` = [], `unpaired_tests` = [] (no proposals; MCP would not ask) |
+| (b) | fullstack-ts `522d666` (bugfix with test, T108) | still 100, metric 1; `InventoryPage.tsx -> InventoryPage.test.tsx` now `basis: "symbol"` (symbol `InventoryPage`, from the `export function InventoryPage()` hunk header), status detected; `IngredientFormDialog.tsx` pairs by symbol only if the test names one of its changed symbols -- expected unpaired |
+| (c) | fullstack-ts `c2edf83` (no kind prefix -> feature) -- found by the search below | `apps/web/src/components/LowStockWidget/api.ts -> LowStockWidget.test.tsx` `basis: "symbol"` (symbol `fetchLowStock`), a pair the name rule cannot make (`api.ts` vs `LowStockWidget.test.tsx`); `LowStockWidget.tsx -> LowStockWidget.test.tsx` present (symbol or name); the api-side sources (`alerts.*`, dto, module) unpaired |
+
+Search used for (c): a scratch script that, for the newest 300 non-merge commits of a repo, parses
+`git show -M <sha>` with `_diff_files`, takes `change_risk.changed_symbols` of each changed source
+and lists changed tests that reference one (`_references`) but are not a name match
+(`_correspondence`). fullstack-ts: 69 candidate pairs; node-monorepo: none printed (run under a 300 s timeout, so
+not proven exhaustive).
