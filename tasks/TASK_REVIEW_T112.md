@@ -33,8 +33,30 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-17T03:17:04Z by backend-developer on `feat/T112-test-symbol-pairs` at
+`c457c70` -- no implementation commit yet). Synthetic repo (built by a scratch script): root
+`pyproject.toml`; `utils/dates.py` defines `def parse_date(text)`; `tests/test_api.py` imports and
+calls `parse_date`. Commit 1 `chore: initial`; commit 2 `fix: parse_date added one day` edits the
+body of `parse_date` and adds `test_parse_date_keeps_the_day` (calling `parse_date`) to
+`tests/test_api.py`.
+
+```
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+2026-10-17T03:17:04Z
+$ PYTHONPATH=src:<py312 site-packages> python3.12 -m easy_verifier.adapters.cli score \
+    --repo <scratch>/demo --scope changes --ref HEAD < /dev/null > before.json   # exit=0
+change_risk 0 | kind bugfix detected
+  bugfix_without_regression_test = 0 passed=False
+    cites: ['utils/dates.py']
+    derivation (metrics): "0 matched test files: none of the test files added or changed
+    (tests/test_api.py) matches the 1 changed source file(s) cited; a test file counts when it is
+    added or changed in this change and its name is a conventional test name of a changed source
+    file in the same project (test-strategy's correspondence; project boundaries read from
+    manifests anywhere above the files); a deleted test never counts"
+```
+
+The changed test calls the changed function, but because its name does not correspond
+(`test_api.py` vs `dates.py`) the bugfix scores 0 / fail.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
