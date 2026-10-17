@@ -1888,14 +1888,7 @@ def _behaviour_layers(
     for excerpt in view.pack.excerpts:
         if excerpt.path in files:
             texts.setdefault(excerpt.path, []).append(excerpt)
-    owners: dict[str, set[str]] = {}
-    for path in files:
-        pure = PurePosixPath(path)
-        barrel = {pure.parent.name} if pure.stem == "index" else set()
-        for name in {_file_name(path)} | barrel:
-            if name:
-                owners.setdefault(name, set()).add(path)
-    unique = {name: found.pop() for name, found in owners.items() if len(found) == 1}
+    unique = _name_owners(files)
     patterns = {name: _names_pattern([name]) for name in unique}
     targets: dict[tuple[str, int], set[str]] = {}
     for excerpt, line, text in statements:
@@ -2001,6 +1994,84 @@ def _behaviour_layers(
         )
         cited[path] = f"{path}:{toward[0]}" if toward else path
     return behaviour, cited, linked, (found, edges, lines)
+
+
+def _name_owners(files: Sequence[str]) -> dict[str, str]:
+    """The architecture resolver's names (T088): a file is named by its stem
+    (an ``index`` file: also by its directory), and a name two files share
+    names neither."""
+    owners: dict[str, set[str]] = {}
+    for path in files:
+        pure = PurePosixPath(path)
+        barrel = {pure.parent.name} if pure.stem == "index" else set()
+        for name in {_file_name(path)} | barrel:
+            if name:
+                owners.setdefault(name, set()).add(path)
+    return {name: found.pop() for name, found in owners.items() if len(found) == 1}
+
+
+_WORD = re.compile(r"\w+")
+
+
+def import_fan_in(
+    files: Sequence[str],
+    statements: Iterable[tuple[str, str]],
+    prefixes: Iterable[tuple[str, str]] = (),
+) -> dict[str, frozenset[str]]:
+    """The importing files of each of ``files`` (T114): the edges of
+    :func:`_behaviour_layers` -- an import statement (``(path, text)``) names
+    a file when it holds one of :func:`_name_owners`' names as a whole word,
+    and a literal dynamic-import prefix (``(path, prefix)``) names every file
+    directly in its directory -- over every file given, never only a pack's
+    excerpts. A name is looked up by its leading word, then matched exactly,
+    so the whole index costs one pass over its statements."""
+    unique = _name_owners(files)
+    by_word: dict[str, list[str]] = {}
+    always: list[str] = []
+    for name in unique:
+        lead = _WORD.match(name)
+        if lead is None:
+            always.append(name)
+        else:
+            by_word.setdefault(lead[0], []).append(name)
+    patterns: dict[str, re.Pattern[str]] = {}
+    importers: dict[str, set[str]] = {}
+    for path, text in statements:
+        words = set(_WORD.findall(text))
+        candidates = {n for w in words for n in by_word.get(w, ())} | set(always)
+        for name in candidates:
+            target = unique[name]
+            if target == path:
+                continue
+            if name not in patterns:
+                patterns[name] = _names_pattern([name])
+            if patterns[name].search(text):
+                importers.setdefault(target, set()).add(path)
+    for path, prefix in prefixes:
+        for target in _prefix_targets(path, prefix, files):
+            importers.setdefault(target, set()).add(path)
+    return {target: frozenset(found) for target, found in importers.items()}
+
+
+HIGH_REACH_PERCENT = 10
+"""High-reach files are the top 10 % of source files by fan-in (T114)."""
+MIN_HIGH_REACH_FAN_IN = 3
+"""... and are imported by at least this many in-repo files (T114)."""
+
+
+def high_reach_files(fan_in: Mapping[str, int], source_count: int) -> list[str]:
+    """The top :data:`HIGH_REACH_PERCENT` % of ``source_count`` source files by
+    fan-in, at least one, ties at the cut included, each with a fan-in of at
+    least :data:`MIN_HIGH_REACH_FAN_IN`; highest first, then by path."""
+    ranked = sorted(
+        (path for path, count in fan_in.items() if count >= MIN_HIGH_REACH_FAN_IN),
+        key=lambda path: (-fan_in[path], path),
+    )
+    if not ranked:
+        return []
+    top = max(1, -(-source_count * HIGH_REACH_PERCENT // 100))
+    cut = fan_in[ranked[min(top, len(ranked)) - 1]]
+    return [path for path in ranked if fan_in[path] >= cut]
 
 
 def _prefix_targets(path: str, prefix: str, files: Sequence[str]) -> set[str]:
@@ -3612,6 +3683,28 @@ _PACK_METRIC_NAMES = frozenset(
 )
 
 
+SCOPE_METRICS: dict[str, tuple[str, ...]] = {
+    "blast-radius": (
+        "high_reach_files_without_test_share",
+        "high_reach_churn_hotspot_share",
+    ),
+}
+"""Metrics only their dimension computes, and only at project scope, over the
+repository import graph (T114): a pack without the result does not list them,
+so a narrow-scope pack serializes exactly as before."""
+
+_SCOPE_METRIC_NAMES = frozenset(
+    name for names in SCOPE_METRICS.values() for name in names
+)
+
+
+def _project_scope_only(_view: _PackView) -> _Computed:
+    return MetricAbstention(
+        reason="computed only by its dimension at project scope, and this pack "
+        "holds no such result"
+    )
+
+
 def _pack_only(_view: _PackView) -> _Computed:
     return MetricAbstention(
         reason="computed only by its pack over whole files, and this pack holds "
@@ -3703,6 +3796,18 @@ METRIC_DEFINITIONS: tuple[MetricDefinition, ...] = (
     ),
     MetricDefinition(
         "max_fan_in_changed", FAMILY_CODE_SHAPE, WHOLE_SET, _max_fan_in_changed
+    ),
+    MetricDefinition(
+        "high_reach_files_without_test_share",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _project_scope_only,
+    ),
+    MetricDefinition(
+        "high_reach_churn_hotspot_share",
+        FAMILY_CODE_SHAPE,
+        WHOLE_SET,
+        _project_scope_only,
     ),
     MetricDefinition(
         "sink_hits_observed",
@@ -3967,6 +4072,11 @@ def compute_metrics(
                 else definition.name in _PACK_METRIC_NAMES
             ):
                 continue  # a pack's metrics stay in that pack (T047)
+            if definition.name in _SCOPE_METRIC_NAMES and (
+                definition.name not in SCOPE_METRICS.get(dimension, ())
+                or definition.name not in stored
+            ):
+                continue  # project-scope only, listed only when computed (T114)
             if definition.name in stored:
                 # Computed by the dimension over the whole text of the
                 # sample's files (T068) or of every source file at or under

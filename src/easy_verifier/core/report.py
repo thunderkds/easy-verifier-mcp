@@ -545,6 +545,12 @@ _METRIC_TEXT: dict[str, str] = {
     ),
     "public_symbols_removed": "public symbols removed",
     "destructive_migration_ops": "destructive migration operations",
+    "high_reach_files_without_test_share": (
+        "share of most-imported files without a covering test"
+    ),
+    "high_reach_churn_hotspot_share": (
+        "share of most-imported files that are churn hotspots"
+    ),
     # reliability
     "swallowed_errors_observed": "error handlers that do nothing",
     "outbound_calls_without_timeout_observed": "outbound calls with no timeout",

@@ -158,6 +158,14 @@ FIX_HINTS: dict[str, str] = {
         "Make schema changes expand-then-contract: add the new structure, migrate "
         "data, and drop the old one in a later release."
     ),
+    "high_reach_files_without_test_share": (
+        "Add tests for the most-imported files listed without a covering test: a "
+        "defect there reaches every file that imports them."
+    ),
+    "high_reach_churn_hotspot_share": (
+        "Stabilize the most-imported files that also change most often: split "
+        "them or put a stable interface in front, and cover them with tests."
+    ),
     # reliability
     "swallowed_errors_observed": (
         "Handle or propagate each caught error: log it with context, recover, "

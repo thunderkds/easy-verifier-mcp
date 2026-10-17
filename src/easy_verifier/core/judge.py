@@ -99,6 +99,30 @@ NOT_THIS_KIND = "not evaluated: the rule belongs to another change kind"
 """Abstention reason of a change-risk metric whose rule is not the active
 kind's: dropped by :func:`rate`, never listed and never weighed."""
 
+# T114 (FR-086): blast-radius rules apply per scope, in two groups like the
+# change kinds above: the change rules read a narrow scope's changed files and
+# diff, the high-reach rules the repository import graph at project scope.
+SCOPE_RULE_GROUPS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "blast-radius": (
+        (
+            "max_fan_in_changed",
+            "changed_files_in_churn_hotspots_share",
+            "public_symbols_removed",
+            "destructive_migration_ops",
+        ),
+        ("high_reach_files_without_test_share", "high_reach_churn_hotspot_share"),
+    ),
+}
+
+NOT_THIS_SCOPE = (
+    "not evaluated at project scope: the rule reads a change (changes, "
+    "worktree or task scope)"
+)
+"""Abstention reason of a blast-radius change rule at project scope (T114):
+dropped by :func:`rate` like :data:`NOT_THIS_KIND`, never listed or weighed.
+A narrow-scope pack holds no high-reach metric at all, so those rules drop
+there by absence."""
+
 
 def declared_rules(
     dimension: str, names: Sequence[str] = ()
@@ -107,6 +131,10 @@ def declared_rules(
     that a change-risk result naming only one kind's metrics is held to that
     kind's group (T110)."""
     rules = RATING_RULES[dimension]
+    if dimension in SCOPE_RULE_GROUPS and names:
+        for group in SCOPE_RULE_GROUPS[dimension]:
+            if set(names) <= set(group):
+                return {name: rules[name] for name in group}
     if dimension in CHANGE_FLOORS and names:
         for group in CHANGE_KIND_RULES.values():
             if set(names) <= set(group):
@@ -789,6 +817,19 @@ RATING_RULES: dict[str, dict[str, RatingRule]] = {
         RatingRule(
             "destructive_migration_ops", 15, 0, "at_most",
             (_SEMVER, _PARALLEL_CHANGE), PROJECT_DEFAULT,
+            area=AREAS[4],
+        ),
+        # T114 (FR-086): project scope, over the repository import graph;
+        # thresholds pre-registered by the guide, weights equal (project
+        # defaults). Held only to each other (SCOPE_RULE_GROUPS).
+        RatingRule(
+            "high_reach_files_without_test_share", 50, 0.20, "at_most",
+            (_HENRY_KAFURA, _ISO_29119_4), PROJECT_DEFAULT,
+            area=AREAS[4],
+        ),
+        RatingRule(
+            "high_reach_churn_hotspot_share", 50, 0.30, "at_most",
+            (_HENRY_KAFURA, _NAGAPPAN_BALL), PROJECT_DEFAULT,
             area=AREAS[4],
         ),
     ),
@@ -1696,15 +1737,19 @@ def rate(
                 f"duplicate metric {item.name!r} for dimension {dimension!r}"
             )
         by_name[item.name] = item
+    if dimension in SCOPE_RULE_GROUPS:
+        # T114: a narrow-scope pack lists no project-scope metric.
+        rules = declared_rules(dimension, tuple(n for n in rules if n in by_name))
     missing = tuple(name for name in rules if name not in by_name)
     if missing:
         raise ValueError(
             f"missing declared rating metric(s) for {dimension!r}: {', '.join(missing)}"
         )
 
-    if dimension in CHANGE_FLOORS:
+    if dimension in CHANGE_FLOORS or dimension in SCOPE_RULE_GROUPS:
         # T110: another kind's rule is not evaluated -- neither rated nor
-        # listed, so it can never read as a silent zero or a gap.
+        # listed, so it can never read as a silent zero or a gap; T114: the
+        # same for another scope's rule.
         rules = declared_rules(
             dimension,
             tuple(
@@ -1712,7 +1757,7 @@ def rate(
                 for name in rules
                 if not (
                     isinstance(by_name[name].outcome, MetricAbstention)
-                    and by_name[name].outcome.reason == NOT_THIS_KIND
+                    and by_name[name].outcome.reason in (NOT_THIS_KIND, NOT_THIS_SCOPE)
                 )
             ),
         )
@@ -2069,7 +2114,11 @@ def _validate_declared_data() -> None:
             raise ValueError(f"rating rules for {dimension!r} are not a dict")
         for key, rule in rules.items():
             _validate_rule(dimension, key, rule)
-        if rules and sum(rule.weight for rule in rules.values()) != 100:
+        groups = SCOPE_RULE_GROUPS.get(dimension, (tuple(rules),))
+        if sorted(n for group in groups for n in group) != sorted(rules):
+            raise ValueError(f"rule groups for {dimension!r} must partition its rules")
+        # T114: a scope group is a rating's whole rule set, so each sums to 100.
+        if rules and any(sum(rules[n].weight for n in g) != 100 for g in groups):
             raise ValueError(f"rating rule weights for {dimension!r} must sum to 100")
 
 
