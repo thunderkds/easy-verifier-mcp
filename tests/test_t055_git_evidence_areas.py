@@ -328,6 +328,12 @@ def test_outside_a_changes_scope_the_count_abstains_naming_the_scope(
     for name in (SYMBOLS, OPS):
         metric = _metric(pack, name)
         assert metric.abstained
+        if scope == "project":
+            # T114: at project scope the change rules are not evaluated.
+            from easy_verifier.core.judge import NOT_THIS_SCOPE
+
+            assert metric.abstention.reason == NOT_THIS_SCOPE
+            continue
         assert f"{scope!r} scope" in metric.abstention.reason
         assert "'changes' scope" in metric.abstention.reason
 
@@ -517,7 +523,13 @@ def test_unused_facts_leave_the_pack_json_byte_identical(tmp_path: Path, capsys)
     emitted = list(json.loads(capsys.readouterr().out))
     assert emitted == [*PRE_T055_PACK_KEYS, "whole_file", "code_index_files"]
     blast = run_dimension(blast_radius.DESCRIPTOR, root, "project")
-    assert list(to_json_dict(blast)) == PRE_T055_PACK_KEYS
+    # T114: the project-scope pack carries its high-reach results (and the
+    # high-reach files they cite, when there are any).
+    keys = list(to_json_dict(blast))
+    assert keys[: len(PRE_T055_PACK_KEYS) + 1] == [*PRE_T055_PACK_KEYS, "whole_file"]
+    assert keys[len(PRE_T055_PACK_KEYS) + 1 :] in ([], ["code_index_files"])
+    narrow = run_dimension(blast_radius.DESCRIPTOR, root, "worktree")
+    assert "whole_file" not in to_json_dict(narrow)
 
 
 def test_used_facts_are_serialized(tmp_path: Path):
@@ -566,6 +578,9 @@ SIGNED_OFF = {
         "changed_files_in_churn_hotspots_share": (35, 0.20, "at_most", BACKWARD),
         SYMBOLS: (15, 0, "at_most", BACKWARD),
         OPS: (15, 0, "at_most", BACKWARD),
+        # T114: the project-scope group (Supervisor-accepted 50/50).
+        "high_reach_files_without_test_share": (50, 0.20, "at_most", BACKWARD),
+        "high_reach_churn_hotspot_share": (50, 0.30, "at_most", BACKWARD),
     },
     "requirement-fidelity": {
         # DDR-0011 (T075): documents 10/10, code 40/20/20.
@@ -597,7 +612,11 @@ def test_signed_off_weights_thresholds_and_areas(dimension):
     assert {
         n: (r.weight, r.threshold, r.comparison, r.area) for n, r in rules.items()
     } == SIGNED_OFF[dimension]
-    assert sum(r.weight for r in rules.values()) == 100
+    from easy_verifier.core.judge import SCOPE_RULE_GROUPS
+
+    # T114: each scope group sums to 100 (one group per rating).
+    for group in SCOPE_RULE_GROUPS.get(dimension, (tuple(rules),)):
+        assert sum(rules[n].weight for n in group) == 100
     assert AREAS[4] == BACKWARD and AREAS[26] == DOC_TRUTH
     for name in (SYMBOLS, OPS, DOCS, CO_CHANGE):
         if name in rules:

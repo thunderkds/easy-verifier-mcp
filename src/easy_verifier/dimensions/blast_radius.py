@@ -43,8 +43,19 @@ from pathlib import Path, PurePosixPath
 
 from ..core.context import _is_secret_bearing
 from ..core.git import run_git_text
+from ..core.judge import NOT_THIS_SCOPE, SCOPE_RULE_GROUPS
 from ..core.metric_tables import curated_metric_tables, token_regex
-from ..core.metrics import code_kind
+from ..core.metrics import (
+    _MANIFEST_NAMES,
+    MAX_LISTED_PATHS,
+    MIN_HIGH_REACH_FAN_IN,
+    _correspondence,
+    _is_source_file,
+    _is_test_file,
+    code_kind,
+    high_reach_files,
+    import_fan_in,
+)
 from ..core.models import (
     CompatFacts,
     DiffItem,
@@ -52,6 +63,7 @@ from ..core.models import (
     DimensionDescriptor,
     Excerpt,
     ReachFacts,
+    SampledMetric,
     SourceMiss,
     SourceRole,
 )
@@ -59,8 +71,8 @@ from ..core.redact import redact
 from ..core.registry import RegistryEntry, layered_conventions
 from ..core.roles import MAX_ROLE_WALK_FILES, role
 from ..core.scope import KIND_CHANGES, MAX_DIFF_CHARS, third_party_filter
-from ..core.structure import context_conventions, convention_values
-from ..core.tokens import MAX_LINE_CHARS
+from ..core.structure import _dynamic_prefixes, context_conventions, convention_values
+from ..core.tokens import MAX_LINE_CHARS, import_statements, strip
 
 NAME = "blast-radius"
 
@@ -262,6 +274,7 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
     whole_repo = resolved_scope is None or scope_kind == "project"
     if whole_repo:
         _project_history(context, repo)
+        _project_reach(context, repo)
         _miss(context, REFERENCES_SOURCE, PROJECT_SCOPE_REASON)
         _miss(context, CO_CHANGE_SOURCE, PROJECT_SCOPE_REASON)
         yield from _entry_point_excerpts(context)
@@ -569,42 +582,12 @@ def _churn_ranking(
     for path in scope_files:
         if context.read_source(path) is not None:
             changed.append(redact(path))
-    unavailable = _churn_unavailable(repo)
-    if unavailable is not None:
-        context.reach = ReachFacts(
-            changed=tuple(changed), churn_unavailable=unavailable
-        )
-        _miss(context, HOTSPOT_SOURCE, unavailable)
+    table = _churn_table(repo)
+    if isinstance(table, str):
+        context.reach = ReachFacts(changed=tuple(changed), churn_unavailable=table)
+        _miss(context, HOTSPOT_SOURCE, table)
         return
-
-    counts: dict[str, int] = {}
-    commits = 0
-    for names in _commit_file_sets(repo, _HOTSPOT_COMMITS):
-        commits += 1
-        for name in names:
-            counts[name] = counts.get(name, 0) + 1
-    if commits < MIN_CHURN_COMMITS:
-        reason = (
-            f"examined: only {commits} local commit(s), fewer than the "
-            f"{MIN_CHURN_COMMITS} a churn ranking needs, so no file is called a "
-            "hotspot"
-        )
-        context.reach = ReachFacts(changed=tuple(changed), churn_unavailable=reason)
-        _miss(context, HOTSPOT_SOURCE, reason)
-        return
-
-    ok, out, _ = _run_git(repo, ["ls-files"])
-    # Third-party files are not the team's churn (T087): ranked like the scope.
-    is_third_party = third_party_filter(repo)
-    tracked = (
-        {name for name in out.splitlines() if is_third_party(name) is None}
-        if ok
-        else set()
-    )
-    ranked = sorted(
-        (name for name in counts if name in tracked),
-        key=lambda name: (-counts[name], name),
-    )
+    ranked, _counts, commits = table
     top = math.ceil(len(ranked) / 10)
     hot = {redact(name) for name in ranked[:top]}
     hot_changed = tuple(path for path in changed if path in hot)
@@ -624,6 +607,278 @@ def _churn_ranking(
             top=top,
             hot=", ".join(hot_changed) or "none",
         ),
+    )
+
+
+def _churn_table(repo: Path) -> tuple[list[str], dict[str, int], int] | str:
+    """``(ranked, counts, commits)`` of the repository-wide churn ranking
+    (T052): tracked, non-third-party files by commit count over the last
+    :data:`_HOTSPOT_COMMITS` local commits, highest first, then by path; or
+    the reason no ranking can be built (shared by T114's project rule)."""
+    unavailable = _churn_unavailable(repo)
+    if unavailable is not None:
+        return unavailable
+    counts: dict[str, int] = {}
+    commits = 0
+    for names in _commit_file_sets(repo, _HOTSPOT_COMMITS):
+        commits += 1
+        for name in names:
+            counts[name] = counts.get(name, 0) + 1
+    if commits < MIN_CHURN_COMMITS:
+        return (
+            f"examined: only {commits} local commit(s), fewer than the "
+            f"{MIN_CHURN_COMMITS} a churn ranking needs, so no file is called a "
+            "hotspot"
+        )
+    ok, out, _ = _run_git(repo, ["ls-files"])
+    # Third-party files are not the team's churn (T087): ranked like the scope.
+    is_third_party = third_party_filter(repo)
+    tracked = (
+        {name for name in out.splitlines() if is_third_party(name) is None}
+        if ok
+        else set()
+    )
+    ranked = sorted(
+        (name for name in counts if name in tracked),
+        key=lambda name: (-counts[name], name),
+    )
+    return ranked, counts, commits
+
+
+# --------------------------------------------------------------------------
+# project scope: the repository import graph (T114, FR-086)
+# --------------------------------------------------------------------------
+
+_CHANGE_RULES, _HIGH_REACH_RULES = SCOPE_RULE_GROUPS[NAME]
+
+REACH_METHOD = (
+    "fan-in is the number of other in-repo application source files whose "
+    "import statements name the file, over every source file of the code index "
+    "(a statement names a file when the last segment of one of its path "
+    "specifiers or dotted module names, source suffix dropped, is the file's "
+    "stem -- an index file: also its directory -- and no other file has that "
+    "name; a literal dynamic-import prefix names every file directly in its "
+    "directory, as in the architecture layer rules; third-party, test, "
+    "tooling and generated files are neither importers nor imported; a "
+    "workspace package import counts only when it names a file this way); a "
+    "high-reach file is in the top 10% of those source files by fan-in, ties "
+    "included, at least one, with a fan-in of at least "
+    f"{MIN_HIGH_REACH_FAN_IN}"
+)
+COVERAGE_METHOD = (
+    "a file is covered by a conventionally named test file of its project "
+    "(test-strategy's correspondence) or by a test file naming one of the "
+    "public symbols it declares (the registry's public_declarations, T112's "
+    "symbol reference)"
+)
+
+
+def _project_reach(context: DimensionContext, repo: Path) -> None:
+    """The two high-reach metrics over the code index, on ``context.whole_file``
+    with the change rules marked :data:`NOT_THIS_SCOPE`; once per context."""
+    if getattr(context, "whole_file", None) is not None:
+        return
+    tables = curated_metric_tables()
+    index = getattr(context, "code_index", None)
+    texts = index.texts if index is not None else {}
+    sources = [
+        path
+        for path in texts
+        if PurePosixPath(path).suffix in tables.syntax and _is_source_file(path, tables)
+    ]
+    rank = tables.purpose_rank
+    application = sorted(
+        [path for path in sources if rank is None or rank(path) <= 1] or sources
+    )
+    statements: list[tuple[str, str]] = []
+    prefixes: list[tuple[str, str]] = []
+    for path in application:
+        syntax = tables.syntax[PurePosixPath(path).suffix]
+        text = texts[path]
+        statements += [(path, item) for _line, item in import_statements(text, syntax)]
+        kept = strip(text, syntax, keep_strings=True).split("\n")
+        prefixes += [(path, prefix) for _line, prefix in _dynamic_prefixes(kept)]
+    fan_in = {
+        path: len(found)
+        for path, found in import_fan_in(
+            application, statements, prefixes, tables.syntax
+        ).items()
+    }
+    high = high_reach_files(fan_in, len(application))
+    note = _reach_note(index, len(application))
+    table = _churn_table(repo)
+    if not high:
+        reason = (
+            (
+                f"no application source file is imported by at least "
+                f"{MIN_HIGH_REACH_FAN_IN} other in-repo source files (highest "
+                f"fan-in {max(fan_in.values(), default=0)} over "
+                f"{len(application)} files), so there is no high-reach file; that "
+                "is not the same as a share of 0. "
+            )
+            if application
+            else "no application source file is in the code index, so there is "
+            "no import graph to measure. "
+        ) + REACH_METHOD
+        results = [_abstained(name, reason + note) for name in _HIGH_REACH_RULES]
+    else:
+        results = _high_reach_results(context, texts, high, fan_in, table, note)
+        context.code_index_files = tuple(redact(p) for p in high[:MAX_LISTED_PATHS])
+    context.whole_file = (
+        *(_abstained(name, NOT_THIS_SCOPE) for name in _CHANGE_RULES),
+        *results,
+    )
+
+
+def _high_reach_results(context, texts, high, fan_in, table, note):
+    tables = curated_metric_tables()
+    tests = tuple(sorted(path for path in texts if _is_test_file(path, tables)))
+    scope_files = getattr(context.resolved_scope, "files", ()) or ()
+    manifests = tuple(
+        p for p in scope_files if PurePosixPath(p).name.lower() in _MANIFEST_NAMES
+    )
+    matched, _unmatched = _correspondence((*texts, *manifests), tests, tables)
+    covered = {p: f"{matched[p][0]} (name)" for p in high if p in matched}
+    rest = [p for p in high if p not in covered]
+    if rest and tests:
+        # change_risk imports this module; the late import breaks the cycle.
+        from .change_risk import _project, _references
+
+        # T112: a test pairs with a source of its own project only.
+        projects = frozenset(
+            str(PurePosixPath(m).parent).strip(".") for m in manifests
+        )
+        symbols = {p: _public_symbols(p, texts[p], tables) for p in rest}
+        for test in tests:
+            if all(p in covered for p in rest):
+                break
+            pattern = tables.public_declarations.get(PurePosixPath(test).suffix)
+            named = _references(texts[test], pattern, set()).keys()
+            home = _project(test, projects)
+            for p in rest:
+                hit = sorted(symbols[p] & named)
+                if p not in covered and hit and _project(p, projects) == home:
+                    covered[p] = f"{test} (symbol {hit[0]})"
+    counts: dict[str, int] = {}
+    hot: set[str] = set()
+    if not isinstance(table, str):
+        ranked, counts, _commits = table
+        hot = set(ranked[: math.ceil(len(ranked) / 10)])
+
+    def churn(path: str) -> str:
+        if isinstance(table, str):
+            return "churn n/a"
+        return f"churn {counts.get(path, 0)}" + (" (hotspot)" if path in hot else "")
+
+    def listed(paths: list[str]) -> str:
+        shown = ", ".join(
+            f"{p} (fan-in {fan_in[p]}, {churn(p)})" for p in paths[:MAX_LISTED_PATHS]
+        )
+        more = len(paths) - MAX_LISTED_PATHS
+        return (shown + (f" (+{more} more)" if more > 0 else "")) or "none"
+
+    rows = [
+        f"{p} | fan-in {fan_in[p]} | {churn(p)} | "
+        + (f"tested by {covered[p]}" if p in covered else "no covering test")
+        for p in high[:MAX_LISTED_PATHS]
+    ]
+    barrels = sum(1 for p in high if PurePosixPath(p).stem == "index")
+    barrel = (
+        f"; {barrels} of them are index (barrel) files, named by their directory "
+        "too: a barrel's importers count, though they reach the files it re-exports"
+        if barrels
+        else ""
+    )
+    cited = tuple(high[:MAX_LISTED_PATHS])
+    more = (
+        f"; the table lists the first {MAX_LISTED_PATHS} of {len(high)}"
+        if len(high) > MAX_LISTED_PATHS
+        else ""
+    )
+    uncovered = [p for p in high if p not in covered]
+    tested = _metric(
+        "high_reach_files_without_test_share",
+        len(uncovered) / len(high),
+        cited,
+        "\n".join(rows)
+        + f"\n{len(uncovered)} of {len(high)} high-reach file(s) have no covering "
+        f"test: {listed(uncovered)}{barrel}{more}; {COVERAGE_METHOD}; "
+        f"{REACH_METHOD}; {note}",
+    )
+    if isinstance(table, str):
+        churned = _abstained("high_reach_churn_hotspot_share", table + "; " + note)
+        return [tested, churned]
+    ranked, _counts, commits = table
+    in_hot = [p for p in high if p in hot]
+    hotspots = _metric(
+        "high_reach_churn_hotspot_share",
+        len(in_hot) / len(high),
+        cited,
+        f"{len(in_hot)} of {len(high)} high-reach file(s) are also in the top 10% "
+        f"by git churn ({len(hot)} of {len(ranked)} tracked files ranked over the "
+        f"last {commits} local commit(s), third-party files excluded): "
+        f"{listed(in_hot)}; high-reach files and fan-in as in "
+        f"high_reach_files_without_test_share; {note}",
+    )
+    return [tested, hotspots]
+
+
+_KEYWORDS = frozenset(
+    "abstract async class const declare default enum export function interface "
+    "let public static type var".split()
+)
+"""Words a declaration token can be followed by (``export declare const``):
+never a symbol a test references."""
+
+
+def _public_symbols(path: str, text: str, tables) -> frozenset[str]:
+    """The names ``text`` declares by the registry's ``public_declarations``
+    (T112's pairing filter: long enough, not common), at most
+    ``MAX_SYMBOLS_PER_FILE``."""
+    from .change_risk import MAX_SYMBOLS_PER_FILE, _may_pair
+
+    pattern = tables.public_declarations.get(PurePosixPath(path).suffix)
+    if pattern is None:
+        return frozenset()
+    found: dict[str, None] = {}
+    for line in text.split("\n"):
+        name = _declared_name(pattern, line)
+        if name is not None and _may_pair(name) and name not in _KEYWORDS:
+            found.setdefault(name)
+    return frozenset(list(found)[:MAX_SYMBOLS_PER_FILE])
+
+
+def _reach_note(index, used: int) -> str:
+    if index is not None and index.cap is not None:
+        return (
+            f"the code index read {index.read} of {index.matched} code files (cap "
+            "disclosed in capped, dimension index); computed over the whole text "
+            f"of {used} application source files of them, so a fan-in is a lower "
+            "bound"
+        )
+    return (
+        f"computed over the whole text of all {used} application source files of "
+        "the code index, not only the excerpts quoted in this pack"
+    )
+
+
+def _metric(name: str, value: float, cited: tuple[str, ...], derivation: str):
+    return SampledMetric(
+        name=name,
+        value=value,
+        abstention=None,
+        computed_from=tuple(redact(path) for path in cited),
+        derivation=redact(derivation),
+    )
+
+
+def _abstained(name: str, reason: str) -> SampledMetric:
+    return SampledMetric(
+        name=name,
+        value=None,
+        abstention=redact(reason),
+        computed_from=(),
+        derivation="",
     )
 
 

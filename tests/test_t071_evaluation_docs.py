@@ -34,6 +34,13 @@ GUIDE_SECTIONS = (
 # Every identifier-shaped backticked token in the guide, mapped to the text
 # that must occur in src/ (a word-boundary match unless the needle has quotes).
 DECLARED = {
+    # T114: the blast-radius rule groups named in the scope bullet.
+    "max_fan_in_changed": '"max_fan_in_changed"',
+    "changed_files_in_churn_hotspots_share": '"changed_files_in_churn_hotspots_share"',
+    "public_symbols_removed": '"public_symbols_removed"',
+    "destructive_migration_ops": '"destructive_migration_ops"',
+    "high_reach_files_without_test_share": '"high_reach_files_without_test_share"',
+    "high_reach_churn_hotspot_share": '"high_reach_churn_hotspot_share"',
     "score": "score",
     "write_report": "write_report",
     "ratings": "ratings",

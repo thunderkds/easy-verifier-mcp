@@ -27,6 +27,7 @@ from easy_verifier.core.judge import (
     PACK_FLOORS,
     PROJECT_DEFAULT,
     RATING_RULES,
+    SCOPE_RULE_GROUPS,
     Citation,
     Rating,
     RatingAbstention,
@@ -121,6 +122,11 @@ APPROVED = {
          PROJECT_DEFAULT),
         ("destructive_migration_ops", 15, "at_most", 0,
          ("Semantic Versioning", "Parallel Change"), PROJECT_DEFAULT),
+        # T114 (Supervisor-accepted 50/50): the project-scope group.
+        ("high_reach_files_without_test_share", 50, "at_most", 0.20,
+         ("Henry & Kafura", "29119-4"), PROJECT_DEFAULT),
+        ("high_reach_churn_hotspot_share", 50, "at_most", 0.30,
+         ("Henry & Kafura", "Nagappan & Ball"), PROJECT_DEFAULT),
     ],
     "change-risk": [  # T108: change-risk added; T110: one rule group per kind
         ("bugfix_without_regression_test", 25, "at_least", 1,
@@ -167,6 +173,12 @@ def test_weights_sum_to_100_per_dimension_and_solution_fit_has_none():
     for dimension, rules in RATING_RULES.items():
         if dimension == "solution-fit":
             assert rules == {}
+        elif dimension in SCOPE_RULE_GROUPS:
+            # T114: each scope group is a rating's whole rule set.
+            groups = SCOPE_RULE_GROUPS[dimension]
+            assert sorted(n for g in groups for n in g) == sorted(rules), dimension
+            for group in groups:
+                assert sum(rules[n].weight for n in group) == 100, (dimension, group)
         else:
             assert sum(rule.weight for rule in rules.values()) == 100, dimension
 

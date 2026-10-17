@@ -259,6 +259,8 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `changed_files_in_churn_hotspots_share` | 35 | ≤ 0.20 | none (git history) |
 | | `public_symbols_removed` | 15 | = 0 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, `public_declarations` |
 | | `destructive_migration_ops` | 15 | = 0 | none (generic patterns) |
+| | `high_reach_files_without_test_share` *(project scope; group weight 100)* | 50 | ≤ 0.20 | `source_extensions`, delimiters, `import_syntax`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, `test_candidates`, `public_declarations`; high-reach = top 10% of application source files by in-repo fan-in, ties included, fan-in ≥ 3, at least 1 |
+| | `high_reach_churn_hotspot_share` *(project scope)* | 50 | ≤ 0.30 | import fields as above plus git history (last 400 commits; abstains below 20 commits or on a shallow clone) |
 | reliability | `swallowed_errors_observed` | 35 | = 0 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, delimiters, `swallowed_errors` *(opt)*; matched with comments kept, so a handler holding a comment does not count; Go's `if err != nil` handling never counts, only an empty branch |
 | | `outbound_calls_without_timeout_observed` | 35 | = 0 | same file fields, `outbound_calls` / `call_timeouts` / `client_timeouts` *(opt)*; a call statement with no deadline token inside it, unless its file sets a client-wide deadline (a wrapper); abstains with no outbound call |
 | | `retries_without_backoff_observed` | 10 | = 0 | same file fields, `retry_calls` / `retry_backoff` *(opt)*; abstains with no retry statement |

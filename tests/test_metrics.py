@@ -26,6 +26,7 @@ from easy_verifier.core.metrics import (
     FAMILIES,
     METRIC_DEFINITIONS,
     PACK_METRICS,
+    SCOPE_METRICS,
     WHOLE_SET,
     Metric,
     MetricAbstained,
@@ -48,8 +49,12 @@ from easy_verifier.core.models import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-_CORE_METRICS = len(METRIC_DEFINITIONS) - sum(map(len, PACK_METRICS.values()))
-"""Metrics every dimension computes; a pack's own (T047) stay in that pack."""
+_SCOPE_ONLY = frozenset(name for names in SCOPE_METRICS.values() for name in names)
+_CORE_METRICS = (
+    len(METRIC_DEFINITIONS) - sum(map(len, PACK_METRICS.values())) - len(_SCOPE_ONLY)
+)
+"""Metrics every dimension computes; a pack's own (T047) stay in that pack, and
+a project-scope metric (T114) is listed only by the pack that computed it."""
 
 
 def compute_metrics(pack):
@@ -423,7 +428,11 @@ def test_every_declared_whole_set_metric_abstains_on_truncation():
     """Not a sample - every one, so a metric added later cannot opt out."""
     metrics = compute_metrics(make_pack(truncated=True, omitted_count=7))
     abstaining = {m.name for m in metrics if m.abstained}
-    declared = {d.name for d in METRIC_DEFINITIONS if d.kind == WHOLE_SET}
+    declared = {
+        d.name
+        for d in METRIC_DEFINITIONS
+        if d.kind == WHOLE_SET and d.name not in _SCOPE_ONLY  # T114: unlisted
+    }
     assert declared <= abstaining
     assert declared, "there must be whole_set metrics for this to mean anything"
 

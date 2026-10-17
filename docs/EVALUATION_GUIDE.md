@@ -86,8 +86,12 @@ couldn't measure" section). The reasons are the evidence-lack set (`EVIDENCE_LAC
 - Each warning lists `unmeasured_rules` (metric and why it was not measured) and `sources_missing`
   (source and why it was not found); `measured_share` is present when known. Add what they name, then
   score again.
-- Some rules cannot be measured at every scope. blast-radius reads a change: at `project` scope the
-  Summary says to run with `--scope changes`. The requirement-fidelity code rules abstain only when
+- Some rules cannot be measured at every scope. blast-radius has two rule groups (T114): its change
+  rules (`max_fan_in_changed`, `changed_files_in_churn_hotspots_share`, `public_symbols_removed`,
+  `destructive_migration_ops`) read a change and are rated only at a narrow scope; at `project`
+  scope only `high_reach_files_without_test_share` (≤ 0.20) and `high_reach_churn_hotspot_share`
+  (≤ 0.30) are rated, over the high-reach files (top 10 % by in-repo fan-in, fan-in ≥ 3), and the
+  Summary says to run with `--scope changes` for the change rules. The requirement-fidelity code rules abstain only when
   they have nothing to count: `routes_without_test_share` with no route found,
   `commits_with_issue_reference_share` below 20 commits, `requirement_items_traced_share` with no
   requirement item in the documents read (see [`SCORING_RULES.md`](SCORING_RULES.md)).

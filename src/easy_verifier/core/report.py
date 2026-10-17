@@ -59,6 +59,7 @@ from easy_verifier.core.judge import (
     Rating,
     RatingAbstention,
     _measured_share,
+    declared_rules,
 )
 from easy_verifier.core.models import (
     CombinedPack,
@@ -545,6 +546,12 @@ _METRIC_TEXT: dict[str, str] = {
     ),
     "public_symbols_removed": "public symbols removed",
     "destructive_migration_ops": "destructive migration operations",
+    "high_reach_files_without_test_share": (
+        "share of most-imported files without a covering test"
+    ),
+    "high_reach_churn_hotspot_share": (
+        "share of most-imported files that are churn hotspots"
+    ),
     # reliability
     "swallowed_errors_observed": "error handlers that do nothing",
     "outbound_calls_without_timeout_observed": "outbound calls with no timeout",
@@ -679,8 +686,9 @@ own reason."""
 
 _CHANGES_ONLY = {
     "blast-radius": (
-        "measured only on a change: run with --scope changes "
-        "(a commit, range or branch)"
+        "its change rules are measured only on a change: run with --scope "
+        "changes (a commit, range or branch); at project scope only its "
+        "high-reach rules over the import graph are rated"
     ),
 }
 """Dimensions whose rules read a change; at project scope the line says how
@@ -1076,8 +1084,7 @@ def _render_score_panel(ctx: _Ctx, score: ScoreResult | None) -> str:
     request_paths = {
         item.dimension: item
         for item in score.metrics
-        if item.name == "request_paths"
-        and item.dimension == "architecture"
+        if (item.dimension, item.name) in _FOLDED_TABLES
         and not item.abstained
     }
     cards = "".join(
@@ -1373,7 +1380,7 @@ def _render_score_card(
         met = sum(item.passed for item in rating.inputs)
         row += (
             f"{rating.value}/100 · rules met {met}/"
-            f"{len(RATING_RULES[rating.dimension])}"
+            f"{len(_held_rules(rating))}"
         )
         rating_html = (
             f'<p class="rating-value">{label} {ctx.esc(rating.value)}/100</p>'
@@ -1419,12 +1426,41 @@ def _render_score_card(
     )
 
 
+_FOLDED_TABLES = (
+    ("architecture", "request_paths"),
+    ("blast-radius", "high_reach_files_without_test_share"),
+)
+"""Metrics whose derivation lists rows, one per line, then a summary line,
+rendered folded in their dimension's card (T090, T114)."""
+
+
+def _render_high_reach(ctx: _Ctx, metric: Any) -> str:
+    """T114: the high-reach files (path | fan-in | churn | test), folded in
+    the blast-radius card; the summary (with the cap) is the last line."""
+    *rows, summary = metric.derivation.split("\n")
+    body = "".join(
+        "<tr>"
+        + "".join(f"<td>{ctx.esc(cell)}</td>" for cell in row.split(" | "))
+        + "</tr>"
+        for row in rows
+    )
+    return (
+        '<details class="high-reach"><summary>High-reach files: '
+        f"{ctx.esc(len(rows))} listed</summary>"
+        f'<p class="rating-method">{ctx.esc(summary)}</p><table><thead><tr>'
+        "<th>File</th><th>Fan-in</th><th>Churn</th><th>Test</th></tr></thead>"
+        f"<tbody>{body}</tbody></table></details>"
+    )
+
+
 def _render_request_paths(ctx: _Ctx, metric: Any) -> str:
     """T090: each route's in-repo request path, a folded list in the
     architecture card; reported only, no rule reads it. The derivation holds
     the listed routes one per line and the summary (with the cap) last."""
     if metric is None:
         return ""
+    if metric.name == "high_reach_files_without_test_share":
+        return _render_high_reach(ctx, metric)
     *routes, summary = metric.derivation.split("\n")
     items = "".join(f"<li><code>{ctx.esc(line)}</code></li>" for line in routes)
     return (
@@ -1433,6 +1469,15 @@ def _render_request_paths(ctx: _Ctx, metric: Any) -> str:
         f"</summary><p class=\"rating-method\">{ctx.esc(summary)}</p>"
         f"<ul>{items}</ul></details>"
     )
+
+
+def _held_rules(rating: Rating) -> dict:
+    """The rules ``rating`` was held to (a scope or kind group, T110/T114)."""
+    names = (
+        *(item.metric_name for item in rating.inputs),
+        *(name for name, _reason in rating.unavailable_metrics),
+    )
+    return declared_rules(rating.dimension, names)
 
 
 def _render_sample(ctx: _Ctx, sample: dict[str, Any] | None) -> str:
