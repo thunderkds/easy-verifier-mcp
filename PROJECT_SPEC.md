@@ -85,6 +85,8 @@ src/easy_verifier/
 | **Context role** | A role read repository-wide even at a narrow scope (test config, CI, lockfile, lint/format config, manifest, container config, API spec, project docs) — cited as context, not measured (FR-078). |
 | **Measured file** | A source or test file inside the scope's file set — what a narrow-scope rule actually rates. Opposite of a context role. |
 | **Matched test** | A test file added or changed in the scope that corresponds to changed code (slice 1: naming correspondence within one project; slice 2: agent-confirmed symbol pairs). A test the diff deletes is never matched. |
+| **Code index** | The one read of every source and test file per run (FR-085, T113); whole-set code metrics are computed over it, the byte budget only limits returned excerpts. |
+| **High-reach file** | A source file in the top 10 % by in-repo fan-in (≥ 3) over the code index (FR-086, T114). |
 | **Hard gate** | A point where rules cannot settle the answer and MCP `score` asks the calling agent via `needs_input`: *detect* (an unfilled role has candidate files) or *evaluate* (rules abstain, or a metric is within ±10% of its threshold). |
 | **Gate evaluation** | The agent's answer at an evaluate gate: score 0–100, confidence 0–1, ≥1 resolving evidence ref. Accepted only for a gated dimension. |
 | **Capped blend** | `w = 0.5 × confidence`, `final = rating·(1−w) + agent·w`. Always shown with its parts. |
