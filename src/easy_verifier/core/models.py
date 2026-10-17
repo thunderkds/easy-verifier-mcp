@@ -311,6 +311,11 @@ class EvidencePack:
     ``change-risk`` pack at a scope that carries a change; ``None`` otherwise,
     and then left out of the serialized pack."""
 
+    test_pairs: PairFacts | None = field(default=None)
+    """The change's test <-> source pairs (T112, FR-084), set only by the
+    ``change-risk`` pack for a bugfix or feature change with changed source;
+    ``None`` otherwise, and then left out of the serialized pack."""
+
 
 @dataclass(frozen=True)
 class ChangeSignal:
@@ -336,6 +341,56 @@ class ChangeKind:
     signals: tuple[ChangeSignal, ...]
     signals_omitted: int = 0
     """Signals counted into ``value`` but not listed (beyond the list cap)."""
+
+
+@dataclass(frozen=True)
+class MatchedPair:
+    """One changed source file and a changed test matched to it (T112,
+    FR-084). Paths and the reason are redacted."""
+
+    source: str
+    test: str
+    basis: str
+    """``symbol`` (the test references a changed symbol), ``name`` (names
+    correspond) or ``agent`` (added by the calling agent with a ``ref``)."""
+
+    symbol: str | None
+    ref: str | None
+    """``test-path:line`` of the citing test line (``symbol``/``agent``)."""
+
+    status: str
+    """``detected``, ``confirmed`` or ``added``; ``rejected`` for a detected
+    pair the agent dropped."""
+
+    reason: str | None = None
+    """The agent's reason when it confirmed, rejected or added the pair."""
+
+
+@dataclass(frozen=True)
+class PairFacts:
+    """The change's test <-> source pairs (T112, FR-084), set by the
+    ``change-risk`` pack for a bugfix or feature change with changed source."""
+
+    proposals: tuple[MatchedPair, ...]
+    """What the engine detected, before any answer."""
+
+    pairs: tuple[MatchedPair, ...]
+    """The final pair set the rules use."""
+
+    dropped: tuple[MatchedPair, ...]
+    """Detected pairs the agent rejected."""
+
+    rejected: tuple[str, ...]
+    """Invalid ``agent_input.test_pairs`` entries, with the reason."""
+
+    unpaired_tests: tuple[str, ...]
+    unpaired_sources: tuple[str, ...]
+    no_symbols: tuple[str, ...]
+    """Changed source files with no changed symbol read: their language has
+    no ``public_declarations`` pattern, or the diff did not cover them."""
+
+    answered: bool
+    """At least one answer entry was valid and applied."""
 
 
 @dataclass(frozen=True)
@@ -540,6 +595,7 @@ _OMITTED_WHEN_ABSENT = frozenset(
         "documents",
         "capped",
         "change_kind",
+        "test_pairs",
     }
 )
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out

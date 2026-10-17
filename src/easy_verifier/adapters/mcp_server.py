@@ -170,6 +170,12 @@ def gather_combined(
         "read the diff and send agent_input.change_kind = "
         '{"value": one of allowed, "reason": "..."} on the next call to '
         "confirm or override it; the change_risk rules follow that kind. "
+        "If it carries needs_input.test_pairs, the engine matched the "
+        "change's tests to its changed source files (proposals, by symbol "
+        "reference or by name): judge each and send agent_input.test_pairs = "
+        '[{"source": ..., "test": ..., "verdict": "confirm" or "reject", '
+        '"reason": "..."}] on the next call; to add a pair, confirm it with '
+        '"ref": "test-path:line". '
         "Optional domain packs "
         "are never guessed: only if the user confirms the repository handles "
         "patient health information, send agent_input.packs = "
@@ -226,6 +232,8 @@ def score(
         needs_input["continue_batches"] = result.continue_batches
     if result.change_kind_question is not None:
         needs_input["change_kind"] = result.change_kind_question
+    if result.test_pairs_question is not None:
+        needs_input["test_pairs"] = result.test_pairs_question
     if result.needs_input is not None:
         needs_input["picks"] = result.needs_input
     elif result.gate_requests is not None:

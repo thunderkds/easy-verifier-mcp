@@ -819,7 +819,7 @@ def _summary_change_risk(ctx: _Ctx, score: ScoreResult) -> str:
             f"<strong>{ctx.esc(rating.value)}/100</strong> — "
             f"{ctx.esc(kind_text)}; {ctx.esc(rules)}. Not averaged into the "
             "overall.</p>"
-        )
+        ) + _summary_test_pairs(ctx, score)
     reasons = [miss.reason for miss in rating.sources_missing] + [
         reason for _name, reason in rating.unavailable_metrics
     ]
@@ -827,7 +827,28 @@ def _summary_change_risk(ctx: _Ctx, score: ScoreResult) -> str:
         '<p class="summary-overall notice notice-abstain">Change risk: no number '
         f"— {ctx.esc('; '.join(reasons) or rating.reason)}; "
         f"{ctx.esc(kind_text)}.</p>"
+    ) + _summary_test_pairs(ctx, score)
+
+
+def _summary_test_pairs(ctx: _Ctx, score: ScoreResult) -> str:
+    """T112, FR-084: the final test pairs the change-risk rules counted, each
+    with its basis and whether it was detected, confirmed or added."""
+    facts = score.test_pairs
+    if facts is None:
+        return ""
+    pairs = "; ".join(
+        f"{item.source} -> {item.test} ({item.basis}"
+        + (f" {item.symbol}" if item.symbol else "")
+        + (f" at {item.ref}" if item.ref else "")
+        + f", {item.status})"
+        for item in facts.pairs
     )
+    text = f"Test pairs: {pairs or 'none'}"
+    if facts.dropped:
+        text += "; rejected by the agent: " + ", ".join(
+            f"{item.source} -> {item.test}" for item in facts.dropped
+        )
+    return f'<p class="summary-evidence">{ctx.esc(text)}.</p>'
 
 
 def _summary_evidence(

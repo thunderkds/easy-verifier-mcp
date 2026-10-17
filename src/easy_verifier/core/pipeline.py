@@ -62,6 +62,7 @@ def run_dimension(
     batches: int | str = 1,
     conventions: RegistryEntry | None = None,
     change_kind: str | None = None,
+    test_pairs: tuple | None = None,
 ) -> EvidencePack:
     """Run one dimension against a repository and return its evidence pack.
 
@@ -72,6 +73,8 @@ def run_dimension(
     source cap (T068): a count of at least 1, or ``"all"``.
     ``change_kind`` is the kind the calling agent confirmed (T109, already
     validated by ``gate.parse_change_kind``); only ``change-risk`` reads it.
+    ``test_pairs`` is ``gate.parse_test_pairs``'s ``(entries, problems)`` for
+    ``agent_input.test_pairs`` (T112); only ``change-risk`` reads it.
     """
     # Path validation lives in `detect_context` (T002), which raises
     # `RepoPathError` for a path that is absent or is not a directory. T004's
@@ -86,6 +89,8 @@ def run_dimension(
         context.conventions = conventions
     if change_kind is not None:
         context.confirmed_kind = change_kind
+    if test_pairs is not None:
+        context.pair_answers = test_pairs
 
     # Source roles resolve once, before `collect`, so every dimension -- the
     # bespoke three included -- reads from the same role -> files map, and the
@@ -205,6 +210,7 @@ def run_dimension(
         documents=_redacted_documents(getattr(context, "documents", None)),
         capped=_capped(resolution, getattr(context, "capped", {})),
         change_kind=getattr(context, "change_kind", None),
+        test_pairs=getattr(context, "test_pairs", None),
         excluded=_redacted_exclusions(resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"

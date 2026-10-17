@@ -29,7 +29,7 @@ from ..packs import PACKS
 from . import redact as redact_module
 from .batches import BatchInputError, parse_batches
 from .findings import ValidationError
-from .gate import parse_change_kind
+from .gate import parse_change_kind, parse_test_pairs
 from .models import CombinedPack, CoverageSummary, DimensionSlot, SourceMiss
 from .pipeline import (
     DEFAULT_BUDGET_BYTES,
@@ -118,6 +118,9 @@ def combined_pack(
     # T109: a valid agent_input.change_kind replaces the detected kind in the
     # change-risk dimension; an invalid one is reported by score, never raised.
     confirmed_kind = _confirmed_kind(agent_input)
+    # T112: agent_input.test_pairs, shape-checked here; change-risk decides
+    # whether each entry names this change's files.
+    pair_answers = _pair_answers(agent_input)
 
     # Canonical, deterministic order regardless of the order requested (AC #10).
     ordered_names = tuple(name for name in available_names if name in requested)
@@ -136,6 +139,7 @@ def combined_pack(
                 batches=count,
                 conventions=conventions,
                 change_kind=confirmed_kind,
+                test_pairs=pair_answers,
             )
         except (RepoPathError, ValidationError):
             # NOT isolated. AC #6's robustness is about one *dimension* failing
@@ -171,6 +175,16 @@ def _confirmed_kind(agent_input: object | None) -> str | None:
         return None
     answer, _problems = parse_change_kind(document["change_kind"])
     return answer["value"] if answer is not None else None
+
+
+def _pair_answers(agent_input: object | None) -> tuple | None:
+    """``gate.parse_test_pairs`` of ``agent_input.test_pairs``, else ``None``."""
+    if agent_input is None:
+        return None
+    document = parse_agent_input(agent_input)
+    if "test_pairs" not in document:
+        return None
+    return parse_test_pairs(document["test_pairs"])
 
 
 def _batch_count(explicit: object | None, agent_input: object | None) -> int | str:

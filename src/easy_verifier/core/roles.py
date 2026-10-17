@@ -1174,6 +1174,7 @@ _AGENT_INPUT_KEYS = (
     "batches",
     "summary",
     "change_kind",
+    "test_pairs",
 )
 
 
@@ -1212,7 +1213,8 @@ def validate_agent_input(
         if key not in _AGENT_INPUT_KEYS:
             errors.append(
                 f"{redact(str(key))}: unknown key; only picks, packs, change_kind, "
-                "gate_evaluations, registry_entries, reviews, improvements, "
+                "test_pairs, gate_evaluations, registry_entries, reviews, "
+                "improvements, "
                 "batches and summary are accepted"
             )
     errors.extend(

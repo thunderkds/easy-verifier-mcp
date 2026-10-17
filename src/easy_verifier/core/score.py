@@ -26,6 +26,7 @@ from .gate import (
     parse_change_kind,
     reference_requests,
     review_requests,
+    test_pairs_request,
 )
 from .improve import ImprovementPlan, improvement_plan
 from .judge import (
@@ -51,7 +52,13 @@ from .metric_tables import (
     with_conventions,
 )
 from .metrics import MetricSet, compute_metrics
-from .models import ChangeKind, CombinedPack, CoverageSummary, EvidencePack
+from .models import (
+    ChangeKind,
+    CombinedPack,
+    CoverageSummary,
+    EvidencePack,
+    PairFacts,
+)
 from .pipeline import DEFAULT_BUDGET_BYTES, DEFAULT_SCOPE
 from .redact import redact
 from .registry import RegistryEntry, convention_entries, sot_root
@@ -149,6 +156,13 @@ class ScoreResult:
     """MCP-only change-kind gate (T109, FR-081): ``needs_input.change_kind``
     while the kind is only detected. Like ``needs_input``, never part of
     :meth:`to_dict`; the CLI never asks (FR-034)."""
+    test_pairs: PairFacts | None = None
+    """The change's test <-> source pairs (T112, FR-084) shown with
+    ``change_risk``; ``None`` unless the change is a bugfix or feature with
+    changed source."""
+    test_pairs_question: dict[str, Any] | None = None
+    """MCP-only test-pairs gate (T112, FR-084): ``needs_input.test_pairs``
+    until an answer applies. Never part of :meth:`to_dict`."""
 
     @property
     def improvement_plan(self) -> ImprovementPlan:
@@ -194,6 +208,10 @@ class ScoreResult:
                     self.change_kind_rejected,
                 ),
             }
+            if self.test_pairs is not None:
+                payload["change_risk"]["test_pairs"] = _test_pairs_dict(
+                    self.test_pairs
+                )
         payload |= {
             "areas_measured": list(self.areas_measured),
             "areas_without_rule": list(self.areas_without_rule),
@@ -307,7 +325,8 @@ def score_repository(
         + ignored_reviews
         + pack_notes
         + repo_convention_notes(repo_path, document)
-        + kind_answer[2],
+        + kind_answer[2]
+        + _test_pairs_notes(document, result.test_pairs),
         change_kind_reason=kind_answer[0],
         change_kind_rejected=kind_answer[1],
     )
@@ -325,6 +344,7 @@ def score_repository(
             change_kind_question=change_kind_request(kind)
             if kind is not None and kind.source == "detected"
             else None,
+            test_pairs_question=_test_pairs_question(result.test_pairs),
         )
     if not detect_gates or evaluations is not None:
         return result
@@ -533,6 +553,14 @@ def score_packs(
             ),
             None,
         ),
+        test_pairs=next(
+            (
+                pack_map[name].test_pairs
+                for name in CHANGE_FLOORS
+                if name in pack_map
+            ),
+            None,
+        ),
     )
 
 
@@ -624,6 +652,52 @@ def _change_kind_dict(
         payload["reason"] = reason
     if rejected:
         payload["rejected"] = list(rejected)
+    return payload
+
+
+TEST_PAIRS_IGNORED = (
+    "agent_input.test_pairs ignored: this call proposes no test pairs (they "
+    "are matched only for a bugfix or feature change with changed source "
+    "code, at changes or worktree scope)"
+)
+
+
+def _test_pairs_notes(
+    document: Mapping[str, Any] | None, facts: PairFacts | None
+) -> tuple[str, ...]:
+    """A note when ``agent_input.test_pairs`` has no pairs to answer (T112)."""
+    if document is None or "test_pairs" not in document or facts is not None:
+        return ()
+    return (TEST_PAIRS_IGNORED,)
+
+
+def _test_pairs_question(facts: PairFacts | None) -> dict[str, Any] | None:
+    """``needs_input.test_pairs`` while no answer applied and there is a
+    changed test to judge (T112): never for chore/refactor or no source."""
+    if facts is None or facts.answered:
+        return None
+    if not (facts.proposals or facts.unpaired_tests):
+        return None
+    return test_pairs_request(facts)
+
+
+def _test_pairs_dict(facts: PairFacts) -> dict[str, Any]:
+    def pair(item) -> dict[str, Any]:
+        payload = dataclasses.asdict(item)
+        if payload["reason"] is None:
+            del payload["reason"]
+        return payload
+
+    payload: dict[str, Any] = {
+        "pairs": [pair(item) for item in facts.pairs],
+        "unpaired_tests": list(facts.unpaired_tests),
+        "unpaired_sources": list(facts.unpaired_sources),
+        "no_symbols": list(facts.no_symbols),
+    }
+    if facts.dropped:
+        payload["dropped"] = [pair(item) for item in facts.dropped]
+    if facts.rejected:
+        payload["rejected"] = list(facts.rejected)
     return payload
 
 
