@@ -78,6 +78,51 @@ All six pairs identical — pass.
 Full suite on `bfa0a3a`+t071 fix: 1 failed, 3184 passed, 3 skipped, 3 errors, exit 1 — only the
 4 known env failures (T014 stdout import, 3 T101 HTTP) — pass.
 
+### AC7 — real repos (AFTER on `5ac6cfc`, 2026-10-17T09:35-09:37Z, `score --scope project`)
+
+A first AFTER pass on `bfa0a3a` was spot-checked and failed the pre-registered "fan-in plausible"
+criterion: the whole-word name matcher counted directory segments and hyphenated pieces as edges
+(fullstack-ts `apps/web/src/routes/auth.ts` fan-in 65 from every `./auth/...` path; node-api
+`src/payment/gateway/dtos/index.ts` 62 from every `../dtos/x.dto`; node-monorepo `utils/service.js`
+65 counting `base-mongodb-service`), and a web file was "covered" by an API e2e spec through the
+keyword `const`. Fixed in `5ac6cfc` (deviation, see below): a statement names a file only by the last
+segment of a path specifier / dotted module name; a symbol-covering test must be in the source's
+project (T112's `_project`); declaration keywords are never symbols.
+
+| Repo | blast-radius | test share (<= 0.20) | churn share (<= 0.30) | overall | payload bytes |
+|---|---|---|---|---|---|
+| node-api | 50 | 0.26 fail (13 of 50) | 0.14 pass (7 of 50) | 62 -> 60 | 1,894,820 -> 1,899,449 (+0.24 %) |
+| node-monorepo | 50 | 1.00 fail (26 of 26) | 0.00 pass | 53 -> 53 | 1,989,346 -> 1,991,718 (+0.12 %) |
+| fullstack-ts | 50 | 0.50 fail (11 of 22) | 0.09 pass (2 of 22) | 58 -> 57 | 1,752,617 -> 1,755,928 |
+| nest-api | 100 | 0.20 pass (2 of 10) | 0.00 pass | 81 -> 83 | 1,387,577 -> 1,385,217 |
+| python-ml | 100 | 0.15 pass (2 of 13) | 0.23 pass (3 of 13) | 65 -> 69 | 1,388,972 -> 1,386,948 |
+
+Top-5 high-reach files (path, fan-in, churn, coverage):
+- node-api: `src/helpers/error.helper.ts` 53/0 name; `src/core/constants/app.constant.ts` 26/4 symbol;
+  `src/auth/interfaces/validated-user-info.interface.ts` 25/0 symbol; `src/commons/enums/user.enum.ts`
+  25/1 symbol; `src/helpers/string.helpers.ts` 21/3 name.
+- node-monorepo: `backend/utils/configs.js` 61/0; `backend/utils/logger.js` 61/0;
+  `backend/platform/db/base-mongodb-service.js` 54/0; `backend/utils/rest-controller-base.js` 42/0;
+  `backend/platform/db/index.js` 18/4 — all no covering test.
+- fullstack-ts: `apps/api/src/prisma/prisma.service.ts` 33/1 symbol; `apps/web/src/routes/auth.ts`
+  33/4 hotspot, none; `apps/api/src/auth/guards/jwt-auth.guard.ts` 16/1 name;
+  `apps/web/src/errorDialog/ErrorDialogProvider.tsx` 16/1 name; `apps/api/src/prisma/prisma.module.ts`
+  15/1 none.
+- nest-api: `src/common/constants/message.constant.ts` 17; `src/common/dto/pagination.dto.ts` 13;
+  `src/common/enums/user.enum.ts` 12; `src/common/constants/error-code.constant.ts` 10;
+  `src/modules/user/entities/user.entity.ts` 10 — all churn 0, all symbol-covered.
+- python-ml: `src/core/config/settings.py` 22/16 hotspot, name; `src/core/llm/metrics.py` 10/5
+  symbol; `src/core/llm/factory.py` 7/9 hotspot, symbol; `src/core/subgraphs/wrapper.py` 6/1 symbol;
+  `src/core/llm/payload.py` 5/1 symbol.
+
+Manual checks: fullstack-ts `routes/auth.ts`: `grep` finds 33 non-test files importing `.../auth`,
+all under `apps/web`; that is exactly 33. node-monorepo `utils/configs.js`: 77 non-test files require
+`.../configs`, 24+ of them under `backend/scripts/` (tooling purpose class, not counted), which fits
+61. Against the pre-registered expectations: all 5 rate (none abstains). node-api's test share
+(0.26) came in under the expected >= 0.50; nest-api's churn did not abstain (102 commits); the
+python-ml test share is low (0.15) rather than high. Overall moves: -2, 0, -1, +2, +4. Payload growth
+is <= 0.24 %, under the 10 % limit — pass.
+
 ---
 
 ## Demonstration
@@ -118,9 +163,21 @@ abstained (`all_metrics_abstained`) on each: payload bytes node-monorepo 1,989,3
 1,752,617, nest-api 1,387,577, python-ml 1,388,972; overall node-monorepo 53, fullstack-ts 58,
 nest-api 81, python-ml 65.
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: same command on `5ac6cfc` (2026-10-17T09:35:21Z), node-api:
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+blast-radius: {"kind": "rating", "value": 50, "inputs": [
+  high_reach_files_without_test_share 0.26 (13 of 50 high-reach files untested) -> fail (<= 0.20),
+  high_reach_churn_hotspot_share 0.14 (7 of 50 in the top 10 % by churn) -> pass (<= 0.30)],
+  "unavailable_metrics": []}
+  table: src/helpers/error.helper.ts | fan-in 53 | churn 0 | tested by src/helpers/error.helper.spec.ts (name)
+         src/core/constants/app.constant.ts | fan-in 26 | churn 4 | tested by src/auth/auth.service.spec.ts (symbol DEFAULT_REGULAR_USER_AMOUNT) ...
+overall: 62 -> 60   (payload 1,894,820 -> 1,899,449 bytes)
+```
+Synthetic repo: blast-radius 0 (src/core.ts and src/util.ts fan-in 4; util untested and the churn
+hotspot: both shares 0.5); overall 75 -> 38.
+
+**DELTA**: at project scope blast-radius now rates the repository's most-imported files (untested share, churn-hotspot share) with the cited files' fan-in and churn, where before it always abstained.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
