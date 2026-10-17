@@ -62,6 +62,22 @@ First full suite on `8cbd2f1`: 27 failed, 3138 passed, 3 skipped, 3 errors, exit
 Docs also updated: `README.md` rating table, `docs/EVALUATION_GUIDE.md` scope bullet,
 `docs/SCORING_RULES.md` blast-radius rows, `docs/AREA_COVERAGE.md` area 5.
 
+### AC6 — narrow-scope payloads byte-equal to develop (this repo, 2026-10-17)
+
+`ac6.sh`: develop tree (`eae4175`, `git archive`) vs branch, `blast-radius` pack and whole `score`
+payload, against this worktree:
+
+| Scope | blast-radius pack sha256 (dev = branch) | bytes | score payload sha256 (dev = branch) |
+|---|---|---|---|
+| changes `eae4175..8cbd2f1` | `0bb88e215f8d404820f8e11e8a6f52c209646e1e973a62a0080ef4bb785686f8` | 85,460 | `e227f54545bde74dff5dfe9223a00bb5922f0948aec9fc74d54bda45f0b5db2b` |
+| worktree | `850602b3541e8da8cc09a104d5f3c23f487129de0b858e4e469edb6077ad757c` | 2,356 | `40c062df7bd0cfe3c5cd23ecac113364944b52a1365b790e4996c02720e8b389` |
+| task T113 | `438a73183ceeb4f70f9c9d84e385ce2da21d5b296cd35d0026c94f8f6741512e` | 20,478 | `af89692a89e93720ca57af29b0a21a6adf8a234acdaef5d3518a53a0ec654075` |
+
+All six pairs identical — pass.
+
+Full suite on `bfa0a3a`+t071 fix: 1 failed, 3184 passed, 3 skipped, 3 errors, exit 1 — only the
+4 known env failures (T014 stdout import, 3 T101 HTTP) — pass.
+
 ---
 
 ## Demonstration
