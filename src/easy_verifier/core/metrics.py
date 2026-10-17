@@ -2010,42 +2010,52 @@ def _name_owners(files: Sequence[str]) -> dict[str, str]:
     return {name: found.pop() for name, found in owners.items() if len(found) == 1}
 
 
-_WORD = re.compile(r"\w+")
+_LITERAL = re.compile(r"(['\"`])((?:(?!\1)[^\n])*)\1")
+_DOTTED = re.compile(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*")
+
+
+def _named_modules(text: str, suffixes: frozenset[str]) -> set[str]:
+    """The module names one import statement names (T114). A statement with
+    a string literal names its path specifiers' last segments, a registry
+    source suffix dropped (``'../dtos'``, ``'./user.controller'``,
+    ``'./util.js'``); one without names the last segment of each dotted name
+    (``from src.core.config import settings`` -> ``config``, ``settings``)."""
+    literals = [value for _quote, value in _LITERAL.findall(text)]
+    if literals:
+        names = set()
+        for value in literals:
+            if "${" in value or not value:
+                continue
+            last = value.rstrip("/").rsplit("/", 1)[-1]
+            suffix = PurePosixPath(last).suffix
+            names.add(last[: -len(suffix)] if suffix in suffixes else last)
+        return names
+    return {token.rsplit(".", 1)[-1] for token in _DOTTED.findall(text)}
 
 
 def import_fan_in(
     files: Sequence[str],
     statements: Iterable[tuple[str, str]],
     prefixes: Iterable[tuple[str, str]] = (),
+    suffixes: Iterable[str] = (),
 ) -> dict[str, frozenset[str]]:
-    """The importing files of each of ``files`` (T114): the edges of
-    :func:`_behaviour_layers` -- an import statement (``(path, text)``) names
-    a file when it holds one of :func:`_name_owners`' names as a whole word,
-    and a literal dynamic-import prefix (``(path, prefix)``) names every file
-    directly in its directory -- over every file given, never only a pack's
-    excerpts. A name is looked up by its leading word, then matched exactly,
-    so the whole index costs one pass over its statements."""
+    """The importing files of each of ``files`` (T114), over the names of the
+    architecture resolver (:func:`_name_owners`: a file's stem, an index
+    file's directory, a name two files share names neither) and its literal
+    dynamic-import prefix edges (``(path, prefix)``: every file directly in
+    the directory). A statement (``(path, text)``) names a file only by the
+    *last* segment of a specifier or dotted module name
+    (:func:`_named_modules`), not by any whole word in it: over a whole
+    repository a directory segment (``'./auth/guards/x'``) or a hyphenated
+    piece (``base-mongodb-service``) would otherwise make a file look
+    imported by every statement that passes through its name."""
     unique = _name_owners(files)
-    by_word: dict[str, list[str]] = {}
-    always: list[str] = []
-    for name in unique:
-        lead = _WORD.match(name)
-        if lead is None:
-            always.append(name)
-        else:
-            by_word.setdefault(lead[0], []).append(name)
-    patterns: dict[str, re.Pattern[str]] = {}
+    known = frozenset(suffixes)
     importers: dict[str, set[str]] = {}
     for path, text in statements:
-        words = set(_WORD.findall(text))
-        candidates = {n for w in words for n in by_word.get(w, ())} | set(always)
-        for name in candidates:
-            target = unique[name]
-            if target == path:
-                continue
-            if name not in patterns:
-                patterns[name] = _names_pattern([name])
-            if patterns[name].search(text):
+        for name in _named_modules(text, known):
+            target = unique.get(name)
+            if target is not None and target != path:
                 importers.setdefault(target, set()).add(path)
     for path, prefix in prefixes:
         for target in _prefix_targets(path, prefix, files):

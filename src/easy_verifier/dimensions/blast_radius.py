@@ -654,10 +654,11 @@ _CHANGE_RULES, _HIGH_REACH_RULES = SCOPE_RULE_GROUPS[NAME]
 REACH_METHOD = (
     "fan-in is the number of other in-repo application source files whose "
     "import statements name the file, over every source file of the code index "
-    "(the resolver of the architecture layer rules: a statement names a file "
-    "when it holds the file's stem -- an index file: also its directory -- as a "
-    "whole word and no other file has that name, and a literal dynamic-import "
-    "prefix names every file directly in its directory; third-party, test, "
+    "(a statement names a file when the last segment of one of its path "
+    "specifiers or dotted module names, source suffix dropped, is the file's "
+    "stem -- an index file: also its directory -- and no other file has that "
+    "name; a literal dynamic-import prefix names every file directly in its "
+    "directory, as in the architecture layer rules; third-party, test, "
     "tooling and generated files are neither importers nor imported; a "
     "workspace package import counts only when it names a file this way); a "
     "high-reach file is in the top 10% of those source files by fan-in, ties "
@@ -699,7 +700,9 @@ def _project_reach(context: DimensionContext, repo: Path) -> None:
         prefixes += [(path, prefix) for _line, prefix in _dynamic_prefixes(kept)]
     fan_in = {
         path: len(found)
-        for path, found in import_fan_in(application, statements, prefixes).items()
+        for path, found in import_fan_in(
+            application, statements, prefixes, tables.syntax
+        ).items()
     }
     high = high_reach_files(fan_in, len(application))
     note = _reach_note(index, len(application))
@@ -739,17 +742,22 @@ def _high_reach_results(context, texts, high, fan_in, table, note):
     rest = [p for p in high if p not in covered]
     if rest and tests:
         # change_risk imports this module; the late import breaks the cycle.
-        from .change_risk import _references
+        from .change_risk import _project, _references
 
+        # T112: a test pairs with a source of its own project only.
+        projects = frozenset(
+            str(PurePosixPath(m).parent).strip(".") for m in manifests
+        )
         symbols = {p: _public_symbols(p, texts[p], tables) for p in rest}
         for test in tests:
             if all(p in covered for p in rest):
                 break
             pattern = tables.public_declarations.get(PurePosixPath(test).suffix)
             named = _references(texts[test], pattern, set()).keys()
+            home = _project(test, projects)
             for p in rest:
                 hit = sorted(symbols[p] & named)
-                if p not in covered and hit:
+                if p not in covered and hit and _project(p, projects) == home:
                     covered[p] = f"{test} (symbol {hit[0]})"
     counts: dict[str, int] = {}
     hot: set[str] = set()
@@ -815,6 +823,14 @@ def _high_reach_results(context, texts, high, fan_in, table, note):
     return [tested, hotspots]
 
 
+_KEYWORDS = frozenset(
+    "abstract async class const declare default enum export function interface "
+    "let public static type var".split()
+)
+"""Words a declaration token can be followed by (``export declare const``):
+never a symbol a test references."""
+
+
 def _public_symbols(path: str, text: str, tables) -> frozenset[str]:
     """The names ``text`` declares by the registry's ``public_declarations``
     (T112's pairing filter: long enough, not common), at most
@@ -827,7 +843,7 @@ def _public_symbols(path: str, text: str, tables) -> frozenset[str]:
     found: dict[str, None] = {}
     for line in text.split("\n"):
         name = _declared_name(pattern, line)
-        if name is not None and _may_pair(name):
+        if name is not None and _may_pair(name) and name not in _KEYWORDS:
             found.setdefault(name)
     return frozenset(list(found)[:MAX_SYMBOLS_PER_FILE])
 

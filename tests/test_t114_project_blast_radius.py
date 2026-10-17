@@ -140,6 +140,31 @@ def test_project_payload_states_the_known_fan_in_table(tmp_path):
     )
 
 
+def test_a_file_is_named_only_by_a_specifier_last_segment():
+    """Real-repo precision (AC7 spot checks): a directory segment, a hyphenated
+    piece or an imported binding never names a file; an extension does not
+    hide one; a dotted module name is named by its last segment."""
+    from easy_verifier.core.metrics import import_fan_in
+
+    files = [
+        "src/auth.ts", "utils/service.js", "src/dtos/index.ts", "src/util.ts",
+        "pkg/core/__init__.py", "pkg/core/config.py", "src/main.ts", "app/run.py",
+    ]
+    statements = [
+        ("src/main.ts", "import { x } from './auth/guards/jwt-auth.guard';"),
+        ("src/main.ts", "const s = require('../platform/base-mongodb-service');"),
+        ("src/main.ts", "import { service } from '../dtos/user.dto';"),
+        ("src/main.ts", "const u = require('./util.js');"),
+        ("app/run.py", "from pkg.core.config import settings"),
+        ("app/run.py", "import pkg.core"),
+    ]
+    assert import_fan_in(files, statements, suffixes={".ts", ".js", ".py"}) == {
+        "src/util.ts": frozenset({"src/main.ts"}),
+        "pkg/core/config.py": frozenset({"app/run.py"}),
+        "pkg/core/__init__.py": frozenset({"app/run.py"}),
+    }
+
+
 # AC2 -------------------------------------------------------------------------
 
 
@@ -199,6 +224,20 @@ def test_a_test_naming_a_public_symbol_covers_the_file(tmp_path):
     assert _rows(metric)["src/util.ts"][2] == (
         "tested by tests/core.test.ts (symbol formatThing)"
     )
+
+
+def test_a_symbol_named_by_another_projects_test_does_not_cover(tmp_path):
+    repo = _make_repo(tmp_path / "repo")
+    (repo / "other").mkdir()
+    (repo / "other" / "package.json").write_text('{"name": "other"}\n')
+    (repo / "other" / "fmt.test.ts").write_text(
+        "test('fmt', () => { expect(formatThing(1)).toBe('1'); });\n"
+    )
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "other project")
+    _rating, metrics = _blast(score_repository(repo, scope="project"))
+    rows = _rows(metrics["high_reach_files_without_test_share"])
+    assert rows["src/util.ts"][2] == "no covering test"
 
 
 # AC4 -------------------------------------------------------------------------
