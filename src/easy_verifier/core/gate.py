@@ -29,6 +29,10 @@ rejected field with no data left return through the reference gate.
 The change-kind gate (T109, FR-081) asks the agent to confirm or override the
 change kind the ``change-risk`` dimension detected; the answer comes back as
 ``agent_input.change_kind = {value, reason}`` and is validated here.
+
+The test-pairs gate (T112, FR-084) asks the agent to confirm, reject or add
+the changed-test <-> changed-source pairs ``change-risk`` detected; the
+answer comes back as ``agent_input.test_pairs`` and is shape-checked here.
 """
 
 from __future__ import annotations
@@ -53,7 +57,7 @@ from .judge import (
     within_band,
 )
 from .metric_tables import FIELD_METRICS, OPTIONAL_FIELDS, ROLE_METRICS
-from .models import ChangeKind
+from .models import ChangeKind, PairFacts
 from .redact import redact
 from .registry import (
     ENTRY_FIELDS,
@@ -833,8 +837,144 @@ def parse_change_kind(raw: object) -> tuple[dict | None, list[str]]:
     return {"value": value, "reason": reason}, []
 
 
+# ---------------------------------------------------------------------------
+# test-pairs gate (T112)
+
+MAX_TEST_PAIR_REASON_CHARS = 500
+MAX_TEST_PAIR_ANSWERS = 200
+"""Entries of ``agent_input.test_pairs`` read; the rest are rejected."""
+MAX_TEST_PAIRS_LISTED = 50
+"""Per list of ``needs_input.test_pairs``; the rest are counted."""
+
+TEST_PAIRS_INSTRUCTIONS = (
+    "The engine matched the tests this change adds or changes to its changed "
+    "source files: basis symbol means the test references, as a whole word, "
+    "a name the diff touches in that source (cited at ref); basis name means "
+    "the file names correspond. The change_risk bugfix and feature rules count "
+    "these pairs. Read each proposal's test and source and judge whether the "
+    "test exercises that change. Send the answer on the next score call as "
+    'agent_input.test_pairs: [{"source": path, "test": path, "verdict": '
+    '"confirm" or "reject", "reason": "at most 500 characters"}]. A '
+    "rejected pair stops counting; a proposal you do not answer stays, "
+    "labelled detected. To add a pair that was not proposed, confirm it with "
+    '"ref": "test-path:line" citing an existing line of that test; both '
+    "files must be in the change and in the same project, and the test must "
+    "not be deleted. Invalid entries are listed as rejected and change nothing."
+)
+"""Fixed text sent with every test-pairs gate (FR-084)."""
+
+_TEST_PAIR_FIELDS = ("source", "test", "verdict", "reason", "ref")
+_TEST_PAIR_VERDICTS = ("confirm", "reject")
+
+
+def test_pairs_request(facts: PairFacts) -> dict:
+    """``needs_input.test_pairs``: the detected pairs as proposals, the
+    unpaired changed tests and sources, each list capped at
+    :data:`MAX_TEST_PAIRS_LISTED` with the rest counted, and fixed
+    instructions."""
+
+    def capped(items: Sequence) -> tuple[list, int]:
+        return list(items[:MAX_TEST_PAIRS_LISTED]), max(
+            0, len(items) - MAX_TEST_PAIRS_LISTED
+        )
+
+    proposals, proposals_omitted = capped(facts.proposals)
+    tests, tests_omitted = capped(facts.unpaired_tests)
+    sources, sources_omitted = capped(facts.unpaired_sources)
+    return {
+        "proposals": [
+            {
+                "source": item.source,
+                "test": item.test,
+                "basis": item.basis,
+                "symbol": item.symbol,
+                "ref": item.ref,
+            }
+            for item in proposals
+        ],
+        "proposals_omitted": proposals_omitted,
+        "unpaired_tests": tests,
+        "unpaired_tests_omitted": tests_omitted,
+        "unpaired_sources": sources,
+        "unpaired_sources_omitted": sources_omitted,
+        "listed_cap": MAX_TEST_PAIRS_LISTED,
+        "instructions": TEST_PAIRS_INSTRUCTIONS,
+    }
+
+
+def parse_test_pairs(
+    raw: object,
+) -> tuple[tuple[tuple[int, dict], ...], tuple[tuple[int, str], ...]]:
+    """Shape-check ``agent_input.test_pairs``: a list of ``{source, test,
+    verdict, reason, ref?}`` objects, ``verdict`` ``confirm`` or ``reject``,
+    ``reason`` a non-empty string of at most
+    :data:`MAX_TEST_PAIR_REASON_CHARS` characters, ``ref`` a string when
+    given, no other key. Returns ``(index, entry)`` for each well-formed
+    entry and ``(index, problem)`` for each other one (index ``-1`` for the
+    list itself). Untrusted, never raises: whether an entry names this
+    change's files is decided by the ``change-risk`` dimension."""
+    if not isinstance(raw, list):
+        return (), (
+            (
+                -1,
+                "test_pairs: must be a list of {source, test, verdict, "
+                "reason, ref?} objects",
+            ),
+        )
+    entries: list[tuple[int, dict]] = []
+    problems: list[tuple[int, str]] = []
+    for index, item in enumerate(raw):
+        label = f"test_pairs[{index}]"
+        if index >= MAX_TEST_PAIR_ANSWERS:
+            problems.append(
+                (
+                    index,
+                    f"{label}: only the first {MAX_TEST_PAIR_ANSWERS} entries "
+                    "are read",
+                )
+            )
+            continue
+        if not isinstance(item, dict):
+            problems.append((index, f"{label}: must be an object"))
+            continue
+        found = [
+            f"{label}.{redact(str(key))[:80]}: unknown key; only source, test, "
+            "verdict, reason and ref are accepted"
+            for key in item
+            if key not in _TEST_PAIR_FIELDS
+        ]
+        for key in ("source", "test"):
+            if not isinstance(item.get(key), str) or not item[key].strip():
+                found.append(f"{label}.{key}: must be a non-empty path")
+        if item.get("verdict") not in _TEST_PAIR_VERDICTS:
+            found.append(f"{label}.verdict: must be confirm or reject")
+        reason = item.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            found.append(f"{label}.reason: must be a non-empty string")
+        elif len(reason) > MAX_TEST_PAIR_REASON_CHARS:
+            found.append(
+                f"{label}.reason: at most {MAX_TEST_PAIR_REASON_CHARS} "
+                f"characters, got {len(reason)}"
+            )
+        if "ref" in item and not isinstance(item["ref"], str):
+            found.append(f"{label}.ref: must be a string test-path:line")
+        if found:
+            problems.append((index, "; ".join(found)))
+        else:
+            entries.append(
+                (index, {key: item[key] for key in _TEST_PAIR_FIELDS if key in item})
+            )
+    return tuple(entries), tuple(problems)
+
+
 __all__ = [
     "CHANGE_KIND_INSTRUCTIONS",
+    "MAX_TEST_PAIR_ANSWERS",
+    "MAX_TEST_PAIR_REASON_CHARS",
+    "MAX_TEST_PAIRS_LISTED",
+    "TEST_PAIRS_INSTRUCTIONS",
+    "parse_test_pairs",
+    "test_pairs_request",
     "FRAMEWORK_FIELDS",
     "MAX_CHANGE_KIND_REASON_CHARS",
     "MAX_CANDIDATES_PER_ROLE",

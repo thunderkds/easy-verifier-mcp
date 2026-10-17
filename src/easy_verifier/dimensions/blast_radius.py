@@ -890,7 +890,9 @@ def _diff_files(diff: str) -> list[dict]:
     """Per file of a unified ``git diff``: paths, status and hunk lines.
 
     Each line is ``(sign, line number, text, hunk id)``: the old-side number
-    for a removed line, the new-side number otherwise. ``---``/``+++`` are
+    for a removed line, the new-side number otherwise; ``headers`` (when
+    present) maps a hunk id to the text git names after its ``@@`` header.
+    ``---``/``+++`` are
     headers only before a file's first hunk: inside one, ``--- x`` is a
     removed ``-- x`` (an SQL comment).
     """
@@ -932,6 +934,9 @@ def _diff_files(diff: str) -> list[dict]:
             old, new = int(match[1]), int(match[2])
             hunk += 1
             current["in_hunk"] = True
+            # T112: the enclosing line git names after the second `@@`.
+            if not current["secret"]:
+                current.setdefault("headers", {})[hunk] = line[match.end() :]
             continue
         if current["secret"] or not current["in_hunk"] or line.startswith("\\"):
             continue

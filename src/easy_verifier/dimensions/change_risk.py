@@ -14,8 +14,14 @@ a feature leaves few changed source files without one
 (``new_code_without_test_share``), a refactor deletes no test
 (``refactor_tests_deleted``) and leaves few changed source files without a
 covering test anywhere in the repository (``refactor_uncovered_share``); a
-chore has no rule. Matching is the naming correspondence test-strategy uses,
-inside one project.
+chore has no rule. Refactor matching is the naming correspondence
+test-strategy uses, inside one project.
+
+Slice 2 (T112, FR-084): for a bugfix or feature, a changed test is *matched*
+to a changed source file when it references one of that file's changed
+symbols as a whole word (``basis: "symbol"``) or, failing that, when the names
+correspond (``basis: "name"``). The calling agent may confirm, reject or add
+pairs (``agent_input.test_pairs``); the rules use the final pair set.
 
 Nothing here runs target code; git is read through ``core.git.run_git`` only.
 """
@@ -38,6 +44,8 @@ from ..core.models import (
     DimensionContext,
     DimensionDescriptor,
     Excerpt,
+    MatchedPair,
+    PairFacts,
     SampledMetric,
     SourceMiss,
     SourceRole,
@@ -49,7 +57,14 @@ from ..core.structure import (
     convention_values,
     find_issue_references,
 )
-from .test_strategy import _MANIFEST_NAMES, _correspondence
+from ..core.tokens import MAX_LINE_CHARS
+from .blast_radius import _IDENT, _declared_name, _diff_files
+from .test_strategy import (
+    _MANIFEST_NAMES,
+    _correspondence,
+    _is_ancestor,
+    _manifest_dirs,
+)
 
 NAME = "change-risk"
 
@@ -123,6 +138,52 @@ COMMIT_CAP_WARNING = (
 
 _COMMIT_MARK = "\x1e"
 _BODY_MARK = "\x1f"
+
+MIN_SYMBOL_CHARS = 4
+COMMON_SYMBOLS = frozenset(
+    {
+        "__init__",
+        "call",
+        "config",
+        "constructor",
+        "create",
+        "data",
+        "default",
+        "delete",
+        "handle",
+        "handler",
+        "index",
+        "init",
+        "item",
+        "items",
+        "list",
+        "main",
+        "name",
+        "render",
+        "self",
+        "setup",
+        "start",
+        "stop",
+        "teardown",
+        "test",
+        "this",
+        "type",
+        "update",
+        "value",
+    }
+)
+"""A changed symbol shorter than :data:`MIN_SYMBOL_CHARS` characters
+(``get``, ``run``) or in this list is too common to pair a test on its own
+(T112 edge rule); compared case-insensitively."""
+
+MAX_SYMBOLS_PER_FILE = 50
+"""Changed symbols read per source file, in name order."""
+
+AGENT_CHECKS = (
+    "agent_input.test_pairs entries answer the proposals: a rejected pair "
+    "stops counting, an added one must cite an existing line of a live "
+    "changed test in the same project"
+)
 
 
 def collect(context: DimensionContext) -> Iterator[Excerpt]:
@@ -251,10 +312,17 @@ def _assess(context: DimensionContext) -> None:
     if kind == "chore":
         context.whole_file = tuple(_no_value(CHORE, name) for name in METRICS)
         return
-    if kind == "bugfix":
-        own = (_bugfix_metric(context, repo, changed, statuses),)
-    elif kind == "feature":
-        own = (_feature_metric(context, repo, changed, statuses),)
+    if kind in ("bugfix", "feature"):
+        name = METRIC if kind == "bugfix" else FEATURE_METRIC
+        sources, tests, readable = _changed_code(context, changed, statuses)
+        if not sources:
+            own = (_no_value(NO_SOURCE, name),)
+        else:
+            pairs, context.test_pairs = _pair_facts(
+                context, repo, scope, statuses, sources, tests
+            )
+            metric = _bugfix_metric if kind == "bugfix" else _feature_metric
+            own = (metric(sources, tests, readable, pairs, context.test_pairs),)
     else:
         own = _refactor_metrics(context, repo, changed, statuses)
     # Another kind's rule is not evaluated: the judge drops it (T110).
@@ -295,41 +363,6 @@ def _pairs(pairs: dict[str, tuple[str, ...]]) -> str:
 
 def _listed(paths: Sequence[str]) -> str:
     return ", ".join(redact(path) for path in paths) or "none"
-
-
-def _feature_metric(
-    context: DimensionContext,
-    repo: Path,
-    changed: tuple[str, ...],
-    statuses: dict[str, str],
-) -> SampledMetric:
-    """``new_code_without_test_share``: the share of changed source files
-    with no matched test -- a test file added or changed in the scope whose
-    name corresponds to it in the same project (FR-082)."""
-    sources, tests, readable = _changed_code(context, changed, statuses)
-    if not sources:
-        return _no_value(NO_SOURCE, FEATURE_METRIC)
-    if not readable:
-        return _no_value(UNREADABLE, FEATURE_METRIC)
-    manifests = _manifest_paths(repo, (*sources, *tests))
-    matched, _unmatched = _correspondence((*sources, *manifests, *tests), tuple(tests))
-    pairs = {source: matched[source] for source in sources if source in matched}
-    uncovered = [source for source in sources if source not in pairs]
-    hits = sorted({test for found in pairs.values() for test in found})
-    cited = [path for path in uncovered if path in readable] or hits or readable
-    return SampledMetric(
-        name=FEATURE_METRIC,
-        value=len(uncovered) / len(sources),
-        abstention=None,
-        computed_from=tuple(redact(path) for path in cited),
-        derivation=(
-            f"{len(uncovered)} of {len(sources)} changed source file(s) have no "
-            f"matched test: {_listed(uncovered)}; matched: {_pairs(pairs)}; a test "
-            "file counts when it is added or changed in this change and its name "
-            "is a conventional test name of the changed source file in the same "
-            "project (test-strategy's correspondence); a deleted test never counts"
-        ),
-    )
 
 
 def _refactor_metrics(
@@ -432,51 +465,56 @@ def _refactor_metrics(
     return deleted_metric, uncovered_metric
 
 
+def _feature_metric(
+    sources: list[str],
+    tests: list[str],
+    readable: list[str],
+    pairs: tuple[tuple[str, str], ...],
+    facts: PairFacts,
+) -> SampledMetric:
+    """``new_code_without_test_share``: the share of changed source files
+    with no matched test in the final pair set (FR-082, FR-084)."""
+    if not readable:
+        return _no_value(UNREADABLE, FEATURE_METRIC)
+    covered = {source for source, _test in pairs}
+    uncovered = [source for source in sources if source not in covered]
+    hits = sorted({test for _source, test in pairs})
+    cited = [path for path in uncovered if path in readable] or hits or readable
+    return SampledMetric(
+        name=FEATURE_METRIC,
+        value=len(uncovered) / len(sources),
+        abstention=None,
+        computed_from=tuple(redact(path) for path in cited),
+        derivation=(
+            f"{len(uncovered)} of {len(sources)} changed source file(s) have no "
+            f"matched test: {_listed(uncovered)}; matched: "
+            f"{_pair_list(facts.pairs)}; {PAIR_METHOD}{_pair_notes(facts)}"
+        ),
+    )
+
+
 def _bugfix_metric(
-    context: DimensionContext,
-    repo: Path,
-    changed: tuple[str, ...],
-    statuses: dict[str, str],
+    sources: list[str],
+    tests: list[str],
+    readable: list[str],
+    pairs: tuple[tuple[str, str], ...],
+    facts: PairFacts,
 ) -> SampledMetric:
     """``bugfix_without_regression_test``: test files added or changed in the
-    scope that match changed source code (FR-082). A deleted test, or a pure
-    rename (``R100``), is not part of the change's code."""
-    tables = curated_metric_tables()
-    live = [
-        path
-        for path in changed
-        if statuses.get(path, "M") != "D" and statuses.get(path) != "R100"
-    ]
-    sources = [path for path in live if code_kind(path, tables) == "source"]
-    if not sources:
-        return _no_value(NO_SOURCE)
-    tests = [
-        path
-        for path in live
-        if code_kind(path, tables) == "test" and context.read_source(path) is not None
-    ]
-    readable = [path for path in sources if context.read_source(path) is not None]
-    manifests = _manifest_paths(repo, (*sources, *tests))
-    matched, _unmatched = _correspondence((*sources, *manifests, *tests), tuple(tests))
-    pairs = {source: matched[source] for source in sources if source in matched}
-    hits = sorted({test for found in pairs.values() for test in found})
-    method = (
-        "a test file counts when it is added or changed in this change and its "
-        "name is a conventional test name of a changed source file in the same "
-        "project (test-strategy's correspondence; project boundaries read from "
-        "manifests anywhere above the files); a deleted test never counts"
-    )
+    scope matched to changed source code in the final pair set (FR-082,
+    FR-084). A deleted test, or a pure rename (``R100``), is not part of the
+    change's code."""
+    hits = sorted({test for _source, test in pairs})
     if hits:
-        listed = "; ".join(
-            f"{redact(source)} -> {', '.join(redact(t) for t in found)}"
-            for source, found in sorted(pairs.items())
-        )
         return SampledMetric(
             name=METRIC,
             value=len(hits),
             abstention=None,
             computed_from=tuple(redact(path) for path in hits),
-            derivation=f"{len(hits)} matched test file(s): {listed}; {method}",
+            derivation=(
+                f"{len(hits)} matched test file(s): {_pair_list(facts.pairs)}; "
+                f"{PAIR_METHOD}{_pair_notes(facts)}"
+            ),
         )
     if not readable:
         return _no_value(UNREADABLE)
@@ -489,9 +527,313 @@ def _bugfix_metric(
         derivation=(
             f"0 matched test files: none of the test files added or changed "
             f"({unmatched}) matches the {len(sources)} changed source file(s) "
-            f"cited; {method}"
+            f"cited; {PAIR_METHOD}{_pair_notes(facts)}"
         ),
     )
+
+
+PAIR_METHOD = (
+    "a test file counts when it is added or changed in this change and "
+    "references one of the source file's changed symbols as a whole word "
+    "(basis symbol: declarations on added or removed lines and the enclosing "
+    "declaration of each changed line, read with the registry's "
+    "public_declarations pattern; same project by manifest; symbols under "
+    f"{MIN_SYMBOL_CHARS} characters or common words never pair, nor does a "
+    "name the test declares itself), else when its name is a conventional "
+    "test name of the source file in the same project (basis name, "
+    "test-strategy's correspondence); the calling agent may confirm, reject "
+    "or add pairs (agent_input.test_pairs); a deleted test never counts"
+)
+
+
+def _pair_list(pairs: Sequence[MatchedPair]) -> str:
+    """``source -> test (basis[ symbol][ at ref], status)``, one per pair."""
+    return (
+        "; ".join(
+            f"{item.source} -> {item.test} ({item.basis}"
+            + (f" {item.symbol}" if item.symbol else "")
+            + (f" at {item.ref}" if item.ref else "")
+            + f", {item.status})"
+            for item in pairs
+        )
+        or "none"
+    )
+
+
+def _pair_notes(facts: PairFacts) -> str:
+    notes = ""
+    if facts.dropped:
+        notes += f"; rejected by the agent: {_pair_list(facts.dropped)}"
+    if facts.rejected:
+        notes += (
+            f"; {len(facts.rejected)} invalid agent_input.test_pairs entr"
+            f"{'y' if len(facts.rejected) == 1 else 'ies'} ignored"
+        )
+    if facts.no_symbols:
+        notes += (
+            "; no changed symbols read for "
+            f"{_listed(facts.no_symbols)} (no public_declarations pattern for "
+            "the language, or no diff read), so only names match there"
+        )
+    return notes
+
+
+def _pair_facts(
+    context: DimensionContext,
+    repo: Path,
+    scope: object,
+    statuses: dict[str, str],
+    sources: list[str],
+    tests: list[str],
+) -> tuple[tuple[tuple[str, str], ...], PairFacts]:
+    """The final ``(source, test)`` pairs (raw paths, for the rules) and the
+    redacted :class:`PairFacts` for the payload (T112, FR-084)."""
+    tables = curated_metric_tables()
+    manifests = _manifest_paths(repo, (*sources, *tests))
+    named, _unmatched = _correspondence((*sources, *manifests, *tests), tuple(tests))
+    projects = _manifest_dirs(manifests)
+    diff = _diff_text(repo, scope)
+    items = {
+        item["path"]: item
+        for item in (_diff_files(diff) if diff else ())
+        if not item["secret"]
+    }
+    symbols, no_symbols = _symbol_map(context, scope, sources, items, diff is not None)
+    texts = {test: context.peek_source(test) or "" for test in tests}
+    references = {
+        test: _references(
+            texts[test],
+            tables.public_declarations.get(PurePosixPath(test).suffix),
+            {
+                number
+                for sign, number, _text, _hunk in items.get(test, {}).get("lines", ())
+                if sign == "+"
+            },
+        )
+        for test in tests
+    }
+
+    proposals: dict[tuple[str, str], MatchedPair] = {}
+    for source in sorted(sources):
+        for test in sorted(tests):
+            found = None
+            if _project(source, projects) == _project(test, projects):
+                found = min(
+                    (
+                        (*references[test][name], name)
+                        for name in symbols[source]
+                        if name in references[test]
+                    ),
+                    default=None,
+                )
+            if found is not None:
+                _rank, line, name = found
+                proposals[source, test] = MatchedPair(
+                    source, test, "symbol", name, f"{test}:{line}", "detected"
+                )
+            elif test in named.get(source, ()):
+                proposals[source, test] = MatchedPair(
+                    source, test, "name", None, None, "detected"
+                )
+
+    deleted = {
+        path
+        for path, status in statuses.items()
+        if status == "D" and code_kind(path, tables) == "test"
+    }
+    answers = getattr(context, "pair_answers", None)
+    final = dict(proposals)
+    dropped: list[MatchedPair] = []
+    rejected: list[tuple[int, str]] = list(answers[1]) if answers else []
+    applied = False
+    seen: set[tuple[str, str]] = set()
+    for index, entry in answers[0] if answers else ():
+        source, test, verdict = entry["source"], entry["test"], entry["verdict"]
+        reason = redact(entry["reason"])
+        key = (source, test)
+        label = f"test_pairs[{index}]"
+        problem = None
+        if key in seen:
+            problem = "a duplicate answer for this pair; the first one counts"
+        elif source not in sources:
+            problem = "source is not a live source file changed by this change"
+        elif test in deleted:
+            problem = "test is deleted by this change, so it never matches"
+        elif test not in tests:
+            problem = "test is not a readable test file added or changed by this change"
+        elif key in proposals:
+            if verdict == "reject":
+                final.pop(key)
+                dropped.append(
+                    dataclasses.replace(
+                        proposals[key], status="rejected", reason=reason
+                    )
+                )
+            else:
+                final[key] = dataclasses.replace(
+                    proposals[key], status="confirmed", reason=reason
+                )
+        elif verdict == "reject":
+            problem = "not a proposed pair, so there is nothing to reject"
+        elif _project(source, projects) != _project(test, projects):
+            problem = "source and test are in different projects"
+        elif "ref" not in entry:
+            problem = "a pair that was not proposed needs a ref (test-path:line)"
+        elif (line := _ref_line(entry["ref"], test, texts[test])) is None:
+            problem = "ref does not name an existing line of that test (test-path:line)"
+        else:
+            final[key] = MatchedPair(
+                source, test, "agent", None, f"{test}:{line}", "added", reason
+            )
+        if problem is None:
+            seen.add(key)
+            applied = True
+        else:
+            rejected.append((index, f"{label}: {problem}"))
+
+    ordered = [final[key] for key in sorted(final)]
+    paired_tests = {item.test for item in ordered}
+    paired_sources = {item.source for item in ordered}
+    facts = PairFacts(
+        proposals=tuple(_redacted(proposals[key]) for key in sorted(proposals)),
+        pairs=tuple(_redacted(item) for item in ordered),
+        dropped=tuple(_redacted(item) for item in dropped),
+        rejected=tuple(
+            message for _index, message in sorted(rejected, key=lambda x: x[0])
+        ),
+        unpaired_tests=tuple(
+            redact(path) for path in sorted(tests) if path not in paired_tests
+        ),
+        unpaired_sources=tuple(
+            redact(path) for path in sorted(sources) if path not in paired_sources
+        ),
+        no_symbols=tuple(redact(path) for path in no_symbols),
+        answered=applied,
+    )
+    return tuple(sorted(final)), facts
+
+
+def _redacted(item: MatchedPair) -> MatchedPair:
+    ref = item.ref
+    if ref is not None:
+        path, _, line = ref.rpartition(":")
+        ref = f"{redact(path)}:{line}"
+    return dataclasses.replace(
+        item, source=redact(item.source), test=redact(item.test), ref=ref
+    )
+
+
+def _ref_line(ref: str, test: str, text: str) -> int | None:
+    """The line ``ref`` (``test-path:line``) names in ``test``, if it exists."""
+    path, _, number = ref.rpartition(":")
+    if path != test or not number.isdigit():
+        return None
+    line = int(number)
+    return line if 1 <= line <= len(text.splitlines()) else None
+
+
+def _project(path: str, projects: frozenset[str]) -> str:
+    """The deepest directory above ``path`` holding a project manifest
+    (the repository root when none does)."""
+    directory = str(PurePosixPath(path).parent).strip(".")
+    return max(
+        (item for item in projects if _is_ancestor(item, directory)),
+        key=len,
+        default="",
+    )
+
+
+def changed_symbols(item: dict, pattern: re.Pattern[str]) -> tuple[str, ...]:
+    """The names one file's diff touches (T112): a declaration on an added or
+    removed line, and the enclosing declaration of every other changed line
+    -- the nearest declaration above it in its hunk, else the one git names
+    in the hunk header. A hunk with neither yields nothing."""
+    enclosing = {
+        hunk: _declared_name(pattern, text)
+        for hunk, text in item.get("headers", {}).items()
+    }
+    found: set[str] = set()
+    for sign, _number, text, hunk in item["lines"]:
+        name = _declared_name(pattern, text)
+        if name is not None:
+            enclosing[hunk] = name
+        if sign != " " and (name or enclosing.get(hunk)):
+            found.add(name or enclosing[hunk])
+    return tuple(sorted(found))
+
+
+def _symbol_map(
+    context: DimensionContext,
+    scope: object,
+    sources: list[str],
+    items: dict[str, dict],
+    diff_read: bool,
+) -> tuple[dict[str, tuple[str, ...]], list[str]]:
+    """Changed symbols per changed source file that may pair (long enough,
+    not common), and the files that yield none because their language has no
+    ``public_declarations`` pattern or no diff of them was read."""
+    tables = curated_metric_tables()
+    symbols: dict[str, tuple[str, ...]] = {}
+    missing: list[str] = []
+    for source in sources:
+        pattern = tables.public_declarations.get(PurePosixPath(source).suffix)
+        item = items.get(source)
+        if item is None and diff_read and scope.kind != "changes":
+            # Worktree: an untracked file is not in `git diff HEAD`; every one
+            # of its lines is an added line.
+            text = context.peek_source(source)
+            if text is not None:
+                item = {
+                    "lines": [
+                        ("+", number, line, 1)
+                        for number, line in enumerate(text.splitlines(), 1)
+                    ]
+                }
+        if pattern is None or item is None:
+            missing.append(source)
+            symbols[source] = ()
+            continue
+        symbols[source] = tuple(
+            name for name in changed_symbols(item, pattern) if _may_pair(name)
+        )[:MAX_SYMBOLS_PER_FILE]
+    return symbols, sorted(missing)
+
+
+def _may_pair(name: str) -> bool:
+    return len(name) >= MIN_SYMBOL_CHARS and name.lower() not in COMMON_SYMBOLS
+
+
+def _diff_text(repo: Path, scope: object) -> str | None:
+    """The scope's diff: ``changes`` carries it; at ``worktree`` scope it is
+    ``git diff HEAD``, read whole or not at all (its ceiling is the
+    ``changes`` diff's)."""
+    if scope.kind == "changes":
+        return getattr(scope, "diff", None)
+    ok, out, _ = run_git_text(repo, ["diff", "HEAD", "--"])
+    if not ok or len(out) > MAX_DIFF_CHARS:
+        return None
+    return out
+
+
+def _references(
+    text: str, pattern: re.Pattern[str] | None, added: set[int]
+) -> dict[str, tuple[int, int]]:
+    """Identifier -> ``(rank, line)`` of the line citing it in a test's text,
+    whole words only: the first line the diff added (rank 0), else the first
+    line (rank 1). Every name the test declares itself is left out (a
+    same-named helper is not a reference to the changed source)."""
+    first: dict[str, tuple[int, int]] = {}
+    declared: set[str] = set()
+    for number, line in enumerate(text.splitlines(), 1):
+        if len(line) > MAX_LINE_CHARS:
+            continue
+        if pattern is not None and (name := _declared_name(pattern, line)):
+            declared.add(name)
+        rank = 0 if number in added else 1
+        for word in _IDENT.findall(line):
+            if word not in first or rank < first[word][0]:
+                first[word] = (rank, number)
+    return {word: found for word, found in first.items() if word not in declared}
 
 
 def _abstain(context: DimensionContext, reason: str) -> None:
