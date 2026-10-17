@@ -311,6 +311,9 @@ class LanguageTables:
     """Path -> ``api``/``service``/``data``/``shared`` or ``None`` (T074): the
     declared ``layer_paths`` conventions, bound by the builder
     (``metric_tables``); ``None`` classifies nothing."""
+    purpose_rank: Callable[[str], int] | None = field(default=None, compare=False)
+    """``core.batches.purpose_rank`` (T113), bound by the builder: 0/1 is
+    application source, 2+ tooling/config/generated. ``None``: all count."""
     package_manifests: tuple[str, ...] = field(default=(), compare=False)
     """Repository paths of the ``package-manifest`` role (T093), from the role
     resolution's whole-repository walk, bound by the dimension: where the layer
@@ -655,6 +658,16 @@ def _view(pack: EvidencePack, tables: LanguageTables) -> _PackView:
     )
 
 
+MAX_LISTED_PATHS = 20
+"""Paths a derivation lists by name (T113): the first N in order, then
+``(+K more)``; the count beside the list is always the full one."""
+
+
+def _listed(paths: Sequence[str], limit: int = MAX_LISTED_PATHS) -> str:
+    shown = ", ".join(paths[:limit])
+    return shown + (f" (+{len(paths) - limit} more)" if len(paths) > limit else "")
+
+
 def _dedup(paths: Sequence[str]) -> tuple[str, ...]:
     seen: dict[str, None] = {}
     for path in paths:
@@ -713,7 +726,7 @@ def _sources_without_covering_test(view: _PackView) -> _Computed:
         tuple(sorted(view.source_files)),
         f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
         "conventionally named test file in the same project inside this pack: "
-        + (", ".join(sorted(unmatched)) or "(none)")
+        + (_listed(sorted(unmatched)) or "(none)")
         + "; "
         + _CLASSIFIED_BY,
     )
@@ -955,7 +968,7 @@ def _source_files_without_covering_test_share(view: _PackView) -> _Computed:
         tuple(sorted(view.source_files)),
         f"{len(unmatched)} of {len(view.source_files)} source file(s) have no "
         "conventionally named test file in the same project inside this pack: "
-        + (", ".join(sorted(unmatched)) or "(none)")
+        + (_listed(sorted(unmatched)) or "(none)")
         + "; "
         + _CLASSIFIED_BY,
     )
@@ -1453,7 +1466,21 @@ def _top_level_import_cycles(view: _PackView) -> _Computed:
             and PurePosixPath(e.path).suffix in view.tables.syntax
         }
     )
-    prefix = _common_directory(files)
+    # T113: the root is shared by the application source only, so a root
+    # tooling/config file (``commitlint.config.js``, purpose class of
+    # ``core.batches``) cannot collapse every module into one; files outside
+    # that root are not modules and their statements are not edges.
+    rank = view.tables.purpose_rank
+    application = [p for p in files if rank is None or rank(p) <= 1] or files
+    prefix = _common_directory(application)
+    files = [
+        path for path in files if PurePosixPath(path).parts[: len(prefix)] == prefix
+    ]
+    statements = [
+        (excerpt, text)
+        for excerpt, text in statements
+        if PurePosixPath(excerpt.path).parts[: len(prefix)] == prefix
+    ]
 
     def module_of(path: str) -> str:
         parts = PurePosixPath(path).parts[len(prefix) :]
@@ -1486,8 +1513,10 @@ def _top_level_import_cycles(view: _PackView) -> _Computed:
         f"under {where}: "
         + ("; ".join(" <-> ".join(cycle) for cycle in cycles) or "none")
         + f". A top-level module is the first directory under the deepest "
-        f"directory shared by the {len(files)} source file(s) quoted here (a file "
-        "directly there is its own module); a cycle is a set of two or more "
+        f"directory shared by the application source file(s) quoted here "
+        f"({len(files)} under it; a file directly there is its own module; "
+        "tooling, config and generated files neither move it nor count); "
+        "a cycle is a set of two or more "
         "modules each reaching the others, counted once; only the import "
         "statements quoted in this pack are seen; " + _IMPORT_METHOD,
     )
@@ -3958,8 +3987,12 @@ def compute_metrics(
                 derivation = "no value: " + computed.reason
             else:
                 outcome, refs, derivation = computed
-            if sample is not None and definition.name in SAMPLE_METRICS.get(
-                dimension, ()
+            # A whole-file result (T076, the T113 code index) is not a sample.
+            whole = {item.name for item in evidence.whole_file or ()}
+            if (
+                sample is not None
+                and definition.name in SAMPLE_METRICS.get(dimension, ())
+                and definition.name not in whole
             ):
                 derivation += "; " + sample_note(
                     sample, whole_text=definition.name in stored
@@ -4029,20 +4062,28 @@ def sample_note(sample, *, whole_text: bool = False) -> str:
 
 
 def compute_sampled_metrics(
-    dimension: str, units: Sequence[Excerpt], tables: LanguageTables
+    dimension: str,
+    units: Sequence[Excerpt],
+    tables: LanguageTables,
+    *,
+    names: Sequence[str] | None = None,
+    files: Sequence[str] = (),
 ) -> tuple[SampledMetric, ...]:
     """Run this dimension's :data:`SAMPLED_METRICS` over whole-file ``units``.
 
     Pure, like every function here: the caller (a dimension) read the files
     and passes their text as whole-file excerpts; nothing is kept but the
     result. Refs are mapped from each unit's ``ref`` to its path, which is
-    what the pack's ``files_read`` holds.
+    what the pack's ``files_read`` holds. ``names`` replaces the dimension's
+    :data:`SAMPLED_METRICS` (the code index's set, T113); ``files`` are extra
+    text-less paths in the view (package manifests: project boundaries).
     """
+    wanted = SAMPLED_METRICS.get(dimension, ()) if names is None else names
     pack = EvidencePack(
         dimension=dimension,
         mode="",
         scope="",
-        files_read=tuple(unit.path for unit in units),
+        files_read=(*(unit.path for unit in units), *files),
         excerpts=tuple(units),
         sources_sought=(),
         sources_found=(),
@@ -4054,7 +4095,7 @@ def compute_sampled_metrics(
     paths = {unit.ref: unit.path for unit in units}
     results = []
     for definition in METRIC_DEFINITIONS:
-        if definition.name not in SAMPLED_METRICS.get(dimension, ()):
+        if definition.name not in wanted:
             continue
         computed = definition.compute(view)
         if isinstance(computed, MetricAbstention):
@@ -4104,8 +4145,9 @@ def check_citations(metrics: Sequence[Metric], allowed_refs: frozenset[str]) -> 
 
 def allowed_refs(pack: EvidencePack) -> frozenset[str]:
     """Every reference a metric over ``pack`` may legitimately cite: each path
-    in ``files_read``, and each excerpt's ``ref`` and ``path``."""
-    refs = set(pack.files_read)
+    in ``files_read`` or ``code_index_files`` (T113), and each excerpt's
+    ``ref`` and ``path``."""
+    refs = set(pack.files_read) | set(pack.code_index_files or ())
     for excerpt in pack.excerpts:
         refs.add(excerpt.ref)
         refs.add(excerpt.path)

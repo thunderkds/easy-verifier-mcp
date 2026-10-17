@@ -110,7 +110,8 @@ BATCH_SOURCES_WARNING = (
     "{count} in-scope source files do not fit beside the test evidence under "
     "the {cap}-file read cap; they are read in priority batches of {cap}: "
     "batches {done} of {total} ({read} of {count} files), ordered by {order}. "
-    "Source-to-test figures describe this sample."
+    "Only the files read for evidence are this sample; the source-to-test "
+    "figures are computed over every file of the code index."
 )
 
 DELETED_TEST_WARNING = (
@@ -223,6 +224,10 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
         for source in SOURCES_SOUGHT:
             context.sources_missing.append(SourceMiss(source=source, reason=reason))
         return
+
+    # T113: whole-set code metrics over the call's code index, before any
+    # yield (the budget may abandon this generator at its first rejection).
+    _code_extract.record_index_metrics(context, NAME)
 
     scope_files = tuple(getattr(resolved_scope, "files", ()) or ())
     changed_files = frozenset(getattr(resolved_scope, "changed_files", ()) or ())

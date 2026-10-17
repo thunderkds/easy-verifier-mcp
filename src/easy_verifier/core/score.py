@@ -519,7 +519,12 @@ def score_packs(
         ),
         (),
     )
-    capped = tuple(
+    index_cap = (
+        ({"dimension": "index", **asdict(packs.index_capped)},)
+        if packs.index_capped is not None
+        else ()
+    )
+    capped = index_cap + tuple(
         {"dimension": slot.dimension, **asdict(item)}
         for slot in packs.slots
         if slot.pack is not None and slot.pack.capped

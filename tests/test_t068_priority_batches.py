@@ -327,12 +327,15 @@ def test_metric_over_batches_one_and_two_equals_the_oracle(big_repo, dimension):
         big_repo, list(batches_candidates(big_repo)), _code_extract.MAX_CODE_SOURCES, 2
     )
     assert len(plan.selected) == 400
-    expected = _oracle(big_repo, dimension, plan.selected)
+    # T113: the metrics come from the code index, i.e. every one of the 450
+    # sources whatever the batch count; batches now bound only the excerpts.
+    expected = _oracle(big_repo, dimension, plan.ordered)
     measured = {m.name: m for m in compute_metrics(pack, curated_metric_tables())}
     for name in SAMPLED[dimension]:
         assert measured[name].outcome == expected[name], name
-        assert "sample: batches 2 of 3, 400 of 450 files" in measured[name].derivation
-        assert set(measured[name].computed_from) <= set(pack.files_read)
+        assert "all 450 source files" in measured[name].derivation
+        assert "sample:" not in measured[name].derivation
+        assert set(measured[name].computed_from) <= set(pack.code_index_files)
 
 
 def batches_candidates(repo: Path):
@@ -370,7 +373,9 @@ def test_test_strategy_metric_derivation_discloses_the_sample(big_repo) -> None:
     (ratio,) = compute_metrics(pack, curated_metric_tables()).by_name(
         "test_to_source_ratio"
     )
-    assert "sample: batches 1 of 3, 200 of 450 files" in ratio.derivation
+    # T113: over the code index (450 sources + 5 tests), not the batch sample.
+    assert "all 455 code files" in ratio.derivation
+    assert "sample:" not in ratio.derivation
 
 
 # ---------------------------------------------------------------------------
@@ -566,6 +571,15 @@ def test_under_the_cap_payload_is_identical_to_develop(tmp_path) -> None:
     # are unchanged; only unrated sink_hits_observed text changed, and the
     # test-strategy pack (which holds only the one test file) now abstains
     # instead of reporting 0 (only test files were scanned).
+    # Regenerated for T113 (code index): every rating, value and the overall
+    # (61) are unchanged; only the six test-strategy index metrics'
+    # derivations gain "; all 51 code files -- computed over the whole text
+    # ..." (they now come from the index, not the pack); and every
+    # top_level_import_cycles derivation names its application-source root
+    # (T113 P1: a root config file no longer moves it); and (T113 AC5) a
+    # derivation lists at most 20 uncovered files "(+K more)", an index
+    # metric cites its first 20 files and names the full count. Values,
+    # ratings and the overall unchanged.
     repo = _under_cap_repo(tmp_path)
     assert _payload(repo) == SNAPSHOT.read_text(encoding="utf-8").strip()
 

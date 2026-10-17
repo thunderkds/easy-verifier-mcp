@@ -36,7 +36,13 @@ from pathlib import PurePosixPath
 from ..core import batches
 from ..core.context import MAX_EXCERPT_LINES, MAX_LINE_CHARS
 from ..core.metric_tables import curated_metric_tables, with_conventions
-from ..core.metrics import _is_source_file, compute_sampled_metrics
+from ..core.metrics import (
+    _MANIFEST_NAMES,
+    MAX_LISTED_PATHS,
+    SAMPLED_METRICS,
+    _is_source_file,
+    compute_sampled_metrics,
+)
 from ..core.models import (
     DimensionContext,
     Excerpt,
@@ -54,7 +60,8 @@ MAX_CODE_SOURCES = 200
 BATCH_WARNING = (
     "{count} in-scope source files exceed the cap of {cap} for {what}; read in "
     "priority batches of {cap}: batches {done} of {total} ({read} of {count} "
-    "files), ordered by {order}. Metrics over {what} describe this sample."
+    "files), ordered by {order}. Only the excerpts for {what} are this "
+    "sample; the code metrics are computed over every file of the code index."
 )
 
 
@@ -210,6 +217,19 @@ def record_sample(
     sources, no result: the metrics then abstain as before.
     """
     plan = getattr(context, "batch_plan", None)
+    if getattr(context, "code_index", None) is not None:
+        # T113: the metrics come from the call's code index; a batch plan
+        # still bounds the excerpts, and is still disclosed as the sample.
+        # The reads (served from the index) stay where they were, so
+        # ``files_read`` keeps its order: the batch first (T068).
+        if plan and getattr(context, "sample", None) is None:
+            for path in plan.selected:
+                context.read_source(path)
+            context.sample = sample_facts(plan)
+        elif not plan and getattr(context, "source_texts", None) is None:
+            context.source_texts = {path: context.read_source(path) for path in sources}
+        record_index_metrics(context, dimension)
+        return
     if getattr(context, "sample", None) is not None:
         return
     if getattr(context, "whole_file", None) is not None or not sources:
@@ -224,7 +244,139 @@ def record_sample(
     if not plan:
         read = sum(text is not None for text in context.source_texts.values())
         note = "; " + _whole_note(read, len(sources))
-    metrics = tuple(
+    metrics = _redacted(
+        compute_sampled_metrics(
+            dimension,
+            units,
+            replace(
+                with_conventions(curated_metric_tables(), context_conventions(context)),
+                package_manifests=_package_manifests(context),
+            ),
+        ),
+        note,
+    )
+    if plan:
+        context.sample = sample_facts(plan, metrics)
+    else:
+        context.whole_file = metrics
+
+
+INDEX_METRICS: dict[str, tuple[str, ...]] = {
+    "test-strategy": (
+        "test_to_source_ratio",
+        "source_files_without_covering_test",
+        "assertion_density_per_test",
+        "source_files_without_covering_test_share",
+        "tests_without_assertions_share",
+        "skipped_test_share",
+    ),
+    "code-quality": SAMPLED_METRICS["code-quality"],
+    "architecture": SAMPLED_METRICS["architecture"],
+    "reliability": SAMPLED_METRICS["reliability"],
+}
+"""The code metrics each dimension computes over the call's code index (T113,
+FR-085) rather than over its byte-budgeted excerpts. Test-strategy reads every
+indexed code file; the others its source files, as their excerpt tiers do.
+Security's ``sink_hits_observed`` stays evidence-local over the sink lines its
+pack quotes (T034)."""
+
+
+def record_index_metrics(context: DimensionContext, dimension: str) -> None:
+    """Compute ``dimension``'s :data:`INDEX_METRICS` over the code index.
+
+    The texts come from the index (read once per call, with ``read_source``'s
+    refusals); the files computed over are kept on ``context.code_index_files``
+    (the pack's ``code_index_files``, which the metrics may cite), so the
+    pack's own ``files_read`` and its read caps are unchanged. Stored on
+    ``context.whole_file``; once per context. No index or no file: nothing is
+    stored and the metrics fall back to the pack as before.
+    """
+    index = getattr(context, "code_index", None)
+    if index is None or getattr(context, "whole_file", None) is not None:
+        return
+    tables = curated_metric_tables()
+    paths = [
+        path
+        for path in index.texts
+        if dimension == "test-strategy"
+        or (
+            PurePosixPath(path).suffix in tables.syntax
+            and _is_source_file(path, tables)
+        )
+    ]
+    units = []
+    for path in paths:
+        text = index.texts[path]
+        lines = [line.removesuffix("\r") for line in text.split("\n")]
+        units.append(
+            Excerpt(path=path, start_line=1, end_line=len(lines), text="\n".join(lines))
+        )
+    if not units:
+        return
+    context.code_index_files = tuple(paths)
+    scope_files = getattr(context.resolved_scope, "files", ()) or ()
+    manifests = tuple(
+        path
+        for path in scope_files
+        if PurePosixPath(path).name.lower() in _MANIFEST_NAMES
+    )
+    context.whole_file = _redacted(
+        _bounded(
+            compute_sampled_metrics(
+                dimension,
+                units,
+                replace(
+                    with_conventions(
+                        curated_metric_tables(), context_conventions(context)
+                    ),
+                    package_manifests=_package_manifests(context),
+                ),
+                names=INDEX_METRICS[dimension],
+                files=manifests,
+            )
+        ),
+        "; " + _index_note(index, len(units), dimension),
+    )
+
+
+def _index_note(index, used: int, dimension: str) -> str:
+    """``all N source files`` (T076's wording) or ``all N code files``
+    (test-strategy, tests included) of the code index (T113), or its cap."""
+    what = "code" if dimension == "test-strategy" else "source"
+    if index.cap is None:
+        return (
+            f"all {used} {what} files -- computed over the whole text of those "
+            "files, not only the excerpts quoted in this pack"
+        )
+    return (
+        f"the code index read {index.read} of {index.matched} code files (cap "
+        "disclosed in capped, dimension index); computed over the whole text "
+        f"of {used} of them, so a count is a lower bound and a share describes "
+        "those files"
+    )
+
+
+def _bounded(items, limit: int = MAX_LISTED_PATHS):
+    """Index results citing at most ``limit`` files (T113, AC5): the first in
+    their existing order, the full count named in the derivation."""
+    for item in items:
+        cited = item.computed_from
+        if len(cited) <= limit:
+            yield item
+            continue
+        yield replace(
+            item,
+            computed_from=cited[:limit],
+            derivation=item.derivation
+            + f"; cites the first {limit} of the {len(cited)} files it was "
+            f"computed over (+{len(cited) - limit} more, in the pack's "
+            "code_index_files)",
+        )
+
+
+def _redacted(items, note: str) -> tuple[SampledMetric, ...]:
+    """Each result with its paths and derivation redacted, ``note`` appended."""
+    return tuple(
         SampledMetric(
             name=item.name,
             value=item.value,
@@ -234,19 +386,8 @@ def record_sample(
             computed_from=tuple(redact(path) for path in item.computed_from),
             derivation=redact(item.derivation + note) if item.derivation else "",
         )
-        for item in compute_sampled_metrics(
-            dimension,
-            units,
-            replace(
-                with_conventions(curated_metric_tables(), context_conventions(context)),
-                package_manifests=_package_manifests(context),
-            ),
-        )
+        for item in items
     )
-    if plan:
-        context.sample = sample_facts(plan, metrics)
-    else:
-        context.whole_file = metrics
 
 
 def _package_manifests(context: DimensionContext) -> tuple[str, ...]:
