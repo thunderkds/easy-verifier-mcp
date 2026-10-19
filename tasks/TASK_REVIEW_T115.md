@@ -1,4 +1,4 @@
-# TASK_REVIEW — T115: [Short Title]
+# TASK_REVIEW — T115: Static landing page + self-score snapshot + drift test
 
 > Sibling of `tasks/TASK_GUIDE_T115.md`. Everything here is **filled by the reviewer at Stage
 > 4/5** — it is deliberately NOT in the guide, because the implementing agent re-reads the guide on
@@ -33,8 +33,13 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured Mon Oct 19 03:16:02 AM UTC 2026 in the T115 worktree, before any implementation commit:
+```
+$ date -u; ls site/ tests/test_site_content.py
+Mon Oct 19 03:16:02 AM UTC 2026
+ls: cannot access 'site/': No such file or directory
+ls: cannot access 'tests/test_site_content.py': No such file or directory
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
