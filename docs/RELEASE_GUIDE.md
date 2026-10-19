@@ -115,12 +115,16 @@ retains the full repository on each push to `main`. Either way only `site/` is s
 
 ### Refresh the sample score snapshot
 
-`site/sample-score.json` is a committed snapshot; a drift test fails if the page and engine
-disagree. To regenerate it, save this as `reduce.py`:
+`site/sample-score.json` is a committed snapshot. The drift test compares the page with this
+committed snapshot, not with the live engine, so a regenerated snapshot needs a matching page edit.
+Work in a temp directory so the roughly 1 MB score output (it contains excerpts) is never left
+untracked in the repo. Save this as `"$T/reduce.py"`:
 
 ```python
 import json, sys
 d = json.load(open(sys.argv[1]))
+if d["overall"].get("value") is None:
+    sys.exit("overall withheld: the snapshot needs a numeric overall")
 out = {"commit": sys.argv[2], "date": sys.argv[3], "scope": "project",
        "overall": d["overall"]["value"],
        "ratings": [({"dimension": r["dimension"], "value": r["value"]} if r.get("value") is not None
@@ -132,9 +136,15 @@ json.dump(out, open(sys.argv[4], "w"), indent=2); open(sys.argv[4], "a").write("
 then, from the repo root:
 
 ```bash
-python -m easy_verifier.adapters.cli score --repo . --scope project </dev/null > self.json
-python reduce.py self.json "$(git rev-parse --short HEAD)" "$(date -u +%F)" site/sample-score.json
+T=$(mktemp -d)   # save reduce.py into "$T" first
+python -m easy_verifier.adapters.cli score --repo . --scope project </dev/null > "$T/self.json"
+python "$T/reduce.py" "$T/self.json" "$(git rev-parse --short HEAD)" "$(date -u +%F)" site/sample-score.json
 ```
+
+Then hand-update the `#sample` block in `site/index.html` to match the new snapshot:
+`data-overall`, each per-dimension row (`data-value` or `data-reason`), `data-commit`, `data-date`,
+`data-areas-measured`, and the areas-without-rule list. Finally run
+`python -m pytest tests/test_site_content.py -q`; it must pass.
 
 ### Check the live page
 

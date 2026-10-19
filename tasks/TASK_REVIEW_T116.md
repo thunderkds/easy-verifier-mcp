@@ -49,3 +49,8 @@ ls: cannot access 'tests/test_site_deploy_config.py': No such file or directory
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/T116.jsonl`, never the
 implementing agent alone]
+
+## Stage 4 fixes (snapshot refresh steps: page update, withheld overall, temp dir)
+
+Evidence: `PYTHONPATH=src:<main-checkout>/.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest tests/test_site_deploy_config.py tests/test_site_content.py tests/test_t100_no_personal_identifiers.py -q` -> `26 passed in 1.32s`; `ruff check tests/test_site_deploy_config.py tests/test_site_content.py` -> `All checks passed!`.
+Changed: `docs/RELEASE_GUIDE.md` only. Explicit page-update + `test_site_content.py` step added; drift-test sentence corrected (compares committed snapshot, not live engine); `reduce.py` exits "overall withheld: the snapshot needs a numeric overall" when overall has no value; `self.json` and `reduce.py` live in `mktemp -d`.
