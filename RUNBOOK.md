@@ -23,7 +23,7 @@
 
 ## Release 1 plan — `develop` → `main` (first release)
 
-**Planned 2026-10-19. Status: NO-GO until the blockers in "GO gate" are cleared.**
+**Planned 2026-10-19. Status: GO for `v0.1.0` — operator executes.**
 
 ### Scope
 
@@ -160,16 +160,20 @@ probe.
 | Rollback plan with triggers + exact reverse steps | ✅ above |
 | Post-release health check with a concrete pass condition | ✅ above |
 | Release command known | ✅ fast-forward push + tag |
-| Version decided | ❌ Decision A |
+| Version decided | ✅ `v0.1.0` (operator, 2026-10-19 — Decision A) |
 
-**Verdict: NO-GO — one blocker left: Decision A (version).** Suite and release gate are green in
-the repaired venv. Once the version is chosen (and, for `0.2.0`, its bump task merged), the
-remaining steps are operator-only: clean tree, publish `develop`, fast-forward `main`, tag,
-connect Vercel. T096's unticked evidence checkbox is bookkeeping, not a blocker.
+**Verdict: GO (2026-10-19) for `v0.1.0` at the published `develop` head.** Suite and release gate
+are green in the repaired venv; the version is decided. Remaining steps are operator-only: clean
+tree (pre-release check 2), publish `develop` (check 3), then the release steps with
+`VERSION=0.1.0`, then connect Vercel. If `develop` moves past `d41ea3a` with code changes before
+the release, re-run checks 4–5 first. T096's unticked evidence checkbox is bookkeeping, not a
+blocker.
 
-- **Decision A — version/tag.** `v0.1.0` matches `pyproject.toml`, but the Docker Hub `0.1.0`
-  image was built from older code, so the same number would name two different builds. Bumping to
-  `0.2.0` needs a one-line `pyproject.toml` change, which goes through a task.
+- **Decision A — resolved (operator, 2026-10-19): `v0.1.0`.** Matches `pyproject.toml`; no bump
+  task. Operator's reason: there has been no prior release, so nothing consumes a conflicting
+  `0.1.0`. Accepted side effect: the older Docker Hub `temvar/easy-verifier-mcp:0.1.0` image (from
+  `fae8969`) shares the number with this git tag but is different code; it is not referenced
+  anywhere in the docs or the site (T025 cancelled).
 - **Decision B — resolved by events (2026-10-19):** T115 and T116 are merged, so the first `main`
   will serve the landing page as soon as the operator connects Vercel (`docs/RELEASE_GUIDE.md`,
   "Landing site"). After connecting, run that section's live checks: 200 for `/`, 404 for
@@ -183,4 +187,4 @@ This plan is a recommendation; the operator executes every step.
 
 | Version | Date | Scope | Deployer | Outcome |
 |---------|------|-------|----------|---------|
-| (Release 1) | planned 2026-10-19 | develop → main FF, T001–T114 | thunderkds | NO-GO pending Decision A (suite + release gate green 2026-10-19) |
+| v0.1.0 (Release 1) | planned 2026-10-19 | develop → main FF, T001–T116 | thunderkds | GO — awaiting operator execution |
