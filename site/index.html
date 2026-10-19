@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>easy-verifier: an offline, rule-based repository verifier</title>
+<title>Easy Verifier: an offline, rule-based repository verifier</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="description" content="A local, no-LLM engine that rates a repository per dimension from declared rules over measured facts, and abstains instead of guessing.">
 <script>document.documentElement.className = "js";</script>
 <style>
@@ -153,6 +154,30 @@
   .score { font-size: 3rem; font-weight: 700; margin: 0 0 .5rem; line-height: 1.1; color: var(--cyan); }
   .score .lead { font-size: 1.05rem; font-weight: 400; }
 
+  h3 { font-size: 1rem; color: var(--white); margin: 1.4rem 0 .5rem; }
+  .step h3 { margin-top: 1.2rem; }
+  .step h3 .num { color: var(--cyan); }
+  table.compact { min-width: 0; }
+  table.compact td + td code { overflow-wrap: anywhere; }
+  details { border: 1px solid var(--border); border-radius: 8px; padding: .6rem 1rem; background: var(--surface); }
+  summary { cursor: pointer; color: var(--cyan); font-weight: 600; }
+  summary:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  details[open] summary { margin-bottom: .5rem; }
+
+  /* ---- scoring step diagram: drawn with theme tokens, scales to width ---- */
+  svg.flow { display: block; width: 100%; max-width: 26rem; height: auto; margin: 1rem auto; }
+  svg.flow .node { fill: var(--surface2); stroke: var(--border); stroke-width: 1.5; }
+  svg.flow .node-gate { stroke: var(--cyan); }
+  svg.flow .node-yes { stroke: var(--green); }
+  svg.flow .node-no { stroke: var(--amber); }
+  svg.flow .t { fill: var(--text); font-size: 14px; font-weight: 700; text-anchor: middle; }
+  svg.flow .s { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+  svg.flow .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+  svg.flow .arrowhead { fill: var(--muted); }
+  svg.flow .lbl { font-size: 12px; font-weight: 700; }
+  svg.flow .lbl-yes { fill: var(--green); text-anchor: end; }
+  svg.flow .lbl-no { fill: var(--amber); text-anchor: start; }
+
   footer { color: var(--muted); font-size: .8rem; margin: 3rem 0 1.5rem; }
 
   /* ---- mobile ------------------------------------------------------ */
@@ -177,7 +202,7 @@
 <div class="layout">
 
 <aside class="sidebar">
-  <a class="brand" href="#top">easy-verifier</a>
+  <a class="brand" href="#top">Easy Verifier</a>
   <button class="nav-toggle" type="button" aria-expanded="true" aria-controls="site-nav">Menu</button>
   <nav id="site-nav" class="nav-groups" aria-label="Sections">
     <ul>
@@ -198,13 +223,13 @@
 <main id="main" class="content">
 
 <header class="header">
-  <h1>easy-verifier</h1>
+  <h1>Easy Verifier</h1>
   <p class="lead">An offline, rule-based repository verifier, available as an MCP server and a CLI. It rates a repository, or a change, from declared rules over measured facts, and says so when it cannot rate something.</p>
 </header>
 
 <section id="what">
   <h2>What it is</h2>
-  <p>easy-verifier gathers evidence about a repository (file excerpts, citations, and lists of what it looked for and did not find) and computes inspectable ratings from declared rules. A calling agent can optionally submit its own findings for a separate assessment.</p>
+  <p>Easy Verifier gathers evidence about a repository (file excerpts, citations, and lists of what it looked for and did not find) and computes inspectable ratings from declared rules. A calling agent can optionally submit its own findings for a separate assessment.</p>
   <ul>
     <li><strong>No inferred verdict.</strong> Ratings are deterministic arithmetic over cited metrics.</li>
     <li><strong>No guessing.</strong> A source it did not find is reported as missing; a rating without enough evidence is withheld.</li>
@@ -215,17 +240,48 @@
 
 <section id="run">
   <h2>Run it</h2>
-  <p>The documented path is a shared scoring container built from a clone of the repository. Build it, then start it with the absolute parent directory of the repositories you want to score:</p>
+  <p>Three steps with Docker: pull the image, run it, register it. Nothing is built.</p>
+  <div class="step">
+    <h3><span class="num">1.</span> Pull</h3>
+<pre data-step="1-pull"><code>docker pull temvar/easy-verifier-mcp:0.1.0</code></pre>
+  </div>
+  <div class="step">
+    <h3><span class="num">2.</span> Run</h3>
+    <p>Replace both <code>/home/you/code</code> with the absolute parent directory of the repositories you want to score.</p>
+<pre data-step="2-run"><code>mkdir -p ~/.easy-verifier-reports ~/.easy-verifier-sot
+sudo chown 10001:10001 ~/.easy-verifier-reports ~/.easy-verifier-sot
+
+docker run -d --name easy-verifier --restart unless-stopped --init \
+  --read-only --network host --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+  -e EASY_VERIFIER_REPORTS_DIR=$HOME/.easy-verifier-reports \
+  -e EASY_VERIFIER_SOT=/sot \
+  -v /home/you/code:/home/you/code:ro \
+  -v $HOME/.easy-verifier-reports:$HOME/.easy-verifier-reports \
+  -v $HOME/.easy-verifier-sot:/sot \
+  temvar/easy-verifier-mcp:0.1.0 --transport streamable-http</code></pre>
+  </div>
+  <div class="step">
+    <h3><span class="num">3.</span> Register</h3>
+<pre data-step="3-register"><code>claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp</code></pre>
+  </div>
+  <p>Then ask your agent to score a repository, passing its absolute path as <code>repo</code>.</p>
+  <details>
+    <summary>Other ways to run it</summary>
+    <h3>Build from source (Compose)</h3>
+    <p>From a clone of the repository, build the same image yourself and start it with the absolute parent directory of the repositories you want to score:</p>
 <pre><code>docker compose build scorer
 mkdir -p ~/.easy-verifier-reports &amp;&amp; sudo chown 10001:10001 ~/.easy-verifier-reports
 EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer</code></pre>
-  <p>Register it once with Claude Code:</p>
-<pre><code>claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp</code></pre>
-  <p>Alternatively, without a container, install the package into a Python 3.11+ environment and register the stdio server, or use the CLI directly:</p>
+    <h3>Without a container (stdio)</h3>
+    <p>Install the package into a Python 3.11+ environment and register the stdio server:</p>
 <pre><code>python -m pip install .
-claude mcp add easy-verifier -- easy-verifier-mcp
-python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
-  <p>Full guides are in the <a href="https://github.com/thunderkds/easy-verifier-mcp">repository</a>: README.md, docs/DOCKER_MCP_GUIDE.md and docs/LOCAL_MCP_GUIDE.md.</p>
+claude mcp add easy-verifier -- easy-verifier-mcp</code></pre>
+    <h3>CLI</h3>
+<pre><code>python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
+    <p>Full guides are in the <a href="https://github.com/thunderkds/easy-verifier-mcp">repository</a>: README.md, docs/DOCKER_MCP_GUIDE.md and docs/LOCAL_MCP_GUIDE.md.</p>
+  </details>
 </section>
 
 <section id="dimensions">
@@ -300,6 +356,60 @@ python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
 
 <section id="scoring">
   <h2>How scoring works</h2>
+  <p>One repository goes in at the top. Each dimension follows the same path: it ends either in a number from 0 to 100 or in an abstention, never a guess.</p>
+  <svg class="flow" viewBox="0 0 340 480" role="img" aria-labelledby="flow-title flow-desc">
+    <title id="flow-title">How a score is produced</title>
+    <desc id="flow-desc">Repository, then evidence (measured metrics, citations), then rules (weights per scope add up to 100), then a coverage check. Enough evidence gives a rating from 0 to 100; too little gives an abstention with a reason code. The overall is the mean of the rated dimensions, and the improvement plan is ordered by declared gain.</desc>
+    <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="arrowhead" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+    <rect class="node" x="40" y="0" width="260" height="34" rx="8"/>
+    <text class="t" x="170" y="22">Repository</text>
+    <path class="arrow" d="M170 34 V52" marker-end="url(#arr)"/>
+    <rect class="node" x="40" y="54" width="260" height="46" rx="8"/>
+    <text class="t" x="170" y="74">Evidence</text>
+    <text class="s" x="170" y="91">measured metrics, citations</text>
+    <path class="arrow" d="M170 100 V118" marker-end="url(#arr)"/>
+    <rect class="node" x="40" y="120" width="260" height="46" rx="8"/>
+    <text class="t" x="170" y="140">Rules</text>
+    <text class="s" x="170" y="157">weights per scope add up to 100</text>
+    <path class="arrow" d="M170 166 V184" marker-end="url(#arr)"/>
+    <rect class="node node-gate" x="40" y="186" width="260" height="46" rx="8"/>
+    <text class="t" x="170" y="206">Coverage check</text>
+    <text class="s" x="170" y="223">is there enough evidence?</text>
+    <path class="arrow" d="M120 232 L85 274" marker-end="url(#arr)"/>
+    <path class="arrow" d="M220 232 L255 274" marker-end="url(#arr)"/>
+    <text class="lbl lbl-yes" x="92" y="256">yes</text>
+    <text class="lbl lbl-no" x="248" y="256">no</text>
+    <rect class="node node-yes" x="5" y="276" width="160" height="50" rx="8"/>
+    <text class="t" x="85" y="298">Rating 0–100</text>
+    <text class="s" x="85" y="315">a number</text>
+    <rect class="node node-no" x="175" y="276" width="160" height="50" rx="8"/>
+    <text class="t" x="255" y="298">Abstention</text>
+    <text class="s" x="255" y="315">with a reason code</text>
+    <path class="arrow" d="M85 326 L140 364" marker-end="url(#arr)"/>
+    <path class="arrow" d="M255 326 L200 364" marker-end="url(#arr)"/>
+    <rect class="node" x="40" y="366" width="260" height="46" rx="8"/>
+    <text class="t" x="170" y="386">Overall</text>
+    <text class="s" x="170" y="403">mean of the rated dimensions</text>
+    <path class="arrow" d="M170 412 V430" marker-end="url(#arr)"/>
+    <rect class="node" x="40" y="432" width="260" height="46" rx="8"/>
+    <text class="t" x="170" y="452">Improvement plan</text>
+    <text class="s" x="170" y="469">ordered by declared gain</text>
+  </svg>
+  <h3>A worked example</h3>
+  <p>Taken from the sample scorecard below: three of its rated dimensions and one abstention.</p>
+  <div class="table-wrap">
+  <table class="compact">
+    <thead><tr><th scope="col">Dimension</th><th scope="col">Outcome</th></tr></thead>
+    <tbody>
+<tr data-example-dimension="architecture" data-value="100"><td><code>architecture</code></td><td>rated <strong>100</strong></td></tr>
+<tr data-example-dimension="test-strategy" data-value="75"><td><code>test-strategy</code></td><td>rated <strong>75</strong></td></tr>
+<tr data-example-dimension="security" data-value="50"><td><code>security</code></td><td>rated <strong>50</strong></td></tr>
+<tr data-example-dimension="supply-chain" data-reason="insufficient_measured_weight"><td><code>supply-chain</code></td><td>abstains, too little measured: <code>insufficient_measured_weight</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The overall is <strong data-example-overall="47">47</strong>: the mean of all <span data-example-rated-count="10">10</span> rated dimensions in that run. The abstained dimensions are left out, not counted as zero.</p>
+  <h3>The rules in detail</h3>
   <ul>
     <li>Each dimension has declared rules over measured metrics. A rule compares one metric with a threshold; a met rule earns its weight and an unmet rule earns zero. The weights of the rules that apply at one scope add up to 100; <code>solution-fit</code> has no static rule.</li>
     <li>Each rule cites its metric and its threshold separately. A threshold tagged <code>project-default</code> means the standard names the measure but publishes no number.</li>
@@ -313,7 +423,7 @@ python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
 
 <section id="sample">
   <h2>Sample scorecard</h2>
-  <p>easy-verifier scoring itself at <code>project</code> scope, commit <code data-commit>8062b35</code>, taken <time data-date>2026-10-19</time>. This is a static snapshot, not a live result.</p>
+  <p>Easy Verifier scoring itself at <code>project</code> scope, commit <code data-commit>8062b35</code>, taken <time data-date>2026-10-19</time>. This is a static snapshot, not a live result.</p>
   <div class="card">
     <p class="score" data-overall="47">47 <span class="lead">overall, out of 100</span></p>
     <p>Mean of the dimensions that could be rated. Dimensions shown as abstained are left out of it.</p>
