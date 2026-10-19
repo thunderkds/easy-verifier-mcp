@@ -58,5 +58,15 @@ $ grep -c 'prefers-color-scheme' site/index.html
 
 **DELTA**: the landing page now renders in the kit's dark neon theme with a sticky (mobile-collapsible) sidebar instead of the T115 light/dark system-theme page, with identical content.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/T117.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-19 — `memory/event-trace/T117.jsonl` holds 29 attributed records from the frontend-developer session; the Supervisor independently re-ran the site/theme/deploy/t100 tests on a5a245d (`38 passed in 1.78s`) and inspected the 375/768/1280 and kit-1280 screenshots.
+
+## Stage 4 review (Supervisor)
+
+- Scope: `site/index.html`, `tests/test_site_theme.py`, this file. `src/`, `site/sample-score.json`, deploy config untouched (diff stat: 3 files).
+- Reachability: entry point `site/index.html` present.
+- Correctness: inline script null-guards nav/toggle, falls back cleanly without IntersectionObserver; `#top` (body) and `#main` targets exist; nav open in markup, collapse only with `.js`. Content markers unchanged — the 16 T115 drift tests pass unmodified.
+- Tests: 12 new theme tests (tokens, dark-only, colors only via var(), six-section nav, inline-only scripts, JS-less nav, a11y) with 5 negatives; red-first noted by the agent.
+- Visual: 1280 matches the kit (palette, sidebar with cyan active link, header card, uppercase cyan h2, green command blocks); 768 sidebar layout; 375 stacked with Menu toggle, no page-level overflow. Supervisor viewed 768 and 375 (the agent had not).
+- Deviations accepted: `--muted #8080b0` (kit #6b6b9a fails AA at 3.94); `--purple-text #ae5ff8` for `.tag-none` (kit purple 4.49 on its dim bg).
+- Findings: P0 0, P1 0, P2 0. P3: the kit's sidebar has a sub-brand line and group titles for every group; here only "Source" has one — cosmetic, left as is.
+- Security review: N/A (Risk Low); inline scripts only, no external resources (pinned by test).
