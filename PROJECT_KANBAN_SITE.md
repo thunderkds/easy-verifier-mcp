@@ -12,12 +12,13 @@
 
 ## In Progress
 
-- [ ] **T117** — **Restyle the landing page in the kit's theme.** User 2026-10-19: "keep the theme like personal agentic claude". Re-skin `site/index.html` with the kit's dark neon tokens, sticky sidebar nav (mobile collapse via inline script), header card, cyan uppercase h2, pill tags, green install blocks; dark-only like the kit; `--muted` lightened only as needed for 4.5:1. No content, id, data-* or snapshot change — T115 drift tests stay green unchanged; new theme tests pin tokens, nav and no-external-script. (Depends on: T115) | frontend-developer | C1 | Risk: Low | P1 | 🔄 In Progress 2026-10-19 | Guide: `tasks/TASK_GUIDE_T117.md`
 
 ## Ready for Review
 
 
 ## Done
+
+- [x] **T117** — **Restyle the landing page in the kit's theme.** User 2026-10-19: "keep the theme like personal agentic claude". Re-skin `site/index.html` with the kit's dark neon tokens, sticky sidebar nav (mobile collapse via inline script), header card, cyan uppercase h2, pill tags, green install blocks; dark-only like the kit; `--muted` lightened only as needed for 4.5:1. No content, id, data-* or snapshot change — T115 drift tests stay green unchanged; new theme tests pin tokens, nav and no-external-script. (Depends on: T115) | frontend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-19 (merged e7bd53e; 12 new theme tests + 16 site-content + 7 deploy + 3 t100 = 38 passed, T115 drift tests unchanged; Stage 4 Supervisor review P0/P1/P2 0, one cosmetic P3 left; screenshots 375/768/1280 + kit-1280 inspected; deviations for AA: --muted #8080b0, --purple-text #ae5ff8; security review N/A Risk Low) | Guide: `tasks/TASK_GUIDE_T117.md`
 
 - [x] **T116** — **Vercel deploy configuration + runbook.** `vercel.json` (`outputDirectory: site`, no build command), `.vercelignore` allowlist (`*`, `!site/`, `!site/**`, `!vercel.json`), a "Landing site" section in `docs/RELEASE_GUIDE.md` with the operator's exact steps (connect repo in Vercel dashboard, production branch `main`, snapshot regeneration command), and a test that pins both config files. The Supervisor plans; **the operator executes** the dashboard connection and the develop → `main` release — no agent pushes or deploys. (Depends on: T115) | common-infrastructure | C1 | Risk: Med | P1 | ✅ Done 2026-10-19 (merged 96c14bd; test_site_deploy_config 7 tests, with site content + test_t100 = 26 passed; Stage 4 code-review 1 P2 + 2 P3 fixed; security review manual (built-in needs origin/HEAD), no findings; reports reports/*_feat-T116-vercel-config_20261019T120221.html; verify N/A until Vercel is connected, snapshot reduce.py exercised on withheld + real input; README untouched pending project name) | Guide: `tasks/TASK_GUIDE_T116.md`
 

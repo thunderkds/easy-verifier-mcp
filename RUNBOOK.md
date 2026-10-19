@@ -187,4 +187,4 @@ This plan is a recommendation; the operator executes every step.
 
 | Version | Date | Scope | Deployer | Outcome |
 |---------|------|-------|----------|---------|
-| v0.1.0 (Release 1) | planned 2026-10-19 | develop → main FF, T001–T116 | thunderkds | GO — awaiting operator execution |
+| v0.1.0 (Release 1) | planned 2026-10-19 | develop → main FF, T001–T117 | thunderkds | GO — awaiting operator execution |
