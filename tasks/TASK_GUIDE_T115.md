@@ -81,9 +81,9 @@ User, 2026-10-19: *"wanna deploy the verifier as the landing page like https://p
 ### Verification Command
 
 ```bash
-cd /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp
-PYTHONPATH=src .venv/bin/python -m pytest tests/test_site_content.py -q
-PYTHONPATH=src .venv/bin/python -m pytest -q -x   # full suite, no regression
+cd "$(git rev-parse --show-toplevel)"   # repo root
+PYTHONPATH=src:.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest tests/test_site_content.py -q
+PYTHONPATH=src:.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest -q -x   # full suite, no regression
 ```
 
 ---

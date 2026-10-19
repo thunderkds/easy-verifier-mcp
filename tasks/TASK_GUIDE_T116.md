@@ -77,8 +77,8 @@ User, 2026-10-19: deploy the verifier's landing page like the kit's (`https://pe
 ### Verification Command
 
 ```bash
-cd /home/hungnguyenhuu/workspace/pets/hungnguyen111/easy-verifier-mcp
-PYTHONPATH=src .venv/bin/python -m pytest tests/test_site_deploy_config.py -q
+cd "$(git rev-parse --show-toplevel)"   # repo root
+PYTHONPATH=src:.venv/lib/python3.12/site-packages /usr/bin/python3.12 -m pytest tests/test_site_deploy_config.py -q
 ```
 
 ---

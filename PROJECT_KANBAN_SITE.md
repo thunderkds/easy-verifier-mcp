@@ -9,10 +9,11 @@
 
 ## Todo
 
-- [ ] **T115** — **Static landing page (`site/index.html`) + self-score snapshot + drift test.** One page, plain HTML/CSS, no build, no external hosts. Sections: what it is, run it (shared container from a clone, stdio, CLI), dimensions, the 32 evaluation areas with per-area status (ruled / pack-gated / no rule), how scoring works, sample scorecard from `site/sample-score.json` (easy-verifier scoring itself, commit + date shown). `tests/test_site_content.py` asserts dimensions, areas, per-area status, commands and scorecard numbers against their sources of truth, and that `site/` holds no host paths/emails/secrets. User decisions 2026-10-19 (all four content blocks; site/ in this repo). | frontend-developer | C2 | Risk: Low | P1 | Guide: `tasks/TASK_GUIDE_T115.md`
 - [ ] **T116** — **Vercel deploy configuration + runbook.** `vercel.json` (`outputDirectory: site`, no build command), `.vercelignore` allowlist (`*`, `!site/`, `!site/**`, `!vercel.json`), a "Landing site" section in `docs/RELEASE_GUIDE.md` with the operator's exact steps (connect repo in Vercel dashboard, production branch `main`, snapshot regeneration command), and a test that pins both config files. The Supervisor plans; **the operator executes** the dashboard connection and the develop → `main` release — no agent pushes or deploys. (Depends on: T115) | common-infrastructure | C1 | Risk: Med | P1 | Guide: `tasks/TASK_GUIDE_T116.md`
 
 ## In Progress
+
+- [ ] **T115** — **Static landing page (`site/index.html`) + self-score snapshot + drift test.** One page, plain HTML/CSS, no build, no external hosts. Sections: what it is, run it (shared container from a clone, stdio, CLI), dimensions, the 32 evaluation areas with per-area status (ruled / pack-gated / no rule), how scoring works, sample scorecard from `site/sample-score.json` (easy-verifier scoring itself, commit + date shown). `tests/test_site_content.py` asserts dimensions, areas, per-area status, commands and scorecard numbers against their sources of truth, and that `site/` holds no host paths/emails/secrets. User decisions 2026-10-19 (all four content blocks; site/ in this repo). | frontend-developer | C2 | Risk: Low | P1 | 🔄 In Progress 2026-10-19 (worktree `../easy-verifier-mcp-T115`, branch `feat/T115-landing-site`) | Guide: `tasks/TASK_GUIDE_T115.md`
 
 ## Ready for Review
 
