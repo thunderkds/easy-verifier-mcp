@@ -12,6 +12,8 @@
 
 ## In Progress
 
+- [ ] **T117** — **Restyle the landing page in the kit's theme.** User 2026-10-19: "keep the theme like personal agentic claude". Re-skin `site/index.html` with the kit's dark neon tokens, sticky sidebar nav (mobile collapse via inline script), header card, cyan uppercase h2, pill tags, green install blocks; dark-only like the kit; `--muted` lightened only as needed for 4.5:1. No content, id, data-* or snapshot change — T115 drift tests stay green unchanged; new theme tests pin tokens, nav and no-external-script. (Depends on: T115) | frontend-developer | C1 | Risk: Low | P1 | 🔄 In Progress 2026-10-19 | Guide: `tasks/TASK_GUIDE_T117.md`
+
 ## Ready for Review
 
 
