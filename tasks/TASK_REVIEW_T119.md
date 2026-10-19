@@ -33,8 +33,25 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured 2026-10-19 08:42:41 UTC, before any implementation commit; commands run in the T119 worktree root; screenshot `<scratchpad>/t119/before-1280.png`, headless Chrome 1280px, 152258 bytes):
+
+```
+$ date -u
+Mon Oct 19 08:42:41 AM UTC 2026
+$ grep -n '<title>\|<h1\|class="brand"\|rel="icon"' site/index.html
+6:<title>easy-verifier: an offline, rule-based repository verifier</title>
+180:  <a class="brand" href="#top">easy-verifier</a>
+201:  <h1>easy-verifier</h1>
+$ ls site/
+index.html
+sample-score.json
+$ sed -n '/<section id="run">/,/<\/section>/p' site/index.html | grep -c '<pre'
+3
+$ sed -n '/<section id="scoring">/,/<\/section>/p' site/index.html | grep -c '<svg'
+0
+```
+
+No `rel="icon"` line, no favicon file, `#run` opens with build-from-source (compose) blocks, `#scoring` has zero diagrams.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
