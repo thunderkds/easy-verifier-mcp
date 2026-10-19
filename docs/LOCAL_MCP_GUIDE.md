@@ -94,8 +94,8 @@ generic patterns only. The CLI never shows `reference`.
 ## 4. Check the connection
 
 - Claude Code: `claude mcp list`, or `/mcp` inside a session.
-- Other clients: the server should report as `easy-verifier` with 17 tools: the thirteen dimensions,
-  `list_dimensions`, `combined`, `score`, and `write_report`.
+- Other clients: the server should report as `easy-verifier` with 18 tools: the thirteen dimensions,
+  `change-risk`, `list_dimensions`, `combined`, `score`, and `write_report`.
 - By hand: `easy-verifier-mcp` with no arguments waits silently on stdin. That is correct, since
   stdout is reserved for the protocol. Press Ctrl-C to exit.
 
