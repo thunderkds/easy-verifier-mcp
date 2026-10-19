@@ -131,5 +131,15 @@ $ rm -rf <scratch>
 
 **DELTA**: A newcomer can now `docker pull temvar/easy-verifier-mcp:0.1.0`, start the shared scorer with one documented `docker run -d` (hardening identical to compose `scorer`, test-pinned) and register it with one `claude mcp add` line — no clone, no compose (once the operator publishes with `publish_image.sh --push --replace-existing`).
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-19 — `memory/event-trace/T118.jsonl` holds 92 attributed records from the common-infrastructure session. Supervisor read the full-suite log at 327caa0 (`3254 passed, 3 skipped in 775.37s`, exit 0) and independently re-ran t118 + t024 + t101 + site_content + t100 on 5cef3ed: `88 passed in 8.14s`.
+
+## Stage 4 review (Supervisor)
+
+- Scope: compose.yaml, README.md, docs/DOCKER_MCP_GUIDE.md, docs/RELEASE_GUIDE.md, scripts/publish_image.sh, scripts/verify_container.sh, tests t118/t024/t101. `src/`, `site/` untouched.
+- Reachability: entry point `scripts/publish_image.sh` present; referenced from RELEASE_GUIDE.
+- Script: argument allowlist, `set -euo pipefail`, publishing only in the guarded branch, existing-tag refusal unless `--replace-existing`, `--replace-existing` alone refused, dirty-tree and compose-image guards, `--load` for local builds. Guards pinned by stubbed-docker tests.
+- Docs: quick start (pull → prep → run → register) first; the `docker run -d` equals the compose `scorer` hardening, pinned both ways (removing a flag or adding `-p`/`-i`/`--user` fails). Exposure note precedes the start commands.
+- Out-of-list change accepted: `scripts/verify_container.sh` gains `change-risk` (T108 drift hidden by a stale 2026-10-14 image; a fresh build failed two container tests). Consequence: the 2026-10-19 release-gate pass ran against the stale image and must be re-run on the fresh image before release.
+- Findings: P0 0, P1 0. P2 1 fixed (1c5775b: guide said 17 tools → 18 incl. `change-risk`). P3 accepted: `$HOME` unquoted in the run block; `imagetools inspect` failure treated as tag-absent (publishing still needs auth); 0.1.0 tag mutable after replacement — consider a digest pin after publishing.
+- Security review: manual (agent + Supervisor; built-in needs origin/HEAD). No findings beyond the P3 notes; loopback-only bind kept, no `-p`, workspace read-only.
+- Operator step pending: `bash scripts/publish_image.sh` with the publish + replace flags (RELEASE_GUIDE) — replaces the 2026-10-05 Hub 0.1.0, user decision 2026-10-19.
