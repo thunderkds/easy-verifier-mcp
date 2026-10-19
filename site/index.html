@@ -1,64 +1,185 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>easy-verifier: an offline, rule-based repository verifier</title>
 <meta name="description" content="A local, no-LLM engine that rates a repository per dimension from declared rules over measured facts, and abstains instead of guessing.">
+<script>document.documentElement.className = "js";</script>
 <style>
   :root {
-    --bg: #ffffff; --surface: #f4f5f8; --border: #c9ccd6;
-    --text: #1a1c24; --muted: #4a4f60; --accent: #0b5cad;
-    --ok: #12632f; --warn: #7a4a00; --none: #8a1f1f;
-    --code-bg: #eceef4; --measure: 72ch;
+    --bg:         #0a0a12;
+    --surface:    #111128;
+    --surface2:   #16162e;
+    --border:     #1e1e42;
+    --text:       #e2e2f0;
+    --muted:      #8080b0;
+    --cyan:       #00d4ff;
+    --green:      #00ff88;
+    --amber:      #ffb800;
+    --purple:     #a855f7;
+    --purple-text: #ae5ff8;
+    --white:      #ffffff;
+    --cyan-dim:   rgba(0,212,255,.12);
+    --green-dim:  rgba(0,255,136,.12);
+    --amber-dim:  rgba(255,184,0,.12);
+    --purple-dim: rgba(168,85,247,.12);
+    --header-shadow: 0 0 24px rgba(0,212,255,.08), 0 4px 24px rgba(0,0,0,.5);
+
+    --sidebar-w: 15rem;
+    --measure:   72ch;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f1117; --surface: #181b25; --border: #343949;
-      --text: #e6e8ef; --muted: #a8aec0; --accent: #6db3ff;
-      --ok: #62d68c; --warn: #f0b45c; --none: #ff8f8f;
-      --code-bg: #20243180;
-    }
-  }
+
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
   body {
-    margin: 0; background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 1rem; line-height: 1.6; overflow-x: hidden;
+    margin: 0;
+    color: var(--text);
+    background: var(--bg);
+    font-size: 1rem;
+    line-height: 1.6;
+    overflow-x: hidden;
   }
-  header, main, footer { max-width: 60rem; margin: 0 auto; padding: 0 1rem; }
-  header { padding-top: 2rem; }
-  h1 { font-size: 1.9rem; margin: 0 0 .5rem; }
-  h2 { font-size: 1.3rem; margin: 0 0 .75rem; border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+
+  /* ---- shell ------------------------------------------------------- */
+  .layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    gap: 2.5rem;
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  .content { min-width: 0; max-width: var(--measure); padding: 2rem 0 0; }
+
+  /* ---- sidebar ----------------------------------------------------- */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: 2rem .5rem 2rem 0;
+  }
+  .sidebar .brand {
+    display: block; color: var(--white); font-weight: 700; font-size: .95rem;
+    text-decoration: none; margin-bottom: .75rem; word-break: break-word;
+  }
+  .nav-group-title {
+    color: var(--muted); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .08em; font-weight: 700; margin: 1.1rem 0 .35rem;
+  }
+  .sidebar ul { list-style: none; margin: 0; padding: 0; }
+  .sidebar li { margin: 0; }
+  .sidebar a {
+    display: block; padding: .3rem .6rem; border-left: 2px solid var(--border);
+    color: var(--muted); text-decoration: none; font-size: .87rem; border-radius: 0 4px 4px 0;
+  }
+  .sidebar a:hover { color: var(--text); background: var(--surface); }
+  .sidebar a.active {
+    color: var(--cyan); background: var(--cyan-dim);
+    border-left-color: var(--cyan); font-weight: 600;
+  }
+  .nav-toggle {
+    display: none;
+    font: inherit; font-size: .85rem; font-weight: 600;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: .45rem .8rem; cursor: pointer;
+  }
+  .nav-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  a { color: var(--cyan); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+  .skip-link {
+    position: absolute; left: -9999px; top: 0;
+    background: var(--surface); color: var(--cyan);
+    padding: .6rem 1rem; border: 1px solid var(--cyan); border-radius: 0 0 6px 0; z-index: 10;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* ---- content ----------------------------------------------------- */
+  h1 { font-size: 1.6rem; color: var(--white); letter-spacing: .01em; margin: 0 0 .5rem; }
+  h2 {
+    font-size: 1.05rem; color: var(--cyan); margin: 0 0 1rem;
+    text-transform: uppercase; letter-spacing: .06em; font-weight: 700;
+    border-bottom: 1px solid var(--border); padding-bottom: .5rem;
+  }
+  p { color: var(--text); }
+  .lead { color: var(--muted); font-size: 1.05rem; }
+
+  .header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--cyan);
+    border-radius: 10px;
+    padding: 2rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--header-shadow);
+  }
+  .header .lead { margin-bottom: 0; }
+
   section { margin: 2.5rem 0; scroll-margin-top: 1rem; }
-  p, li { max-width: var(--measure); }
-  .lead { color: var(--muted); font-size: 1.1rem; max-width: var(--measure); }
-  a { color: var(--accent); }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding: 0; margin: 1rem 0 0; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9rem; }
-  code { background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; }
-  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; }
-  pre code { background: none; padding: 0; }
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
-  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: .95rem; }
-  th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { background: var(--surface); color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  table { border-collapse: collapse; width: 100%; min-width: 28rem; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface2); color: var(--muted); text-transform: uppercase; font-size: .75rem; letter-spacing: .05em; }
+  /* keep the leading column reachable while the table scrolls sideways */
+  th:first-child, td:first-child { position: sticky; left: 0; background: var(--bg); }
+  th:first-child { background: var(--surface2); }
   tr:last-child td { border-bottom: none; }
-  .tag { display: inline-block; padding: .05rem .55rem; border: 1px solid currentColor; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
-  .tag-ruled { color: var(--ok); }
-  .tag-pack { color: var(--warn); }
-  .tag-none { color: var(--none); }
-  .score { font-size: 3rem; font-weight: 700; margin: 0; line-height: 1.1; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; max-width: none; }
-  footer { padding-bottom: 3rem; color: var(--muted); font-size: .9rem; }
+  code { color: var(--cyan); background: var(--cyan-dim); padding: .1rem .4rem; border-radius: 4px; font-size: .85em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .tag { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+  .tag-ruled { background: var(--green-dim); color: var(--green); }
+  .tag-pack  { background: var(--amber-dim); color: var(--amber); }
+  .tag-none  { background: var(--purple-dim); color: var(--purple-text); }
+
+  pre {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 1rem; font-size: .85rem; color: var(--green);
+    white-space: pre-wrap; overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+  .card p:first-child { margin-top: 0; }
+  .card p:last-child { margin-bottom: 0; }
+  .score { font-size: 3rem; font-weight: 700; margin: 0 0 .5rem; line-height: 1.1; color: var(--cyan); }
+  .score .lead { font-size: 1.05rem; font-weight: 400; }
+
+  footer { color: var(--muted); font-size: .8rem; margin: 3rem 0 1.5rem; }
+
+  /* ---- mobile ------------------------------------------------------ */
+  @media (max-width: 767px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .sidebar {
+      position: static; max-height: none; overflow: visible;
+      padding: 1rem 0 .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .content { padding-top: 1.5rem; }
+    .js .nav-toggle { display: inline-block; }
+    .js .nav-groups[data-collapsed="true"] { display: none; }
+    .header { padding: 1.25rem; }
+  }
 </style>
 </head>
-<body>
-<header>
-  <h1>easy-verifier</h1>
-  <p class="lead">An offline, rule-based repository verifier, available as an MCP server and a CLI. It rates a repository, or a change, from declared rules over measured facts, and says so when it cannot rate something.</p>
-  <nav aria-label="Sections">
+<body id="top">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="layout">
+
+<aside class="sidebar">
+  <a class="brand" href="#top">easy-verifier</a>
+  <button class="nav-toggle" type="button" aria-expanded="true" aria-controls="site-nav">Menu</button>
+  <nav id="site-nav" class="nav-groups" aria-label="Sections">
     <ul>
       <li><a href="#what">What it is</a></li>
       <li><a href="#run">Run it</a></li>
@@ -66,11 +187,20 @@
       <li><a href="#areas">32 areas</a></li>
       <li><a href="#scoring">How scoring works</a></li>
       <li><a href="#sample">Sample scorecard</a></li>
+    </ul>
+    <p class="nav-group-title">Source</p>
+    <ul>
       <li><a href="https://github.com/thunderkds/easy-verifier-mcp">GitHub</a></li>
     </ul>
   </nav>
+</aside>
+
+<main id="main" class="content">
+
+<header class="header">
+  <h1>easy-verifier</h1>
+  <p class="lead">An offline, rule-based repository verifier, available as an MCP server and a CLI. It rates a repository, or a change, from declared rules over measured facts, and says so when it cannot rate something.</p>
 </header>
-<main>
 
 <section id="what">
   <h2>What it is</h2>
@@ -218,9 +348,63 @@ python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
   </ul>
 </section>
 
-</main>
 <footer>
   <p>Source and guides: <a href="https://github.com/thunderkds/easy-verifier-mcp">github.com/thunderkds/easy-verifier-mcp</a></p>
 </footer>
+</main>
+
+</div>
+
+<script>
+(function () {
+  var nav = document.getElementById("site-nav");
+  var toggle = document.querySelector(".nav-toggle");
+
+  // Mobile menu. The nav is open in the markup so a JS-less page still shows
+  // the full link list; collapsing is applied here, and only below 768px by CSS.
+  if (nav && toggle) {
+    nav.setAttribute("data-collapsed", "true");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.addEventListener("click", function () {
+      var collapsed = nav.getAttribute("data-collapsed") === "true";
+      nav.setAttribute("data-collapsed", collapsed ? "false" : "true");
+      toggle.setAttribute("aria-expanded", collapsed ? "true" : "false");
+    });
+    nav.addEventListener("click", function (event) {
+      if (event.target.tagName === "A" && window.innerWidth < 768) {
+        nav.setAttribute("data-collapsed", "true");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  // Scroll-spy. Deterministic: the active link is always the first section in
+  // document order that is currently intersecting, so overlapping short
+  // sections cannot make the highlight flicker between them.
+  var sections = [].slice.call(document.querySelectorAll("main > section[id]"));
+  var links = {};
+  [].forEach.call(document.querySelectorAll('#site-nav a[href^="#"]'), function (a) {
+    links[a.getAttribute("href").slice(1)] = a;
+  });
+  if (!("IntersectionObserver" in window) || !sections.length) { return; }
+
+  var visible = {};
+  function paint() {
+    var current = null;
+    for (var i = 0; i < sections.length; i++) {
+      if (visible[sections[i].id]) { current = sections[i].id; break; }
+    }
+    for (var id in links) {
+      if (links[id]) { links[id].classList.toggle("active", id === current); }
+    }
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) { visible[entry.target.id] = entry.isIntersecting; });
+    paint();
+  }, { rootMargin: "0px 0px -60% 0px" });
+  sections.forEach(function (section) { observer.observe(section); });
+})();
+</script>
+
 </body>
 </html>
