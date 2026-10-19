@@ -450,8 +450,8 @@ your repositories read-only. It keeps running across sessions and reboots
 
 Then pass the repository's **absolute** path as the tool's `repo` argument (for example
 `/home/you/code/my-service`). Reports go to `~/.easy-verifier-reports/<repo name>/`, never into
-the repository. Stop it with `docker rm -f easy-verifier`; upgrade with `docker pull` and the same
-`docker run -d` command.
+the repository. Stop it with `docker rm -f easy-verifier`; to upgrade, remove it, `docker pull`
+again and rerun the same `docker run -d` command.
 
 > **Exposure.** The server listens on `127.0.0.1:8766` only (the container uses `--network host`,
 > so its loopback is the host's) and has no authentication: while it runs, **any local process**

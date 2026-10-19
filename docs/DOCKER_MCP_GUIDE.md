@@ -19,6 +19,8 @@ repository.
 
 ### Quick start: pull and run
 
+The server has no authentication: read [Exposure](#exposure) before you start it.
+
 1. Pull the image:
 
    ```console
