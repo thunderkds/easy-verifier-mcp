@@ -2,24 +2,97 @@
 
 There are two ways to run easy-verifier in Docker:
 
-- **One shared scoring container (recommended).** Start it once with `docker compose up -d scorer`;
-  it keeps running, and every repository's MCP client points at it over streamable HTTP on
-  `127.0.0.1:8766`. No container starts or stops with your sessions.
+- **One shared scoring container (recommended).** Pull the published image and start it once with
+  `docker run -d`; it keeps running, and every repository's MCP client points at it over streamable
+  HTTP on `127.0.0.1:8766`. No container starts or stops with your sessions. No clone needed.
 - **One container per session** (stdio). Your MCP client runs `docker run -i` on demand; the
   container has no network at all and exits when the session ends. See the alternative section
   below.
 
 ## Shared scoring container (recommended)
 
-The `scorer` service in `compose.yaml` runs `easy-verifier-mcp --transport streamable-http`. It
-mounts a workspace directory (the parent of the repositories you score) **read-only at the same
-path** inside the container, so a tool's `repo` argument is simply the repository's absolute host
-path, and every path in a response or report is a host path. Reports go to a separate reports
-directory, never into the repository.
+The image runs `easy-verifier-mcp --transport streamable-http`. It mounts a workspace directory
+(the parent of the repositories you score) **read-only at the same path** inside the container, so
+a tool's `repo` argument is simply the repository's absolute host path, and every path in a
+response or report is a host path. Reports go to a separate reports directory, never into the
+repository.
 
-### 1. Build and start it (once)
+### Quick start: pull and run
 
-From this repository:
+The server has no authentication: read [Exposure](#exposure) before you start it.
+
+1. Pull the image:
+
+   ```console
+   docker pull temvar/easy-verifier-mcp:0.1.0
+   ```
+
+2. Create the reports and reference-registry directories, owned by the container's UID `10001`:
+
+   ```console
+   mkdir -p ~/.easy-verifier-reports ~/.easy-verifier-sot
+   sudo chown 10001:10001 ~/.easy-verifier-reports ~/.easy-verifier-sot
+   ```
+
+3. Start it once. Replace both `/home/you/code` with the absolute parent directory of the
+   repositories you want to score:
+
+   ```console
+   docker run -d --name easy-verifier --restart unless-stopped --init \
+     --read-only --network host --cap-drop ALL \
+     --security-opt no-new-privileges:true \
+     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+     -e EASY_VERIFIER_REPORTS_DIR=$HOME/.easy-verifier-reports \
+     -e EASY_VERIFIER_SOT=/sot \
+     -v /home/you/code:/home/you/code:ro \
+     -v $HOME/.easy-verifier-reports:$HOME/.easy-verifier-reports \
+     -v $HOME/.easy-verifier-sot:/sot \
+     temvar/easy-verifier-mcp:0.1.0 --transport streamable-http
+   ```
+
+4. Register it, from any repository:
+
+   ```console
+   claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp
+   ```
+
+This command is the `scorer` service of `compose.yaml` written out as plain `docker run` flags (a
+test keeps the two identical). There is no `-p`: with `--network host` the server's own
+`127.0.0.1:8766` is the host's loopback, and it never binds anything else. To use another port,
+add `-e EASY_VERIFIER_PORT=<port>` before the image name and register that port instead.
+
+Add `--scope user` to the `claude mcp add` line to register it once for every repository (once per
+Claude config directory, as the warning in the per-session section explains). JSON-configured
+clients use `"type": "http", "url": "http://127.0.0.1:8766/mcp"` for the `easy-verifier` server.
+
+### Pass the absolute repository path
+
+Ask the agent to score a repository and pass its absolute path as `repo`, for example
+`/home/you/code/my-service`. The path must be inside the mounted workspace; anything else does not
+exist inside the container. Do not leave `repo` unset: the default `.` is an empty directory in
+this container. A report for `/home/you/code/my-service` lands in
+`~/.easy-verifier-reports/my-service/`.
+
+One process serves every session. Tool calls are taken one at a time, so a second session's
+`score` waits until the first one finishes.
+
+### Stop, restart and upgrade (pulled image)
+
+```console
+docker rm -f easy-verifier
+docker pull temvar/easy-verifier-mcp:0.1.0
+```
+
+`docker rm -f easy-verifier` stops and removes it; it is also the first step of a restart, since
+the name `easy-verifier` can be used by one container only. To upgrade, pull again and rerun the
+`docker run -d` command from step 3. The container has `--restart unless-stopped`, so it comes back
+after a reboot until you remove it. `docker logs easy-verifier` shows the server log.
+
+### Build from source (Compose)
+
+To run your own build of a clone instead of the published image, use the `scorer` service in
+`compose.yaml`. It builds the same image name, so it replaces the pulled one locally. Remove a
+container started with `docker run` first (`docker rm -f easy-verifier`). From this repository:
 
 ```console
 docker compose build scorer
@@ -36,30 +109,8 @@ EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer
 | `EASY_VERIFIER_PORT` | Loopback port of the server. | `8766` |
 
 Set the same variables again on later `docker compose` commands for this service (for example
-export them in your shell profile), because Compose reads them on every command. The container has
-`restart: unless-stopped`, so it comes back after a reboot until you stop it.
-
-### 2. Register it, from any repository
-
-```console
-claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp
-```
-
-Add `--scope user` to register it once for every repository (once per Claude config directory, as
-the warning in the per-session section explains). JSON-configured clients use
-`"type": "http", "url": "http://127.0.0.1:8766/mcp"` for the `easy-verifier` server.
-
-### 3. Pass the absolute repository path
-
-Ask the agent to score a repository and pass its absolute path as `repo`, for example
-`/home/you/code/my-service`. The path must be inside `EASY_VERIFIER_WORKSPACE`; anything else does
-not exist inside the container. Do not leave `repo` unset: the default `.` is an empty directory in
-this container.
-
-One process serves every session. Tool calls are taken one at a time, so a second session's
-`score` waits until the first one finishes.
-
-### Stop, restart and upgrade
+export them in your shell profile), because Compose reads them on every command. Register it with
+the same `claude mcp add` line as in the quick start.
 
 ```console
 docker compose down scorer
@@ -74,10 +125,11 @@ container on the new image. `docker compose logs scorer` shows the server log.
 ### Exposure
 
 > **Read this before you start it.** The server binds `127.0.0.1` only and nothing can change
-> that; the service uses `network_mode: host`, so the container's loopback is the host's loopback
+> that; the container uses host networking (`--network host`, `network_mode: host` in Compose), so
+> its loopback is the host's loopback
 > and nothing is reachable from another machine. It has **no authentication**: while it runs,
 > **any local process** on this machine (any user, any program) can call it and read, read-only,
-> every repository under `EASY_VERIFIER_WORKSPACE`, and can write reports into the reports
+> every repository under the mounted workspace, and can write reports into the reports
 > directory. Secret values are still redacted, and secret-bearing files are still never read. If
 > that is not acceptable on this machine, use one container per session instead.
 
@@ -101,15 +153,15 @@ per tool call), and each open session gets its own container, scoped to its own 
 > every `claude mcp list` health check) then leaves an orphaned container behind. `--init` puts a
 > tiny init process in front of the server so the signal stops it and `--rm` removes it.
 
-## 1. Build the image (once)
+## 1. Get the image (once)
 
-From this repository:
+Pull it (`docker pull temvar/easy-verifier-mcp:0.1.0`), or build it from this repository:
 
 ```console
 docker compose build
 ```
 
-This produces the image `easy-verifier-mcp:0.1.0`.
+Either way the image is `temvar/easy-verifier-mcp:0.1.0`.
 
 ## 2. Prepare the target repository
 
@@ -153,7 +205,7 @@ docker run -i --rm --init \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
   -v /path/to/repo:/workspace:ro \
   -v /path/to/repo/reports:/workspace/reports \
-  easy-verifier-mcp:0.1.0
+  temvar/easy-verifier-mcp:0.1.0
 ```
 
 ### Claude Code
@@ -165,7 +217,7 @@ claude mcp add easy-verifier -- docker run -i --rm --init \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
   -v /path/to/repo:/workspace:ro \
   -v /path/to/repo/reports:/workspace/reports \
-  easy-verifier-mcp:0.1.0
+  temvar/easy-verifier-mcp:0.1.0
 ```
 
 Put `--scope project` before `--` (`claude mcp add --scope project easy-verifier -- ...`) to write it
@@ -188,7 +240,7 @@ a small launcher once at user scope; it mounts whatever directory Claude Code wa
      -e EASY_VERIFIER_SOT=/sot \
      -v "$PWD":/workspace:ro -v "$PWD/reports":/workspace/reports \
      -v "$HOME/.easy-verifier-sot":/sot \
-     easy-verifier-mcp:0.1.0
+     temvar/easy-verifier-mcp:0.1.0
    ```
 
    `--user "$(id -u):$(id -g)"` runs the server as you, so the `chown 10001` steps in section 2 are
@@ -226,7 +278,7 @@ a small launcher once at user scope; it mounts whatever directory Claude Code wa
         "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m",
         "-v", "/path/to/repo:/workspace:ro",
         "-v", "/path/to/repo/reports:/workspace/reports",
-        "easy-verifier-mcp:0.1.0"
+        "temvar/easy-verifier-mcp:0.1.0"
       ]
     }
   }
@@ -297,8 +349,8 @@ generic patterns only. The CLI never shows `reference`.
 ## 4. Check the connection
 
 - Claude Code: `claude mcp list`, or `/mcp` inside a session.
-- Other clients: the server should report as `easy-verifier` with 17 tools: the thirteen dimensions,
-  `list_dimensions`, `combined`, `score`, and `write_report`.
+- Other clients: the server should report as `easy-verifier` with 18 tools: the thirteen dimensions,
+  `change-risk`, `list_dimensions`, `combined`, `score`, and `write_report`.
 - By hand, start one stdio session with the host paths passed only through environment variables:
 
   ```console
@@ -333,15 +385,15 @@ see "Checking a feature or bugfix" in the README before trusting the number.
 | `write_report` fails with permission denied | `reports/` is not owned by UID `10001` — rerun the `chown` in step 2. |
 | Mount errors on Fedora/RHEL | SELinux: append `:z` to each `-v` (`...:/workspace:ro,z`, `...:/workspace/reports:z`). |
 | Reports not writable on macOS/Windows Docker Desktop | Bind-mount ownership is translated differently; confirm UID `10001` can write the directory. |
-| `Unable to find image` | Build it first (step 1); the client will not build it for you. |
-| Containers keep running after the client closes | `--init` is missing (see the warning at the top). Add it, then clean up: `docker ps -q --filter ancestor=easy-verifier-mcp:0.1.0 \| xargs -r docker stop`. |
+| `Unable to find image` | Pull or build it first (step 1); the client will not fetch it for you. |
+| Containers keep running after the client closes | `--init` is missing (see the warning at the top). Add it, then clean up: `docker ps -q --filter ancestor=temvar/easy-verifier-mcp:0.1.0 \| xargs -r docker stop`. |
 | `/mcp` does not list `easy-verifier` | Registered under a different Claude config directory or scope — see the warning in section 3. Restart the session after registering. |
 | `docker compose up` sits at `Attaching to verifier-1` | Expected: the server is waiting for an MCP client on stdin. Don't run it with `up`; let the client launch it, or use the `docker compose run` check in section 4. |
-| Changes on your branch don't show up | The image is a snapshot. Rerun `docker compose build` after changing `src/`. |
+| Changes on your branch don't show up | The image is a snapshot. Rerun `docker compose build` after changing `src/` (this replaces a pulled image of the same name locally). |
 | Shared: `up -d scorer` fails with `bind source path does not exist: /EASY_VERIFIER_WORKSPACE-is-not-set` | Set `EASY_VERIFIER_WORKSPACE` to the absolute parent of your repositories. |
-| Shared: `claude mcp list` shows `easy-verifier` failed to connect | The container is not running (`docker compose ps scorer`), or another program holds port `8766`; set `EASY_VERIFIER_PORT` and register that port instead. |
-| Shared: a tool says the repository does not exist | The `repo` path is relative or outside `EASY_VERIFIER_WORKSPACE`. Pass the absolute host path of a repository inside it. |
-| Shared: `write_report` fails with permission denied | The reports directory is not writable by UID `10001`; rerun the `chown` in step 1 of the shared section. |
+| Shared: `claude mcp list` shows `easy-verifier` failed to connect | The container is not running (`docker ps --filter name=easy-verifier`, or `docker compose ps scorer`), or another program holds port `8766`; set `EASY_VERIFIER_PORT` and register that port instead. |
+| Shared: a tool says the repository does not exist | The `repo` path is relative or outside the mounted workspace (`/home/you/code` in the quick start, `EASY_VERIFIER_WORKSPACE` with Compose). Pass the absolute host path of a repository inside it. |
+| Shared: `write_report` fails with permission denied | The reports directory is not writable by UID `10001`; rerun the `chown` in step 2 of the quick start. |
 
 To verify the image end-to-end (handshake, non-root UID, read-only root, network isolation,
 capabilities, path scrubbing), run `docker compose build && bash scripts/verify_container.sh`.

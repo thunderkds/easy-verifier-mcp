@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: easy-verifier-mcp:0.1.0
+    image: temvar/easy-verifier-mcp:0.1.0
     stdin_open: true
     init: true
     read_only: true
@@ -46,7 +46,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: easy-verifier-mcp:0.1.0
+    image: temvar/easy-verifier-mcp:0.1.0
     command: ["--transport", "streamable-http"]
     restart: unless-stopped
     init: true

@@ -504,7 +504,7 @@ def test_compose_scorer_service_is_shared_hardened_and_loopback(tmp_path) -> Non
         EASY_VERIFIER_SOT=str(sot),
     )["scorer"]
 
-    assert service["image"] == "easy-verifier-mcp:0.1.0"
+    assert service["image"] == "temvar/easy-verifier-mcp:0.1.0"
     assert service["command"] == ["--transport", "streamable-http"]
     assert service["network_mode"] == "host"
     assert service["restart"] == "unless-stopped"
@@ -581,10 +581,13 @@ def test_container_verifier_checks_the_engine_git_not_only_plain_git() -> None:
 @pytest.mark.parametrize("path", [README, DOCKER_GUIDE], ids=["readme", "guide"])
 def test_docs_lead_with_the_shared_container(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
-    up = text.index("docker compose up -d scorer")
+    # T118: the shared way now starts with the pulled image; Compose follows.
+    pull = text.index("docker pull temvar/easy-verifier-mcp:0.1.0")
+    run = text.index("docker run -d --name easy-verifier")
     register = text.index(SHARED_URL_COMMAND)
     stdio = text.index("one container per session")
-    assert up < register < stdio, "shared way must come before the stdio way"
+    assert pull < run < register < stdio, "shared way must come before the stdio way"
+    assert "docker compose up -d scorer" in text  # build from source
     assert "EASY_VERIFIER_WORKSPACE" in text
     assert "docker compose down scorer" in text  # stop
     assert "docker compose build scorer" in text  # upgrade

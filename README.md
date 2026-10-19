@@ -409,38 +409,69 @@ The rules, thresholds, weights, and registry fields behind every rating:
 Start one container once; every repository points at it. It runs with pinned Python and MCP
 versions as UID/GID `10001`, drops all capabilities, has a read-only root filesystem, and mounts
 your repositories read-only. It keeps running across sessions and reboots
-(`restart: unless-stopped`).
+(`--restart unless-stopped`).
 
-1. Build it, and start it with the absolute parent directory of the repositories you want to score:
+#### Quick start: pull and run
+
+1. Pull the image:
 
    ```console
-   docker compose build scorer
-   mkdir -p ~/.easy-verifier-reports && sudo chown 10001:10001 ~/.easy-verifier-reports
-   EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer
+   docker pull temvar/easy-verifier-mcp:0.1.0
    ```
 
-2. Register it from any repository (once per Claude config directory with `--scope user`):
+2. Create the reports and reference-registry directories, owned by the container's UID `10001`:
+
+   ```console
+   mkdir -p ~/.easy-verifier-reports ~/.easy-verifier-sot
+   sudo chown 10001:10001 ~/.easy-verifier-reports ~/.easy-verifier-sot
+   ```
+
+3. Start it once. Replace both `/home/you/code` with the absolute parent directory of the
+   repositories you want to score:
+
+   ```console
+   docker run -d --name easy-verifier --restart unless-stopped --init \
+     --read-only --network host --cap-drop ALL \
+     --security-opt no-new-privileges:true \
+     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+     -e EASY_VERIFIER_REPORTS_DIR=$HOME/.easy-verifier-reports \
+     -e EASY_VERIFIER_SOT=/sot \
+     -v /home/you/code:/home/you/code:ro \
+     -v $HOME/.easy-verifier-reports:$HOME/.easy-verifier-reports \
+     -v $HOME/.easy-verifier-sot:/sot \
+     temvar/easy-verifier-mcp:0.1.0 --transport streamable-http
+   ```
+
+4. Register it from any repository (once per Claude config directory with `--scope user`):
 
    ```console
    claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp
    ```
 
-3. Pass the repository's **absolute** path as the tool's `repo` argument (for example
-   `/home/you/code/my-service`). Reports go to `~/.easy-verifier-reports/<repo name>/`, never into
-   the repository.
+Then pass the repository's **absolute** path as the tool's `repo` argument (for example
+`/home/you/code/my-service`). Reports go to `~/.easy-verifier-reports/<repo name>/`, never into
+the repository. Stop it with `docker rm -f easy-verifier`; to upgrade, remove it, `docker pull`
+again and rerun the same `docker run -d` command.
 
-Stop it with `docker compose down scorer`. Upgrade with `docker compose build scorer` and then the
-same `docker compose up -d scorer` command, which recreates the container on the new image.
-
-> **Exposure.** The server listens on `127.0.0.1:8766` only (the service uses `network_mode: host`,
+> **Exposure.** The server listens on `127.0.0.1:8766` only (the container uses `--network host`,
 > so its loopback is the host's) and has no authentication: while it runs, **any local process**
-> on this machine can read, read-only, the repositories under `EASY_VERIFIER_WORKSPACE` through it,
+> on this machine can read, read-only, the repositories under the mounted workspace through it,
 > and write reports into the reports directory. Nothing is reachable from another machine. If that
 > is not acceptable, use one container per session instead.
 
-The alternative, one container per session over stdio with no network at all (your MCP client
-runs `docker run -i` on demand), plus troubleshooting:
-[`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md).
+To build the same image from a clone instead, use the `scorer` service in `compose.yaml` (remove
+a `docker run` container first with `docker rm -f easy-verifier`):
+
+```console
+docker compose build scorer
+mkdir -p ~/.easy-verifier-reports && sudo chown 10001:10001 ~/.easy-verifier-reports
+EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer
+```
+
+Stop it with `docker compose down scorer`; upgrade with `docker compose build scorer` and the same
+`up -d scorer` command. Build from source in full, the alternative of one container per session
+over stdio with no network at all (your MCP client runs `docker run -i` on demand), and
+troubleshooting: [`docs/DOCKER_MCP_GUIDE.md`](docs/DOCKER_MCP_GUIDE.md).
 
 ### Final release gate
 

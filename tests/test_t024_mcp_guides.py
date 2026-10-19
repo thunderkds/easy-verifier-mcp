@@ -30,7 +30,7 @@ _HARDENING = {
     "- ALL": ["--cap-drop", "ALL"],
     "- no-new-privileges:true": ["--security-opt", "no-new-privileges:true"],
     "- /tmp:rw,noexec,nosuid,nodev,size=16m": ["--tmpfs", _TMPFS],
-    "image: easy-verifier-mcp:0.1.0": ["easy-verifier-mcp:0.1.0"],
+    "image: temvar/easy-verifier-mcp:0.1.0": ["temvar/easy-verifier-mcp:0.1.0"],
 }
 
 

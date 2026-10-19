@@ -80,6 +80,29 @@ If any required check is unavailable or fails, keep the release task open and ro
 environmental remediation to a scoped follow-up. Do not edit the implementation or weaken an
 assertion merely to obtain a green release result.
 
+## Publish the Docker image (operator)
+
+The documented quick start pulls `temvar/easy-verifier-mcp:0.1.0`. Publishing it is the operator's
+step; no agent logs in to Docker Hub or pushes. `scripts/publish_image.sh` builds `linux/amd64`
+only, tagged `:<pyproject version>` and `:latest`. It refuses a dirty tree and any `compose.yaml`
+image other than `temvar/easy-verifier-mcp:<version>`. Without flags it only builds and loads the
+image locally.
+
+After the release tag, from a clean checkout of it, logged in to Docker Hub as `temvar`:
+
+```console
+bash scripts/publish_image.sh --push --replace-existing
+docker buildx imagetools inspect temvar/easy-verifier-mcp:0.1.0
+```
+
+`--replace-existing` is required because `0.1.0` already exists on Docker Hub (built 2026-10-05):
+the user decided on 2026-10-19 (T118) to replace it with an image of the current code and keep the
+version number. Without it, `--push` refuses any version tag that already exists. For a later
+version, `bash scripts/publish_image.sh --push` is enough.
+
+The inspect command must show a digest different from the one before the push, and the same digest
+as the `Digest:` line the script printed. Record both in the release evidence.
+
 ## Landing site
 
 The static landing page lives in `site/` (`site/index.html`, `site/sample-score.json`). It is
