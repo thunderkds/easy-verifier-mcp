@@ -1,0 +1,91 @@
+{
+  "commit": "8062b35",
+  "date": "2026-10-19",
+  "scope": "project",
+  "overall": 47,
+  "ratings": [
+    {
+      "dimension": "api",
+      "value": 0
+    },
+    {
+      "dimension": "architecture",
+      "value": 100
+    },
+    {
+      "dimension": "blast-radius",
+      "value": 50
+    },
+    {
+      "dimension": "code-quality",
+      "value": 31
+    },
+    {
+      "dimension": "data",
+      "value": 40
+    },
+    {
+      "dimension": "infrastructure",
+      "reason_code": "all_metrics_abstained"
+    },
+    {
+      "dimension": "operations",
+      "value": 50
+    },
+    {
+      "dimension": "reliability",
+      "value": 50
+    },
+    {
+      "dimension": "requirement-fidelity",
+      "value": 20
+    },
+    {
+      "dimension": "security",
+      "value": 50
+    },
+    {
+      "dimension": "solution-fit",
+      "reason_code": "no_static_rule"
+    },
+    {
+      "dimension": "supply-chain",
+      "reason_code": "insufficient_measured_weight"
+    },
+    {
+      "dimension": "test-strategy",
+      "value": 75
+    }
+  ],
+  "areas_measured": [
+    "Architecture & dependency direction",
+    "Business-rule correctness",
+    "Data model, constraints, migrations",
+    "Backward compatibility & upgrade safety",
+    "API contracts, validation, versioning",
+    "AuthN/Z, sessions, offboarding",
+    "Threat modeling, abuse cases, appsec",
+    "Error handling & safe degradation",
+    "Retries, deadlines, unknown outcomes, vendor outages",
+    "Observability, auditing, SLOs, error budgets",
+    "Test strategy, coverage, false confidence, isolation",
+    "Type safety & code quality",
+    "Maintainability, reuse, library judgment, patterns",
+    "Artifact provenance, SBOM, signing, promotion, rollback",
+    "Database HA, backups, restore, DR",
+    "Incident response, change mgmt, access review",
+    "Configuration ownership & operational readiness",
+    "Documentation source-of-truth governance",
+    "AI-assisted-development safety",
+    "Developer experience & deterministic local setup",
+    "Technical-debt lifecycle & closure evidence",
+    "Business continuity & degraded modes"
+  ],
+  "areas_without_rule": [
+    "Financial integrity & historical reconstruction",
+    "Transactions, concurrency, idempotency",
+    "PHI minimization, retention, test-data safety",
+    "Accessibility, responsive UX, browser compat",
+    "Vendor, BAA, data classification, residency"
+  ]
+}
