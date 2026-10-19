@@ -88,6 +88,14 @@ git tag -a v<VERSION> "$CANDIDATE" -m "easy-verifier-mcp v<VERSION> — first re
 git push github v<VERSION>
 ```
 
+Then publish the image (T118; replaces the 2026-10-05 Hub `0.1.0`, user decision 2026-10-19 —
+needs `docker login` as `temvar` and a clean tree on the tagged commit):
+
+```bash
+bash scripts/publish_image.sh --push --replace-existing
+docker buildx imagetools inspect temvar/easy-verifier-mcp:0.1.0   # new digest
+```
+
 `<VERSION>` is set by Decision A. The `pre_bash_block_unsafe_merge` hook blocks `git push` while
 any `PROJECT_KANBAN.md` task is In Progress / Ready for Review. Today none is (T115 lives on the
 site board).
@@ -155,8 +163,8 @@ probe.
 | Check | Status |
 |---|---|
 | Stage 5 evidence green for every in-scope task | ⚠️ 106/118 Done tasks matched the current Evidence-row format. 11 older tasks (T014–T023, T094, T097) record passing tests in an older format. **T096**'s "New test(s)" row lists the tests, but its checkbox was never ticked. |
-| Full suite green in a working interpreter | ✅ 3214 passed, 2 skipped (2026-10-19, `d7098eb`) |
-| Release gate `RESULT ... release=0` | ✅ `RESULT integration=0 container=0 release=0` (2026-10-19) |
+| Full suite green in a working interpreter | ✅ 3254 passed, 3 skipped (2026-10-19, T118 at `327caa0`; `src/`, `Dockerfile`, `pyproject.toml` unchanged since; T119 site tests 118 passed on `1c06465`) |
+| Release gate `RESULT ... release=0` | ✅ `RESULT integration=0 container=0 release=0` re-run 2026-10-19 on the **fresh** image `temvar/easy-verifier-mcp:0.1.0` (`4a062789ba8e`, built from `327caa0`). The earlier pass ran on a stale 2026-10-14 image and hid the missing `change-risk` tool (fixed in T118). The PASS line's `tools=12` is a hard-coded string; the check compares the exact 18-tool set. |
 | Rollback plan with triggers + exact reverse steps | ✅ above |
 | Post-release health check with a concrete pass condition | ✅ above |
 | Release command known | ✅ fast-forward push + tag |
@@ -187,4 +195,4 @@ This plan is a recommendation; the operator executes every step.
 
 | Version | Date | Scope | Deployer | Outcome |
 |---------|------|-------|----------|---------|
-| v0.1.0 (Release 1) | planned 2026-10-19 | develop → main FF, T001–T117 | thunderkds | GO — awaiting operator execution |
+| v0.1.0 (Release 1) | planned 2026-10-19 | develop → main FF, T001–T119 + image publish | thunderkds | GO — awaiting operator execution |
