@@ -45,11 +45,11 @@
    `/usr/bin/python3`, which is now 3.14, so `.venv/bin/python -m pytest` reports
    `No module named pytest`. Rebuild it:
    ```bash
-   /usr/bin/python3.12 -m venv --clear .venv
-   .venv/bin/python -m pip install -e '.[dev]' || .venv/bin/python -m pip install -e . pytest
+   /usr/bin/python3.12 -m venv --clear .venv   # aborts at ensurepip here (no python3.12-venv); links are fixed anyway
+   uv pip install --python .venv/bin/python -e '.[dev]'
    .venv/bin/python -c "import pytest, mcp, easy_verifier; print('venv ok')"
    ```
-   Pass: prints `venv ok`.
+   Pass: prints `venv ok`. **Done by the Supervisor 2026-10-19** (mcp 1.30.0, pytest 9.1.1).
 2. **Clean tree on the candidate.** Commit or stash `memory/MEMORY.md` (tracked, modified locally),
    then:
    ```bash
@@ -64,18 +64,19 @@
    ```bash
    .venv/bin/python -m pytest -q
    ```
-   Pass: `0 failed, 0 errors`. Supervisor run on 2026-10-19 (broken venv, 3.12 + PYTHONPATH
-   workaround): `2 failed, 3186 passed, 2 skipped, 3 errors in 1363.20s`. The real regression
-   (`test_t100`: host path in the T115/T116 guides) is fixed in `90c2b11`. The other four
-   (`test_t014::test_module_import_emits_nothing_to_stdout`, 3 × `test_t101_shared_container`)
-   failed because their subprocesses could not import `mcp` under the workaround. They must pass
-   in the repaired venv. That is unconfirmed until step 1 is done.
+   Pass: `0 failed, 0 errors`. **Supervisor run 2026-10-19 on `d7098eb`, repaired venv:
+   `3214 passed, 2 skipped in 770.31s`.** (The earlier workaround run's `test_t014` and
+   3 × `test_t101_shared_container` failures were environmental and now pass; the `test_t100`
+   regression was fixed in `90c2b11`.)
 5. **Release gate (stdio boundary + container):**
    ```bash
    bash scripts/verify_release_gate.sh
    ```
    Pass: final line `RESULT integration=0 container=0 release=0`, every KPI `PASS` (`NOT VERIFIED`
-   is a failure).
+   is a failure). **Supervisor run 2026-10-19 on `d7098eb`: exit 0, `RESULT integration=0
+   container=0 release=0`; integration 20 passed / 1 skipped; container 2 passed;
+   `PASS: uid=10001, tools=12, root=read-only, reports=writable, network=none, ports=none,
+   caps=none`; all 6 KPIs PASS.**
 6. **Shared-container checks** — the "Supplemental checks" section of `docs/RELEASE_GUIDE.md`.
 
 ### Release steps (operator)
@@ -154,15 +155,17 @@ probe.
 | Check | Status |
 |---|---|
 | Stage 5 evidence green for every in-scope task | ⚠️ 106/118 Done tasks matched the current Evidence-row format. 11 older tasks (T014–T023, T094, T097) record passing tests in an older format. **T096**'s "New test(s)" row lists the tests, but its checkbox was never ticked. |
-| Full suite green in a working interpreter | ❌ not yet confirmed (venv broken; see pre-release check 4) |
-| Release gate `RESULT ... release=0` | ❌ not run |
+| Full suite green in a working interpreter | ✅ 3214 passed, 2 skipped (2026-10-19, `d7098eb`) |
+| Release gate `RESULT ... release=0` | ✅ `RESULT integration=0 container=0 release=0` (2026-10-19) |
 | Rollback plan with triggers + exact reverse steps | ✅ above |
 | Post-release health check with a concrete pass condition | ✅ above |
 | Release command known | ✅ fast-forward push + tag |
 | Version decided | ❌ Decision A |
 
-**Verdict: NO-GO.** Blocking item: the suite and the release gate have not passed in a working
-environment (repair the venv first). Decision A (version) is also open.
+**Verdict: NO-GO — one blocker left: Decision A (version).** Suite and release gate are green in
+the repaired venv. Once the version is chosen (and, for `0.2.0`, its bump task merged), the
+remaining steps are operator-only: clean tree, publish `develop`, fast-forward `main`, tag,
+connect Vercel. T096's unticked evidence checkbox is bookkeeping, not a blocker.
 
 - **Decision A — version/tag.** `v0.1.0` matches `pyproject.toml`, but the Docker Hub `0.1.0`
   image was built from older code, so the same number would name two different builds. Bumping to
@@ -180,4 +183,4 @@ This plan is a recommendation; the operator executes every step.
 
 | Version | Date | Scope | Deployer | Outcome |
 |---------|------|-------|----------|---------|
-| (Release 1) | planned 2026-10-19 | develop → main FF, T001–T114 | thunderkds | NO-GO pending venv repair, suite, release gate, Decision A |
+| (Release 1) | planned 2026-10-19 | develop → main FF, T001–T114 | thunderkds | NO-GO pending Decision A (suite + release gate green 2026-10-19) |
