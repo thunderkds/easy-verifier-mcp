@@ -50,8 +50,10 @@ coverage floor) — the page defines each term the first time it is used.
 - No search, no client-side routing, no framework, no build step, no `package.json`.
 - No analytics, no cookies, no forms, no external asset hosts (fonts, CDNs, images all inline/local).
 - No live scoring from the page; the sample scorecard is a static committed snapshot.
-- No pull-and-run Docker Hub instructions: T025 (image publish) was cancelled 2026-10-19, so the
-  only documented container path is build-from-clone. The page must not reference `temvar/...` images.
+- ~~No pull-and-run Docker Hub instructions~~ — superseded 2026-10-19 by T118 (user: "let build it
+  for now and use the 0.1.0 also"): the page leads with pulling `temvar/easy-verifier-mcp:0.1.0`, a
+  current-code image the operator publishes. Commands on the page must still appear verbatim in the
+  docs (drift test).
 - No CI workflow in this repo deploys the site. Deploy is Vercel's Git integration: a push to `main`
   deploys production.
 

@@ -12,13 +12,14 @@
 
 ## In Progress
 
-- [ ] **T119** — **Landing page: "Easy Verifier" name, tab icon, visual scoring, pull-and-run first.** User 2026-10-19 (four asks). Title/h1/brand "Easy Verifier"; `site/favicon.svg`; `#scoring` step diagram (repository → evidence → rules → coverage check → rating | abstention → overall → plan) + worked example from the snapshot; `#run` leads with Pull → Run → Register copied verbatim from T118's docs, other ways below. (Depends on: T118) | frontend-developer | C2 | Risk: Low | P1 | 🔄 In Progress 2026-10-19 | Guide: `tasks/TASK_GUIDE_T119.md`
 
 
 ## Ready for Review
 
 
 ## Done
+
+- [x] **T119** — **Landing page: "Easy Verifier" name, tab icon, visual scoring, pull-and-run first.** User 2026-10-19 (four asks). Title/h1/brand "Easy Verifier"; `site/favicon.svg`; `#scoring` step diagram (repository → evidence → rules → coverage check → rating | abstention → overall → plan) + worked example from the snapshot; `#run` leads with Pull → Run → Register copied verbatim from T118's docs, other ways below. (Depends on: T118) | frontend-developer | C2 | Risk: Low | P1 | ✅ Done 2026-10-19 (merge of feat/T119-name-icon-scoring-quickstart @ f3c8b69; 14 new tests, site_content 27 + theme 12 + deploy 7 + t100 3 + t118 29 = 78 passed, Supervisor re-run; Stage 4 P0/P1/P2 0; screenshots 375/1280 viewed, example table fixed at 375; diagram contrast ≥ 4.74:1; one existing assertion relaxed: temvar ban removed (superseded by T118)) | Guide: `tasks/TASK_GUIDE_T119.md`
 
 - [x] **T117** — **Restyle the landing page in the kit's theme.** User 2026-10-19: "keep the theme like personal agentic claude". Re-skin `site/index.html` with the kit's dark neon tokens, sticky sidebar nav (mobile collapse via inline script), header card, cyan uppercase h2, pill tags, green install blocks; dark-only like the kit; `--muted` lightened only as needed for 4.5:1. No content, id, data-* or snapshot change — T115 drift tests stay green unchanged; new theme tests pin tokens, nav and no-external-script. (Depends on: T115) | frontend-developer | C1 | Risk: Low | P1 | ✅ Done 2026-10-19 (merged e7bd53e; 12 new theme tests + 16 site-content + 7 deploy + 3 t100 = 38 passed, T115 drift tests unchanged; Stage 4 Supervisor review P0/P1/P2 0, one cosmetic P3 left; screenshots 375/768/1280 + kit-1280 inspected; deviations for AA: --muted #8080b0, --purple-text #ae5ff8; security review N/A Risk Low) | Guide: `tasks/TASK_GUIDE_T117.md`
 
