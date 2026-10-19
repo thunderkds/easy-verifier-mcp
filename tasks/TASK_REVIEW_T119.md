@@ -91,5 +91,15 @@ Screenshots: `<scratchpad>/t119/after-1280.png`, `scoring-1280.png`, `scoring-76
 
 **DELTA**: A newcomer sees "Easy Verifier", a tab icon, a three-step pull/run/register quick start, and a diagram plus real numbers showing how a rating or an abstention comes out.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor, 2026-10-19 — `memory/event-trace/T119.jsonl` holds 40 attributed records from the frontend-developer session. Supervisor independently re-ran site_content + site_theme + site_deploy_config + t100 + t118 on 564bea2: `78 passed in 2.22s`, and viewed after-1280, scoring-1280, scoring-375 (pre-fix: example table scrolled) and example-375 (post `table.compact`: no scroll).
+
+## Stage 4 review (Supervisor)
+
+- Scope: site/index.html, site/favicon.svg, tests/test_site_content.py. `src/`, docs, snapshot untouched.
+- Name: title/h1/brand "Easy Verifier"; commands keep `easy-verifier`.
+- Favicon: 351-byte SVG, viewBox, no external refs/scripts, kit colors; served (`.vercelignore` admits site/**, deploy test green).
+- `#run`: Quick start 1 Pull / 2 Run / 3 Register, each block verbatim from docs (new contiguous check), "Other ways" in `<details>`.
+- `#scoring`: vertical SVG diagram (role=img, title, desc), theme-token classes, branch yes→Rating / no→Abstention, contrast ≥ 4.74:1; worked example numbers pinned to the snapshot; original scoring phrases kept.
+- Changed existing assertion accepted: `temvar/` bans removed from `test_run_commands_verbatim_from_docs` (superseded by T118, user decision); `hub.docker` ban and per-line docs check kept.
+- Findings: P0 0, P1 0, P2 0. P3: none blocking.
+- Security review: N/A (Risk Low); inline-only, no external resources (pinned).
