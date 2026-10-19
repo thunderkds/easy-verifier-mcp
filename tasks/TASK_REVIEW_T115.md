@@ -75,6 +75,6 @@ implementing agent alone]
          "areas_measured": list(d["areas_measured"]), "areas_without_rule": list(d["areas_without_rule"])}
   json.dump(out, open(sys.argv[4], "w"), indent=2); open(sys.argv[4], "a").write("\n")
   ```
-  The snapshot was taken at commit `8062b35`, overall 47, 22 of 32 areas measured; the score run takes ~40 minutes of wall clock here.
+  The snapshot was taken at commit `8062b35`, overall 47, 22 of 32 areas measured.
 - Placeholder decision (edge case): `#run` keeps README's `/home/you/code` verbatim; AC 8's host-path check exempts exactly that string and nothing else.
 - Page sections are hand-written; the dimension/area/sample rows were generated once from the engine tables (generator not committed). The test, not the generator, is the guard.
