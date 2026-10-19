@@ -79,3 +79,76 @@ Record the following in `tasks/TASK_REVIEW_T023.md`:
 If any required check is unavailable or fails, keep the release task open and route the defect or
 environmental remediation to a scoped follow-up. Do not edit the implementation or weaken an
 assertion merely to obtain a green release result.
+
+## Landing site
+
+The static landing page lives in `site/` (`site/index.html`, `site/sample-score.json`). It is
+deployed by the Vercel Git integration, production from `main`. No agent pushes or deploys; these
+steps are the operator's.
+
+### Connect the repository (one time, Vercel dashboard)
+
+1. Add New Project, then import `thunderkds/easy-verifier-mcp` from GitHub.
+2. Framework Preset: **Other**. Root Directory: `.` (repo root).
+3. Build Command: leave empty (no build). Install Command: leave empty. Output Directory: leave to
+   `vercel.json`, which sets `{"outputDirectory": "site"}`.
+4. Settings, Git: Production Branch **`main`**.
+5. Deploy.
+
+### When it goes live
+
+Nothing goes live until `develop` is released to `main`. A push to `main` deploys production with
+no preview step; merging to `main` makes the page public at once. Push a non-`main` branch for a
+preview (confirm the integration's preview setting in the dashboard; not verified here).
+
+### What is served versus uploaded
+
+`vercel.json`'s `outputDirectory` is what keeps `memory/`, `tasks/` and the rest unserved: they are
+committed, so they are in the clone Vercel builds from, but only `site/` is served (the repository
+is public regardless). `.vercelignore` is an allowlist (`*`, then `!site/`, `!site/**`,
+`!vercel.json`) that stops a Vercel CLI deploy from uploading the working tree, including the
+gitignored `reports/`. Whether `.vercelignore` is honoured on the automatic Git path is not
+established: Vercel's docs do not say. To check on a real deployment, open it in the dashboard and
+append `/_src` to its URL (team-only Source view); if `memory/` or `tasks/` appear there, Vercel
+retains the full repository on each push to `main`. Either way only `site/` is served.
+`tests/test_site_deploy_config.py` guards both files.
+
+### Refresh the sample score snapshot
+
+`site/sample-score.json` is a committed snapshot. The drift test compares the page with this
+committed snapshot, not with the live engine, so a regenerated snapshot needs a matching page edit.
+Work in a temp directory so the roughly 1 MB score output (it contains excerpts) is never left
+untracked in the repo. Save this as `"$T/reduce.py"`:
+
+```python
+import json, sys
+d = json.load(open(sys.argv[1]))
+if d["overall"].get("value") is None:
+    sys.exit("overall withheld: the snapshot needs a numeric overall")
+out = {"commit": sys.argv[2], "date": sys.argv[3], "scope": "project",
+       "overall": d["overall"]["value"],
+       "ratings": [({"dimension": r["dimension"], "value": r["value"]} if r.get("value") is not None
+                    else {"dimension": r["dimension"], "reason_code": r["reason_code"]}) for r in d["ratings"]],
+       "areas_measured": list(d["areas_measured"]), "areas_without_rule": list(d["areas_without_rule"])}
+json.dump(out, open(sys.argv[4], "w"), indent=2); open(sys.argv[4], "a").write("\n")
+```
+
+then, from the repo root:
+
+```bash
+T=$(mktemp -d)   # save reduce.py into "$T" first
+python -m easy_verifier.adapters.cli score --repo . --scope project </dev/null > "$T/self.json"
+python "$T/reduce.py" "$T/self.json" "$(git rev-parse --short HEAD)" "$(date -u +%F)" site/sample-score.json
+```
+
+Then hand-update the `#sample` block in `site/index.html` to match the new snapshot:
+`data-overall`, each per-dimension row (`data-value` or `data-reason`), `data-commit`, `data-date`,
+`data-areas-measured`, and the areas-without-rule list. Finally run
+`python -m pytest tests/test_site_content.py -q`; it must pass.
+
+### Check the live page
+
+```bash
+curl -sI https://<project>.vercel.app/ | head -1          # expect HTTP/2 200
+curl -s -o /dev/null -w '%{http_code}\n' https://<project>.vercel.app/memory/MEMORY.md   # expect 404
+```
