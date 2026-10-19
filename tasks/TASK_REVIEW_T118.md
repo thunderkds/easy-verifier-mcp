@@ -33,8 +33,24 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (captured by common-infrastructure in the T118 worktree, before any implementation commit):
+
+```text
+$ date -u
+Mon Oct 19 08:03:22 AM UTC 2026
+$ grep -n image: compose.yaml
+6:    image: easy-verifier-mcp:0.1.0
+49:    image: easy-verifier-mcp:0.1.0
+$ ls scripts/publish_image.sh
+ls: cannot access 'scripts/publish_image.sh': No such file or directory
+exit=2
+$ grep -n 'docker pull' README.md docs/DOCKER_MCP_GUIDE.md
+exit=1
+$ docker images ... | grep temvar
+temvar/easy-verifier-mcp:0.2.0 7dfd60af1835 10 days ago
+temvar/easy-verifier-mcp:latest 7dfd60af1835 10 days ago
+temvar/easy-verifier-mcp:0.1.0 8dee42f049a9 2 weeks ago
+```
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
