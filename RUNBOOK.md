@@ -30,10 +30,11 @@
 - `main` = `0242067 Initial commit`. `develop` = 869 commits ahead; `main` is an ancestor, so the
   release is a pure **fast-forward** — no merge commit, no conflicts.
 - 106 task IDs appear in the range (T001–T114). On `PROJECT_KANBAN.md`: 118 Done, T025 Cancelled,
-  none In Progress. Site board (`PROJECT_KANBAN_SITE.md`): T115 In Progress, T116 Todo — **not in
-  this release** unless the operator chooses to wait for them (see Decision B).
-- `github/develop` is 5 commits behind local `develop` (the T025 cancellation and T115/T116 planning
-  commits of 2026-10-19). The release rule (`docs/RELEASE_GUIDE.md`) requires the candidate to be
+  none In Progress. Site board (`PROJECT_KANBAN_SITE.md`): T115 (page) and T116 (Vercel config)
+  **Done and merged into develop** (f1b9989, 96c14bd), so this release also carries `site/`,
+  `vercel.json` and `.vercelignore`.
+- `github/develop` is behind local `develop` by the 2026-10-19 commits (the T025 cancellation, the
+  T115/T116 planning and merges, and this runbook). The release rule (`docs/RELEASE_GUIDE.md`) requires the candidate to be
   the published `github/develop` head.
 - `pyproject.toml` version: `0.1.0`. Docker Hub already carries `temvar/easy-verifier-mcp:0.1.0` /
   `latest`, built 2026-10-05 from `fae8969` (an older develop commit). See Decision A.
@@ -161,13 +162,15 @@ probe.
 | Version decided | ❌ Decision A |
 
 **Verdict: NO-GO.** Blocking item: the suite and the release gate have not passed in a working
-environment (repair the venv first). Decisions A and B are also open.
+environment (repair the venv first). Decision A (version) is also open.
 
 - **Decision A — version/tag.** `v0.1.0` matches `pyproject.toml`, but the Docker Hub `0.1.0`
   image was built from older code, so the same number would name two different builds. Bumping to
   `0.2.0` needs a one-line `pyproject.toml` change, which goes through a task.
-- **Decision B — include the landing site?** Release now and ship the site in a second
-  fast-forward later, or wait for T115 + T116 so the first `main` already serves the page.
+- **Decision B — resolved by events (2026-10-19):** T115 and T116 are merged, so the first `main`
+  will serve the landing page as soon as the operator connects Vercel (`docs/RELEASE_GUIDE.md`,
+  "Landing site"). After connecting, run that section's live checks: 200 for `/`, 404 for
+  `/memory/MEMORY.md`.
 
 This plan is a recommendation; the operator executes every step.
 
@@ -177,4 +180,4 @@ This plan is a recommendation; the operator executes every step.
 
 | Version | Date | Scope | Deployer | Outcome |
 |---------|------|-------|----------|---------|
-| (Release 1) | planned 2026-10-19 | develop → main FF, T001–T114 | thunderkds | NO-GO pending venv repair, suite, release gate, Decisions A/B |
+| (Release 1) | planned 2026-10-19 | develop → main FF, T001–T114 | thunderkds | NO-GO pending venv repair, suite, release gate, Decision A |
