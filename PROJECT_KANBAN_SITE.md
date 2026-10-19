@@ -9,6 +9,7 @@
 
 ## Todo
 
+- [ ] **T119** — **Landing page: "Easy Verifier" name, tab icon, visual scoring, pull-and-run first.** User 2026-10-19 (four asks). Title/h1/brand "Easy Verifier"; `site/favicon.svg`; `#scoring` step diagram (repository → evidence → rules → coverage check → rating | abstention → overall → plan) + worked example from the snapshot; `#run` leads with Pull → Run → Register copied verbatim from T118's docs, other ways below. (Depends on: T118) | frontend-developer | C2 | Risk: Low | P1 | Guide: `tasks/TASK_GUIDE_T119.md`
 
 ## In Progress
 

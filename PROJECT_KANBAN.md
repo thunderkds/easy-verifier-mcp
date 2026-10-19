@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-17
+**Last updated**: 2026-10-19
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -118,6 +118,7 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 8 — Final release verification (added 2026-09-23)**
 
 ### In Progress
+- [ ] **T118** — Pull-and-run image `temvar/easy-verifier-mcp:0.1.0` from current code: compose image renamed, "Quick start: pull and run" first in DOCKER_MCP_GUIDE + README (docker run = compose scorer hardening, pinned by test), guarded `scripts/publish_image.sh` (from cancelled T025; `--push --replace-existing` replaces the 2026-10-05 Hub 0.1.0 — user decision 2026-10-19 "let build it for now and use the 0.1.0 also"), live local proof; agent never pushes | common-infrastructure | C2 | Risk: Medium | P1 | 🔄 In Progress 2026-10-19 | Guide: `tasks/TASK_GUIDE_T118.md`
 
 ### Ready for Review
 
