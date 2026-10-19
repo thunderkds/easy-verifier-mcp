@@ -78,3 +78,7 @@ implementing agent alone]
   The snapshot was taken at commit `8062b35`, overall 47, 22 of 32 areas measured.
 - Placeholder decision (edge case): `#run` keeps README's `/home/you/code` verbatim; AC 8's host-path check exempts exactly that string and nothing else.
 - Page sections are hand-written; the dimension/area/sample rows were generated once from the engine tables (generator not committed). The test, not the generator, is the guard.
+
+## Stage 4 P3 fixes (per-scope weight claim, pinned dimension count)
+
+Evidence: `pytest tests/test_site_content.py tests/test_t100_no_personal_identifiers.py -q` -> `19 passed in 0.86s`; `ruff check tests/test_site_content.py` -> `All checks passed!`. New tests: `test_dimension_count_pinned`, `test_scope_weight_claim_holds_in_engine` (each SCOPE_RULE_GROUPS group, or the whole table, sums to 100; solution-fit has no rules; engine confirmed: blast-radius [100, 100], all others 100).

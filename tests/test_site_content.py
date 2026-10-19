@@ -324,6 +324,27 @@ def test_scoring_section_states_required_facts():
         assert phrase in text, f"#scoring does not state {phrase!r}"
 
 
+def test_dimension_count_pinned():
+    marks = _in(_page(), "dimensions", "span", "data-dimension-count")
+    assert len(marks) == 1
+    assert marks[0].attrs["data-dimension-count"] == str(len(DIMENSIONS) - 1)
+    assert marks[0].text.strip().lower() == "thirteen"
+
+
+def test_scope_weight_claim_holds_in_engine():
+    text = " ".join(_norm(e.text) for e in _in(_page(), "scoring", "li"))
+    assert "rules that apply at one scope add up to 100" in text
+    assert "solution-fit" in text and "no static rule" in text
+    for dimension, rules in judge.RATING_RULES.items():
+        if not rules:
+            assert dimension == "solution-fit" or not rules
+            continue
+        groups = judge.SCOPE_RULE_GROUPS.get(dimension, (tuple(rules),))
+        for group in groups:
+            assert sum(rules[n].weight for n in group) == 100, dimension
+    assert not judge.RATING_RULES.get("solution-fit")
+
+
 # ---- AC 8 ----
 
 

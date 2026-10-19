@@ -100,7 +100,7 @@ python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
 
 <section id="dimensions">
   <h2>What it measures: dimensions</h2>
-  <p>Thirteen dimensions are rated for the repository, plus <code>change-risk</code>, which rates a change. Each dimension is independently callable.</p>
+  <p><span data-dimension-count="13">Thirteen</span> dimensions are rated for the repository, plus <code>change-risk</code>, which rates a change. Each dimension is independently callable.</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th scope="col">Dimension</th><th scope="col">What it looks at</th></tr></thead>
@@ -171,7 +171,7 @@ python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
 <section id="scoring">
   <h2>How scoring works</h2>
   <ul>
-    <li>Each dimension has declared rules over measured metrics. A rule compares one metric with a threshold; a met rule earns its weight and an unmet rule earns zero. The weights in a dimension add up to 100.</li>
+    <li>Each dimension has declared rules over measured metrics. A rule compares one metric with a threshold; a met rule earns its weight and an unmet rule earns zero. The weights of the rules that apply at one scope add up to 100; <code>solution-fit</code> has no static rule.</li>
     <li>Each rule cites its metric and its threshold separately. A threshold tagged <code>project-default</code> means the standard names the measure but publishes no number.</li>
     <li>A coverage floor guards every dimension: if too little of the evidence it needs was found, it abstains with a reason code rather than showing a number. A metric that cannot be measured is left out of both the earned and the total weight.</li>
     <li>The overall is the mean of the dimensions that could be rated, and the scorecard names which dimensions contributed and which abstained.</li>
