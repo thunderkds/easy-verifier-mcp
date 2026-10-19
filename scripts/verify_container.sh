@@ -181,6 +181,7 @@ expected_tools = {
     "operations",
     "infrastructure",
     "reliability",
+    "change-risk",
     "list_dimensions",
     "combined",
     "score",
