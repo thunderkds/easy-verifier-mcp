@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>easy-verifier: an offline, rule-based repository verifier</title>
+<meta name="description" content="A local, no-LLM engine that rates a repository per dimension from declared rules over measured facts, and abstains instead of guessing.">
+<style>
+  :root {
+    --bg: #ffffff; --surface: #f4f5f8; --border: #c9ccd6;
+    --text: #1a1c24; --muted: #4a4f60; --accent: #0b5cad;
+    --ok: #12632f; --warn: #7a4a00; --none: #8a1f1f;
+    --code-bg: #eceef4; --measure: 72ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1117; --surface: #181b25; --border: #343949;
+      --text: #e6e8ef; --muted: #a8aec0; --accent: #6db3ff;
+      --ok: #62d68c; --warn: #f0b45c; --none: #ff8f8f;
+      --code-bg: #20243180;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 1rem; line-height: 1.6; overflow-x: hidden;
+  }
+  header, main, footer { max-width: 60rem; margin: 0 auto; padding: 0 1rem; }
+  header { padding-top: 2rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 .5rem; }
+  h2 { font-size: 1.3rem; margin: 0 0 .75rem; border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+  section { margin: 2.5rem 0; scroll-margin-top: 1rem; }
+  p, li { max-width: var(--measure); }
+  .lead { color: var(--muted); font-size: 1.1rem; max-width: var(--measure); }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding: 0; margin: 1rem 0 0; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9rem; }
+  code { background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: .95rem; }
+  th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface); color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: none; }
+  .tag { display: inline-block; padding: .05rem .55rem; border: 1px solid currentColor; border-radius: 999px; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+  .tag-ruled { color: var(--ok); }
+  .tag-pack { color: var(--warn); }
+  .tag-none { color: var(--none); }
+  .score { font-size: 3rem; font-weight: 700; margin: 0; line-height: 1.1; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; max-width: none; }
+  footer { padding-bottom: 3rem; color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>easy-verifier</h1>
+  <p class="lead">An offline, rule-based repository verifier, available as an MCP server and a CLI. It rates a repository, or a change, from declared rules over measured facts, and says so when it cannot rate something.</p>
+  <nav aria-label="Sections">
+    <ul>
+      <li><a href="#what">What it is</a></li>
+      <li><a href="#run">Run it</a></li>
+      <li><a href="#dimensions">Dimensions</a></li>
+      <li><a href="#areas">32 areas</a></li>
+      <li><a href="#scoring">How scoring works</a></li>
+      <li><a href="#sample">Sample scorecard</a></li>
+      <li><a href="https://github.com/thunderkds/easy-verifier-mcp">GitHub</a></li>
+    </ul>
+  </nav>
+</header>
+<main>
+
+<section id="what">
+  <h2>What it is</h2>
+  <p>easy-verifier gathers evidence about a repository (file excerpts, citations, and lists of what it looked for and did not find) and computes inspectable ratings from declared rules. A calling agent can optionally submit its own findings for a separate assessment.</p>
+  <ul>
+    <li><strong>No inferred verdict.</strong> Ratings are deterministic arithmetic over cited metrics.</li>
+    <li><strong>No guessing.</strong> A source it did not find is reported as missing; a rating without enough evidence is withheld.</li>
+    <li><strong>Read-only and local.</strong> It never executes the repository's code and makes no outbound network request.</li>
+  </ul>
+  <p>Terms used below: a <em>dimension</em> is one independently rated aspect (for example <code>security</code>); an <em>evaluation area</em> is one of 32 cited review topics a rule can measure; an <em>abstention</em> is "no number, with a reason code".</p>
+</section>
+
+<section id="run">
+  <h2>Run it</h2>
+  <p>The documented path is a shared scoring container built from a clone of the repository. Build it, then start it with the absolute parent directory of the repositories you want to score:</p>
+<pre><code>docker compose build scorer
+mkdir -p ~/.easy-verifier-reports &amp;&amp; sudo chown 10001:10001 ~/.easy-verifier-reports
+EASY_VERIFIER_WORKSPACE=/home/you/code docker compose up -d scorer</code></pre>
+  <p>Register it once with Claude Code:</p>
+<pre><code>claude mcp add --transport http easy-verifier http://127.0.0.1:8766/mcp</code></pre>
+  <p>Alternatively, without a container, install the package into a Python 3.11+ environment and register the stdio server, or use the CLI directly:</p>
+<pre><code>python -m pip install .
+claude mcp add easy-verifier -- easy-verifier-mcp
+python -m easy_verifier.adapters.cli score --repo . --scope project</code></pre>
+  <p>Full guides are in the <a href="https://github.com/thunderkds/easy-verifier-mcp">repository</a>: README.md, docs/DOCKER_MCP_GUIDE.md and docs/LOCAL_MCP_GUIDE.md.</p>
+</section>
+
+<section id="dimensions">
+  <h2>What it measures: dimensions</h2>
+  <p><span data-dimension-count="13">Thirteen</span> dimensions are rated for the repository, plus <code>change-risk</code>, which rates a change. Each dimension is independently callable.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">Dimension</th><th scope="col">What it looks at</th></tr></thead>
+    <tbody>
+<tr data-dimension="architecture"><td><code>architecture</code></td><td>Structural fit against the project's declared design</td></tr>
+<tr data-dimension="solution-fit"><td><code>solution-fit</code></td><td>Whether the change addresses the stated problem</td></tr>
+<tr data-dimension="requirement-fidelity"><td><code>requirement-fidelity</code></td><td>Whether the work matches its requirement or spec</td></tr>
+<tr data-dimension="code-quality"><td><code>code-quality</code></td><td>Style, readability and maintainability signals</td></tr>
+<tr data-dimension="security"><td><code>security</code></td><td>Injection, secret handling and other security evidence</td></tr>
+<tr data-dimension="test-strategy"><td><code>test-strategy</code></td><td>What is and is not covered by tests</td></tr>
+<tr data-dimension="blast-radius"><td><code>blast-radius</code></td><td>What else depends on, or is touched by, the code</td></tr>
+<tr data-dimension="reliability"><td><code>reliability</code></td><td>Error handling, deadlines, retry backoff, business-continuity document</td></tr>
+<tr data-dimension="supply-chain"><td><code>supply-chain</code></td><td>Dependency pinning and licences, CI reproducibility, provenance, SBOM, signing</td></tr>
+<tr data-dimension="api"><td><code>api</code></td><td>API specification, request validation, versioning, removed endpoints</td></tr>
+<tr data-dimension="data"><td><code>data</code></td><td>Migrations beside a schema, rollbacks, constraints, DROP/RENAME operations</td></tr>
+<tr data-dimension="operations"><td><code>operations</code></td><td>Logging and tracing, audit logs, CODEOWNERS, agent guardrails, setup</td></tr>
+<tr data-dimension="infrastructure"><td><code>infrastructure</code></td><td>IAM and RBAC wildcards, open ingress, unencrypted storage, state and backups in Terraform, Kubernetes, CloudFormation</td></tr>
+<tr data-dimension="change-risk"><td><code>change-risk</code></td><td>Rates a change, not the repository: only at <code>changes</code> or <code>worktree</code> scope, and reported as its own headline, never averaged into the overall</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="areas">
+  <h2>What it measures: 32 evaluation areas</h2>
+  <p>Every rule names exactly one of these areas. The marker shows whether any rule measures the area today: <span class="tag tag-ruled">rule</span> a core rule exists; <span class="tag tag-pack">pack</span> only an optional pack measures it, and that pack runs only when the repository opts in or shows that domain; <span class="tag tag-none">no rule</span> nothing measures it yet, and the scorecard says so instead of implying coverage.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">#</th><th scope="col">Area</th><th scope="col">Status</th></tr></thead>
+    <tbody>
+<tr data-area="Architecture &amp; dependency direction" data-status="ruled"><td>1</td><td>Architecture &amp; dependency direction</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Business-rule correctness" data-status="ruled"><td>2</td><td>Business-rule correctness</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Financial integrity &amp; historical reconstruction" data-status="pack:finance"><td>3</td><td>Financial integrity &amp; historical reconstruction</td><td><span class="tag tag-pack">pack: finance</span></td></tr>
+<tr data-area="Data model, constraints, migrations" data-status="ruled"><td>4</td><td>Data model, constraints, migrations</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Backward compatibility &amp; upgrade safety" data-status="ruled"><td>5</td><td>Backward compatibility &amp; upgrade safety</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Transactions, concurrency, idempotency" data-status="none"><td>6</td><td>Transactions, concurrency, idempotency</td><td><span class="tag tag-none">no rule</span></td></tr>
+<tr data-area="API contracts, validation, versioning" data-status="ruled"><td>7</td><td>API contracts, validation, versioning</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="AuthN/Z, sessions, offboarding" data-status="ruled"><td>8</td><td>AuthN/Z, sessions, offboarding</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="PHI minimization, retention, test-data safety" data-status="pack:healthcare"><td>9</td><td>PHI minimization, retention, test-data safety</td><td><span class="tag tag-pack">pack: healthcare</span></td></tr>
+<tr data-area="Threat modeling, abuse cases, appsec" data-status="ruled"><td>10</td><td>Threat modeling, abuse cases, appsec</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Infra security: IAM, networking, KMS, secrets" data-status="ruled"><td>11</td><td>Infra security: IAM, networking, KMS, secrets</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Error handling &amp; safe degradation" data-status="ruled"><td>12</td><td>Error handling &amp; safe degradation</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Retries, deadlines, unknown outcomes, vendor outages" data-status="ruled"><td>13</td><td>Retries, deadlines, unknown outcomes, vendor outages</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Observability, auditing, SLOs, error budgets" data-status="ruled"><td>14</td><td>Observability, auditing, SLOs, error budgets</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Performance, scalability, capacity, cost" data-status="ruled"><td>15</td><td>Performance, scalability, capacity, cost</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Test strategy, coverage, false confidence, isolation" data-status="ruled"><td>16</td><td>Test strategy, coverage, false confidence, isolation</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Type safety &amp; code quality" data-status="ruled"><td>17</td><td>Type safety &amp; code quality</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Maintainability, reuse, library judgment, patterns" data-status="ruled"><td>18</td><td>Maintainability, reuse, library judgment, patterns</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Accessibility, responsive UX, browser compat" data-status="pack:frontend-a11y"><td>19</td><td>Accessibility, responsive UX, browser compat</td><td><span class="tag tag-pack">pack: frontend-a11y</span></td></tr>
+<tr data-area="Dependencies, vulns, licenses, obsolescence" data-status="ruled"><td>20</td><td>Dependencies, vulns, licenses, obsolescence</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="CI quality &amp; reproducibility" data-status="ruled"><td>21</td><td>CI quality &amp; reproducibility</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Artifact provenance, SBOM, signing, promotion, rollback" data-status="ruled"><td>22</td><td>Artifact provenance, SBOM, signing, promotion, rollback</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Terraform state, environment, account, drift" data-status="ruled"><td>23</td><td>Terraform state, environment, account, drift</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Database HA, backups, restore, DR" data-status="ruled"><td>24</td><td>Database HA, backups, restore, DR</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Incident response, change mgmt, access review" data-status="ruled"><td>25</td><td>Incident response, change mgmt, access review</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Configuration ownership &amp; operational readiness" data-status="ruled"><td>26</td><td>Configuration ownership &amp; operational readiness</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Documentation source-of-truth governance" data-status="ruled"><td>27</td><td>Documentation source-of-truth governance</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Vendor, BAA, data classification, residency" data-status="pack:healthcare"><td>28</td><td>Vendor, BAA, data classification, residency</td><td><span class="tag tag-pack">pack: healthcare</span></td></tr>
+<tr data-area="AI-assisted-development safety" data-status="ruled"><td>29</td><td>AI-assisted-development safety</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Developer experience &amp; deterministic local setup" data-status="ruled"><td>30</td><td>Developer experience &amp; deterministic local setup</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Technical-debt lifecycle &amp; closure evidence" data-status="ruled"><td>31</td><td>Technical-debt lifecycle &amp; closure evidence</td><td><span class="tag tag-ruled">rule</span></td></tr>
+<tr data-area="Business continuity &amp; degraded modes" data-status="ruled"><td>32</td><td>Business continuity &amp; degraded modes</td><td><span class="tag tag-ruled">rule</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="scoring">
+  <h2>How scoring works</h2>
+  <ul>
+    <li>Each dimension has declared rules over measured metrics. A rule compares one metric with a threshold; a met rule earns its weight and an unmet rule earns zero. The weights of the rules that apply at one scope add up to 100; <code>solution-fit</code> has no static rule.</li>
+    <li>Each rule cites its metric and its threshold separately. A threshold tagged <code>project-default</code> means the standard names the measure but publishes no number.</li>
+    <li>A coverage floor guards every dimension: if too little of the evidence it needs was found, it abstains with a reason code rather than showing a number. A metric that cannot be measured is left out of both the earned and the total weight.</li>
+    <li>The overall is the mean of the dimensions that could be rated, and the scorecard names which dimensions contributed and which abstained.</li>
+    <li>The improvement plan lists unmet rules ordered by their declared gain, recomputed from the same arithmetic, so fixing the top item is worth exactly the points shown.</li>
+    <li>The engine makes no model call and no network request. The same repository state gives the same score.</li>
+    <li><code>change-risk</code> is rated only at <code>changes</code> or <code>worktree</code> scope, and is not averaged into the overall.</li>
+  </ul>
+</section>
+
+<section id="sample">
+  <h2>Sample scorecard</h2>
+  <p>easy-verifier scoring itself at <code>project</code> scope, commit <code data-commit>8062b35</code>, taken <time data-date>2026-10-19</time>. This is a static snapshot, not a live result.</p>
+  <div class="card">
+    <p class="score" data-overall="47">47 <span class="lead">overall, out of 100</span></p>
+    <p>Mean of the dimensions that could be rated. Dimensions shown as abstained are left out of it.</p>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">Dimension</th><th scope="col">Rating</th></tr></thead>
+    <tbody>
+<tr data-sample-dimension="api" data-value="0"><td><code>api</code></td><td>0</td></tr>
+<tr data-sample-dimension="architecture" data-value="100"><td><code>architecture</code></td><td>100</td></tr>
+<tr data-sample-dimension="blast-radius" data-value="50"><td><code>blast-radius</code></td><td>50</td></tr>
+<tr data-sample-dimension="code-quality" data-value="31"><td><code>code-quality</code></td><td>31</td></tr>
+<tr data-sample-dimension="data" data-value="40"><td><code>data</code></td><td>40</td></tr>
+<tr data-sample-dimension="infrastructure" data-reason="all_metrics_abstained"><td><code>infrastructure</code></td><td>abstained: <code>all_metrics_abstained</code></td></tr>
+<tr data-sample-dimension="operations" data-value="50"><td><code>operations</code></td><td>50</td></tr>
+<tr data-sample-dimension="reliability" data-value="50"><td><code>reliability</code></td><td>50</td></tr>
+<tr data-sample-dimension="requirement-fidelity" data-value="20"><td><code>requirement-fidelity</code></td><td>20</td></tr>
+<tr data-sample-dimension="security" data-value="50"><td><code>security</code></td><td>50</td></tr>
+<tr data-sample-dimension="solution-fit" data-reason="no_static_rule"><td><code>solution-fit</code></td><td>abstained: <code>no_static_rule</code></td></tr>
+<tr data-sample-dimension="supply-chain" data-reason="insufficient_measured_weight"><td><code>supply-chain</code></td><td>abstained: <code>insufficient_measured_weight</code></td></tr>
+<tr data-sample-dimension="test-strategy" data-value="75"><td><code>test-strategy</code></td><td>75</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>This run measured <strong data-areas-measured="22">22</strong> of 32 evaluation areas. No rule that ran in it covers these: four belong to optional packs that did not run, and one has no rule yet:</p>
+  <ul>
+<li data-area-without-rule>Financial integrity &amp; historical reconstruction</li>
+<li data-area-without-rule>Transactions, concurrency, idempotency</li>
+<li data-area-without-rule>PHI minimization, retention, test-data safety</li>
+<li data-area-without-rule>Accessibility, responsive UX, browser compat</li>
+<li data-area-without-rule>Vendor, BAA, data classification, residency</li>
+  </ul>
+</section>
+
+</main>
+<footer>
+  <p>Source and guides: <a href="https://github.com/thunderkds/easy-verifier-mcp">github.com/thunderkds/easy-verifier-mcp</a></p>
+</footer>
+</body>
+</html>
