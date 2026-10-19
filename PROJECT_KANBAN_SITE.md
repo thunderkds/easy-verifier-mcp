@@ -9,9 +9,10 @@
 
 ## Todo
 
-- [ ] **T116** — **Vercel deploy configuration + runbook.** `vercel.json` (`outputDirectory: site`, no build command), `.vercelignore` allowlist (`*`, `!site/`, `!site/**`, `!vercel.json`), a "Landing site" section in `docs/RELEASE_GUIDE.md` with the operator's exact steps (connect repo in Vercel dashboard, production branch `main`, snapshot regeneration command), and a test that pins both config files. The Supervisor plans; **the operator executes** the dashboard connection and the develop → `main` release — no agent pushes or deploys. (Depends on: T115) | common-infrastructure | C1 | Risk: Med | P1 | Guide: `tasks/TASK_GUIDE_T116.md`
 
 ## In Progress
+
+- [ ] **T116** — **Vercel deploy configuration + runbook.** `vercel.json` (`outputDirectory: site`, no build command), `.vercelignore` allowlist (`*`, `!site/`, `!site/**`, `!vercel.json`), a "Landing site" section in `docs/RELEASE_GUIDE.md` with the operator's exact steps (connect repo in Vercel dashboard, production branch `main`, snapshot regeneration command), and a test that pins both config files. The Supervisor plans; **the operator executes** the dashboard connection and the develop → `main` release — no agent pushes or deploys. (Depends on: T115) | common-infrastructure | C1 | Risk: Med | P1 | 🔄 In Progress 2026-10-19 (worktree `../easy-verifier-mcp-T116`, branch `feat/T116-vercel-config`) | Guide: `tasks/TASK_GUIDE_T116.md`
 
 ## Ready for Review
 
