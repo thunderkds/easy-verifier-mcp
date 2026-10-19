@@ -13,9 +13,9 @@
 
 ## In Progress
 
-- [ ] **T115** — **Static landing page (`site/index.html`) + self-score snapshot + drift test.** One page, plain HTML/CSS, no build, no external hosts. Sections: what it is, run it (shared container from a clone, stdio, CLI), dimensions, the 32 evaluation areas with per-area status (ruled / pack-gated / no rule), how scoring works, sample scorecard from `site/sample-score.json` (easy-verifier scoring itself, commit + date shown). `tests/test_site_content.py` asserts dimensions, areas, per-area status, commands and scorecard numbers against their sources of truth, and that `site/` holds no host paths/emails/secrets. User decisions 2026-10-19 (all four content blocks; site/ in this repo). | frontend-developer | C2 | Risk: Low | P1 | 🔄 In Progress 2026-10-19 (worktree `../easy-verifier-mcp-T115`, branch `feat/T115-landing-site`) | Guide: `tasks/TASK_GUIDE_T115.md`
-
 ## Ready for Review
+
+- [ ] **T115** — **Static landing page (`site/index.html`) + self-score snapshot + drift test.** One page, plain HTML/CSS, no build, no external hosts. Sections: what it is, run it (shared container from a clone, stdio, CLI), dimensions, the 32 evaluation areas with per-area status (ruled / pack-gated / no rule), how scoring works, sample scorecard from `site/sample-score.json` (easy-verifier scoring itself, commit + date shown). `tests/test_site_content.py` asserts dimensions, areas, per-area status, commands and scorecard numbers against their sources of truth, and that `site/` holds no host paths/emails/secrets. User decisions 2026-10-19 (all four content blocks; site/ in this repo). | frontend-developer | C2 | Risk: Low | P1 | 👀 Ready for Review 2026-10-19 (branch `feat/T115-landing-site` @ 2f07b02; test_site_content 14 passed; snapshot = self-score @ 8062b35, overall 47; contrast worst 5.75:1 light / 6.98:1 dark, Supervisor-measured) | Guide: `tasks/TASK_GUIDE_T115.md`
 
 ## Done
 
