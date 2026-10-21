@@ -17,7 +17,7 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t123_advisory_location.py` (7 tests: default text in HTML + advisory, unset/empty env = default, env set = outside-repo text identical in HTML and advisory and no 'inside', NFR-011 phrases in both). Run 2026-10-21: `9 passed, 3300 deselected` for `-k "report and advisory"` |
 | Verification command run | pass | `uv run --python 3.12 --extra dev python -m pytest tests -k "report and advisory" -q` -> `9 passed, 3300 deselected in 2.02s`; ruff check clean |
 | Negative cases hold | pass | empty `EASY_VERIFIER_REPORTS_DIR` gives the default text; env-mode text never contains 'inside the evaluated repository' |
-| verify | pass | Skill not invoked by the implementer; end-to-end check by running real `write_report` with env set and unset (AFTER capture): HTML notice equals returned advisory, text correct - pass. Supervisor re-run at Stage 5 still required. |
+| verify | ☑ pass | Supervisor Stage 5, 2026-10-21: MCP stdio `write_report` (findings=[], worktree scope) on a throwaway git repo. Env unset → advisory 'written inside the evaluated repository', HTML marker "…repository's reports/ directory". `EASY_VERIFIER_REPORTS_DIR` set → advisory 'written outside the evaluated repository, in the shared reports directory', HTML marker '…folder in the shared reports directory', no 'inside' text — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Affected set: report.py notice/selection, T013/T070/T120/T001 report and env-read tests (130 passed) plus the full suite. `code-review` skill not run by the implementer. |
 | Full smoke suite still green (no regression) | pass | `3306 passed, 3 skipped in 679.80s`, exit 0 (container-parity test did not fail here) |
 | **UI: Visual regression (diff or verdict pasted)** | N/A | The existing notice element's text changes, not its layout. |
@@ -51,8 +51,7 @@ With the env unset the text is the unchanged `SENSITIVITY_ADVISORY` ("written in
 
 **DELTA**: A reader of a report written to the shared reports directory is now told it sits outside the evaluated repository, instead of being told it is inside it.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor (main session), 2026-10-21 — the independent MCP stdio run above, traced in `memory/event-trace/T123.jsonl`. Implementer full suite 3306 passed / 3 skipped before the marker follow-up; after the follow-up the report test files gave 133 passed.
 
 ---
 
@@ -66,3 +65,8 @@ Run 2026-10-21 (ruff check: All checks passed):
 tests/test_t001_pipeline.py test_t013_report.py test_t070_report_readability.py test_t120_report_json.py test_t123_advisory_location.py: 133 passed in 15.15s
 ```
 Full suite not re-run for this change (per Supervisor); the earlier full run was 3306 passed, 3 skipped.
+
+## Stage 4 — Supervisor review (2026-10-21)
+
+- code-review: P0 0 · P1 0 · P2 0 · P3 0. The text is chosen once (`_notice_texts`, from the resolved `reports_dir.is_relative_to(repo)`) and passed to both the HTML and the returned `advisory`; `_reports_dir` stays the only env reader (pinned by `test_package_never_reads_the_environment`); `SENSITIVITY_ADVISORY` is unchanged byte for byte. Scope grew by the first-write marker (Supervisor decision: same defect). An env dir inside the repo gets the "inside" text, and a test pins it.
+- security-review: Low risk, not required. The NFR-011 exposures (hosted model, excerpts quote real source) are kept in both texts, and a test checks that. — pass
