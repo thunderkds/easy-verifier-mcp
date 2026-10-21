@@ -120,11 +120,11 @@ _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 **Wave 24 — Cross-repo request from easy-personal-mcp (added 2026-10-21; its XR-1, consumer HUN-42)**
 
 **Wave 25 — Field report from easy-personal-mcp HUN-34 score run (added 2026-10-21; reproduced on develop `2004992`)**
-- [ ] **T123** — Sensitivity notice names the real report location when `EASY_VERIFIER_REPORTS_DIR` is set (owner declined score-writes-report) | backend-developer | C1 | Risk: Low | P2 | after T120 (same `write_report`) | Guide: `tasks/TASK_GUIDE_T123.md` (Gate signed 2026-10-21; FR-017/NFR-011)
 - [ ] **T124** — Secret-detector precision on task/review markdown: branch names (`feat/HUN-…`) and absolute path segments flagged by `key_material_segment` / `high_entropy_string` (5 hits keep HUN-34 security at 18 after T121) | backend-developer | C2 | Risk: Medium | P1 | needs TASK_GUIDE (Stage 2) — follow-up from T121 Stage 4
 - [ ] **T125** — `sink_hits_observed` counts sink excerpts from context-role files read repo-wide at narrow scope (same FR-078 class as T121) | backend-developer | C1 | Risk: Medium | P2 | needs TASK_GUIDE (Stage 2) — follow-up from T121 Stage 4
 
 ### In Progress
+- [ ] **T123** — Sensitivity notice names the real report location when `EASY_VERIFIER_REPORTS_DIR` is set (owner declined score-writes-report) | backend-developer | C1 | Risk: Low | P2 | after T120 (same `write_report`) | 🔄 In Progress 2026-10-21 (worktree `../easy-verifier-mcp-T123`) | Guide: `tasks/TASK_GUIDE_T123.md` (Gate signed 2026-10-21; FR-017/NFR-011)
 
 ### Ready for Review
 
