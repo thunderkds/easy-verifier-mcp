@@ -71,5 +71,10 @@ security rating: 18
 
 **DELTA**: At a narrow scope, secret hits in unchanged context files (here 118 of 123, from `.claude/harness-lock.json` and `web/package-lock.json`) no longer count against security; they stay redacted and are named in the derivation. HUN-34 still rates 18 because 5 false-positive hits sit in the changed `tasks/TASK_REVIEW_HUN-34.md`, which is measured by design.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor (main session), 2026-10-21 12:21Z — independent MCP stdio `score` on easy-personal-mcp HUN-34 changes scope: security `redaction_hits_observed` 5 (failed), computed_from = the 14 changed files only (no `.claude/harness-lock.json`, no `web/package-lock.json`); security rating 18. Traced in `memory/event-trace/T121.jsonl`.
+
+## Stage 4 — Supervisor review (2026-10-21)
+
+- code-review: P0 0 · P1 0 · P2 1 · P3 1. P2 (follow-up, not this task): `sink_hits_observed` still counts sink excerpts from context-role files read repo-wide (`_sink_excerpts` in the role loop) — same FR-078 class. P3: the guide's `-k "redaction or context_role"` filter does not select `tests/test_t121_context_secret_hits.py`; the file was run separately.
+- security-review (Medium; done by hand): redaction unchanged (123 hits still fingerprinted); only counting changes, only at narrow scope; context hits named in the derivation; `context_files` path-redacted; project scope unchanged. Residual: a real secret in an unchanged context file no longer lowers a `changes` score (stated in FR-088; still counted at `project`). — pass
+- Open (owner decision): HUN-34 security stays 18 — 5 false positives in the changed `tasks/TASK_REVIEW_HUN-34.md` (branch name, absolute path segment). Needs a redaction-precision follow-up.
