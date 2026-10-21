@@ -75,7 +75,9 @@ def test_combined_score_and_discovery_match_across_adapters() -> None:
     assert normalize(cli_combined) == normalize(mcp_combined)
 
     cli_score = cli_json("score", "--repo", str(REPO_ROOT), "--scope", "worktree")
-    mcp_score = mcp_call("score", {"repo": str(REPO_ROOT), "scope": "worktree"})
+    mcp_score = mcp_call(
+        "score", {"repo": str(REPO_ROOT), "scope": "worktree", "detail": "full"}
+    )
     # `needs_input` is a declared MCP-only field (T027, FR-034/FR-040): the
     # core computes it but only the MCP adapter puts it on the wire, so the
     # CLI payload never carries the key. This is a test-declared exclusion,
@@ -108,7 +110,12 @@ def test_score_with_the_same_picks_matches_across_adapters(tmp_path: Path) -> No
     )
     mcp_score = mcp_call(
         "score",
-        {"repo": str(REPO_ROOT), "scope": "worktree", "agent_input": agent_input},
+        {
+            "repo": str(REPO_ROOT),
+            "scope": "worktree",
+            "agent_input": agent_input,
+            "detail": "full",
+        },
     )
     # T028: a picks round may now ask for gate evaluations; `needs_input` is
     # the same test-declared MCP-only exclusion as above, not a DDR-0005 rule.

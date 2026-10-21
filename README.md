@@ -350,6 +350,11 @@ and HTML report carries a sources provenance line: `rules`, `rules + config`, or
 `rules + agent picks (N files)`. Coverage and ratings are not comparable with v0.1.0, which counted
 exact filenames.
 
+**Reply size (MCP `score`).** By default the reply is a summary: it leaves out the per-metric
+rows (`metrics.metrics`, about nine tenths of the full payload); ratings, overall, improvement plan,
+warnings, `needs_input` and provenance are the same. Pass `detail="full"` for every metric row. The
+CLI always prints the full payload. `budget_bytes` limits the evidence excerpts read, not the reply.
+
 **Hard gates (MCP `score` only).** The CLI never asks. Over MCP, `score` may return `needs_input`
 with at most one of picks or gate evaluations per response, and at most two extra rounds:
 

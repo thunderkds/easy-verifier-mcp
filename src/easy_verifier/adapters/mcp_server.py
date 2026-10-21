@@ -15,7 +15,7 @@ import os
 import sys
 import threading
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Literal
 
 import anyio.to_thread
 from mcp.server.fastmcp import FastMCP
@@ -188,7 +188,12 @@ def gather_combined(
         "focusable elements, viewport, browser support); a repository may "
         "also list them in "
         ".easy-verifier.toml "
-        "packs. Otherwise use the response as-is."
+        "packs. Otherwise use the response as-is. "
+        "budget_bytes limits the evidence excerpts read, not the size of the "
+        "reply. By default (detail=\"summary\") the reply leaves out the "
+        "per-metric rows (metrics.metrics, most of the full reply's size); "
+        'ratings, overall, improvement_plan, warnings and provenance are '
+        'unchanged. Pass detail="full" to get every metric row.'
     ),
     structured_output=True,
 )
@@ -200,8 +205,16 @@ def score(
     task_id: str | None = None,
     findings: list[dict[str, Any]] | None = None,
     agent_input: dict[str, Any] | None = None,
+    detail: Literal["summary", "full"] = "summary",
 ) -> dict[str, Any]:
     """Delegate the complete rating operation to the shared score core.
+
+    ``detail="summary"`` (T122, FR-089) drops ``metrics.metrics``, the
+    per-metric rows that are ~90% of the payload; ``metrics`` keeps
+    ``dimensions_without_pack`` (small, and it says which dimensions have no
+    rows at all). Gate ``evidence_refs`` are excerpt refs from the packs, never
+    metric rows, so ``needs_input`` works unchanged. The filter lives here, so
+    the CLI payload and the core are untouched.
 
     ``needs_input`` (FR-035) is MCP-only: the shared core can compute it, but
     only this adapter asks for it and puts it on the wire (FR-021, FR-034,
@@ -240,6 +253,8 @@ def score(
         needs_input["gate_evaluations"] = list(result.gate_requests)
     if needs_input:
         payload["needs_input"] = needs_input
+    if detail == "summary":
+        del payload["metrics"]["metrics"]
     return payload
 
 

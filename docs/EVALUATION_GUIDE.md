@@ -27,6 +27,9 @@ Code: `src/easy_verifier/core/score.py`, `core/judge.py`, `core/improve.py`, `co
 | `improvement_plan` | Every unmet or unmeasured rule of every rated dimension, grouped and ranked by gain |
 | `assessments`, `divergences` | Present only if you sent findings; never blended into a rating |
 
+Over MCP the reply omits the per-metric rows unless you pass `detail="full"` (the CLI always prints
+them).
+
 Over MCP, a `needs_input` block may ride along (`picks`, `gate_evaluations`, `reference`, `review`,
 `continue_batches`); see [`SCORING_FLOW.md`](SCORING_FLOW.md#the-rounds).
 
