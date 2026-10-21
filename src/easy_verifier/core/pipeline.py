@@ -227,6 +227,11 @@ def run_dimension(
         change_kind=getattr(context, "change_kind", None),
         test_pairs=getattr(context, "test_pairs", None),
         excluded=_redacted_exclusions(resolved_scope),
+        context_files=(
+            _redact_paths(dict.fromkeys(context.context_files))[0]
+            if getattr(context, "context_files", None)
+            else None
+        ),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),

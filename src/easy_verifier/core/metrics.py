@@ -778,29 +778,73 @@ def _assertions_observed(view: _PackView) -> _Computed:
     )
 
 
+def _measured_redactions(view: _PackView):
+    """The files and hits a secret metric counts (T121, FR-088), plus a
+    derivation note for the hits it does not.
+
+    At a narrow scope the pack names its ``context_files``: context-role files
+    read repository-wide (FR-078), cited, not measured. They and their hits
+    are left out here; a hit with no path cannot be placed in one, so it still
+    counts. Without ``context_files`` (``project`` scope) nothing is left out
+    and the note is empty.
+    """
+    context = frozenset(view.pack.context_files or ())
+    files = tuple(path for path in view.files if path not in context)
+    hits = tuple(hit for hit in view.pack.redactions if hit.path not in context)
+    skipped = [hit.path for hit in view.pack.redactions if hit.path in context]
+    note = ""
+    if skipped:
+        hit_files = sorted(set(skipped))
+        note = (
+            f"; {len(skipped)} more in {len(hit_files)} context file(s) read "
+            "from the whole repository are redacted but not counted, since "
+            f"context is cited, not measured: {_listed(hit_files)}"
+        )
+    return files, hits, note
+
+
+def _context_only(view: _PackView) -> MetricAbstention:
+    hits = sum(
+        hit.path in (view.pack.context_files or ()) for hit in view.pack.redactions
+    )
+    return MetricAbstention(
+        reason=(
+            "every file this pack read is a context file read from the whole "
+            "repository at a narrow scope (cited, not measured), so no file of "
+            f"the scope's own was read to count secrets in; {hits} redaction(s) "
+            "in those context files are not counted"
+        )
+    )
+
+
 def _redaction_hits_observed(view: _PackView) -> _Computed:
     if not view.files:
         return _no_files()
-    hits = view.pack.redactions
+    files, hits, note = _measured_redactions(view)
+    if not files:
+        return _context_only(view)
     return (
         len(hits),
-        tuple(sorted(view.files)),
+        tuple(sorted(files)),
         f"{len(hits)} secret redaction(s) recorded while building this pack "
-        f"from the {len(view.files)} file(s) listed here; a lower bound on the "
-        "repository, since only these files were read",
+        f"from the {len(files)} file(s) listed here; a lower bound on the "
+        "repository, since only these files were read" + note,
     )
 
 
 def _redacted_file_share(view: _PackView) -> _Computed:
     if not view.files:
         return _no_files()
-    hit_files = {hit.path for hit in view.pack.redactions if hit.path is not None}
-    matched = tuple(sorted(path for path in view.files if path in hit_files))
+    files, hits, note = _measured_redactions(view)
+    if not files:
+        return _context_only(view)
+    hit_files = {hit.path for hit in hits if hit.path is not None}
+    matched = tuple(sorted(path for path in files if path in hit_files))
     return (
-        len(matched) / len(view.files),
-        tuple(sorted(view.files)),
+        len(matched) / len(files),
+        tuple(sorted(files)),
         f"{len(matched)} file(s) with at least one redaction "
-        f"({', '.join(matched) or 'none'}) / {len(view.files)} file(s) read",
+        f"({', '.join(matched) or 'none'}) / {len(files)} file(s) read" + note,
     )
 
 

@@ -319,6 +319,13 @@ class EvidencePack:
     ``change-risk`` pack for a bugfix or feature change with changed source;
     ``None`` otherwise, and then left out of the serialized pack."""
 
+    context_files: tuple[str, ...] | None = field(default=None)
+    """Context-role files the ``security`` pack read from outside a narrow
+    scope's own file set (T121, FR-088; FR-078): cited, not measured, so its
+    secret metrics leave them out. ``None`` for every other dimension, at
+    ``project`` scope and when no such file was read, and then left out of the
+    serialized pack."""
+
 
 @dataclass(frozen=True)
 class ChangeSignal:
@@ -600,6 +607,7 @@ _OMITTED_WHEN_ABSENT = frozenset(
         "capped",
         "change_kind",
         "test_pairs",
+        "context_files",
     }
 )
 """Pack fields added after the pack JSON was fixed (T055, DDR-0005): left out
