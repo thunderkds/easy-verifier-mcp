@@ -33,8 +33,24 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured by backend-developer in the T121 worktree on branch `fix/T121-context-secret-hits` at `5a19bd2` (no implementation commit yet). Script: security pack via `combined_pack(["security"], repo, "changes", 120000, ref="3f4aceb^1...3f4aceb^2")`, hits grouped by (path, detector), then MCP `score(...)` security rating on `easy-personal-mcp` (not modified).
+
+```
+$ PYTHONPATH=src <main>/.venv/bin/python scratchpad/hun34.py < /dev/null
+captured: 2026-10-21T10:58:07+00:00
+easy-verifier HEAD: 5a19bd2
+pack.redactions: 123
+   116  .claude/harness-lock.json  high_entropy_hex
+     3  tasks/TASK_REVIEW_HUN-34.md  key_material_segment
+     2  tasks/TASK_REVIEW_HUN-34.md  high_entropy_string
+     2  web/package-lock.json  high_entropy_string
+security rating: 18
+  redaction_hits_observed = 123 FAILED
+  redaction_hits_observed derivation: 123 secret redaction(s) recorded while building this pack from the 18 file(s) listed here; a lower bound on the repository, since only these files were read
+  redacted_file_share derivation: 3 file(s) with at least one redaction (.claude/harness-lock.json, tasks/TASK_REVIEW_HUN-34.md, web/package-lock.json) / 18 file(s) read
+```
+
+Only `tasks/TASK_REVIEW_HUN-34.md` is changed by HUN-34; `.claude/harness-lock.json` and `web/package-lock.json` are context-role (lockfile) files read repo-wide, yet they supply 118 of the 123 counted hits.
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
