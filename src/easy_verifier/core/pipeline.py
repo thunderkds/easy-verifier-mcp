@@ -227,10 +227,24 @@ def run_dimension(
         change_kind=getattr(context, "change_kind", None),
         test_pairs=getattr(context, "test_pairs", None),
         excluded=_redacted_exclusions(resolved_scope),
+        context_files=_context_files(context.files_read, resolved_scope),
         source_provenance=(
             source_provenance(resolution) if resolution is not None else "rules"
         ),
     )
+
+
+def _context_files(files_read, resolved_scope) -> tuple[str, ...] | None:
+    """Files read from outside a narrow scope's own file set (T121, FR-088),
+    path-redacted like ``files_read``; ``None`` at ``project`` scope, for an
+    unresolved or empty scope, and when every file read is in the scope."""
+    if resolved_scope is None or resolved_scope.kind == "project":
+        return None
+    scope_files = frozenset(resolved_scope.files)
+    if not scope_files:
+        return None
+    outside = [path for path in dict.fromkeys(files_read) if path not in scope_files]
+    return _redact_paths(outside)[0] or None
 
 
 def _capped(resolution, dimension_caps) -> tuple[CapHit, ...] | None:

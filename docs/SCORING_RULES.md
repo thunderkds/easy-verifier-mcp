@@ -245,7 +245,7 @@ listed; *(opt)* marks optional refinements the metric computes without. "Delimit
 | | `type_escapes_per_kloc` | 15 | ≤ 5 | `source_extensions`, delimiters, `type_escapes`, `type_stub_names` *(opt)* |
 | | `todo_without_ticket_share` | 15 | ≤ 0.50 | `source_extensions`, delimiters |
 | | `strict_type_config_missing` | 10 | = 0 | `type_config_files`, `type_strict`, `type_strict_off`, `type_config_extends` (all *opt*; abstains without a type checker config) |
-| security | `redaction_hits_observed` | 35 | = 0 | none (built-in secret patterns) |
+| security | `redaction_hits_observed` | 35 | = 0 | none (built-in secret patterns); at a narrow scope counts hits in the scope's own files only (context-file hits are redacted and named in the derivation, not counted, T121); `redacted_file_share` (unrated) uses the same files |
 | | `sink_hits_observed` | 35 | = 0 | `source_extensions`, delimiters, `security_sinks`, `interpolating_strings` *(opt)*; counts hits in non-test files only (test-path hits are listed, cited and tagged `[test path]` but not counted); abstains when only test files were scanned |
 | | `lockfile_missing` | 15 | = 0 | `roles.lockfile` |
 | | `cookie_flags_missing_observed` | 15 | = 0 | `source_extensions`, `test_name_patterns`, `colocated_test_name_patterns` *(opt)*, delimiters, `cookie_calls`, `auth_markers`, `cookie_secure` / `cookie_httponly` / `cookie_samesite` *(opt)*; abstains where no auth or session code was read |

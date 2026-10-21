@@ -121,6 +121,9 @@ with a stated reason.
 - Context files (test config, CI workflow, lockfile and similar) are read from the whole repository
   at a narrow scope, so fewer dimensions abstain than before. Dimensions that rate repository
   documents, such as architecture, still describe the repository, not the change.
+- Security's secret counts (`redaction_hits_observed`, `redacted_file_share`) at a narrow scope cover
+  only the scope's own files. Secrets found in context files are still redacted, and their count is
+  named in the metric's derivation, but they do not lower the rating.
 
 ## Large repositories: batches
 
