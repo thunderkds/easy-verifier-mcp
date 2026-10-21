@@ -33,8 +33,14 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE**: captured 2026-10-21T12:24:25Z on the unmodified branch (`write_report` on a tiny fixture repo, once with the env unset, once with `EASY_VERIFIER_REPORTS_DIR=<tmp>/shared`; the HTML notice and the returned `advisory` printed):
+
+```
+mode: env
+advisory: Sensitivity notice: this report is written inside the evaluated repository, so it can be committed ... [identical to the default mode, 'same: True']
+html notice: Sensitivity notice: this report is written inside the evaluated repository, so it can be committed ...
+```
+With the env set the report was written under `<tmp>/shared/target/`, yet the notice still said "inside the evaluated repository" (both modes print the identical text).
 
 **AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
 
