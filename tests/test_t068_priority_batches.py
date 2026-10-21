@@ -463,7 +463,10 @@ def no_stdin(monkeypatch) -> None:
 @pytest.mark.usefixtures("no_stdin")
 def test_mcp_and_cli_payloads_agree_apart_from_needs_input(big_repo, capsys) -> None:
     mcp = mcp_server.score(
-        repo=str(big_repo), scope="project", agent_input={"batches": 2}
+        repo=str(big_repo),
+        scope="project",
+        agent_input={"batches": 2},
+        detail="full",
     )
     mcp.pop("needs_input", None)
     assert (

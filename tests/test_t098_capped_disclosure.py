@@ -210,7 +210,7 @@ def test_blast_radius_sweep_cap(tmp_path, monkeypatch):
 
 def test_cli_and_mcp_payloads_agree(capped_repo, capsys, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(b"")))
-    mcp = mcp_server.score(repo=str(capped_repo), scope="project")
+    mcp = mcp_server.score(repo=str(capped_repo), scope="project", detail="full")
     mcp.pop("needs_input", None)
     assert cli.main(["score", "--repo", str(capped_repo), "--scope", "project"]) == 0
     cli_payload = json.loads(capsys.readouterr().out)

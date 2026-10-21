@@ -265,7 +265,9 @@ def test_http_lists_every_tool_and_scores_two_repos_like_stdio(
     async def work(session):
         tools = sorted(tool.name for tool in (await session.list_tools()).tools)
         scores = [
-            _structured(await session.call_tool("score", {"repo": str(repo)}))
+            _structured(
+                await session.call_tool("score", {"repo": str(repo), "detail": "full"})
+            )
             for repo in (first, second)
         ]
         return tools, scores
@@ -289,7 +291,9 @@ def test_two_sessions_scoring_concurrently_both_complete_correctly(
 
     def score(repo: Path):
         async def work(session):
-            return _structured(await session.call_tool("score", {"repo": str(repo)}))
+            return _structured(
+                await session.call_tool("score", {"repo": str(repo), "detail": "full"})
+            )
 
         return work
 
@@ -335,7 +339,9 @@ def _slow_core(events: list[str]):
 
 async def _two_concurrent_scores() -> list[object]:
     async def call(name: str):
-        _content, result = await mcp_server.mcp.call_tool("score", {"repo": name})
+        _content, result = await mcp_server.mcp.call_tool(
+            "score", {"repo": name, "detail": "full"}
+        )
         return result
 
     return await asyncio.gather(call("/r/a"), call("/r/b"))

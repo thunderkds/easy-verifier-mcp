@@ -125,6 +125,7 @@ def _derivation(repo: Path, name: str, agent_input: dict | None = None) -> str:
 def _mcp(arguments: dict) -> dict:
     from easy_verifier.adapters import mcp_server
 
+    arguments = {"detail": "full", **arguments}  # T122: parity needs the rows
     _content, result = asyncio.run(mcp_server.mcp.call_tool("score", arguments))
     return result
 

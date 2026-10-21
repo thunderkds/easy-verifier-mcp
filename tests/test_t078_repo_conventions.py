@@ -349,7 +349,12 @@ def test_cli_and_mcp_payloads_match_with_toml_conventions(tmp_path, sot):
     _content, mcp_payload = asyncio.run(
         mcp_server.mcp.call_tool(
             "score",
-            {"repo": str(repo), "scope": "project", "agent_input": {"batches": "all"}},
+            {
+                "repo": str(repo),
+                "scope": "project",
+                "agent_input": {"batches": "all"},
+                "detail": "full",
+            },
         )
     )
     cli_payload = json.loads(completed.stdout)
@@ -369,7 +374,9 @@ def test_no_leak_between_back_to_back_mcp_calls(tmp_path, sot):
     without = layered_repo(tmp_path / "without")
 
     def call(repo: Path, agent_input: dict | None = None) -> dict:
-        payload = mcp_server.score(repo=str(repo), agent_input=agent_input)
+        payload = mcp_server.score(
+            repo=str(repo), agent_input=agent_input, detail="full"
+        )
         return {k: v for k, v in payload.items() if k != "needs_input"}
 
     first_bare = call(without)
