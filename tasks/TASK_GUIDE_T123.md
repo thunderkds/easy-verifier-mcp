@@ -36,6 +36,8 @@ calls separate**, because findings come after reading the score. This task fixes
 > directory, and that it still quotes the repository's source and paths. Both the HTML notice and the
 > `advisory` string returned by `write_report` use the same text.
 
+Supervisor 2026-10-21: first-write marker included (same defect)
+
 **Out of scope** (what this task explicitly does NOT do):
 - `score` writing a report (owner declined 2026-10-21)
 - The first-write-only rule for returning `advisory`

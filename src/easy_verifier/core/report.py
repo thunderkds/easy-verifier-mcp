@@ -82,19 +82,38 @@ REPORTS_DIR_ENV = "EASY_VERIFIER_REPORTS_DIR"
 ``<repo>/reports/``, so one shared scoring container never writes into the
 repositories it reads. Unset or empty keeps today's behaviour exactly."""
 
-SENSITIVITY_ADVISORY = (
-    "Sensitivity notice: this report is written inside the evaluated repository, "
-    "so it can be committed to version control, attached to a ticket, or pasted "
-    "into a pull request — and in MCP mode the same evidence also reaches the "
+_ADVISORY_EXPOSURES = (
+    "and in MCP mode the same evidence also reaches the "
     "calling agent, which may be a hosted model outside your control. Secrets "
     "detected while gathering evidence are replaced by non-reversible "
     "fingerprints before they reach this document, but excerpts still quote real "
     "source code and file paths from this repository. Review before sharing it "
     "anywhere either destination can carry it."
 )
+
+SENSITIVITY_ADVISORY = (
+    "Sensitivity notice: this report is written inside the evaluated repository, "
+    "so it can be committed to version control, attached to a ticket, or pasted "
+    "into a pull request — " + _ADVISORY_EXPOSURES
+)
 """NFR-011 / AC #15. It names the two real exposures — the report travelling out
 of the repo, and pack content reaching a hosted model — rather than merely
 asserting that redaction happened."""
+
+SHARED_DIR_SENSITIVITY_ADVISORY = (
+    "Sensitivity notice: this report is written outside the evaluated repository, "
+    "in the shared reports directory, so it can be copied from there, attached to "
+    "a ticket, or pasted into a pull request — " + _ADVISORY_EXPOSURES
+)
+"""T123: the notice when :data:`REPORTS_DIR_ENV` chose the destination."""
+
+FIRST_WRITE_MARKER = (
+    "This is the first report written into this repository's reports/ directory."
+)
+SHARED_DIR_FIRST_WRITE_MARKER = (
+    "This is the first report written into this repository's folder in the "
+    "shared reports directory."
+)
 
 MAX_FILENAME_ATTEMPTS = 1000
 """Bound on the never-overwrite retry loop, so a pathological directory fails
@@ -152,6 +171,7 @@ def write_report(
 
     reports_dir = _reports_dir(repo)
     first_write = not _has_existing_reports(reports_dir)
+    notice, first_write_marker = _notice_texts(repo, reports_dir)
 
     ctx = _Ctx(repo=repo)
     score = (
@@ -187,6 +207,8 @@ def write_report(
         improvements,
         agent_summary,
         first_write=first_write,
+        advisory=notice,
+        first_write_marker=first_write_marker,
     )
 
     # FR-087: the JSON score summary is built from the same `score` the HTML
@@ -201,7 +223,7 @@ def write_report(
             else str(written)
         ),
         absolute_path=str(written),
-        advisory=SENSITIVITY_ADVISORY if first_write else None,
+        advisory=notice if first_write else None,
     )
 
 
@@ -323,6 +345,14 @@ def _reports_dir(repo: Path) -> Path:
             f"{REPORTS_DIR_ENV} must be an absolute path, got a relative one"
         )
     return base / (repo.name or "root")
+
+
+def _notice_texts(repo: Path, reports_dir: Path) -> tuple[str, str]:
+    """The sensitivity notice and first-write marker for where the report is
+    actually written, so the HTML and the returned advisory agree."""
+    if reports_dir.is_relative_to(repo):
+        return SENSITIVITY_ADVISORY, FIRST_WRITE_MARKER
+    return SHARED_DIR_SENSITIVITY_ADVISORY, SHARED_DIR_FIRST_WRITE_MARKER
 
 
 def _has_existing_reports(reports_dir: Path) -> bool:
@@ -478,6 +508,8 @@ def _render_document(
     agent_summary: str | None = None,
     *,
     first_write: bool,
+    advisory: str = SENSITIVITY_ADVISORY,
+    first_write_marker: str = FIRST_WRITE_MARKER,
 ) -> str:
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     finding_count = sum(len(v) for v in by_dimension.values())
@@ -497,7 +529,9 @@ def _render_document(
         "</head>",
         "<body>",
         _render_header(ctx, packs, generated, finding_count),
-        _render_advisory(ctx, first_write=first_write),
+        _render_advisory(
+            ctx, advisory, first_write_marker if first_write else ""
+        ),
         _render_summary(
             ctx,
             score,
@@ -552,16 +586,11 @@ _ADVISORY_LINE = (
 """The share notice's one visible line (FR-065); the full notice is folded."""
 
 
-def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
-    marker = (
-        "This is the first report written into this repository's reports/ directory."
-        if first_write
-        else ""
-    )
+def _render_advisory(ctx: _Ctx, advisory: str, marker: str) -> str:
     return (
         '<section class="advisory"><h2>Before you share this report</h2>'
         f"<details><summary>{ctx.esc(_ADVISORY_LINE)}</summary>"
-        f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p></details>"
+        f"<p>{ctx.esc(advisory)}</p></details>"
         f'<p class="first-write">{ctx.esc(marker)}</p></section>'
     )
 
@@ -2050,6 +2079,7 @@ __all__ = [
     "REPORTS_DIRNAME",
     "REPORTS_DIR_ENV",
     "SENSITIVITY_ADVISORY",
+    "SHARED_DIR_SENSITIVITY_ADVISORY",
     "RepoPathError",
     "ReportWriteError",
     "write_report",
