@@ -17,7 +17,7 @@
 | **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t120_report_json.py` (13 tests, one per AC 1-6 plus env dir/non-ASCII, collision, guard) |
 | Verification command run | pass | `uv run --python 3.12 --extra dev python -m pytest tests -k "report and json" -q` -> `9 passed, 3268 deselected in 2.13s` |
 | Negative cases hold | pass | Unevidenced finding -> ValidationError, no `reports/` dir; JSON open denied -> no files left (sabotage: removing the HTML unlink makes `test_report_json_failure_leaves_no_half_pair` fail); canary absent from JSON; abstain is `null`, never 0 |
-| verify | ☐ N/A | not run by the implementing agent; the Demonstration AFTER shows the pair written (pass), but the rescoring regression above is open |
+| verify | ☑ pass | Supervisor Stage 5, 2026-10-21 12:22Z: MCP stdio `write_report` (findings=[]) on easy-personal-mcp HUN-34 changes scope with `EASY_VERIFIER_REPORTS_DIR` = temp dir wrote the pair `easy-personal-mcp/evidence-report-changes-20261021T122222-248006Z.{html,json}`; JSON keys `dimensions, generated_at, overall, schema_version, scope`, overall 70 (also in the HTML), security 18, withheld ratings `null` — pass |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Diff reviewed directly: `core/report.py` only (write path, `_scope_label` extracted from `_filename`); `_render_*`, `SENSITIVITY_ADVISORY`, dimensions untouched. Built-in security-review not run (resolves origin/HEAD). The JSON holds numbers and reason codes only |
 | Full smoke suite still green (no regression) | pass | `uv run --python 3.12 --extra dev python -m pytest tests -q` -> `3278 passed, 3 skipped in 667.98s (0:11:07)`. Includes the two replay tests and the existing project-scope snapshot/byte-equality tests (no sidecar in those repos, so payloads unchanged). Earlier run (before the walk fix) had 2 replay regressions caused by the sidecar being re-ingested |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | no UI |
@@ -56,8 +56,7 @@ wrote $D/reports/demo-repo/evidence-report-project-20261021T112131-779658Z.html
 
 **DELTA**: A program (easy-personal) can read a report's scores from a JSON file next to the HTML instead of parsing HTML.
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+**WITNESS**: Supervisor (main session), 2026-10-21 12:22Z — independent MCP stdio run above, traced in `memory/event-trace/T120.jsonl` (active_task T120); implementer full suite 3278 passed / 3 skipped at 2847af7.
 
 ## Scope extension (authorised by Supervisor 2026-10-21: prevent sidecar re-ingestion)
 
@@ -67,3 +66,8 @@ regex of the exact generated name `evidence-report-<scope>-<UTC>[-N].json`, any 
 in `context._walk`, `scope._walk_files` and `roles._in_excluded_dir`. User files `evidence-report.json`
 and `report.json` still walk. Tests in `tests/test_t120_report_json.py` pin the predicate against the
 real written names, the walks, the role check and a rescore that ignores the previous sidecar.
+
+## Stage 4 — Supervisor review (2026-10-21)
+
+- code-review: P0 0 · P1 0 · P2 0 · P3 1 (stale `_write_new_file` docstring reference in `_filename`; fixed). Walk exclusion `_is_report_artifact` authorised by Supervisor (sidecar re-ingestion broke two replay tests); matches the exact generated name only, so a user's `report.json` is still walked.
+- security-review (Medium; built-in skill needs `origin/HEAD`, done by hand): JSON carries numbers, scope, timestamp only — canary test proves no finding/agent text; same `_guard_reports_dir` and `O_EXCL` no-overwrite rule as the HTML; JSON write failure removes the HTML. Residual: a user file with exactly the engine's sidecar name is skipped by every walk (accepted). — pass

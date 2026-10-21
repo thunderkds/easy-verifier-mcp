@@ -293,7 +293,7 @@ def _filename(packs: CombinedPack) -> str:
 
     Self-describing (scope + instant) and sub-second, so two reports written in
     the same second do not collide on the name. Collision is still handled at
-    the filesystem, not here — see :func:`_write_new_file`.
+    the filesystem, not here — see :func:`_write_new_pair`.
     """
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
     return f"evidence-report-{_slug(_scope_label(packs))}-{stamp}.html"
