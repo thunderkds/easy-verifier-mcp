@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t123_advisory_location.py` (7 tests: default text in HTML + advisory, unset/empty env = default, env set = outside-repo text identical in HTML and advisory and no 'inside', NFR-011 phrases in both). Run 2026-10-21: `9 passed, 3300 deselected` for `-k "report and advisory"` |
+| Verification command run | pass | `uv run --python 3.12 --extra dev python -m pytest tests -k "report and advisory" -q` -> `9 passed, 3300 deselected in 2.02s`; ruff check clean |
+| Negative cases hold | pass | empty `EASY_VERIFIER_REPORTS_DIR` gives the default text; env-mode text never contains 'inside the evaluated repository' |
+| verify | pass | Skill not invoked by the implementer; end-to-end check by running real `write_report` with env set and unset (AFTER capture): HTML notice equals returned advisory, text correct - pass. Supervisor re-run at Stage 5 still required. |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Affected set: report.py notice/selection, T013/T070/T120/T001 report and env-read tests (130 passed) plus the full suite. `code-review` skill not run by the implementer. |
+| Full smoke suite still green (no regression) | pass | `3306 passed, 3 skipped in 679.80s`, exit 0 (container-parity test did not fail here) |
+| **UI: Visual regression (diff or verdict pasted)** | N/A | The existing notice element's text changes, not its layout. |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | N/A | The existing notice element's text changes, not its layout. |
+| **UI: Responsiveness at target viewports** | N/A | The existing notice element's text changes, not its layout. |
 
 ---
 
@@ -42,9 +42,14 @@ html notice: Sensitivity notice: this report is written inside the evaluated rep
 ```
 With the env set the report was written under `<tmp>/shared/target/`, yet the notice still said "inside the evaluated repository" (both modes print the identical text).
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+**AFTER**: captured 2026-10-21T12:26:03Z, same script, env set (HTML notice and returned `advisory` identical, `same: True`):
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+```
+advisory: Sensitivity notice: this report is written outside the evaluated repository, in the shared reports directory, so it can be copied from there, attached to a ticket, or pasted into a pull request — and in MCP mode the same evidence also reaches the calling agent, which may be a hosted model outside your control. Secrets detected while gathering evidence are replaced by non-reversible fingerprints before they reach this document, but excerpts still quote real source code and file paths from this repository. Review before sharing it anywhere either destination can carry it.
+```
+With the env unset the text is the unchanged `SENSITIVITY_ADVISORY` ("written inside the evaluated repository").
+
+**DELTA**: A reader of a report written to the shared reports directory is now told it sits outside the evaluated repository, instead of being told it is inside it.
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
