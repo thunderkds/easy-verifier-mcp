@@ -1,5 +1,5 @@
 # PROJECT_KANBAN.md
-**Last updated**: 2026-10-19
+**Last updated**: 2026-10-21
 
 > Compact task board. Full context lives in `PROJECT_SPEC.md`. Update this file whenever a task status changes.
 
@@ -116,6 +116,14 @@ _(T020, T021 and T022 all merged and Stage 5-verified; Wave 7 is complete.)_
 _(T017 completed after the Docker-capable final gate on 2026-09-23.)_
 
 **Wave 8 — Final release verification (added 2026-09-23)**
+
+**Wave 24 — Cross-repo request from easy-personal-mcp (added 2026-10-21; its XR-1, consumer HUN-42)**
+- [ ] **T120** — Score JSON sidecar next to each HTML evidence report | backend-developer | C1 | Risk: Medium | P1 | Guide: `tasks/TASK_GUIDE_T120.md` (Gate signed 2026-10-21; FR-087)
+
+**Wave 25 — Field report from easy-personal-mcp HUN-34 score run (added 2026-10-21; reproduced on develop `2004992`)**
+- [ ] **T121** — Secret hits in context files must not lower a narrow-scope security score (116 of 123 hits came from unchanged `.claude/harness-lock.json`, read repo-wide as a `lockfile` context role; security 18) | backend-developer | C2 | Risk: Medium | P0 | Guide: `tasks/TASK_GUIDE_T121.md` (Gate signed 2026-10-21; FR-088)
+- [ ] **T122** — MCP `score` reply is a summary by default, `detail="full"` on request (reply 806,343 chars, `metrics` rows 714,739; `budget_bytes` limits excerpts only; owner chose summary-by-default) | backend-developer | C1 | Risk: Medium | P1 | Guide: `tasks/TASK_GUIDE_T122.md` (Gate signed 2026-10-21; FR-089)
+- [ ] **T123** — Sensitivity notice names the real report location when `EASY_VERIFIER_REPORTS_DIR` is set (owner declined score-writes-report) | backend-developer | C1 | Risk: Low | P2 | after T120 (same `write_report`) | Guide: `tasks/TASK_GUIDE_T123.md` (Gate signed 2026-10-21; FR-017/NFR-011)
 
 ### In Progress
 
