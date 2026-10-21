@@ -254,7 +254,7 @@ def score(
     if needs_input:
         payload["needs_input"] = needs_input
     if detail == "summary":
-        del payload["metrics"]["metrics"]
+        payload.get("metrics", {}).pop("metrics", None)
     return payload
 
 

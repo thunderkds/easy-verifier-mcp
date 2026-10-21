@@ -74,7 +74,7 @@ the same-session full (832,501).
 
 **DELTA**: An agent can call MCP `score` on a large change and get a reply that fits inline (about 94k characters instead of about 830k), and ask for `detail="full"` only when it needs the metric rows.
 
-**WITNESS**: backend-developer agent, 2026-10-21 (BEFORE 10:57Z, AFTER 11:14Z), traced in `memory/event-trace/T122.jsonl` via the active_task state file; independent re-run is Supervisor Stage 5.
+**WITNESS**: backend-developer agent, 2026-10-21 (BEFORE 10:57Z, AFTER 11:14Z), traced in `memory/event-trace/T122.jsonl`; Supervisor (main session) re-ran MCP stdio `score` on HUN-34 at 2026-10-21 ~12:15Z: reply 93,557 chars, `metrics` keys `['dimensions_without_pack']` — pass.
 
 ---
 
@@ -100,3 +100,8 @@ byte-for-byte with the CLI payload (which still carries it), or read the rows:
 | `tests/integration/test_adapter_parity.py` | two `score` calls | CLI/MCP payload equality (the per-dimension call is untouched) |
 
 Not a regression: `test_container_parity_is_explicitly_verified` passed in the final run here.
+
+## Stage 4 — Supervisor review (2026-10-21)
+
+- code-review: P0 0 · P1 0 · P2 1 (fixed: `del payload["metrics"]["metrics"]` raised KeyError on a payload without `metrics`; now `payload.get("metrics", {}).pop("metrics", None)`; T122/T101/score tests 51 passed) · P3 0. `metrics.dimensions_without_pack` kept, as the guide specified.
+- security-review (Medium; done by hand): output-only reduction, no new input beyond a pydantic-validated `Literal`; CLI and core untouched. — pass
