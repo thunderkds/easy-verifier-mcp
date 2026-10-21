@@ -127,6 +127,7 @@ JSON as a pair; on failure of the second write, remove the first.
 |------|--------|
 | `src/easy_verifier/core/report.py` | Write the JSON sibling; pair-atomic write |
 | `tests/...` | Tests above |
+| `src/easy_verifier/core/context.py`, `core/scope.py`, `core/roles.py` | `_is_report_artifact` predicate used in all three walks (authorised by Supervisor 2026-10-21: prevent sidecar re-ingestion) |
 | `PRD.md` | New FR (after gate sign-off) |
 | `README.md` | One line under reports: the JSON sibling and its keys |
 

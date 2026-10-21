@@ -14,15 +14,15 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | ☐ pass / ☐ fail | [test file path(s) — required before Done] |
-| Verification command run | ☐ pass / ☐ fail | [paste actual output] |
-| Negative cases hold | ☐ pass / ☐ fail | |
-| verify | ☐ pass / ☐ fail / ☐ N/A | [what was observed — must literally state "pass" or "fail" here too, e.g. "skill run, feature confirmed working — pass": the merge gate scans this Notes column for the word "pass", not just the Result column] |
-| Review scope bounded to the change's blast radius (affected set, not whole repo) | ☐ pass / ☐ fail | [what was reviewed vs. skipped, and why] |
-| Full smoke suite still green (no regression) | ☐ pass / ☐ fail | |
-| **UI: Visual regression (diff or verdict pasted)** | ☐ pass / ☐ fail / ☐ N/A | [screenshot path or LLM verdict — required for UI tasks, Hard-Stop Gate 6] |
-| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ pass / ☐ fail / ☐ N/A | [method used + output] |
-| **UI: Responsiveness at target viewports** | ☐ pass / ☐ fail / ☐ N/A | [viewports tested, any overflow findings] |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t120_report_json.py` (13 tests, one per AC 1-6 plus env dir/non-ASCII, collision, guard) |
+| Verification command run | pass | `uv run --python 3.12 --extra dev python -m pytest tests -k "report and json" -q` -> `9 passed, 3268 deselected in 2.13s` |
+| Negative cases hold | pass | Unevidenced finding -> ValidationError, no `reports/` dir; JSON open denied -> no files left (sabotage: removing the HTML unlink makes `test_report_json_failure_leaves_no_half_pair` fail); canary absent from JSON; abstain is `null`, never 0 |
+| verify | ☑ pass | Supervisor Stage 5, 2026-10-21 12:22Z: MCP stdio `write_report` (findings=[]) on easy-personal-mcp HUN-34 changes scope with `EASY_VERIFIER_REPORTS_DIR` = temp dir wrote the pair `easy-personal-mcp/evidence-report-changes-20261021T122222-248006Z.{html,json}`; JSON keys `dimensions, generated_at, overall, schema_version, scope`, overall 70 (also in the HTML), security 18, withheld ratings `null` — pass |
+| Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Diff reviewed directly: `core/report.py` only (write path, `_scope_label` extracted from `_filename`); `_render_*`, `SENSITIVITY_ADVISORY`, dimensions untouched. Built-in security-review not run (resolves origin/HEAD). The JSON holds numbers and reason codes only |
+| Full smoke suite still green (no regression) | pass | `uv run --python 3.12 --extra dev python -m pytest tests -q` -> `3278 passed, 3 skipped in 667.98s (0:11:07)`. Includes the two replay tests and the existing project-scope snapshot/byte-equality tests (no sidecar in those repos, so payloads unchanged). Earlier run (before the walk fix) had 2 replay regressions caused by the sidecar being re-ingested |
+| **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | no UI |
+| **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | no UI |
+| **UI: Responsiveness at target viewports** | ☐ N/A | no UI |
 
 ---
 
@@ -33,12 +33,41 @@
 > **before any implementation commit exists**; if it does not (docs, templates, skill-instruction
 > text), BEFORE is the **verbatim prior content** of what changed — a quoted excerpt, not a command.
 
-**BEFORE**: [pasted timestamped command output showing the thing absent/failing, captured before the
-first implementation commit] OR [verbatim excerpt of the prior content, for non-executable changes]
+**BEFORE** (2026-10-21T10:57:49Z, develop code at 5a19bd2, no implementation commit yet; script
+`demo.py` builds a 2-file repo, `combined_pack` over all dimensions, `write_report([], ...)`):
 
-**AFTER**: [same command, post-change] OR [verbatim excerpt of the new content]
+```
+$ EASY_VERIFIER_REPORTS_DIR=$D/reports PYTHONPATH=src uv run --python 3.12 python demo.py $D
+wrote $D/reports/demo-repo/evidence-report-project-20261021T105750-225561Z.html
+$ ls -la $D/reports/demo-repo
+-rw-r--r-- 1 user user 90210 Oct 21 17:57 evidence-report-project-20261021T105750-225561Z.html
+```
+Only the `.html` exists; no JSON sibling.
 
-**DELTA**: [one sentence — what a user can now do that they could not before]
+**AFTER** (2026-10-21T11:21:31Z, same command, commit 770fa38):
 
-**WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
-implementing agent alone]
+```
+wrote $D/reports/demo-repo/evidence-report-project-20261021T112131-779658Z.html
+-rw-r--r-- 1 user user 90210 Oct 21 18:21 evidence-report-project-20261021T112131-779658Z.html
+-rw-r--r-- 1 user user  1419 Oct 21 18:21 evidence-report-project-20261021T112131-779658Z.json
+{"dimensions":[{"abstained":true,"dimension":"api","rating":null,"reason_code":"below_coverage_floor"},
+ ... ], "generated_at":"2026-10-21T11:21:31Z", "overall":{...}, "schema_version":1, "scope":"project"}
+```
+
+**DELTA**: A program (easy-personal) can read a report's scores from a JSON file next to the HTML instead of parsing HTML.
+
+**WITNESS**: Supervisor (main session), 2026-10-21 12:22Z — independent MCP stdio run above, traced in `memory/event-trace/T120.jsonl` (active_task T120); implementer full suite 3278 passed / 3 skipped at 2847af7.
+
+## Scope extension (authorised by Supervisor 2026-10-21: prevent sidecar re-ingestion)
+
+The JSON sidecar was being walked as a source file on the next score of the same repo (file counts
+changed, filename redacted as high-entropy). One predicate `_is_report_artifact` (`core/context.py`,
+regex of the exact generated name `evidence-report-<scope>-<UTC>[-N].json`, any directory) is now used
+in `context._walk`, `scope._walk_files` and `roles._in_excluded_dir`. User files `evidence-report.json`
+and `report.json` still walk. Tests in `tests/test_t120_report_json.py` pin the predicate against the
+real written names, the walks, the role check and a rescore that ignores the previous sidecar.
+
+## Stage 4 — Supervisor review (2026-10-21)
+
+- code-review: P0 0 · P1 0 · P2 0 · P3 1 (stale `_write_new_file` docstring reference in `_filename`; fixed). Walk exclusion `_is_report_artifact` authorised by Supervisor (sidecar re-ingestion broke two replay tests); matches the exact generated name only, so a user's `report.json` is still walked.
+- security-review (Medium; built-in skill needs `origin/HEAD`, done by hand): JSON carries numbers, scope, timestamp only — canary test proves no finding/agent text; same `_guard_reports_dir` and `O_EXCL` no-overwrite rule as the HTML; JSON write failure removes the HTML. Residual: a user file with exactly the engine's sidecar name is skipped by every walk (accepted). — pass

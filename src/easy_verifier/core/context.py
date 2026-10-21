@@ -17,6 +17,7 @@ itself, so no caller can emit a response without it (FR-004).
 from __future__ import annotations
 
 import fnmatch
+import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -142,6 +143,20 @@ _EXCLUDED_DIRS = frozenset(
 `_walk` and `scope._walk_files`). Third-party code such as `vendor/` is not
 here: `scope.third_party_filter` excludes it and the payload discloses it
 (T087)."""
+
+_REPORT_ARTIFACT = re.compile(
+    r"evidence-report-[A-Za-z0-9_-]+-\d{8}T\d{6}-\d{6}Z(-\d+)?\.json"
+)
+
+
+def _is_report_artifact(relative: str) -> bool:
+    """T120: the JSON sidecar ``write_report`` leaves beside each HTML report
+    (``evidence-report-<scope>-<UTC>[-N].json``) is this engine's own output,
+    not source. Matched on the exact generated name, in any directory, so a
+    user's ``report.json`` is still walked. Every walk skips it, or the next
+    score of the same repo would ingest the last report's numbers."""
+    return _REPORT_ARTIFACT.fullmatch(relative.rsplit("/", 1)[-1]) is not None
+
 
 _ADR_DIR_NAMES = frozenset({"adr", "adrs", "decisions"})
 
@@ -754,7 +769,11 @@ def _walk(
             and (not contained_only or _is_contained(entry, repo))
         ):
             relative = entry.relative_to(repo).as_posix()
-            if not _skip(relative) and _third_party(relative) is None:
+            if (
+                not _is_report_artifact(relative)
+                and not _skip(relative)
+                and _third_party(relative) is None
+            ):
                 yield relative
 
 

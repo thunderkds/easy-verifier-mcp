@@ -189,7 +189,10 @@ def write_report(
         first_write=first_write,
     )
 
-    written = _write_new_file(reports_dir, _filename(packs), document)
+    # FR-087: the JSON score summary is built from the same `score` the HTML
+    # panel renders, and is written as a pair with it.
+    summary = _score_summary(score, _scope_label(packs), datetime.now(UTC))
+    written = _write_new_pair(reports_dir, _filename(packs), document, summary)
 
     return ReportResult(
         path=(
@@ -290,17 +293,17 @@ def _filename(packs: CombinedPack) -> str:
 
     Self-describing (scope + instant) and sub-second, so two reports written in
     the same second do not collide on the name. Collision is still handled at
-    the filesystem, not here — see :func:`_write_new_file`.
+    the filesystem, not here — see :func:`_write_new_pair`.
     """
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
+    return f"evidence-report-{_slug(_scope_label(packs))}-{stamp}.html"
+
+
+def _scope_label(packs: CombinedPack) -> str:
     scopes = {slot.pack.scope for slot in packs.slots if slot.pack is not None}
     if len(scopes) == 1:
-        scope = next(iter(scopes))
-    elif scopes:
-        scope = "mixed"
-    else:
-        scope = "unknown"
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
-    return f"evidence-report-{_slug(scope)}-{stamp}.html"
+        return next(iter(scopes))
+    return "mixed" if scopes else "unknown"
 
 
 def _slug(value: str) -> str:
@@ -329,13 +332,63 @@ def _has_existing_reports(reports_dir: Path) -> bool:
         return False
 
 
-def _write_new_file(reports_dir: Path, filename: str, document: str) -> Path:
-    """Create the report, never clobbering an existing file (AC #5).
+def _score_summary(
+    score: ScoreResult | None, scope: str, generated: datetime
+) -> dict[str, Any]:
+    """The JSON sidecar (FR-087): numbers only, no finding text, excerpt or
+    agent input. ``schema_version`` 1 keys:
+
+    * ``scope``, ``generated_at`` (UTC, ``YYYY-MM-DDTHH:MM:SSZ``)
+    * ``overall`` -- ``{value, abstained, reason_code}``; ``value`` is ``None``
+      (never 0) when the overall is withheld
+    * ``dimensions`` -- per rated dimension, ``{dimension, rating, abstained,
+      reason_code}``; empty when the report holds too few dimensions to score
+    """
+    if score is None:
+        overall = _rating_summary(None, "incomplete_dimensions")
+        dimensions: list[dict[str, Any]] = []
+    else:
+        overall = _rating_summary(
+            score.overall.value if type(score.overall) is OverallRating else None,
+            getattr(score.overall, "reason_code", None),
+        )
+        dimensions = [
+            {
+                "dimension": rating.dimension,
+                **_rating_summary(
+                    None if type(rating) is RatingAbstention else rating.value,
+                    getattr(rating, "reason_code", None),
+                    key="rating",
+                ),
+            }
+            for rating in score.ratings
+        ]
+    return {
+        "schema_version": 1,
+        "scope": scope,
+        "generated_at": generated.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "overall": overall,
+        "dimensions": dimensions,
+    }
+
+
+def _rating_summary(
+    value: int | None, reason_code: str | None, *, key: str = "value"
+) -> dict[str, Any]:
+    return {key: value, "abstained": value is None, "reason_code": reason_code}
+
+
+def _write_new_pair(
+    reports_dir: Path, filename: str, document: str, summary: dict[str, Any]
+) -> Path:
+    """Create the HTML report and its JSON sibling, never clobbering either
+    (AC #5).
 
     ``O_CREAT | O_EXCL`` makes that structural: the kernel refuses the open if
     the name is taken, so there is no check-then-write window two concurrent
-    writers could both pass. A taken name produces a new name, never a
-    truncation of someone else's report.
+    writers could both pass. A taken name (HTML *or* JSON) produces a new name
+    for the pair, never a truncation of someone else's file. If the JSON cannot
+    be written the HTML is removed, so there is no half pair (FR-087).
     """
     _guard_reports_dir(reports_dir)
 
@@ -348,28 +401,45 @@ def _write_new_file(reports_dir: Path, filename: str, document: str) -> Path:
             "(the container case), mount its reports/ directory writable."
         ) from exc
 
-    stem, suffix = filename[: -len(".html")], ".html"
+    payload = json.dumps(
+        summary, sort_keys=True, ensure_ascii=True, separators=(",", ":")
+    )
+    stem = filename[: -len(".html")]
     for attempt in range(MAX_FILENAME_ATTEMPTS):
-        name = filename if attempt == 0 else f"{stem}-{attempt + 1}{suffix}"
-        candidate = reports_dir / name
-        try:
-            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-        except FileExistsError:
+        base = stem if attempt == 0 else f"{stem}-{attempt + 1}"
+        html_path = reports_dir / f"{base}.html"
+        json_path = reports_dir / f"{base}.json"
+        if not _create_exclusive(reports_dir, html_path, document):
             continue
-        except OSError as exc:
-            raise ReportWriteError(
-                f"cannot write the report into {redact(str(reports_dir))}: "
-                f"{exc.strerror}. If the target repository is mounted read-only "
-                "(the container case), mount its reports/ directory writable."
-            ) from exc
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(document)
-        return candidate
+        try:
+            if _create_exclusive(reports_dir, json_path, payload + "\n"):
+                return html_path
+        except BaseException:
+            html_path.unlink(missing_ok=True)
+            raise
+        html_path.unlink(missing_ok=True)  # JSON name taken: retry the pair
 
     raise ReportWriteError(
         f"could not find an unused report filename in {redact(str(reports_dir))} "
         f"after {MAX_FILENAME_ATTEMPTS} attempts"
     )
+
+
+def _create_exclusive(reports_dir: Path, path: Path, text: str) -> bool:
+    """Write `text` to a new file; ``False`` if the name is already taken."""
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        return False
+    except OSError as exc:
+        raise ReportWriteError(
+            f"cannot write the report into {redact(str(reports_dir))}: "
+            f"{exc.strerror}. If the target repository is mounted read-only "
+            "(the container case), mount its reports/ directory writable."
+        ) from exc
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    return True
 
 
 def _guard_reports_dir(reports_dir: Path) -> None:

@@ -503,6 +503,11 @@ When `EASY_VERIFIER_REPORTS_DIR` is set to an absolute path (the shared Docker c
 reports go to `$EASY_VERIFIER_REPORTS_DIR/<repo directory name>/` instead, the repository is not
 touched, and `write_report` returns the report's absolute path.
 
+Every report also gets a JSON score summary with the same base name (`evidence-report-<scope>-<UTC>.json`)
+in the same directory, for programs that read scores over time. Keys: `schema_version` (1), `scope`,
+`generated_at` (UTC), `overall` and per-dimension `dimensions[]` (`value`/`rating`, `abstained`,
+`reason_code`). A withheld rating has a `null` value, never 0; no finding text or excerpts are included.
+
 Each full all-dimension report includes a score panel with the rule-based rating, optional caller
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as
 an abstention with its coverage boundary, never as zero or a low score.
