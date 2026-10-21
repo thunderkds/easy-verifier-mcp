@@ -517,6 +517,7 @@ def test_unused_facts_leave_the_pack_json_byte_identical(tmp_path: Path, capsys)
     del legacy["capped"]  # T098: and an unset cap disclosure
     del legacy["change_kind"]  # T108: change-risk added
     del legacy["test_pairs"]  # T112: and unset test pairs
+    del legacy["context_files"]  # T121: and unset context files
     assert json.dumps(emitted) == json.dumps(legacy)
 
     assert cli.main(["code-quality", "--repo", str(root), "--scope", "project"]) == 0

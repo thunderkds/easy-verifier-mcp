@@ -28,7 +28,7 @@ from easy_verifier.core.metrics import MetricAbstention, compute_metrics
 from easy_verifier.core.models import RedactionHit, to_json_dict
 from easy_verifier.core.pipeline import run_dimension
 from easy_verifier.core.redact import scan
-from easy_verifier.dimensions import security
+from easy_verifier.dimensions import security, supply_chain
 
 LOCK = ".claude/x-lock.json"
 CHANGED = "src/a.py"
@@ -211,3 +211,12 @@ def test_only_context_files_read_abstains(clean_change: Path) -> None:
         outcome = _metric(pack, name).outcome
         assert isinstance(outcome, MetricAbstention), name
         assert "context" in outcome.reason
+
+
+def test_other_dimensions_packs_serialize_as_before(clean_change: Path) -> None:
+    """Only the security pack uses the fact, so only it carries the key: a
+    supply-chain pack reading the same lockfile as context is unchanged."""
+    pack = run_dimension(supply_chain.DESCRIPTOR, clean_change, "changes", ref="HEAD")
+    assert LOCK in pack.files_read
+    assert pack.context_files is None
+    assert "context_files" not in to_json_dict(pack)

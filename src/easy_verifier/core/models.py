@@ -320,10 +320,11 @@ class EvidencePack:
     ``None`` otherwise, and then left out of the serialized pack."""
 
     context_files: tuple[str, ...] | None = field(default=None)
-    """Files read from outside a narrow scope's own file set (T121, FR-088):
-    context-role files read repository-wide (FR-078), cited, not measured.
-    ``None`` at ``project`` scope and when every file read is in the scope,
-    and then left out of the serialized pack."""
+    """Context-role files the ``security`` pack read from outside a narrow
+    scope's own file set (T121, FR-088; FR-078): cited, not measured, so its
+    secret metrics leave them out. ``None`` for every other dimension, at
+    ``project`` scope and when no such file was read, and then left out of the
+    serialized pack."""
 
 
 @dataclass(frozen=True)
