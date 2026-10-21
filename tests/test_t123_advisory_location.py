@@ -31,8 +31,11 @@ def _write(tmp_path: Path):
     packs = combined_pack(dimension_names(), repo_path=str(repo), scope="project")
     result = write_report([], packs, repo)
     document = Path(result.absolute_path).read_text(encoding="utf-8")
+    marker = re.search(r'<p class="first-write">(.*?)</p>', document, re.S)
+    assert marker is not None
     folded = re.search(r"<details><summary>.*?</summary><p>(.*?)</p>", document, re.S)
     assert folded is not None
+    _write.marker = html.unescape(marker.group(1))
     return result.advisory, html.unescape(folded.group(1))
 
 
@@ -68,3 +71,25 @@ def test_report_advisory_with_reports_dir_env_says_outside_the_repository(
 def test_report_advisory_keeps_the_nfr011_exposures(text):
     assert "hosted model" in text
     assert "excerpts still quote real source code and file paths" in text
+
+
+def test_report_first_write_marker_default_is_unchanged(tmp_path):
+    _write(tmp_path)
+    assert _write.marker == (
+        "This is the first report written into this repository's reports/ directory."
+    )
+
+
+def test_report_first_write_marker_names_the_shared_directory(tmp_path, monkeypatch):
+    monkeypatch.setenv(REPORTS_DIR_ENV, str(tmp_path / "shared"))
+    _write(tmp_path)
+    assert _write.marker == (
+        "This is the first report written into this repository's folder in the "
+        "shared reports directory."
+    )
+
+
+def test_report_env_dir_inside_the_repo_gets_the_inside_text(tmp_path, monkeypatch):
+    monkeypatch.setenv(REPORTS_DIR_ENV, str(tmp_path / "target" / "out"))
+    assert _write(tmp_path)[0] == SENSITIVITY_ADVISORY
+    assert "reports/ directory" in _write.marker

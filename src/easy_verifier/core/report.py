@@ -107,6 +107,14 @@ SHARED_DIR_SENSITIVITY_ADVISORY = (
 )
 """T123: the notice when :data:`REPORTS_DIR_ENV` chose the destination."""
 
+FIRST_WRITE_MARKER = (
+    "This is the first report written into this repository's reports/ directory."
+)
+SHARED_DIR_FIRST_WRITE_MARKER = (
+    "This is the first report written into this repository's folder in the "
+    "shared reports directory."
+)
+
 MAX_FILENAME_ATTEMPTS = 1000
 """Bound on the never-overwrite retry loop, so a pathological directory fails
 loudly instead of spinning."""
@@ -163,7 +171,7 @@ def write_report(
 
     reports_dir = _reports_dir(repo)
     first_write = not _has_existing_reports(reports_dir)
-    notice = _sensitivity_advisory(repo, reports_dir)
+    notice, first_write_marker = _notice_texts(repo, reports_dir)
 
     ctx = _Ctx(repo=repo)
     score = (
@@ -200,6 +208,7 @@ def write_report(
         agent_summary,
         first_write=first_write,
         advisory=notice,
+        first_write_marker=first_write_marker,
     )
 
     # FR-087: the JSON score summary is built from the same `score` the HTML
@@ -338,12 +347,12 @@ def _reports_dir(repo: Path) -> Path:
     return base / (repo.name or "root")
 
 
-def _sensitivity_advisory(repo: Path, reports_dir: Path) -> str:
-    """The notice text for where the report is actually written, so the HTML
-    and the returned advisory agree."""
+def _notice_texts(repo: Path, reports_dir: Path) -> tuple[str, str]:
+    """The sensitivity notice and first-write marker for where the report is
+    actually written, so the HTML and the returned advisory agree."""
     if reports_dir.is_relative_to(repo):
-        return SENSITIVITY_ADVISORY
-    return SHARED_DIR_SENSITIVITY_ADVISORY
+        return SENSITIVITY_ADVISORY, FIRST_WRITE_MARKER
+    return SHARED_DIR_SENSITIVITY_ADVISORY, SHARED_DIR_FIRST_WRITE_MARKER
 
 
 def _has_existing_reports(reports_dir: Path) -> bool:
@@ -500,6 +509,7 @@ def _render_document(
     *,
     first_write: bool,
     advisory: str = SENSITIVITY_ADVISORY,
+    first_write_marker: str = FIRST_WRITE_MARKER,
 ) -> str:
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     finding_count = sum(len(v) for v in by_dimension.values())
@@ -519,7 +529,9 @@ def _render_document(
         "</head>",
         "<body>",
         _render_header(ctx, packs, generated, finding_count),
-        _render_advisory(ctx, advisory, first_write=first_write),
+        _render_advisory(
+            ctx, advisory, first_write_marker if first_write else ""
+        ),
         _render_summary(
             ctx,
             score,
@@ -574,12 +586,7 @@ _ADVISORY_LINE = (
 """The share notice's one visible line (FR-065); the full notice is folded."""
 
 
-def _render_advisory(ctx: _Ctx, advisory: str, *, first_write: bool) -> str:
-    marker = (
-        "This is the first report written into this repository's reports/ directory."
-        if first_write
-        else ""
-    )
+def _render_advisory(ctx: _Ctx, advisory: str, marker: str) -> str:
     return (
         '<section class="advisory"><h2>Before you share this report</h2>'
         f"<details><summary>{ctx.esc(_ADVISORY_LINE)}</summary>"

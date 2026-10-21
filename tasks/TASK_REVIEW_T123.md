@@ -53,3 +53,16 @@ With the env unset the text is the unchanged `SENSITIVITY_ADVISORY` ("written in
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
+
+---
+
+## Addendum (Supervisor decision 2026-10-21): first-write marker
+
+The first-write marker follows the same `reports_dir.is_relative_to(repo)` decision as the notice (`_notice_texts`, computed once in `write_report`). Inside the repo it is unchanged; with the shared dir it reads "This is the first report written into this repository's folder in the shared reports directory." An env dir inside the repo gets the inside texts (pinned by a test).
+
+Run 2026-10-21 (ruff check: All checks passed):
+```
+-k "report and advisory": 12 passed, 3300 deselected in 2.61s
+tests/test_t001_pipeline.py test_t013_report.py test_t070_report_readability.py test_t120_report_json.py test_t123_advisory_location.py: 133 passed in 15.15s
+```
+Full suite not re-run for this change (per Supervisor); the earlier full run was 3306 passed, 3 skipped.
