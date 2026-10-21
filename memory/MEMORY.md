@@ -46,6 +46,7 @@ input; **never commit realistic credential shapes** — assemble them at runtime
      The enforced gate is the 32,000-character whole-file budget above. -->
 
 ### Decisions
+- ▶ **[T120–T122 merged: HUN-34 field report (2026-10-21)](decisions.md)** — FR-087 JSON sidecar (walks skip it), FR-088 narrow-scope secret metrics skip context files (`.claude/harness-lock.json` was 116/123 hits), FR-089 MCP `score` summary by default (832k→94k); follow-ups T124 detector precision, T125 sink hits
 - ▶ **[T112 planned: change-risk S2 test ↔ symbol pairs (2026-10-17)](decisions.md)** — FR-084; symbol reference first, naming second; `test_pairs` gate like T109; bugfix/feature only
 - ▶ **[T107 merged: context roles repo-wide at narrow scopes (2026-10-16)](learnings.md)** — FR-078; project byte-equal on 4 repos; 97→85 on the node-monorepo bugfix; clear active_task after each agent
 - 🔒 **[DDR-0014 change-risk (2026-10-16)](decisions.md)** — separate `change_risk` headline; engine detects kind, agent confirms; slice 1 merged (T107 context roles, T108 dimension, T109 kind gate, T110 kind rules); S2–S5 backlog
