@@ -191,3 +191,60 @@ def test_report_json_respects_the_reports_dir_guard(tmp_path: Path):
     with pytest.raises(ReportWriteError):
         write_report([], _full_packs(repo), repo)
     assert list(outside.iterdir()) == []
+
+
+# --- the sidecar must not be re-ingested by the next score (authorised T120) ---
+
+
+def test_report_json_sidecar_name_matches_the_artifact_predicate(tmp_path: Path):
+    from easy_verifier.core.context import _is_report_artifact
+
+    repo = _repo(tmp_path)
+    packs = _full_packs(repo)
+    for _ in range(2):  # the second write may take a -N name
+        result = write_report([], packs, repo)
+        name = Path(result.absolute_path).with_suffix(".json").name
+        assert _is_report_artifact(name)
+    assert _is_report_artifact(
+        "reports/evidence-report-mixed-20261021T120000-000000Z-2.json"
+    )
+    assert not _is_report_artifact("evidence-report.json")
+    assert not _is_report_artifact("report.json")
+    assert not _is_report_artifact("evidence-report-x-20261021T120000-000000Z.json.bak")
+
+
+def test_report_json_sidecar_is_not_walked_but_user_json_is(tmp_path: Path):
+    from easy_verifier.core.context import _walk
+    from easy_verifier.core.scope import _walk_files
+
+    repo = _repo(tmp_path).resolve()
+    (repo / "reports").mkdir()
+    sidecar = "reports/evidence-report-project-20261021T120000-000000Z.json"
+    (repo / sidecar).write_text("{}", encoding="utf-8")
+    (repo / "evidence-report.json").write_text("{}", encoding="utf-8")
+    (repo / "report.json").write_text("{}", encoding="utf-8")
+
+    walked = set(_walk(repo, repo, extensions=None))
+    scoped = set(_walk_files(repo, repo))
+    for found in (walked, scoped):
+        assert sidecar not in found
+        assert {"evidence-report.json", "report.json"} <= found
+
+
+def test_report_json_sidecar_cannot_fill_a_declared_role(tmp_path: Path):
+    from easy_verifier.core.roles import _in_excluded_dir
+
+    assert _in_excluded_dir(
+        "reports/evidence-report-project-20261021T120000-000000Z.json"
+    )
+    assert not _in_excluded_dir("reports/report.json")
+
+
+def test_report_json_rescoring_ignores_the_previous_sidecar(tmp_path: Path):
+    repo = _repo(tmp_path)
+    before = _full_packs(repo)
+    write_report([], before, repo)
+    after = _full_packs(repo)
+    assert [(s.dimension, s.pack.files_read) for s in after.slots if s.pack] == [
+        (s.dimension, s.pack.files_read) for s in before.slots if s.pack
+    ]

@@ -33,7 +33,13 @@ from functools import lru_cache
 from pathlib import Path, PurePosixPath
 
 from .batches import BatchInputError, parse_batches
-from .context import _EXCLUDED_DIRS, _is_secret_bearing, _resolved_repo, _walk
+from .context import (
+    _EXCLUDED_DIRS,
+    _is_report_artifact,
+    _is_secret_bearing,
+    _resolved_repo,
+    _walk,
+)
 from .findings import ValidationError
 from .iac_content import classify
 from .judge import (  # noqa: F401  (AGENT_INSTRUCTION_PATTERNS re-exported)
@@ -1432,7 +1438,9 @@ def _pick_problem(root: Path, value: object) -> str | None:
 
 
 def _in_excluded_dir(relative: str) -> bool:
-    return any(part in _EXCLUDED_DIRS for part in PurePosixPath(relative).parts[:-1])
+    return _is_report_artifact(relative) or any(
+        part in _EXCLUDED_DIRS for part in PurePosixPath(relative).parts[:-1]
+    )
 
 
 # ---------------------------------------------------------------------------

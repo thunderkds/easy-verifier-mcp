@@ -14,12 +14,12 @@
 
 | Check | Result | Notes / output snippet |
 |-------|--------|------------------------|
-| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t120_report_json.py` (9 tests, one per AC 1-6 plus env dir/non-ASCII, collision, guard) |
+| **New test(s) cover Acceptance Criteria (file paths pasted)** | pass | `tests/test_t120_report_json.py` (13 tests, one per AC 1-6 plus env dir/non-ASCII, collision, guard) |
 | Verification command run | pass | `uv run --python 3.12 --extra dev python -m pytest tests -k "report and json" -q` -> `9 passed, 3268 deselected in 2.13s` |
 | Negative cases hold | pass | Unevidenced finding -> ValidationError, no `reports/` dir; JSON open denied -> no files left (sabotage: removing the HTML unlink makes `test_report_json_failure_leaves_no_half_pair` fail); canary absent from JSON; abstain is `null`, never 0 |
 | verify | ☐ N/A | not run by the implementing agent; the Demonstration AFTER shows the pair written (pass), but the rescoring regression above is open |
 | Review scope bounded to the change's blast radius (affected set, not whole repo) | pass | Diff reviewed directly: `core/report.py` only (write path, `_scope_label` extracted from `_filename`); `_render_*`, `SENSITIVITY_ADVISORY`, dimensions untouched. Built-in security-review not run (resolves origin/HEAD). The JSON holds numbers and reason codes only |
-| Full smoke suite still green (no regression) | **fail** | Full run before the README/TASK_REVIEW fix: `3 failed, 3271 passed, 3 skipped in 813.35s`. T100 (personal identifier in this file) fixed since. REMAINING 2 REGRESSIONS caused by this change: `test_t036_local_registry.py::test_replay_from_report_is_byte_equal_on_empty_machine` and `test_t066_improvement_overrides.py::test_replay_with_the_same_agent_input_is_byte_equal` (pass on 5a19bd2 report.py, fail on 770fa38). Cause: the next scoring run of the same repo walks `reports/evidence-report-*.json` as a source file (`.json` is a walked extension; HTML is not), so file counts change and the filename is redacted as a high-entropy string. Fix needs a walk exclusion in `core/context.py`/`core/scope.py`/`core/roles.py`, outside this task's file scope; awaiting Supervisor decision |
+| Full smoke suite still green (no regression) | pass | `uv run --python 3.12 --extra dev python -m pytest tests -q` -> `3278 passed, 3 skipped in 667.98s (0:11:07)`. Includes the two replay tests and the existing project-scope snapshot/byte-equality tests (no sidecar in those repos, so payloads unchanged). Earlier run (before the walk fix) had 2 replay regressions caused by the sidecar being re-ingested |
 | **UI: Visual regression (diff or verdict pasted)** | ☐ N/A | no UI |
 | **UI: Design-system compliance (tokens/colors/typography verified)** | ☐ N/A | no UI |
 | **UI: Responsiveness at target viewports** | ☐ N/A | no UI |
@@ -58,3 +58,12 @@ wrote $D/reports/demo-repo/evidence-report-project-20261021T112131-779658Z.html
 
 **WITNESS**: [who ran it and when — derived from `memory/event-trace/Txxx.jsonl`, never the
 implementing agent alone]
+
+## Scope extension (authorised by Supervisor 2026-10-21: prevent sidecar re-ingestion)
+
+The JSON sidecar was being walked as a source file on the next score of the same repo (file counts
+changed, filename redacted as high-entropy). One predicate `_is_report_artifact` (`core/context.py`,
+regex of the exact generated name `evidence-report-<scope>-<UTC>[-N].json`, any directory) is now used
+in `context._walk`, `scope._walk_files` and `roles._in_excluded_dir`. User files `evidence-report.json`
+and `report.json` still walk. Tests in `tests/test_t120_report_json.py` pin the predicate against the
+real written names, the walks, the role check and a rescore that ignores the previous sidecar.
