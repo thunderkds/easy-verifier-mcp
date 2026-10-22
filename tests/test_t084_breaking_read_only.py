@@ -129,7 +129,12 @@ def test_cli_and_mcp_agree_on_changes_payload(tmp_path: Path) -> None:
     mcp = _api_breaking(
         mcp_call(
             "score",
-            {"repo": str(tmp_path), "scope": "changes", "ref": "HEAD~1..HEAD"},
+            {
+                "repo": str(tmp_path),
+                "scope": "changes",
+                "ref": "HEAD~1..HEAD",
+                "detail": "full",
+            },
         )
     )
     assert cli == mcp

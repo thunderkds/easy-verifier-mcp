@@ -249,6 +249,11 @@ def collect(context: DimensionContext) -> Iterator[Excerpt]:
             text = context.request_secret_source(path)
             if text is None:
                 continue
+            if not whole_repo and path not in scope_files:
+                # T121 (FR-088): a context file read from outside the scope
+                # is cited, not measured; the secret metrics leave it out.
+                # (`collect` may run once per budget tier: the pipeline dedups.)
+                context.context_files = (*getattr(context, "context_files", ()), path)
             excerpt = whole_file_excerpt(path, text)
             if excerpt is not None:
                 yield excerpt

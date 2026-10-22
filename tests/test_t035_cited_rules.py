@@ -421,7 +421,9 @@ def test_cli_and_mcp_payloads_match_with_cited_inputs(tmp_path: Path):
     )
     assert completed.returncode == 0, completed.stderr
     _content, mcp_payload = asyncio.run(
-        mcp_server.mcp.call_tool("score", {"repo": str(target), "scope": "project"})
+        mcp_server.mcp.call_tool(
+            "score", {"repo": str(target), "scope": "project", "detail": "full"}
+        )
     )
     mcp_payload.pop("needs_input", None)
     cli_payload = json.loads(completed.stdout)

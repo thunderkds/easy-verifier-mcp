@@ -511,7 +511,7 @@ def test_report_shows_a_folded_count_and_list(harbor_repo):
 
 def test_cli_and_mcp_payloads_are_equal(harbor_repo, capsys, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(b"")))
-    mcp = mcp_server.score(repo=str(harbor_repo), scope="project")
+    mcp = mcp_server.score(repo=str(harbor_repo), scope="project", detail="full")
     mcp.pop("needs_input", None)
     assert cli.main(["score", "--repo", str(harbor_repo), "--scope", "project"]) == 0
     cli_payload = json.loads(capsys.readouterr().out)

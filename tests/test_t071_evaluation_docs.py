@@ -108,6 +108,7 @@ DECLARED = {
     "summary": '"summary"',
     "improvements": '"improvements"',
     "redaction_hits_observed": '"redaction_hits_observed"',
+    "redacted_file_share": '"redacted_file_share"',  # T121
     "max_function_ccn": '"max_function_ccn"',
     "architecture_description_missing": '"architecture_description_missing"',
     "decision_records_missing": '"decision_records_missing"',

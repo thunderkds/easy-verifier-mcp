@@ -350,6 +350,11 @@ and HTML report carries a sources provenance line: `rules`, `rules + config`, or
 `rules + agent picks (N files)`. Coverage and ratings are not comparable with v0.1.0, which counted
 exact filenames.
 
+**Reply size (MCP `score`).** By default the reply is a summary: it leaves out the per-metric
+rows (`metrics.metrics`, about nine tenths of the full payload); ratings, overall, improvement plan,
+warnings, `needs_input` and provenance are the same. Pass `detail="full"` for every metric row. The
+CLI always prints the full payload. `budget_bytes` limits the evidence excerpts read, not the reply.
+
 **Hard gates (MCP `score` only).** The CLI never asks. Over MCP, `score` may return `needs_input`
 with at most one of picks or gate evaluations per response, and at most two extra rounds:
 
@@ -497,6 +502,11 @@ at itself). Nothing is overwritten; filenames are unique per scope and timestamp
 When `EASY_VERIFIER_REPORTS_DIR` is set to an absolute path (the shared Docker container sets it),
 reports go to `$EASY_VERIFIER_REPORTS_DIR/<repo directory name>/` instead, the repository is not
 touched, and `write_report` returns the report's absolute path.
+
+Every report also gets a JSON score summary with the same base name (`evidence-report-<scope>-<UTC>.json`)
+in the same directory, for programs that read scores over time. Keys: `schema_version` (1), `scope`,
+`generated_at` (UTC), `overall` and per-dimension `dimensions[]` (`value`/`rating`, `abstained`,
+`reason_code`). A withheld rating has a `null` value, never 0; no finding text or excerpts are included.
 
 Each full all-dimension report includes a score panel with the rule-based rating, optional caller
 assessment, divergence where both exist, and the cited metrics. A withheld rating is displayed as

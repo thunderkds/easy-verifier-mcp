@@ -26,7 +26,7 @@ from functools import lru_cache
 from importlib import resources
 from pathlib import Path, PurePosixPath
 
-from .context import _EXCLUDED_DIRS, git_ignore_filter
+from .context import _EXCLUDED_DIRS, _is_report_artifact, git_ignore_filter
 from .git import run_git_text
 from .models import ThirdPartyExclusion
 from .redact import redact
@@ -228,7 +228,9 @@ def _walk_files(directory: Path, repo: Path):
             # one level down, so the resolved target is checked too.
             if not _is_contained(entry, repo):
                 continue
-            yield entry.relative_to(repo).as_posix()
+            relative = entry.relative_to(repo).as_posix()
+            if not _is_report_artifact(relative):
+                yield relative
 
 
 def _is_contained(path: Path, repo: Path) -> bool:

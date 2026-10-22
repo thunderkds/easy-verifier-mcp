@@ -82,19 +82,38 @@ REPORTS_DIR_ENV = "EASY_VERIFIER_REPORTS_DIR"
 ``<repo>/reports/``, so one shared scoring container never writes into the
 repositories it reads. Unset or empty keeps today's behaviour exactly."""
 
-SENSITIVITY_ADVISORY = (
-    "Sensitivity notice: this report is written inside the evaluated repository, "
-    "so it can be committed to version control, attached to a ticket, or pasted "
-    "into a pull request — and in MCP mode the same evidence also reaches the "
+_ADVISORY_EXPOSURES = (
+    "and in MCP mode the same evidence also reaches the "
     "calling agent, which may be a hosted model outside your control. Secrets "
     "detected while gathering evidence are replaced by non-reversible "
     "fingerprints before they reach this document, but excerpts still quote real "
     "source code and file paths from this repository. Review before sharing it "
     "anywhere either destination can carry it."
 )
+
+SENSITIVITY_ADVISORY = (
+    "Sensitivity notice: this report is written inside the evaluated repository, "
+    "so it can be committed to version control, attached to a ticket, or pasted "
+    "into a pull request — " + _ADVISORY_EXPOSURES
+)
 """NFR-011 / AC #15. It names the two real exposures — the report travelling out
 of the repo, and pack content reaching a hosted model — rather than merely
 asserting that redaction happened."""
+
+SHARED_DIR_SENSITIVITY_ADVISORY = (
+    "Sensitivity notice: this report is written outside the evaluated repository, "
+    "in the shared reports directory, so it can be copied from there, attached to "
+    "a ticket, or pasted into a pull request — " + _ADVISORY_EXPOSURES
+)
+"""T123: the notice when :data:`REPORTS_DIR_ENV` chose the destination."""
+
+FIRST_WRITE_MARKER = (
+    "This is the first report written into this repository's reports/ directory."
+)
+SHARED_DIR_FIRST_WRITE_MARKER = (
+    "This is the first report written into this repository's folder in the "
+    "shared reports directory."
+)
 
 MAX_FILENAME_ATTEMPTS = 1000
 """Bound on the never-overwrite retry loop, so a pathological directory fails
@@ -152,6 +171,7 @@ def write_report(
 
     reports_dir = _reports_dir(repo)
     first_write = not _has_existing_reports(reports_dir)
+    notice, first_write_marker = _notice_texts(repo, reports_dir)
 
     ctx = _Ctx(repo=repo)
     score = (
@@ -187,9 +207,14 @@ def write_report(
         improvements,
         agent_summary,
         first_write=first_write,
+        advisory=notice,
+        first_write_marker=first_write_marker,
     )
 
-    written = _write_new_file(reports_dir, _filename(packs), document)
+    # FR-087: the JSON score summary is built from the same `score` the HTML
+    # panel renders, and is written as a pair with it.
+    summary = _score_summary(score, _scope_label(packs), datetime.now(UTC))
+    written = _write_new_pair(reports_dir, _filename(packs), document, summary)
 
     return ReportResult(
         path=(
@@ -198,7 +223,7 @@ def write_report(
             else str(written)
         ),
         absolute_path=str(written),
-        advisory=SENSITIVITY_ADVISORY if first_write else None,
+        advisory=notice if first_write else None,
     )
 
 
@@ -290,17 +315,17 @@ def _filename(packs: CombinedPack) -> str:
 
     Self-describing (scope + instant) and sub-second, so two reports written in
     the same second do not collide on the name. Collision is still handled at
-    the filesystem, not here — see :func:`_write_new_file`.
+    the filesystem, not here — see :func:`_write_new_pair`.
     """
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
+    return f"evidence-report-{_slug(_scope_label(packs))}-{stamp}.html"
+
+
+def _scope_label(packs: CombinedPack) -> str:
     scopes = {slot.pack.scope for slot in packs.slots if slot.pack is not None}
     if len(scopes) == 1:
-        scope = next(iter(scopes))
-    elif scopes:
-        scope = "mixed"
-    else:
-        scope = "unknown"
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S-%fZ")
-    return f"evidence-report-{_slug(scope)}-{stamp}.html"
+        return next(iter(scopes))
+    return "mixed" if scopes else "unknown"
 
 
 def _slug(value: str) -> str:
@@ -322,6 +347,14 @@ def _reports_dir(repo: Path) -> Path:
     return base / (repo.name or "root")
 
 
+def _notice_texts(repo: Path, reports_dir: Path) -> tuple[str, str]:
+    """The sensitivity notice and first-write marker for where the report is
+    actually written, so the HTML and the returned advisory agree."""
+    if reports_dir.is_relative_to(repo):
+        return SENSITIVITY_ADVISORY, FIRST_WRITE_MARKER
+    return SHARED_DIR_SENSITIVITY_ADVISORY, SHARED_DIR_FIRST_WRITE_MARKER
+
+
 def _has_existing_reports(reports_dir: Path) -> bool:
     try:
         return any(reports_dir.glob("*.html"))
@@ -329,13 +362,63 @@ def _has_existing_reports(reports_dir: Path) -> bool:
         return False
 
 
-def _write_new_file(reports_dir: Path, filename: str, document: str) -> Path:
-    """Create the report, never clobbering an existing file (AC #5).
+def _score_summary(
+    score: ScoreResult | None, scope: str, generated: datetime
+) -> dict[str, Any]:
+    """The JSON sidecar (FR-087): numbers only, no finding text, excerpt or
+    agent input. ``schema_version`` 1 keys:
+
+    * ``scope``, ``generated_at`` (UTC, ``YYYY-MM-DDTHH:MM:SSZ``)
+    * ``overall`` -- ``{value, abstained, reason_code}``; ``value`` is ``None``
+      (never 0) when the overall is withheld
+    * ``dimensions`` -- per rated dimension, ``{dimension, rating, abstained,
+      reason_code}``; empty when the report holds too few dimensions to score
+    """
+    if score is None:
+        overall = _rating_summary(None, "incomplete_dimensions")
+        dimensions: list[dict[str, Any]] = []
+    else:
+        overall = _rating_summary(
+            score.overall.value if type(score.overall) is OverallRating else None,
+            getattr(score.overall, "reason_code", None),
+        )
+        dimensions = [
+            {
+                "dimension": rating.dimension,
+                **_rating_summary(
+                    None if type(rating) is RatingAbstention else rating.value,
+                    getattr(rating, "reason_code", None),
+                    key="rating",
+                ),
+            }
+            for rating in score.ratings
+        ]
+    return {
+        "schema_version": 1,
+        "scope": scope,
+        "generated_at": generated.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "overall": overall,
+        "dimensions": dimensions,
+    }
+
+
+def _rating_summary(
+    value: int | None, reason_code: str | None, *, key: str = "value"
+) -> dict[str, Any]:
+    return {key: value, "abstained": value is None, "reason_code": reason_code}
+
+
+def _write_new_pair(
+    reports_dir: Path, filename: str, document: str, summary: dict[str, Any]
+) -> Path:
+    """Create the HTML report and its JSON sibling, never clobbering either
+    (AC #5).
 
     ``O_CREAT | O_EXCL`` makes that structural: the kernel refuses the open if
     the name is taken, so there is no check-then-write window two concurrent
-    writers could both pass. A taken name produces a new name, never a
-    truncation of someone else's report.
+    writers could both pass. A taken name (HTML *or* JSON) produces a new name
+    for the pair, never a truncation of someone else's file. If the JSON cannot
+    be written the HTML is removed, so there is no half pair (FR-087).
     """
     _guard_reports_dir(reports_dir)
 
@@ -348,28 +431,45 @@ def _write_new_file(reports_dir: Path, filename: str, document: str) -> Path:
             "(the container case), mount its reports/ directory writable."
         ) from exc
 
-    stem, suffix = filename[: -len(".html")], ".html"
+    payload = json.dumps(
+        summary, sort_keys=True, ensure_ascii=True, separators=(",", ":")
+    )
+    stem = filename[: -len(".html")]
     for attempt in range(MAX_FILENAME_ATTEMPTS):
-        name = filename if attempt == 0 else f"{stem}-{attempt + 1}{suffix}"
-        candidate = reports_dir / name
-        try:
-            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-        except FileExistsError:
+        base = stem if attempt == 0 else f"{stem}-{attempt + 1}"
+        html_path = reports_dir / f"{base}.html"
+        json_path = reports_dir / f"{base}.json"
+        if not _create_exclusive(reports_dir, html_path, document):
             continue
-        except OSError as exc:
-            raise ReportWriteError(
-                f"cannot write the report into {redact(str(reports_dir))}: "
-                f"{exc.strerror}. If the target repository is mounted read-only "
-                "(the container case), mount its reports/ directory writable."
-            ) from exc
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(document)
-        return candidate
+        try:
+            if _create_exclusive(reports_dir, json_path, payload + "\n"):
+                return html_path
+        except BaseException:
+            html_path.unlink(missing_ok=True)
+            raise
+        html_path.unlink(missing_ok=True)  # JSON name taken: retry the pair
 
     raise ReportWriteError(
         f"could not find an unused report filename in {redact(str(reports_dir))} "
         f"after {MAX_FILENAME_ATTEMPTS} attempts"
     )
+
+
+def _create_exclusive(reports_dir: Path, path: Path, text: str) -> bool:
+    """Write `text` to a new file; ``False`` if the name is already taken."""
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        return False
+    except OSError as exc:
+        raise ReportWriteError(
+            f"cannot write the report into {redact(str(reports_dir))}: "
+            f"{exc.strerror}. If the target repository is mounted read-only "
+            "(the container case), mount its reports/ directory writable."
+        ) from exc
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    return True
 
 
 def _guard_reports_dir(reports_dir: Path) -> None:
@@ -408,6 +508,8 @@ def _render_document(
     agent_summary: str | None = None,
     *,
     first_write: bool,
+    advisory: str = SENSITIVITY_ADVISORY,
+    first_write_marker: str = FIRST_WRITE_MARKER,
 ) -> str:
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     finding_count = sum(len(v) for v in by_dimension.values())
@@ -427,7 +529,9 @@ def _render_document(
         "</head>",
         "<body>",
         _render_header(ctx, packs, generated, finding_count),
-        _render_advisory(ctx, first_write=first_write),
+        _render_advisory(
+            ctx, advisory, first_write_marker if first_write else ""
+        ),
         _render_summary(
             ctx,
             score,
@@ -482,16 +586,11 @@ _ADVISORY_LINE = (
 """The share notice's one visible line (FR-065); the full notice is folded."""
 
 
-def _render_advisory(ctx: _Ctx, *, first_write: bool) -> str:
-    marker = (
-        "This is the first report written into this repository's reports/ directory."
-        if first_write
-        else ""
-    )
+def _render_advisory(ctx: _Ctx, advisory: str, marker: str) -> str:
     return (
         '<section class="advisory"><h2>Before you share this report</h2>'
         f"<details><summary>{ctx.esc(_ADVISORY_LINE)}</summary>"
-        f"<p>{ctx.esc(SENSITIVITY_ADVISORY)}</p></details>"
+        f"<p>{ctx.esc(advisory)}</p></details>"
         f'<p class="first-write">{ctx.esc(marker)}</p></section>'
     )
 
@@ -1980,6 +2079,7 @@ __all__ = [
     "REPORTS_DIRNAME",
     "REPORTS_DIR_ENV",
     "SENSITIVITY_ADVISORY",
+    "SHARED_DIR_SENSITIVITY_ADVISORY",
     "RepoPathError",
     "ReportWriteError",
     "write_report",

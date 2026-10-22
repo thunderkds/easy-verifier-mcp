@@ -1018,3 +1018,11 @@ but declaring nothing is credited in `sources_found` and counts toward `coverage
 
 - CLI `write-report` with stdin redirected from /dev/null fails ("malformed JSON at line 1") — it parses
   empty stdin as findings. Pass `--findings <file containing []>` for a findings-free report (2026-10-16).
+
+- **Group secret hits by (path, detector) before blaming a file** (2026-10-21, T121): the reporter blamed `uv.lock`, but it had 0 hits. The real source was a `*-lock.json` manifest. `combined_pack([...]).slots[0].pack.redactions` gives the breakdown in one call.
+- **A pack field only one dimension needs is set by that dimension on its context, not by the pipeline for every pack** (T121): adding it pipeline-wide added a JSON key to every pack and broke the T055 legacy-key pins.
+- **Any new file the engine writes into a repo must be excluded from every walk** (T120): `.json` is a walked extension (`.html` is not), so the score sidecar was re-ingested on rescore. Three walk sites: `context._walk`, `scope._walk_files`, `roles._in_excluded_dir`.
+- **Test runner**: use `uv run --python 3.12 --extra dev python -m pytest`. Plain `uv run pytest` resolves a pytest without project deps. Delete the `uv.lock` uv creates in worktrees.
+- **Parallel sub-agents and the shared active_task file**: have each agent write the state file in the same Bash call as each test command. Merge gate: merges are blocked while any task is In Progress / Ready for Review, so finish review for a parallel batch, move it all to Done, then merge.
+- **The merge-gate hook checks the board before a compound command runs** (2026-10-21): "mark Done && merge" in one Bash call is blocked. Commit the kanban update in one call, then merge in the next.
+- **Don't edit tracked files (e.g. `memory/MEMORY.md`) while the full suite runs**: `test_adapter_parity` scores this repo's own worktree twice, through CLI and MCP, and fails when the tree changes between the two runs.

@@ -55,6 +55,7 @@ def _target(path: Path) -> Path:
 
 
 def _mcp_score(arguments: dict) -> dict:
+    arguments = {"detail": "full", **arguments}  # T122: parity needs the rows
     _content, structured = asyncio.run(mcp_server.mcp.call_tool("score", arguments))
     return structured.get("result", structured)
 
